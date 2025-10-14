@@ -62,9 +62,9 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <CardTitle>점검표 상세 보기 (ID: {report.reportID})</CardTitle>
+                            <CardTitle>점검표 상세 보기 (ID: {report.id})</CardTitle>
                             <CardDescription>
-                                {new Date(report.reportDate).toLocaleDateString()} / {report.team?.teamName} / {report.managerName}
+                                {new Date(report.reportDate).toLocaleDateString()} / {report.team?.name} / {report.managerName}
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
@@ -88,7 +88,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
                                 </TableHeader>
                                 <TableBody>
                                     {report.reportDetails?.map(detail => (
-                                        <TableRow key={detail.detailID}>
+                                        <TableRow key={detail.id}>
                                             <TableCell>{detail.item?.category}</TableCell>
                                             <TableCell>{detail.item?.subCategory}</TableCell>
                                             <TableCell>{detail.item?.description}</TableCell>
@@ -111,12 +111,12 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
                         <h4 className="text-lg font-semibold mb-2">서명</h4>
                         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                             {report.reportSignatures?.map(sig => (
-                                <Card key={sig.signatureID} className="text-center">
+                                <Card key={sig.id} className="text-center">
                                     <CardHeader className="p-4">
-                                        <CardTitle className="text-base">{sig.user?.userName || '관리자'}</CardTitle>
+                                        <CardTitle className="text-base">{sig.user?.name || '관리자'}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                        <img src={`data:image/png;base64,${sig.signatureImage}`} alt={`signature of ${sig.user?.userName}`} className="mx-auto border bg-white" />
+                                        <img src={`data:image/png;base64,${sig.signatureImage}`} alt={`signature of ${sig.user?.name}`} className="mx-auto border bg-white" />
                                     </CardContent>
                                     <CardFooter className="p-4 text-xs text-muted-foreground">
                                         {new Date(sig.signedAt).toLocaleString()}

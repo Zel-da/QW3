@@ -64,7 +64,7 @@ const ReportListView = ({ onSelectReport }) => {
                     >
                         <option value="">모든 팀</option>
                         {Array.isArray(teams) && teams.map(team => (
-                            <option key={team.teamID} value={team.teamID}>{team.teamName}</option>
+                            <option key={team.id} value={team.id}>{team.name}</option>
                         ))}
                     </select>
                 </div>
@@ -74,17 +74,17 @@ const ReportListView = ({ onSelectReport }) => {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {reports.length > 0 ? reports.map(report => (
-                        <Card key={report.reportID} className="flex flex-col">
+                        <Card key={report.id} className="flex flex-col">
                             <CardHeader>
-                                <CardTitle>점검표 #{report.reportID}</CardTitle>
+                                <CardTitle>점검표 #{report.id}</CardTitle>
                                 <CardDescription>{new Date(report.reportDate).toLocaleDateString()}</CardDescription>
                             </CardHeader>
                             <CardContent className="text-sm text-muted-foreground flex-grow">
-                                <p><b>팀:</b> {report.team?.teamName}</p>
+                                <p><b>팀:</b> {report.team?.name}</p>
                                 <p><b>작성자:</b> {report.managerName}</p>
                             </CardContent>
                             <CardFooter>
-                                <Button onClick={() => onSelectReport(report.reportID)} className="w-full">
+                                <Button onClick={() => onSelectReport(report.id)} className="w-full">
                                     상세 보기
                                 </Button>
                             </CardFooter>

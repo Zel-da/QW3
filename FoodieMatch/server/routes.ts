@@ -38,7 +38,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 * 24 } // Use secure: true in production with HTTPS
   }));
 
-  // AUTH and NOTICE routes are removed as they are handled by TBM API.
+  // AUTH ROUTES
+  app.get("/api/auth/me", (req, res) => {
+    if (req.session.user) {
+      res.json(req.session.user);
+    } else {
+      const demoUser = { id: 'demo-user', username: 'Demo User', role: 'user' };
+      req.session.user = demoUser;
+      res.json(demoUser);
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // NOTICE ROUTES
+  app.get("/api/notices", async (req, res) => {
+    try {
+      const notices = await prisma.notice.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
+      res.json(notices);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notices" });
+    }
+  });
 
   // UPLOAD ROUTE
   app.post("/api/upload", upload.single('file'), (req, res) => {
@@ -200,6 +232,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(certificates);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch certificates" });
+    }
+  });
+
+  // ==================== TBM API ====================
+  
+  // Get all teams
+  app.get("/api/teams", async (req, res) => {
+    try {
+      const teams = await prisma.team.findMany({
+        orderBy: { id: 'asc' }
+      });
+      res.json(teams);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  // Get users for a specific team
+  app.get("/api/teams/:id/users", async (req, res) => {
+    try {
+      const users = await prisma.tbmUser.findMany({ 
+        where: { teamId: parseInt(req.params.id) }
+      });
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Get checklist template with items for a team
+  app.get("/api/teams/:teamId/template", async (req, res) => {
+    try {
+      const template = await prisma.checklistTemplate.findFirst({
+        where: { teamId: parseInt(req.params.teamId) },
+        include: {
+          templateItems: {
+            orderBy: { displayOrder: 'asc' }
+          }
+        }
+      });
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template not found for this team" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
+  // Get reports (with optional filters)
+  app.get("/api/reports", async (req, res) => {
+    try {
+      const { date, teamId } = req.query;
+      const where: any = {};
+
+      if (date) {
+        const queryDate = new Date(date as string);
+        where.reportDate = {
+          gte: new Date(queryDate.setHours(0, 0, 0, 0)),
+          lt: new Date(queryDate.setHours(23, 59, 59, 999))
+        };
+      }
+
+      if (teamId) {
+        where.teamId = parseInt(teamId as string);
+      }
+
+      const reports = await prisma.dailyReport.findMany({
+        where,
+        include: {
+          team: true,
+          reportDetails: {
+            include: {
+              item: true
+            }
+          },
+          reportSignatures: {
+            include: {
+              user: true
+            }
+          }
+        },
+        orderBy: { reportDate: 'desc' }
+      });
+      
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  // Get specific report
+  app.get("/api/reports/:id", async (req, res) => {
+    try {
+      const report = await prisma.dailyReport.findUnique({
+        where: { id: parseInt(req.params.id) },
+        include: {
+          team: true,
+          reportDetails: {
+            include: {
+              item: true
+            }
+          },
+          reportSignatures: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+      
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Create new report
+  app.post("/api/reports", async (req, res) => {
+    try {
+      const { teamId, reportDate, managerName, remarks, results, signatures } = req.body;
+
+      const report = await prisma.dailyReport.create({
+        data: {
+          teamId: parseInt(teamId),
+          reportDate: new Date(reportDate),
+          managerName,
+          remarks,
+          reportDetails: {
+            create: Object.entries(results).map(([itemId, checkState]) => ({
+              itemId: parseInt(itemId),
+              checkState: checkState as string
+            }))
+          },
+          reportSignatures: {
+            create: signatures.map((sig: any) => ({
+              userId: sig.userId,
+              signedAt: new Date()
+            }))
+          }
+        },
+        include: {
+          team: true,
+          reportDetails: true,
+          reportSignatures: true
+        }
+      });
+
+      res.status(201).json(report);
+    } catch (error) {
+      console.error('Error creating report:', error);
+      res.status(500).json({ message: "Failed to create report" });
     }
   });
 

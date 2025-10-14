@@ -36,7 +36,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
             .then(response => {
                 setTeams(response.data);
                 if (!isEditMode && response.data.length > 0) {
-                    setSelectedTeam(response.data[0].teamID.toString());
+                    setSelectedTeam(response.data[0].id.toString());
                 }
             })
             .catch(error => console.error("Error fetching teams:", error));
@@ -48,14 +48,14 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
             apiClient.get(`/api/reports/${reportIdForEdit}`)
                 .then(response => {
                     const report = response.data;
-                    setSelectedTeam(report.teamID.toString());
+                    setSelectedTeam(report.teamId.toString());
                     setRemarks(report.remarks);
                     const loadedResults = {};
-                    report.reportDetails.forEach(detail => { loadedResults[detail.itemID] = detail.checkState; });
+                    report.reportDetails.forEach(detail => { loadedResults[detail.itemId] = detail.checkState; });
                     setCheckResults(loadedResults);
                     const loadedSignatures = {};
                     report.reportSignatures.forEach(sig => {
-                        if(sig.user) { loadedSignatures[sig.userID] = `data:image/png;base64,${sig.signatureImage}`; }
+                        if(sig.user) { loadedSignatures[sig.userId] = `data:image/png;base64,${sig.signatureImage}`; }
                     });
                     setSignatures(loadedSignatures);
                 })
@@ -68,7 +68,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
         if (!selectedTeam) return;
         setLoading(true);
         if(!isEditMode) resetState();
-        const fetchChecklist = apiClient.get(`/api/checklist/${selectedTeam}`);
+        const fetchChecklist = apiClient.get(`/api/teams/${selectedTeam}/template`);
         const fetchUsers = apiClient.get(`/api/teams/${selectedTeam}/users`);
         Promise.all([fetchChecklist, fetchUsers])
             .then(([checklistRes, usersRes]) => {
@@ -83,13 +83,13 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
     const handleSaveSignature = (userId, signatureImage) => setSignatures(prev => ({ ...prev, [userId]: signatureImage }));
 
     const handleSubmit = async () => {
-        if (checklistData && Object.keys(checkResults).length !== checklistData.items.length) {
+        if (checklistData && Object.keys(checkResults).length !== checklistData.templateItems.length) {
             alert("모든 항목을 점검해주세요.");
             return;
         }
         const signatureDtos = Object.entries(signatures).map(([userId, signatureImage]) => ({ userId: parseInt(userId), signatureImage }));
         if (!managerSigPad.current.isEmpty()) {
-            const managerUserId = users.find(u => u.userName === "홍길동")?.userID || (users.length > 0 ? users[0].userID : 0);
+            const managerUserId = users.find(u => u.name === "홍길동")?.id || (users.length > 0 ? users[0].id : 0);
             signatureDtos.push({ userId: managerUserId, signatureImage: managerSigPad.current.toDataURL('image/png') });
         } else if (!isEditMode) {
             alert("관리자 서명이 필요합니다.");
@@ -104,7 +104,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                 onFinishEditing();
             } else {
                 await apiClient.post('/api/reports', submissionData);
-                alert(`${teams.find(t => t.teamID === parseInt(selectedTeam)).teamName} 점검표가 성공적으로 제출되었습니다.`);
+                alert(`${teams.find(t => t.id === parseInt(selectedTeam)).name} 점검표가 성공적으로 제출되었습니다.`);
                 resetState();
             }
         } catch (error) {
@@ -120,7 +120,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
         return (
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{user.userName} 님, 서명해주세요.</DialogTitle>
+                    <DialogTitle>{user.name} 님, 서명해주세요.</DialogTitle>
                     <DialogDescription>아래 영역에 서명을 진행해주세요. 완료 후 저장 버튼을 누르세요.</DialogDescription>
                 </DialogHeader>
                 <div className="border rounded-md bg-white">
@@ -128,7 +128,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                 </div>
                 <DialogFooter className="gap-2 sm:justify-between">
                     <Button variant="outline" onClick={() => sigPad.current.clear()}>다시 서명</Button>
-                    <Button onClick={() => { onSave(user.userID, sigPad.current.toDataURL('image/png')); setCurrentUserForSigning(null); }}>저장</Button>
+                    <Button onClick={() => { onSave(user.id, sigPad.current.toDataURL('image/png')); setCurrentUserForSigning(null); }}>저장</Button>
                 </DialogFooter>
             </DialogContent>
         );
@@ -146,7 +146,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                                 <SelectValue placeholder="팀을 선택하세요" />
                             </SelectTrigger>
                             <SelectContent>
-                                {Array.isArray(teams) && teams.map(team => <SelectItem key={team.teamID} value={team.teamID.toString()}>{team.teamName}</SelectItem>)}
+                                {Array.isArray(teams) && teams.map(team => <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -159,7 +159,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                         <CardHeader>
                             <CardTitle>점검 결과</CardTitle>
                             <CardDescription>
-                                부서명: {teams.find(t => t.teamID === parseInt(selectedTeam))?.teamName} | 관리감독자: 홍길동 | 작성일: {new Date().toLocaleDateString()}
+                                부서명: {teams.find(t => t.id === parseInt(selectedTeam))?.name} | 관리감독자: 홍길동 | 작성일: {new Date().toLocaleDateString()}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -175,14 +175,14 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                                     </TableHeader>
                                     <TableBody>
                                         {checklistData.templateItems.map(item => (
-                                            <TableRow key={item.itemID}>
+                                            <TableRow key={item.id}>
                                                 <TableCell>{item.category}</TableCell>
                                                 <TableCell>{item.subCategory}</TableCell>
                                                 <TableCell className="text-sm">{item.description}</TableCell>
                                                 <TableCell className="text-center">
                                                     <div className="flex justify-center gap-2">
                                                         {['O', '△', 'X'].map(opt => (
-                                                            <Button key={opt} variant={checkResults[item.itemID] === opt ? 'default' : 'outline'} size="sm" onClick={() => handleCheck(item.itemID, opt)}>{opt}</Button>
+                                                            <Button key={opt} variant={checkResults[item.id] === opt ? 'default' : 'outline'} size="sm" onClick={() => handleCheck(item.id, opt)}>{opt}</Button>
                                                         ))}
                                                     </div>
                                                 </TableCell>
@@ -200,15 +200,15 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
                             <CardContent>
                                 <ul className="space-y-2">
                                     {users.map(user => (
-                                        <li key={user.userID} className="flex justify-between items-center">
-                                            <span>{user.userName}</span>
-                                            {signatures[user.userID] ? 
+                                        <li key={user.id} className="flex justify-between items-center">
+                                            <span>{user.name}</span>
+                                            {signatures[user.id] ? 
                                                 <span className="text-sm font-bold text-green-600">✔️ 서명 완료</span> : 
-                                                <Dialog onOpenChange={(open) => !open && setCurrentUserForSigning(null)} open={currentUserForSigning?.userID === user.userID}>
+                                                <Dialog onOpenChange={(open) => !open && setCurrentUserForSigning(null)} open={currentUserForSigning?.id === user.id}>
                                                     <DialogTrigger asChild>
                                                         <Button variant="secondary" onClick={() => setCurrentUserForSigning(user)}>서명하기</Button>
                                                     </DialogTrigger>
-                                                    {currentUserForSigning?.userID === user.userID && <SignatureDialog user={user} onSave={handleSaveSignature} />} 
+                                                    {currentUserForSigning?.id === user.id && <SignatureDialog user={user} onSave={handleSaveSignature} />} 
                                                 </Dialog>
                                             }
                                         </li>
