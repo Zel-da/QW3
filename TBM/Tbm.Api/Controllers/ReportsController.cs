@@ -73,11 +73,21 @@ namespace Tbm.Api.Controllers
 
         // GET: api/Reports
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DailyReport>>> GetReports([FromQuery] DateTime? date, [FromQuery] int? teamId)
+        public async Task<ActionResult<IEnumerable<DailyReport>>> GetReports(
+            [FromQuery] DateTime? date, 
+            [FromQuery] int? teamId,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
         {
             var query = _context.DailyReports.AsQueryable();
 
-            if (date.HasValue)
+            // 기간별 조회 (startDate와 endDate 우선)
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                query = query.Where(r => r.ReportDate.Date >= startDate.Value.Date && r.ReportDate.Date <= endDate.Value.Date);
+            }
+            // 단일 날짜 조회 (기존 기능 유지)
+            else if (date.HasValue)
             {
                 query = query.Where(r => r.ReportDate.Date == date.Value.Date);
             }

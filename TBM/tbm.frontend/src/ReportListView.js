@@ -6,7 +6,7 @@ import API_BASE_URL from './apiConfig';
 const ReportListView = ({ onSelectReport }) => {
     const [reports, setReports] = useState([]);
     const [teams, setTeams] = useState([]);
-    const [filters, setFilters] = useState({ date: '', teamId: '' });
+    const [filters, setFilters] = useState({ startDate: '', endDate: '', teamId: '' });
     const [loading, setLoading] = useState(false);
 
     // Fetch teams for the filter dropdown
@@ -18,17 +18,29 @@ const ReportListView = ({ onSelectReport }) => {
 
     const fetchReports = () => {
         setLoading(true);
-        axios.get(`${API_BASE_URL}/api/reports`, { params: filters })
+        const params = {};
+        
+        // 기간별 조회를 위한 파라미터 설정
+        if (filters.startDate && filters.endDate) {
+            params.startDate = filters.startDate;
+            params.endDate = filters.endDate;
+        }
+        
+        if (filters.teamId) {
+            params.teamId = filters.teamId;
+        }
+        
+        axios.get(`${API_BASE_URL}/api/reports`, { params })
             .then(response => setReports(response.data))
             .catch(error => console.error("Error fetching reports:", error))
             .finally(() => setLoading(false));
     };
 
     useEffect(() => {
-        if (filters.date) {
+        if (filters.startDate && filters.endDate) {
             fetchReports();
         } else {
-            setReports([]); // Clear reports if date is not selected
+            setReports([]); // Clear reports if date range is not selected
         }
     }, [filters]);
 
@@ -40,16 +52,41 @@ const ReportListView = ({ onSelectReport }) => {
     return (
         <div className="report-list-container">
             <h2>제출된 점검표 목록</h2>
-            <div className="filters">
-                <label>날짜:</label>
-                <input type="date" name="date" value={filters.date} onChange={handleFilterChange} />
-                <label>팀:</label>
-                <select name="teamId" value={filters.teamId} onChange={handleFilterChange}>
-                    <option value="">모든 팀</option>
-                    {teams.map(team => (
-                        <option key={team.teamID} value={team.teamID}>{team.teamName}</option>
-                    ))}
-                </select>
+            <div className="filters" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '1.1rem', fontWeight: '500' }}>시작 날짜:</label>
+                    <input 
+                        type="date" 
+                        name="startDate" 
+                        value={filters.startDate} 
+                        onChange={handleFilterChange}
+                        style={{ padding: '0.5rem', fontSize: '1rem', minHeight: '2.5rem' }}
+                    />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '1.1rem', fontWeight: '500' }}>종료 날짜:</label>
+                    <input 
+                        type="date" 
+                        name="endDate" 
+                        value={filters.endDate} 
+                        onChange={handleFilterChange}
+                        style={{ padding: '0.5rem', fontSize: '1rem', minHeight: '2.5rem' }}
+                    />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '1.1rem', fontWeight: '500' }}>팀:</label>
+                    <select 
+                        name="teamId" 
+                        value={filters.teamId} 
+                        onChange={handleFilterChange}
+                        style={{ padding: '0.5rem', fontSize: '1rem', minHeight: '2.5rem' }}
+                    >
+                        <option value="">모든 팀</option>
+                        {teams.map(team => (
+                            <option key={team.teamID} value={team.teamID}>{team.teamName}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
             {loading ? (
                 <p>목록을 불러오는 중...</p>
