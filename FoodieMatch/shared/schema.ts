@@ -1,4 +1,6 @@
 // Shared types between client and server
+import { z } from 'zod';
+
 export interface Notice {
   id: string;
   title: string;
@@ -70,9 +72,9 @@ export interface Certificate {
   issuedAt: Date;
 }
 
-export const insertUserSchema = {
-  username: String,
-  email: String,
-  password: String,
-  department: String,
-};
+export const insertUserSchema = z.object({
+  username: z.string().min(2, "이름은 2글자 이상이어야 합니다."),
+  email: z.string().email("올바른 이메일 주소를 입력하세요."),
+  password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
+  department: z.string(),
+});
