@@ -5197,11 +5197,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Administrator\\Downloads\\TBM\\Tbm.Api\\Tbm.Api.csproj",
+      "projectUniqueName": "C:\\Users\\Administrator\\Downloads\\QW3\\TBM\\Tbm.Api\\Tbm.Api.csproj",
       "projectName": "Tbm.Api",
-      "projectPath": "C:\\Users\\Administrator\\Downloads\\TBM\\Tbm.Api\\Tbm.Api.csproj",
+      "projectPath": "C:\\Users\\Administrator\\Downloads\\QW3\\TBM\\Tbm.Api\\Tbm.Api.csproj",
       "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Administrator\\Downloads\\TBM\\Tbm.Api\\obj\\",
+      "outputPath": "C:\\Users\\Administrator\\Downloads\\QW3\\TBM\\Tbm.Api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

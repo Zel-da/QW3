@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Tbm.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e164de37c078728198e10cf49ce0f0bc8c79f273")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+75764b0bfdbe61c2412d188cd4e510bad7bd15b5")]
 [assembly: System.Reflection.AssemblyProductAttribute("Tbm.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Tbm.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -39,14 +39,17 @@ async function main() {
       {
         title: '2025년 안전교육 일정 안내',
         content: '2025년 1분기 안전교육 일정을 공지합니다. 모든 직원은 필수 안전교육을 이수해주시기 바랍니다.',
+        authorId: adminUser.id,
       },
       {
         title: 'TBM 체크리스트 작성 안내',
         content: '매일 작업 전 TBM 체크리스트를 작성하고 팀원 전원의 서명을 받아주시기 바랍니다.',
+        authorId: adminUser.id,
       },
       {
         title: '안전보호구 착용 의무화',
         content: '작업장 내에서는 반드시 안전모, 안전화, 안전장갑을 착용해야 합니다.',
+        authorId: adminUser.id,
       },
     ],
     skipDuplicates: true,
