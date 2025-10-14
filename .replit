@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "dotnet-7.0", "web"]
+modules = ["nodejs-20", "dotnet-7.0", "web", "python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
 
@@ -33,3 +33,7 @@ waitForPort = 5000
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 44215
+externalPort = 3000

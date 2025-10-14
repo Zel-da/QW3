@@ -10,16 +10,16 @@ datasource db {
 // FoodieMatch specific models
 
 model Course {
-  id            String    @id @default(uuid())
-  title         String
-  description   String
-  type          String    // 'workplace-safety', 'hazard-prevention', 'tbm'
-  duration      Int       // in minutes
-  videoUrl      String?
-  documentUrl   String?
-  color         String    @default("blue")
-  icon          String
-  isActive      Boolean   @default(true)
+  id          String  @id @default(uuid())
+  title       String
+  description String
+  type        String // 'workplace-safety', 'hazard-prevention', 'tbm'
+  duration    Int // in minutes
+  videoUrl    String?
+  documentUrl String?
+  color       String  @default("blue")
+  icon        String
+  isActive    Boolean @default(true)
 
   // Relations
   userProgress    UserProgress[]
@@ -30,7 +30,7 @@ model Course {
 
 model UserProgress {
   id           String   @id @default(uuid())
-  userId       String   // No DB-level relation, references User in TbmDb
+  userId       String // No DB-level relation, references User in TbmDb
   courseId     String
   progress     Int      @default(0) // 0-100
   completed    Boolean  @default(false)
@@ -45,12 +45,12 @@ model UserProgress {
 }
 
 model Assessment {
-  id            String  @id @default(uuid())
+  id            String @id @default(uuid())
   courseId      String
   question      String
-  options       String  // JSON string array
+  options       String // JSON string array
   correctAnswer Int
-  difficulty    String  @default("medium")
+  difficulty    String @default("medium")
 
   course Course @relation(fields: [courseId], references: [id])
 
@@ -59,7 +59,7 @@ model Assessment {
 
 model UserAssessment {
   id             String   @id @default(uuid())
-  userId         String   // No DB-level relation, references User in TbmDb
+  userId         String // No DB-level relation, references User in TbmDb
   courseId       String
   score          Int
   totalQuestions Int
@@ -75,7 +75,7 @@ model UserAssessment {
 
 model Certificate {
   id             String   @id @default(uuid())
-  userId         String   // No DB-level relation, references User in TbmDb
+  userId         String // No DB-level relation, references User in TbmDb
   courseId       String
   certificateUrl String
   issuedAt       DateTime @default(now())
@@ -84,4 +84,92 @@ model Certificate {
 
   @@index([userId])
   @@index([courseId])
+}
+
+// TBM (Tool Box Meeting) models for daily safety checklists
+
+model Team {
+  id                 Int                 @id @default(autoincrement()) @map("TeamID")
+  name               String?             @map("TeamName")
+  checklistTemplates ChecklistTemplate[]
+  dailyReports       DailyReport[]
+  users              TbmUser[]
+
+  @@map("Teams")
+}
+
+model TbmUser {
+  id               Int               @id @default(autoincrement()) @map("UserID")
+  name             String?           @map("UserName")
+  teamId           Int               @map("TeamID")
+  team             Team              @relation(fields: [teamId], references: [id])
+  reportSignatures ReportSignature[]
+
+  @@index([teamId])
+  @@map("Users")
+}
+
+model ChecklistTemplate {
+  id            Int            @id @default(autoincrement()) @map("TemplateID")
+  name          String?        @map("TemplateName")
+  teamId        Int            @map("TeamID")
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  templateItems TemplateItem[]
+
+  @@index([teamId])
+  @@map("ChecklistTemplates")
+}
+
+model TemplateItem {
+  id            Int               @id @default(autoincrement()) @map("ItemID")
+  templateId    Int               @map("TemplateID")
+  category      String?           @map("Category")
+  subCategory   String?           @map("SubCategory")
+  description   String?           @map("Description")
+  displayOrder  Int               @default(0) @map("DisplayOrder")
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reportDetails ReportDetail[]
+
+  @@index([templateId])
+  @@map("TemplateItems")
+}
+
+model DailyReport {
+  id               Int               @id @default(autoincrement()) @map("ReportID")
+  teamId           Int               @map("TeamID")
+  reportDate       DateTime          @map("ReportDate")
+  managerName      String?           @map("ManagerName")
+  remarks          String?           @map("Remarks")
+  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reportDetails    ReportDetail[]
+  reportSignatures ReportSignature[]
+
+  @@index([teamId])
+  @@map("DailyReports")
+}
+
+model ReportDetail {
+  id         Int          @id @default(autoincrement()) @map("DetailID")
+  reportId   Int          @map("ReportID")
+  itemId     Int          @map("ItemID")
+  checkState String?      @map("CheckState")
+  report     DailyReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  item       TemplateItem @relation(fields: [itemId], references: [id])
+
+  @@index([reportId])
+  @@index([itemId])
+  @@map("ReportDetails")
+}
+
+model ReportSignature {
+  id       Int         @id @default(autoincrement()) @map("SignatureID")
+  reportId Int         @map("ReportID")
+  userId   Int         @map("UserID")
+  signedAt DateTime    @default(now()) @map("SignedAt")
+  report   DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user     TbmUser     @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+  @@index([userId])
+  @@map("ReportSignatures")
 }
