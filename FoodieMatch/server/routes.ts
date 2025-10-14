@@ -479,6 +479,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // NOTICE ROUTES
+  // Get all notices (public)
+  app.get("/api/notices", async (req, res) => {
+    try {
+      const notices = await prisma.notice.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(notices);
+    } catch (error) {
+      console.error('Error fetching notices:', error);
+      res.status(500).json({ message: "Failed to fetch notices" });
+    }
+  });
+
+  // Get single notice (public)
+  app.get("/api/notices/:id", async (req, res) => {
+    try {
+      const notice = await prisma.notice.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!notice) {
+        return res.status(404).json({ message: "공지사항을 찾을 수 없습니다" });
+      }
+      
+      res.json(notice);
+    } catch (error) {
+      console.error('Error fetching notice:', error);
+      res.status(500).json({ message: "Failed to fetch notice" });
+    }
+  });
+
+  // Create notice (admin only)
+  app.post("/api/notices", requireAuth, async (req, res) => {
+    try {
+      if (req.session.user?.role !== 'admin') {
+        return res.status(403).json({ message: "관리자만 공지사항을 작성할 수 있습니다" });
+      }
+
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "제목과 내용을 입력해주세요" });
+      }
+
+      const notice = await prisma.notice.create({
+        data: {
+          title,
+          content,
+          authorId: req.session.user.id
+        }
+      });
+
+      res.status(201).json(notice);
+    } catch (error) {
+      console.error('Error creating notice:', error);
+      res.status(500).json({ message: "Failed to create notice" });
+    }
+  });
+
+  // Update notice (admin only)
+  app.put("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      if (req.session.user?.role !== 'admin') {
+        return res.status(403).json({ message: "관리자만 공지사항을 수정할 수 있습니다" });
+      }
+
+      const { title, content } = req.body;
+      
+      const notice = await prisma.notice.update({
+        where: { id: req.params.id },
+        data: {
+          title,
+          content,
+          updatedAt: new Date()
+        }
+      });
+
+      res.json(notice);
+    } catch (error) {
+      console.error('Error updating notice:', error);
+      res.status(500).json({ message: "Failed to update notice" });
+    }
+  });
+
+  // Delete notice (admin only)
+  app.delete("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      if (req.session.user?.role !== 'admin') {
+        return res.status(403).json({ message: "관리자만 공지사항을 삭제할 수 있습니다" });
+      }
+
+      await prisma.notice.delete({
+        where: { id: req.params.id }
+      });
+
+      res.json({ message: "공지사항이 삭제되었습니다" });
+    } catch (error) {
+      console.error('Error deleting notice:', error);
+      res.status(500).json({ message: "Failed to delete notice" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
