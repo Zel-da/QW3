@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// FoodieMatch specific models
+
+model Course {
+  id            String    @id @default(uuid())
+  title         String
+  description   String
+  type          String    // 'workplace-safety', 'hazard-prevention', 'tbm'
+  duration      Int       // in minutes
+  videoUrl      String?
+  documentUrl   String?
+  color         String    @default("blue")
+  icon          String
+  isActive      Boolean   @default(true)
+
+  // Relations
+  userProgress    UserProgress[]
+  assessments     Assessment[]
+  userAssessments UserAssessment[]
+  certificates    Certificate[]
+}
+
+model UserProgress {
+  id           String   @id @default(uuid())
+  userId       String   // No DB-level relation, references User in TbmDb
+  courseId     String
+  progress     Int      @default(0) // 0-100
+  completed    Boolean  @default(false)
+  currentStep  Int      @default(1)
+  timeSpent    Int      @default(0) // in seconds
+  lastAccessed DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Assessment {
+  id            String  @id @default(uuid())
+  courseId      String
+  question      String
+  options       String  // JSON string array
+  correctAnswer Int
+  difficulty    String  @default("medium")
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+}
+
+model UserAssessment {
+  id             String   @id @default(uuid())
+  userId         String   // No DB-level relation, references User in TbmDb
+  courseId       String
+  score          Int
+  totalQuestions Int
+  passed         Boolean
+  attemptNumber  Int      @default(1)
+  completedAt    DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Certificate {
+  id             String   @id @default(uuid())
+  userId         String   // No DB-level relation, references User in TbmDb
+  courseId       String
+  certificateUrl String
+  issuedAt       DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@index([userId])
+  @@index([courseId])
+}
