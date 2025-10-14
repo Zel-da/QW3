@@ -32,12 +32,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   const upload = multer({ dest: uploadDir });
 
+  const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
+  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET environment variable must be set in production');
+  }
+
   app.use(session({
-    secret: 'a-very-secret-key-that-should-be-in-env-vars',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 * 24 } // Use secure: true in production with HTTPS
+    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 1000 * 60 * 60 * 24 }
   }));
+
+  // Auth middleware
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.user) {
+      return res.status(401).json({ message: "인증이 필요합니다" });
+    }
+    next();
+  };
+
+  const requireOwnership = (req: any, res: any, next: any) => {
+    if (!req.session.user) {
+      return res.status(401).json({ message: "인증이 필요합니다" });
+    }
+    if (req.session.user.id !== req.params.userId && req.session.user.role !== 'admin') {
+      return res.status(403).json({ message: "권한이 없습니다" });
+    }
+    next();
+  };
 
   // AUTH ROUTES
   app.post("/api/auth/register", async (req, res) => {
@@ -169,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Get user progress for all courses
-  app.get("/api/users/:userId/progress", async (req, res) => {
+  app.get("/api/users/:userId/progress", requireOwnership, async (req, res) => {
     try {
       const progress = await prisma.userProgress.findMany({ 
         where: { userId: req.params.userId }
@@ -181,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user progress for specific course
-  app.get("/api/users/:userId/progress/:courseId", async (req, res) => {
+  app.get("/api/users/:userId/progress/:courseId", requireOwnership, async (req, res) => {
     try {
       const progress = await prisma.userProgress.findFirst({ 
         where: { userId: req.params.userId, courseId: req.params.courseId }
@@ -197,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user progress
-  app.put("/api/users/:userId/progress/:courseId", async (req, res) => {
+  app.put("/api/users/:userId/progress/:courseId", requireOwnership, async (req, res) => {
     try {
       const progressUpdateSchema = z.object({
         progress: z.number().min(0).max(100).optional(),
