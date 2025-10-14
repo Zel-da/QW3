@@ -7,74 +7,27 @@ import { Progress } from "@/components/ui/progress";
 import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag } from "lucide-react";
 import { Course, UserProgress } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Dashboard() {
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
 
-  // Initialize user on app load
-  useEffect(() => {
-    const initializeUser = async () => {
-      let userId: string | null = localStorage.getItem("currentUserId");
-      
-      if (!userId) {
-        // Create a demo user for this session
-        try {
-          const response = await fetch("/api/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              username: "데모 사용자",
-              email: "demo@example.com",
-              department: "안전관리팀",
-            }),
-          });
-          
-          if (response.ok) {
-            const user = await response.json();
-            if (user?.id) {
-              userId = user.id as string;
-              localStorage.setItem("currentUserId", userId);
-            } else {
-              userId = "demo-user";
-              localStorage.setItem("currentUserId", userId);
-            }
-          } else {
-            // Fallback if response not ok
-            userId = "demo-user";
-            localStorage.setItem("currentUserId", userId);
-          }
-        } catch (error) {
-          console.error("Failed to create demo user:", error);
-          // Fallback to a static ID
-          userId = "demo-user";
-          localStorage.setItem("currentUserId", userId);
-        }
-      }
-      
-      if (userId) {
-        setCurrentUser(userId);
-      }
-    };
-
-    initializeUser();
-  }, []);
-
   const { data: userProgress = [] } = useQuery<UserProgress[]>({
-    queryKey: ["/api/users", currentUser, "progress"],
-    enabled: !!currentUser,
+    queryKey: ["/api/users", user?.id, "progress"],
+    enabled: !!user?.id,
   });
 
-  // Debug logging
-  console.log("Dashboard - Current User:", currentUser);
-  console.log("Dashboard - User Progress:", userProgress);
-
   const handleStartCourse = (courseId: string) => {
-    // Navigate to course page
+    if (!user) {
+      setLocation('/login');
+      return;
+    }
     window.location.href = `/course/${courseId}`;
   };
 
@@ -92,7 +45,7 @@ export default function Dashboard() {
     return "waiting";
   };
 
-  if (coursesLoading || !currentUser) {
+  if (authLoading || coursesLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -103,6 +56,11 @@ export default function Dashboard() {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    setLocation('/login');
+    return null;
   }
 
   const overallProgress = calculateOverallProgress();
