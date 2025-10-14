@@ -8,10 +8,40 @@ import { Notice } from "@shared/schema";
 import { Link } from "wouter";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { data: notices = [], isLoading } = useQuery<Notice[]>({
     queryKey: ["/api/notices"],
   });
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>로딩 중...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div>
+        <Header />
+        <main className="container mx-auto p-4 lg:p-6">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4">안전관리 통합 플랫폼</h1>
+            <p className="text-lg text-muted-foreground mb-8">안전교육과 TBM 체크리스트를 통합 관리하는 플랫폼입니다.</p>
+            <div className="flex gap-4 justify-center">
+              <Button asChild size="lg">
+                <Link href="/login">로그인</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/register">회원가입</Link>
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -34,6 +64,8 @@ export default function HomePage() {
           <CardContent>
             {isLoading ? (
               <p>공지사항을 불러오는 중...</p>
+            ) : notices.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">공지사항이 없습니다.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -41,7 +73,6 @@ export default function HomePage() {
                     <TableHead className="w-[100px]">번호</TableHead>
                     <TableHead>제목</TableHead>
                     <TableHead className="w-[150px]">작성일</TableHead>
-                    <TableHead className="w-[100px]">조회수</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -54,7 +85,6 @@ export default function HomePage() {
                         </Link>
                       </TableCell>
                       <TableCell>{new Date(notice.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{notice.viewCount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

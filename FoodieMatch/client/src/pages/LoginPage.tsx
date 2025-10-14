@@ -7,7 +7,7 @@ import { useState } from "react";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -44,7 +44,7 @@ export default function LoginPage() {
   return (
     <div>
       <Header />
-      <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center">
+      <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center min-h-[80vh]">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl text-center">로그인</CardTitle>
@@ -52,8 +52,8 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">이메일</Label>
-                <Input id="email" name="email" type="email" required onChange={handleChange} />
+                <Label htmlFor="username">사용자명</Label>
+                <Input id="username" name="username" type="text" required onChange={handleChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호</Label>
@@ -61,6 +61,10 @@ export default function LoginPage() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full">로그인</Button>
+              <div className="text-center text-sm text-muted-foreground">
+                <p>테스트 계정: admin / password123</p>
+                <p className="mt-2">계정이 없으신가요? <a href="/register" className="text-primary hover:underline">회원가입</a></p>
+              </div>
             </form>
           </CardContent>
         </Card>

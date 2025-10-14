@@ -10,7 +10,6 @@ export default function RegisterPage() {
     username: '',
     email: '',
     password: '',
-    department: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -55,7 +54,7 @@ export default function RegisterPage() {
   return (
     <div>
       <Header />
-      <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center">
+      <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center min-h-[80vh]">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl text-center">회원가입</CardTitle>
@@ -74,13 +73,12 @@ export default function RegisterPage() {
                 <Label htmlFor="password">비밀번호 (8자 이상)</Label>
                 <Input id="password" name="password" type="password" required onChange={handleChange} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">부서명</Label>
-                <Input id="department" name="department" type="text" required onChange={handleChange} />
-              </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {success && <p className="text-sm text-green-600">{success}</p>}
               <Button type="submit" className="w-full">가입하기</Button>
+              <div className="text-center text-sm text-muted-foreground">
+                <p>이미 계정이 있으신가요? <a href="/login" className="text-primary hover:underline">로그인</a></p>
+              </div>
             </form>
           </CardContent>
         </Card>
