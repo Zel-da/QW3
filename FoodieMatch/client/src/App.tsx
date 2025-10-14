@@ -27,9 +27,9 @@ function Router() {
       <Route path="/course/:id" component={CoursePage} />
       <Route path="/course/:id/content" component={CourseContentPage} />
       <Route path="/assessment/:id" component={AssessmentPage} />
-      <Route path="/notices/:id" component={NoticeDetailPage} />
       <Route path="/notices/new" component={NoticeEditor} />
       <Route path="/notices/edit/:id" component={NoticeEditor} />
+      <Route path="/notices/:id" component={NoticeDetailPage} />
       <Route component={NotFound} />
     </Switch>
   );
