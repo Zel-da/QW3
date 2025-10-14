@@ -48,9 +48,17 @@ The platform uses a **microservices architecture** with two independent applicat
 
 **Authentication Pattern**
 - Session-based authentication with express-session
+- Session secret externalized to SESSION_SECRET environment variable (required in production)
+- Password hashing with bcrypt for secure credential storage
 - Demo user auto-creation for development/testing
 - Role-based access control (admin/user roles)
 - Session stored in server memory (not production-ready for scaling)
+
+**Authorization Middleware**
+- requireAuth: Validates user authentication status
+- requireOwnership: Enforces user can only access own data (unless admin role)
+- All progress endpoints protected with ownership-based authorization
+- Returns 401 for unauthenticated requests, 403 for unauthorized access
 
 **Content Delivery System**
 - Video streaming via external URLs
