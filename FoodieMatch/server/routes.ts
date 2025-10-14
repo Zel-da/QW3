@@ -528,7 +528,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           title,
           content,
-          authorId: req.session.user.id
+          authorId: req.session.user.id,
+          imageUrl: req.body.imageUrl,
+          attachmentUrl: req.body.attachmentUrl,
+          attachmentName: req.body.attachmentName
         }
       });
 
@@ -553,7 +556,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           title,
           content,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          imageUrl: req.body.imageUrl,
+          attachmentUrl: req.body.attachmentUrl,
+          attachmentName: req.body.attachmentName
         }
       });
 
