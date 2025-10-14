@@ -145,19 +145,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // NOTICE ROUTES
-  app.get("/api/notices", async (req, res) => {
-    try {
-      const notices = await prisma.notice.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 10
-      });
-      res.json(notices);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch notices" });
-    }
-  });
-
   // UPLOAD ROUTE
   app.post("/api/upload", upload.single('file'), (req, res) => {
     if (!req.file) {
