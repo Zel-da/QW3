@@ -1,6 +1,6 @@
 import { Shield, Gauge, Book, Bell, User, ClipboardCheck, BookOpen, Home, LogOut, LogIn } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "./ui/Button";
+import { Button } from "./ui/button";
 
 export function Header() {
   const { user, logout } = useAuth();

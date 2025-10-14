@@ -1,11 +1,11 @@
 import { Header } from "@/components/header";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Notice } from "@shared/schema";
 import { Link, useRoute } from "wouter";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 export default function NoticeDetailPage() {
   const { user } = useAuth();

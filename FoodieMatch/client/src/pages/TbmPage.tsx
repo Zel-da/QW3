@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import TBMChecklist from '../features/tbm/TBMChecklist.jsx';
 import ReportListView from '../features/tbm/ReportListView.jsx';
 import ReportDetailView from '../features/tbm/ReportDetailView.jsx';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { Header } from '@/components/header';
 
 export default function TbmPage() {

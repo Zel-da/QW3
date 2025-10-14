@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import apiClient from './apiConfig';
-import { Button } from '../../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/Select';
-import { Textarea } from '../../components/ui/Textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../../components/ui/Dialog';
-import { Label } from '../../components/ui/Label';
+import { Button } from '../../components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Textarea } from '../../components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 
 const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
     const [teams, setTeams] = useState([]);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from './apiConfig';
-import { Button } from '../../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table';
+import { Button } from '../../components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
 import { ArrowLeft } from 'lucide-react';
 
 const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
