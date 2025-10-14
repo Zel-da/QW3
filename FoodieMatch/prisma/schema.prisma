@@ -14,14 +14,24 @@ model User {
   password  String
   role      String   @default("user")
   createdAt DateTime @default(now())
+  notices   Notice[]
 }
 
 model Notice {
-  id        String   @id @default(uuid())
-  title     String
-  content   String
-  createdAt DateTime @default(now())
-  isActive  Boolean  @default(true)
+  id             String   @id @default(uuid())
+  title          String
+  content        String
+  authorId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+  isActive       Boolean  @default(true)
+  viewCount      Int      @default(0)
+  imageUrl       String?
+  attachmentUrl  String?
+  attachmentName String?
+  author         User     @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
 }
 
 model Course {

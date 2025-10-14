@@ -38,6 +38,42 @@ export default function HomePage() {
               </Button>
             </div>
           </div>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>공지사항</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>공지사항을 불러오는 중...</p>
+              ) : notices.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">공지사항이 없습니다.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">번호</TableHead>
+                      <TableHead>제목</TableHead>
+                      <TableHead className="w-[150px]">작성일</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {notices.map((notice, index) => (
+                      <TableRow key={notice.id}>
+                        <TableCell>{notices.length - index}</TableCell>
+                        <TableCell className="font-medium">
+                          <Link href={`/notices/${notice.id}`} className="hover:underline">
+                            {notice.title}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{new Date(notice.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
