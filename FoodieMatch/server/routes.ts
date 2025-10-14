@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { prisma } from "./db";
 import { z } from "zod";
+import bcrypt from "bcrypt";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,23 +40,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // AUTH ROUTES
-  app.get("/api/auth/me", (req, res) => {
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: "모든 필드를 입력해주세요" });
+      }
+
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ username }, { email }]
+        }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ message: "이미 존재하는 사용자명 또는 이메일입니다" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await prisma.user.create({
+        data: {
+          username,
+          email,
+          password: hashedPassword,
+          role: 'user',
+        },
+      });
+
+      req.session.user = { id: user.id, username: user.username, role: user.role };
+      res.json({ id: user.id, username: user.username, role: user.role });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ message: "회원가입 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ message: "사용자명과 비밀번호를 입력해주세요" });
+      }
+
+      const user = await prisma.user.findUnique({ where: { username } });
+
+      if (!user) {
+        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
+      }
+
+      req.session.user = { id: user.id, username: user.username, role: user.role };
+      res.json({ id: user.id, username: user.username, role: user.role });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: "로그인 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
     if (req.session.user) {
       res.json(req.session.user);
     } else {
-      const demoUser = { id: 'demo-user', username: 'Demo User', role: 'user' };
-      req.session.user = demoUser;
-      res.json(demoUser);
+      res.status(401).json({ message: "인증되지 않은 사용자입니다" });
     }
   });
 
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
-        return res.status(500).json({ message: "Logout failed" });
+        return res.status(500).json({ message: "로그아웃 실패" });
       }
       res.clearCookie('connect.sid');
-      res.json({ message: "Logged out successfully" });
+      res.json({ message: "로그아웃 성공" });
     });
   });
 
