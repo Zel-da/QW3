@@ -12,9 +12,21 @@ model User {
   username  String   @unique
   email     String   @unique
   password  String
-  role      String   @default("user")
+  role      Role     @default(worker)
   createdAt DateTime @default(now())
+  teamId    Int?
+  team      Team?    @relation(fields: [teamId], references: [id])
   notices   Notice[]
+
+  @@map("User")
+}
+
+enum Role {
+  admin
+  safety_team
+  team_leader
+  worker
+  office_worker
 }
 
 model Notice {
@@ -111,6 +123,7 @@ model Team {
   checklistTemplates ChecklistTemplate[]
   dailyReports       DailyReport[]
   users              TbmUser[]
+  loginUsers         User[] // This is the new field for the back-relation
 
   @@map("Teams")
 }

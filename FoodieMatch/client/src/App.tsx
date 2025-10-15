@@ -15,6 +15,7 @@ import RegisterPage from "@/pages/RegisterPage";
 import NoticeDetailPage from "@/pages/NoticeDetailPage";
 import NoticeEditor from "@/pages/NoticeEditor";
 import NotFound from "@/pages/not-found";
+import TeamManagementPage from "@/pages/TeamManagementPage";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/register" component={RegisterPage} />
       <Route path="/education" component={Dashboard} />
       <Route path="/tbm" component={TbmPage} />
+      <Route path="/team-management" component={TeamManagementPage} />
       <Route path="/course/:id" component={CoursePage} />
       <Route path="/course/:id/content" component={CourseContentPage} />
       <Route path="/assessment/:id" component={AssessmentPage} />

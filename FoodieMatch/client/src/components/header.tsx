@@ -44,6 +44,15 @@ export function Header() {
               <ClipboardCheck className="w-4 h-4 mr-2" />
               TBM 안전점검
             </a>
+            {(user?.role === 'team_leader' || user?.role === 'admin') && (
+              <a 
+                href="/team-management" 
+                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center"
+              >
+                <User className="w-4 h-4 mr-2" />
+                팀원 관리
+              </a>
+            )}
             
             <div className="flex items-center space-x-3">
               {user ? (

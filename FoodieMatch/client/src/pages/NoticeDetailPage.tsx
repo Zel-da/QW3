@@ -61,8 +61,8 @@ export default function NoticeDetailPage() {
         {notice && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl md:text-4xl leading-tight">{notice.title}</CardTitle>
-              <div className="text-base md:text-lg text-muted-foreground pt-3 flex flex-wrap gap-2">
+              <CardTitle className="text-3xl md:text-4xl leading-tight">{notice.title}</CardTitle>
+              <div className="text-base text-muted-foreground pt-3 flex flex-wrap gap-x-4 gap-y-1">
                 <span>작성일: {new Date(notice.createdAt).toLocaleString()}</span>
                 <span className="hidden sm:inline">|</span>
                 <span>조회수: {notice.viewCount}</span>
@@ -70,7 +70,7 @@ export default function NoticeDetailPage() {
             </CardHeader>
             <CardContent className="mt-6">
               {notice.imageUrl && <img src={notice.imageUrl} alt={notice.title} className="max-w-full rounded-md mb-6" />}
-              <div className="text-lg md:text-xl leading-relaxed whitespace-pre-wrap">{notice.content}</div>
+              <div className="text-xl leading-relaxed whitespace-pre-wrap">{notice.content}</div>
               {notice.attachmentUrl && (
                 <div className="mt-8">
                   <Button asChild variant="outline" className="text-base h-12 w-full sm:w-auto min-w-[200px]">

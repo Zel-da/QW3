@@ -97,10 +97,10 @@ INSERT INTO public."User" VALUES ('ff114024-abaf-464f-9997-2656ee446a9a', '안�
 -- Data for Name: Notice; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-INSERT INTO public."Notice" VALUES ('45b33c77-47cf-4a0e-878b-6c04d226593f', '2025년 안전교육 일정 안내', '2025년 1분기 안전교육 일정을 공지합니다. 모든 직원은 필수 안전교육을 이수해주시기 바랍니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('abb32247-784e-4c3a-bad3-43e172c0a4ed', 'TBM 체크리스트 작성 안내', '매일 작업 전 TBM 체크리스트를 작성하고 팀원 전원의 서명을 받아주시기 바랍니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('3340b20a-2c9c-47ae-8960-1bf51c35bd62', '안전보호구 착용 의무화', '작업장 내에서는 반드시 안전모, 안전화, 안전장갑을 착용해야 합니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('eb304428-b79d-479b-a9ba-00d3480c5939', '새로운 공지사항', '데이터를 유지하면서 추가된 공지사항입니다!', '2025-10-14 02:19:53.889', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:19:53.889', 0, NULL, NULL, NULL);
+INSERT INTO public."Notice" VALUES ('45b33c77-47cf-4a0e-878b-6c04d226593f', '2025년 안전교육 일정 안내', '2025년 1분기 안전교육 일정을 공지합니다. 모든 직원은 필수 안전교육을 이수해주시기 바랍니다.', 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 01:45:09.954', '2025-10-14 02:18:08.497392', true, 0, NULL, NULL, NULL);
+INSERT INTO public."Notice" VALUES ('abb32247-784e-4c3a-bad3-43e172c0a4ed', 'TBM 체크리스트 작성 안내', '매일 작업 전 TBM 체크리스트를 작성하고 팀원 전원의 서명을 받아주시기 바랍니다.', 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 01:45:09.954', '2025-10-14 02:18:08.497392', true, 0, NULL, NULL, NULL);
+INSERT INTO public."Notice" VALUES ('3340b20a-2c9c-47ae-8960-1bf51c35bd62', '안전보호구 착용 의무화', '작업장 내에서는 반드시 안전모, 안전화, 안전장갑을 착용해야 합니다.', 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 01:45:09.954', '2025-10-14 02:18:08.497392', true, 0, NULL, NULL, NULL);
+INSERT INTO public."Notice" VALUES ('eb304428-b79d-479b-a9ba-00d3480c5939', '새로운 공지사항', '데이터를 유지하면서 추가된 공지사항입니다!', 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:19:53.889', '2025-10-14 02:19:53.889', true, 0, NULL, NULL, NULL);
 
 
 --

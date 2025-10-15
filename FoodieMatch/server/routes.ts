@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { prisma } from "./db";
 import { z } from "zod";
+import { requireRole } from './middleware';
 import bcrypt from "bcrypt";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username,
           email,
           password: hashedPassword,
-          role: 'user',
+          role: 'worker',
         },
       });
 
@@ -357,44 +358,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get reports (with optional filters)
-  app.get("/api/reports", async (req, res) => {
+  app.get("/api/daily-reports", requireAuth, async (req, res) => {
+    const { date, startDate, endDate } = req.query;
+    const where: any = {};
+
+    if (date && typeof date === 'string') {
+      const reportDate = new Date(date);
+      where.reportDate = {
+        gte: new Date(reportDate.setHours(0, 0, 0, 0)),
+        lt: new Date(reportDate.setHours(24, 0, 0, 0)),
+      };
+    } else if (startDate && endDate && typeof startDate === 'string' && typeof endDate === 'string') {
+      where.reportDate = {
+        gte: new Date(new Date(startDate).setHours(0, 0, 0, 0)),
+        lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+      };
+    }
+
     try {
-      const { date, teamId } = req.query;
-      const where: any = {};
-
-      if (date) {
-        const queryDate = new Date(date as string);
-        where.reportDate = {
-          gte: new Date(queryDate.setHours(0, 0, 0, 0)),
-          lt: new Date(queryDate.setHours(23, 59, 59, 999))
-        };
-      }
-
-      if (teamId) {
-        where.teamId = parseInt(teamId as string);
-      }
-
       const reports = await prisma.dailyReport.findMany({
         where,
         include: {
           team: true,
-          reportDetails: {
-            include: {
-              item: true
-            }
-          },
-          reportSignatures: {
-            include: {
-              user: true
-            }
-          }
         },
-        orderBy: { reportDate: 'desc' }
+        orderBy: {
+          reportDate: 'desc',
+        },
       });
-      
       res.json(reports);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch reports" });
+      res.status(500).json({ message: "보고서 조회 중 오류가 발생했습니다.", error });
     }
   });
 
@@ -572,6 +565,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting notice:', error);
       res.status(500).json({ message: "Failed to delete notice" });
+    }
+  });
+
+  // Team Management Routes
+  app.get("/api/my-team/members", requireAuth, requireRole(['team_leader', 'admin']), async (req, res) => {
+    try {
+      const currentUser = req.session.user;
+      const targetTeamId = currentUser.role === 'admin' ? 1 : currentUser.teamId;
+
+      if (!targetTeamId) {
+        return res.status(404).json({ message: "소속된 팀이 없습니다." });
+      }
+      const teamMembers = await prisma.tbmUser.findMany({
+        where: { teamId: targetTeamId },
+      });
+      res.json(teamMembers);
+    } catch (error) {
+      res.status(500).json({ message: "팀원 조회 중 오류 발생", error });
+    }
+  });
+
+  app.post("/api/my-team/members", requireAuth, requireRole(['team_leader', 'admin']), async (req, res) => {
+    try {
+      const currentUser = req.session.user;
+      const targetTeamId = currentUser.role === 'admin' ? 1 : currentUser.teamId;
+      const { name } = req.body;
+
+      if (!targetTeamId) {
+        return res.status(404).json({ message: "소속된 팀이 없습니다." });
+      }
+      const newMember = await prisma.tbmUser.create({
+        data: {
+          name,
+          teamId: targetTeamId,
+        },
+      });
+      res.status(201).json(newMember);
+    } catch (error) {
+      res.status(500).json({ message: "팀원 추가 중 오류 발생", error });
+    }
+  });
+
+  app.delete("/api/my-team/members/:id", requireAuth, requireRole(['team_leader', 'admin']), async (req, res) => {
+    try {
+      const currentUser = req.session.user;
+      const targetTeamId = currentUser.role === 'admin' ? 1 : currentUser.teamId;
+      const memberId = parseInt(req.params.id, 10);
+      const member = await prisma.tbmUser.findUnique({ where: { id: memberId } });
+
+      if (!targetTeamId || member?.teamId !== targetTeamId) {
+        return res.status(403).json({ message: "팀원을 삭제할 권한이 없습니다." });
+      }
+
+      await prisma.tbmUser.delete({ where: { id: memberId } });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "팀원 삭제 중 오류 발생", error });
     }
   });
 

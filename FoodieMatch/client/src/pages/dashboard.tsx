@@ -3,25 +3,90 @@ import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { CourseCard } from "@/components/course-card";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag } from "lucide-react";
-import { Course, UserProgress } from "@shared/schema";
+import { Course, Notice, UserProgress } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+function NoticeSection() {
+  const { data: notices = [] } = useQuery<Notice[]>({ queryKey: ['/api/notices'] });
+  const [showPopup, setShowPopup] = useState(false);
+
+  const latestNotice = notices?.[0];
+
+  useEffect(() => {
+    if (latestNotice) {
+      const hasSeenPopup = localStorage.getItem(`popup_seen_${latestNotice.id}`);
+      if (!hasSeenPopup) {
+        setShowPopup(true);
+      }
+    }
+  }, [latestNotice]);
+
+  const handlePopupClose = () => {
+    if (latestNotice) {
+      localStorage.setItem(`popup_seen_${latestNotice.id}`, 'true');
+      setShowPopup(false);
+    }
+  };
+
+  return (
+    <>
+      {latestNotice && (
+        <AlertDialog open={showPopup} onOpenChange={setShowPopup}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{latestNotice.title}</AlertDialogTitle>
+              <AlertDialogDescription className="pt-4">
+                <div className="max-h-[60vh] overflow-y-auto pr-4">
+                  {latestNotice.content}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={handlePopupClose}>닫기</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      <Card className="shadow-sm" data-testid="notice-section">
+        <CardContent className="p-6">
+          <h2 className="text-xl font-semibold flex items-center korean-text mb-4">
+            <MessageSquare className="text-primary mr-3 w-5 h-5" />
+            공지사항
+          </h2>
+          <ul className="space-y-3">
+            {notices.slice(0, 5).map(notice => (
+              <li key={notice.id} className="text-base">
+                <Link href={`/notices/${notice.id}`} className="hover:underline">
+                  {notice.title}
+                </Link>
+              </li>
+            ))}
+            {notices.length === 0 && <p className="text-muted-foreground">공지사항이 없습니다.</p>}
+          </ul>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
-    queryKey: ["/api/courses"],
-  });
-
-  const { data: userProgress = [] } = useQuery<UserProgress[]>({
-    queryKey: ["/api/users", user?.id, "progress"],
-    enabled: !!user?.id,
-  });
+  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({ queryKey: ["/api/courses"] });
+  const { data: userProgress = [] } = useQuery<UserProgress[]>({ queryKey: ["/api/users", user?.id, "progress"], enabled: !!user?.id });
 
   const handleStartCourse = (courseId: string) => {
     if (!user) {
@@ -70,69 +135,34 @@ export default function Dashboard() {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
         <div className="text-center mb-12" data-testid="hero-section">
-          <h1 className="text-4xl font-bold text-foreground mb-4 korean-text">
-            안전관리 교육 프로그램
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto korean-text">
-            교육 과정에 참여하세요
-          </p>
+          <h1 className="text-4xl font-bold text-foreground mb-4 korean-text">안전관리 교육 프로그램</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto korean-text">교육 과정에 참여하세요</p>
         </div>
 
-        {/* Progress Overview */}
         <Card className="mb-8 shadow-sm" data-testid="progress-overview">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center korean-text">
-                <ChartLine className="text-primary mr-3 w-5 h-5" />
-                교육 진행 과정
-              </h2>
-              <span className="text-sm text-muted-foreground" data-testid="overall-progress">
-                전체 진행률: {overallProgress}%
-              </span>
+              <h2 className="text-xl font-semibold flex items-center korean-text"><ChartLine className="text-primary mr-3 w-5 h-5" />교육 진행 과정</h2>
+              <span className="text-sm text-muted-foreground" data-testid="overall-progress">전체 진행률: {overallProgress}%</span>
             </div>
-            
-            {/* Progress Steps */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {PROGRESS_STEPS.map((step) => {
                 const status = getStepStatus(step.number);
-                const icons = {
-                  'clipboard-list': ClipboardList,
-                  'clock': Clock,
-                  'certificate': Tag,
-                };
+                const icons = { 'clipboard-list': ClipboardList, 'clock': Clock, 'certificate': Tag };
                 const Icon = icons[step.icon as keyof typeof icons] || ClipboardList;
-
                 return (
-                  <div 
-                    key={step.number}
-                    className="flex items-center space-x-4 p-4 bg-secondary rounded-lg"
-                    data-testid={`progress-step-${step.number}`}
-                  >
+                  <div key={step.number} className="flex items-center space-x-4 p-4 bg-secondary rounded-lg" data-testid={`progress-step-${step.number}`}>
                     <div className="flex-shrink-0">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        status === 'completed' ? 'bg-primary' :
-                        status === 'in-progress' ? 'bg-orange-500' : 'bg-gray-300'
-                      }`}>
-                        <Icon className={`w-5 h-5 ${
-                          status === 'completed' ? 'text-primary-foreground' :
-                          status === 'in-progress' ? 'text-white' : 'text-gray-600'
-                        }`} />
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${status === 'completed' ? 'bg-primary' : status === 'in-progress' ? 'bg-orange-500' : 'bg-gray-300'}`}>
+                        <Icon className={`w-5 h-5 ${status === 'completed' ? 'text-primary-foreground' : status === 'in-progress' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground korean-text">
-                        {step.number}단계: {step.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground korean-text">
-                        {step.description}
-                      </p>
+                      <h3 className="font-semibold text-foreground korean-text">{step.number}단계: {step.title}</h3>
+                      <p className="text-sm text-muted-foreground korean-text">{step.description}</p>
                       <div className="mt-2">
-                        <div className={`flex items-center text-sm ${
-                          status === 'completed' ? 'text-green-600' :
-                          status === 'in-progress' ? 'text-orange-600' : 'text-gray-500'
-                        }`}>
+                        <div className={`flex items-center text-sm ${status === 'completed' ? 'text-green-600' : status === 'in-progress' ? 'text-orange-600' : 'text-gray-500'}`}>
                           {status === 'completed' && <><Tag className="mr-1 w-3 h-3" />완료됨</>}
                           {status === 'in-progress' && <><Clock className="mr-1 w-3 h-3" />진행 중</>}
                           {status === 'waiting' && <><ClipboardList className="mr-1 w-3 h-3" />대기 중</>}
@@ -146,18 +176,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Main Course Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
           {courses.map((course) => {
             const progress = userProgress.find(p => p.courseId === course.id);
-            console.log(`Course ${course.id} progress:`, progress);
             return (
-              <CourseCard
-                key={course.id}
-                course={course}
-                progress={progress}
-                onStartCourse={handleStartCourse}
-              />
+              <CourseCard key={course.id} course={course} progress={progress} onStartCourse={handleStartCourse} />
             );
           })}
         </div>
@@ -213,50 +236,10 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Course Platform Guide */}
-        <Card className="shadow-sm" data-testid="platform-guide">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-2xl font-bold text-center korean-text">안전교육 플랫폼 사용 가이드</h2>
-            <p className="text-center text-muted-foreground mt-2 korean-text">
-              고소작업대, 굴착기, TBM 안전교육을 위한 종합 플랫폼 이용 방법을 안내합니다.
-            </p>
-          </div>
-
-          <CardContent className="p-6">
-            {/* Platform Overview */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-4 flex items-center korean-text">
-                <Shield className="text-primary mr-2 w-5 h-5" />
-                플랫폼 개요
-              </h3>
-              <div className="bg-secondary p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-4 korean-text">
-                  본 플랫폼은 산업안전보건법에 따른 필수 안전교육을 온라인으로 편리하게 이수할 수 있도록 지원하는 시스템입니다. 
-                  체계적인 교육 과정을 통해 안전 지식을 함양하고 인증서를 발급받으세요.
-                </p>
-                
-                {/* Program Types */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-3 rounded-lg text-center">
-                    <div className="font-medium text-blue-800 korean-text">고소작업대</div>
-                    <div className="text-sm text-blue-600 korean-text">고소작업대 안전관리</div>
-                  </div>
-                  <div className="bg-orange-50 p-3 rounded-lg text-center">
-                    <div className="font-medium text-orange-800 korean-text">굴착기</div>
-                    <div className="text-sm text-orange-600 korean-text">굴착기 안전규칙</div>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-lg text-center">
-                    <div className="font-medium text-green-800 korean-text">TBM</div>
-                    <div className="text-sm text-green-600 korean-text">작업 전 안전점검</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Notice Section */}
+        <NoticeSection />
       </main>
 
-      {/* Footer */}
       <footer className="bg-card border-t border-border mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-sm text-muted-foreground korean-text">
