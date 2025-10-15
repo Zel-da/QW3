@@ -92,7 +92,11 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
                                             <TableCell>{detail.item?.category}</TableCell>
                                             <TableCell>{detail.item?.subCategory}</TableCell>
                                             <TableCell>{detail.item?.description}</TableCell>
-                                            <TableCell className="text-center font-bold">{detail.checkState}</TableCell>
+              <p>상태: {detail.checkState}</p>
+              {detail.photoUrl && <img src={detail.photoUrl} alt={`첨부사진 ${detail.item.description}`} className="mt-2 max-w-full rounded-md" />}
+              {detail.comment && <p className="mt-2 text-sm text-muted-foreground p-2 bg-secondary rounded-md">코멘트: {detail.comment}</p>}
+              {detail.photoUrl && <img src={detail.photoUrl} alt={`첨부사진 ${detail.item.description}`} className="mt-2 max-w-full rounded-md" />}
+              {detail.comment && <p className="mt-2 text-sm text-muted-foreground p-2 bg-secondary rounded-md">코멘트: {detail.comment}</p>}
                                         </TableRow>
                                     ))}
                                 </TableBody>

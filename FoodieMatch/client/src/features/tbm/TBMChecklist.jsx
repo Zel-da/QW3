@@ -1,246 +1,178 @@
 import React, { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import apiClient from './apiConfig';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
+import { Input } from '../../components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Calendar } from '../../components/ui/calendar';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '../../lib/utils';
+import imageCompression from 'browser-image-compression';
+
+// API-Funktionen
+const apiClient = {
+    get: async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+        return response.json();
+    },
+    post: async (url, data) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error(`Failed to post to ${url}`);
+        return response.json();
+    },
+};
 
 const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
-    const [teams, setTeams] = useState([]);
-    const [users, setUsers] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState('');
+    const [reportDate, setReportDate] = useState(new Date());
     const [checklistData, setChecklistData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [checkResults, setCheckResults] = useState({});
-    const [signatures, setSignatures] = useState({});
-    const [remarks, setRemarks] = useState("");
-    const [currentUserForSigning, setCurrentUserForSigning] = useState(null);
-    const managerSigPad = useRef(null);
+    const [signatures, setSignatures] = useState([]);
+    const [remarks, setRemarks] = useState('특이사항 없음');
+    const [managerName, setManagerName] = useState('');
+    const [excludedUserIds, setExcludedUserIds] = useState([]);
+    const sigPads = useRef({});
 
-    const isEditMode = reportIdForEdit != null;
+    const queryClient = useQueryClient();
 
-    const resetState = () => {
-        setCheckResults({});
-        setSignatures({});
-        setRemarks("특이사항 없음");
-        if(managerSigPad.current) managerSigPad.current.clear();
-    }
+    const { data: teams, isLoading: teamsLoading } = useQuery({ queryKey: ['teams'], queryFn: () => apiClient.get('/api/teams') });
+    const { data: users, isLoading: usersLoading } = useQuery({ queryKey: ['users', selectedTeam], queryFn: () => apiClient.get(`/api/teams/${selectedTeam}/users`), enabled: !!selectedTeam });
+    const { data: template, isLoading: templateLoading } = useQuery({ queryKey: ['template', selectedTeam], queryFn: () => apiClient.get(`/api/teams/${selectedTeam}/template`), enabled: !!selectedTeam });
 
     useEffect(() => {
-        apiClient.get('/api/teams')
-            .then(response => {
-                setTeams(response.data);
-                if (!isEditMode && response.data.length > 0) {
-                    setSelectedTeam(response.data[0].id.toString());
-                }
-            })
-            .catch(error => console.error("Error fetching teams:", error));
-    }, [isEditMode]);
+        if (template) setChecklistData(template);
+    }, [template]);
 
-    useEffect(() => {
-        if (isEditMode) {
-            setLoading(true);
-            apiClient.get(`/api/reports/${reportIdForEdit}`)
-                .then(response => {
-                    const report = response.data;
-                    setSelectedTeam(report.teamId.toString());
-                    setRemarks(report.remarks);
-                    const loadedResults = {};
-                    report.reportDetails.forEach(detail => { loadedResults[detail.itemId] = detail.checkState; });
-                    setCheckResults(loadedResults);
-                    const loadedSignatures = {};
-                    report.reportSignatures.forEach(sig => {
-                        if(sig.user) { loadedSignatures[sig.userId] = `data:image/png;base64,${sig.signatureImage}`; }
-                    });
-                    setSignatures(loadedSignatures);
-                })
-                .catch(error => console.error("Error fetching report for edit:", error))
-                .finally(() => setLoading(false));
-        }
-    }, [isEditMode, reportIdForEdit]);
+    const mutation = useMutation({
+        mutationFn: (newReport) => apiClient.post('/api/reports', newReport),
+        onSuccess: () => {
+            alert('TBM 보고서가 성공적으로 제출되었습니다.');
+            onFinishEditing();
+            queryClient.invalidateQueries({ queryKey: ['dailyReports'] });
+        },
+        onError: (error) => alert(`오류: ${error.message}`),
+    });
 
-    useEffect(() => {
-        if (!selectedTeam) return;
-        setLoading(true);
-        if(!isEditMode) resetState();
-        const fetchChecklist = apiClient.get(`/api/teams/${selectedTeam}/template`);
-        const fetchUsers = apiClient.get(`/api/teams/${selectedTeam}/users`);
-        Promise.all([fetchChecklist, fetchUsers])
-            .then(([checklistRes, usersRes]) => {
-                setChecklistData(checklistRes.data);
-                setUsers(usersRes.data);
-            })
-            .catch(error => console.error(`Error fetching data for team ${selectedTeam}:`, error))
-            .finally(() => setLoading(false));
-    }, [selectedTeam, isEditMode]);
-
-    const handleCheck = (itemId, value) => setCheckResults(prev => ({ ...prev, [itemId]: value }));
-    const handleSaveSignature = (userId, signatureImage) => setSignatures(prev => ({ ...prev, [userId]: signatureImage }));
-
-    const handleSubmit = async () => {
-        if (checklistData && Object.keys(checkResults).length !== checklistData.templateItems.length) {
-            alert("모든 항목을 점검해주세요.");
-            return;
-        }
-        const signatureDtos = Object.entries(signatures).map(([userId, signatureImage]) => ({ userId: parseInt(userId), signatureImage }));
-        if (!managerSigPad.current.isEmpty()) {
-            const managerUserId = users.find(u => u.name === "홍길동")?.id || (users.length > 0 ? users[0].id : 0);
-            signatureDtos.push({ userId: managerUserId, signatureImage: managerSigPad.current.toDataURL('image/png') });
-        } else if (!isEditMode) {
-            alert("관리자 서명이 필요합니다.");
-            return;
-        }
-        const submissionData = { reportDate: new Date().toISOString(), teamId: parseInt(selectedTeam), managerName: "홍길동", results: checkResults, remarks, signatures: signatureDtos };
-        setIsSubmitting(true);
+    const handleFileChange = async (e, itemId) => {
+        const file = e.target.files[0];
+        if (!file) return;
         try {
-            if (isEditMode) {
-                await apiClient.put(`/api/reports/${reportIdForEdit}`, submissionData);
-                alert("점검표가 성공적으로 수정되었습니다.");
-                onFinishEditing();
-            } else {
-                await apiClient.post('/api/reports', submissionData);
-                alert(`${teams.find(t => t.id === parseInt(selectedTeam)).name} 점검표가 성공적으로 제출되었습니다.`);
-                resetState();
-            }
-        } catch (error) {
-            console.error("Error submitting report:", error);
-            alert(`데이터 저장 중 오류가 발생했습니다: ${error.message}`);
-        } finally {
-            setIsSubmitting(false);
-        }
+            const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
+            const formData = new FormData();
+            formData.append('file', compressedFile, compressedFile.name);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('File upload failed');
+            const data = await res.json();
+            setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], photoUrl: data.url } }));
+        } catch (error) { alert('이미지 처리 중 오류: ' + error.message); }
     };
 
-    const SignatureDialog = ({ user, onSave }) => {
-        const sigPad = useRef(null);
-        return (
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{user.name} 님, 서명해주세요.</DialogTitle>
-                    <DialogDescription>아래 영역에 서명을 진행해주세요. 완료 후 저장 버튼을 누르세요.</DialogDescription>
-                </DialogHeader>
-                <div className="border rounded-md bg-white">
-                    <SignatureCanvas ref={sigPad} penColor='black' canvasProps={{ className: 'w-full h-[200px]' }} />
-                </div>
-                <DialogFooter className="gap-2 sm:justify-between">
-                    <Button variant="outline" onClick={() => sigPad.current.clear()}>다시 서명</Button>
-                    <Button onClick={() => { onSave(user.id, sigPad.current.toDataURL('image/png')); setCurrentUserForSigning(null); }}>저장</Button>
-                </DialogFooter>
-            </DialogContent>
-        );
+    const handleCheck = (itemId, value) => setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], checkState: value } }));
+    const handleCommentChange = (itemId, value) => setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], comment: value } }));
+    const handleExcludeUserToggle = (userId) => setExcludedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
+    const handleSaveSignature = (userId) => {
+        if (sigPads.current[userId] && !sigPads.current[userId].isEmpty()) {
+            const signatureImage = sigPads.current[userId].toDataURL('image/png');
+            setSignatures(prev => [...prev.filter(s => s.userId !== userId), { userId, signatureImage }]);
+            alert('서명이 저장되었습니다.');
+        } else { alert('서명을 먼저 해주세요.'); }
     };
+
+    const handleSubmit = () => {
+        const attendingUsers = users.filter(u => !excludedUserIds.includes(u.id));
+        if (attendingUsers.length !== signatures.length) {
+            alert('서명하지 않은 참석자가 있습니다.');
+            return;
+        }
+        mutation.mutate({ teamId: selectedTeam, reportDate, managerName, remarks, results, signatures });
+    };
+
+    const isLoading = teamsLoading || usersLoading || templateLoading;
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>{isEditMode ? `점검표 수정 (ID: ${reportIdForEdit})` : `${new Date().getFullYear()}년 관리감독자 일일 안전점검 / TBM 활동지`}</CardTitle>
-                    <div className="flex items-center gap-4 pt-2">
-                        <Label htmlFor="team">팀 선택:</Label>
-                        <Select value={selectedTeam} onValueChange={setSelectedTeam} disabled={isEditMode}>
-                            <SelectTrigger className="w-[280px]">
-                                <SelectValue placeholder="팀을 선택하세요" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Array.isArray(teams) && teams.map(team => <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>)}
-                            </SelectContent>
+                    <CardTitle>TBM 안전점검표</CardTitle>
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                        <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                            <SelectTrigger><SelectValue placeholder="팀을 선택하세요" /></SelectTrigger>
+                            <SelectContent>{teams?.map(team => <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>)}</SelectContent>
                         </Select>
+                        <Popover>
+                            <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !reportDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{reportDate ? format(reportDate, "PPP") : <span>날짜 선택</span>}</Button></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={reportDate} onSelect={setReportDate} initialFocus /></PopoverContent>
+                        </Popover>
                     </div>
                 </CardHeader>
             </Card>
 
-            {loading ? <p>데이터를 불러오는 중입니다...</p> : checklistData ? (
-                <div className="space-y-6">
+            {isLoading && <p>로딩 중...</p>}
+            {selectedTeam && !isLoading && !template && <p>선택된 팀의 점검표를 찾을 수 없습니다.</p>}
+            {template && (
+                <>
+                    {template.templateItems.map(item => (
+                        <Card key={item.id}>
+                            <CardContent className="p-4 space-y-3">
+                                <label className="font-semibold">{item.description}</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {['O', '△', 'X'].map(state => <Button key={state} type="button" size="sm" variant={checkResults[item.id]?.checkState === state ? 'default' : 'outline'} onClick={() => handleCheck(item.id, state)}>{state}</Button>)}
+                                </div>
+                                {(checkResults[item.id]?.checkState === '△' || checkResults[item.id]?.checkState === 'X') && (
+                                    <div className="space-y-2 pt-3 border-t">
+                                        <Textarea placeholder="개선 조치 내용" value={checkResults[item.id]?.comment || ''} onChange={(e) => handleCommentChange(item.id, e.target.value)} />
+                                        <Input type="file" accept="image/*" onChange={(e) => handleFileChange(e, item.id)} />
+                                        {checkResults[item.id]?.photoUrl && <img src={checkResults[item.id].photoUrl} alt="preview" className="mt-2 max-w-xs rounded-md border"/>}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))}
+
                     <Card>
-                        <CardHeader>
-                            <CardTitle>점검 결과</CardTitle>
-                            <CardDescription>
-                                부서명: {teams.find(t => t.id === parseInt(selectedTeam))?.name} | 관리감독자: 홍길동 | 작성일: {new Date().toLocaleDateString()}
-                            </CardDescription>
-                        </CardHeader>
+                        <CardHeader><CardTitle>참석자 서명</CardTitle></CardHeader>
                         <CardContent>
-                            <div className="border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>구분</TableHead>
-                                            <TableHead>중분류</TableHead>
-                                            <TableHead>점검 내용</TableHead>
-                                            <TableHead className="text-center">결과 (O: 양호, △: 관찰, X: 불량)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {checklistData.templateItems.map(item => (
-                                            <TableRow key={item.id}>
-                                                <TableCell>{item.category}</TableCell>
-                                                <TableCell>{item.subCategory}</TableCell>
-                                                <TableCell className="text-sm">{item.description}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        {['O', '△', 'X'].map(opt => (
-                                                            <Button key={opt} variant={checkResults[item.id] === opt ? 'default' : 'outline'} size="sm" onClick={() => handleCheck(item.id, opt)}>{opt}</Button>
-                                                        ))}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="p-3 mb-4 border rounded-md space-y-2 bg-secondary/50">
+                                <label className="font-medium">서명 제외자 선택 (연차, 휴가 등)</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{users?.map(user => (
+                                    <div key={user.id} className="flex items-center space-x-2">
+                                        <Checkbox id={`exclude-${user.id}`} checked={excludedUserIds.includes(user.id)} onCheckedChange={() => handleExcludeUserToggle(user.id)} />
+                                        <label htmlFor={`exclude-${user.id}`}>{user.name}</label>
+                                    </div>
+                                ))}</div>
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{users?.filter(u => !excludedUserIds.includes(u.id)).map(user => (
+                                <div key={user.id} className="border rounded-md p-2 text-center">
+                                    <label className="block text-sm font-medium mb-1">{user.name}</label>
+                                    {signatures.find(s => s.userId === user.id) ? <p className="text-green-600 font-bold py-8">서명 완료</p> : <SignatureCanvas ref={ref => (sigPads.current[user.id] = ref)} penColor='black' canvasProps={{ className: 'w-full h-24 bg-white rounded-md border' }} />}
+                                    {!signatures.find(s => s.userId === user.id) && <Button type="button" size="sm" className="w-full mt-2" onClick={() => handleSaveSignature(user.id)}>서명 저장</Button>}
+                                </div>
+                            ))}</div>
                         </CardContent>
                     </Card>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <Card>
-                            <CardHeader><CardTitle>TBM 참여 작업자 확인</CardTitle></CardHeader>
-                            <CardContent>
-                                <ul className="space-y-2">
-                                    {users.map(user => (
-                                        <li key={user.id} className="flex justify-between items-center">
-                                            <span>{user.name}</span>
-                                            {signatures[user.id] ? 
-                                                <span className="text-sm font-bold text-green-600">✔️ 서명 완료</span> : 
-                                                <Dialog onOpenChange={(open) => !open && setCurrentUserForSigning(null)} open={currentUserForSigning?.id === user.id}>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant="secondary" onClick={() => setCurrentUserForSigning(user)}>서명하기</Button>
-                                                    </DialogTrigger>
-                                                    {currentUserForSigning?.id === user.id && <SignatureDialog user={user} onSave={handleSaveSignature} />} 
-                                                </Dialog>
-                                            }
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                        <div className="space-y-6">
-                            <Card>
-                                <CardHeader><CardTitle>종합 특이사항</CardTitle></CardHeader>
-                                <CardContent>
-                                    <Textarea rows="4" value={remarks} onChange={e => setRemarks(e.target.value)} />
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle>관리감독자 확인 서명</CardTitle></CardHeader>
-                                <CardContent className="flex flex-col items-center gap-2">
-                                    <div className="border rounded-md bg-white w-full h-[150px]"><SignatureCanvas ref={managerSigPad} penColor='black' canvasProps={{ className: 'w-full h-full' }} /></div>
-                                    <Button variant="outline" onClick={() => managerSigPad.current.clear()}>다시 서명</Button>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                    
-                    <div className="flex justify-end gap-2">
-                        {isEditMode && <Button variant="outline" onClick={onFinishEditing}>수정 취소</Button>}
-                        <Button onClick={handleSubmit} disabled={isSubmitting}>
-                            {isSubmitting ? '저장 중...' : (isEditMode ? '수정 완료' : '최종 제출')}
-                        </Button>
-                    </div>
-                </div>
-            ) : <p>해당 팀의 점검표를 찾을 수 없습니다.</p>}
+                    <Card>
+                        <CardHeader><CardTitle>관리감독자 확인</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <Textarea placeholder="특이사항" value={remarks} onChange={e => setRemarks(e.target.value)} />
+                            <Input placeholder="관리감독자 성명" value={managerName} onChange={e => setManagerName(e.target.value)} required />
+                        </CardContent>
+                    </Card>
+
+                    <Button type="button" onClick={handleSubmit} disabled={mutation.isPending} className="w-full text-lg py-6">{mutation.isPending ? '제출 중...' : '최종 제출'}</Button>
+                </>
+            )}
         </div>
     );
 };

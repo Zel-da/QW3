@@ -170,6 +170,7 @@ model DailyReport {
   reportDate       DateTime          @map("ReportDate")
   managerName      String?           @map("ManagerName")
   remarks          String?           @map("Remarks")
+  managerSignatureImage String?
   team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
@@ -183,6 +184,8 @@ model ReportDetail {
   reportId   Int          @map("ReportID")
   itemId     Int          @map("ItemID")
   checkState String?      @map("CheckState")
+  photoUrl   String?
+  comment    String?
   item       TemplateItem @relation(fields: [itemId], references: [id])
   report     DailyReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
 

@@ -424,7 +424,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new report
   app.post("/api/reports", async (req, res) => {
     try {
-      const { teamId, reportDate, managerName, remarks, results, signatures } = req.body;
+      const { teamId, reportDate, managerName, remarks, results, signatures, excludedUserIds = [], managerSignatureImage } = req.body;
+
+      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId) }, include: { users: true } });
+      if (!team) return res.status(404).json({ message: "Team not found" });
+
+      const allTeamUserIds = team.users.map(u => u.id);
+      const signatureUserIds = allTeamUserIds.filter(id => !excludedUserIds.includes(id));
 
       const report = await prisma.dailyReport.create({
         data: {
@@ -432,17 +438,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reportDate: new Date(reportDate),
           managerName,
           remarks,
+          managerSignatureImage,
           reportDetails: {
-            create: Object.entries(results).map(([itemId, checkState]) => ({
+            create: Object.entries(results).map(([itemId, resultData]) => ({
               itemId: parseInt(itemId),
-              checkState: checkState as string
+              checkState: resultData.checkState,
+              photoUrl: resultData.photoUrl,
+              comment: resultData.comment,
             }))
           },
           reportSignatures: {
-            create: signatures.map((sig: any) => ({
-              userId: sig.userId,
-              signedAt: new Date()
-            }))
+            create: signatureUserIds.map(userId => ({ userId, signedAt: new Date() }))
           }
         },
         include: {

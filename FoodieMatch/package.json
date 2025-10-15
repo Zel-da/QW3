@@ -44,6 +44,7 @@
     "@tanstack/react-query": "^5.60.5",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
+    "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -110,7 +111,7 @@
     "vite": "^5.4.20"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/master_seed.ts"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
