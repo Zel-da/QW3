@@ -40,7 +40,11 @@ function App() {
           <Route path="/course/:id" component={CoursePage} />
           <Route path="/course/:id/content" component={CourseContent} />
           <Route path="/assessment/:courseId" component={AssessmentPage} />
-          <Route path="/tbm" component={TbmPage} />
+          <Route path="/tbm">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER]}>
+              <TbmPage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/team-management">
             <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER]}>
               <TeamManagementPage />

@@ -6,6 +6,7 @@ interface AuthUser {
   name?: string | null;
   role: string;
   teamId?: number | null;
+  site?: string | null;
 }
 
 interface AuthContextType {

@@ -30,6 +30,16 @@ const updateUserRole = async ({ userId, role }: { userId: string; role: Role }) 
   return res.json();
 };
 
+const updateUserSite = async ({ userId, site }: { userId: string; site: string }) => {
+  const res = await fetch(`/api/users/${userId}/site`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ site }),
+  });
+  if (!res.ok) throw new Error('Failed to update user site');
+  return res.json();
+};
+
 const deleteUser = async (userId: string) => {
   const res = await fetch(`/api/users/${userId}`, {
     method: 'DELETE',
@@ -39,39 +49,42 @@ const deleteUser = async (userId: string) => {
 };
 
 export default function AdminPage() {
-  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [selectedTeamId, setSelectedTeamId] = useState('all');
 
-  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]> ({
     queryKey: ['users'],
     queryFn: fetchUsers,
-    enabled: currentUser?.role === 'ADMIN',
   });
 
-  const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
+  const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]> ({
     queryKey: ['teams'],
     queryFn: fetchTeams,
-    enabled: currentUser?.role === 'ADMIN',
   });
 
-  const mutation = useMutation({
+  const roleMutation = useMutation({
     mutationFn: updateUserRole,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
   });
 
-  const handleRoleChange = (userId: string, role: Role) => {
-    mutation.mutate({ userId, role });
-  };
+  const siteMutation = useMutation({
+    mutationFn: updateUserSite,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
   });
+
+  const handleRoleChange = (userId: string, role: Role) => {
+    roleMutation.mutate({ userId, role });
+  };
+
+  const handleSiteChange = (userId: string, site: string) => {
+    siteMutation.mutate({ userId, site });
+  };
 
   const handleDeleteUser = (userId: string, username: string) => {
     if (currentUser?.id === userId) {
@@ -85,8 +98,13 @@ export default function AdminPage() {
 
   const filteredUsers = users.filter(user => {
     if (selectedTeamId === 'all') return true;
-    return user.teamId === parseInt(selectedTeamId);
+    // teamId can be null, so handle that case
+    return user.teamId ? user.teamId === parseInt(selectedTeamId) : false;
   });
+
+  if (usersLoading || teamsLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div>
@@ -113,43 +131,53 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Username</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Site</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                                      <TableCell>
-                                        <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)}>
-                                          <SelectTrigger className="w-[180px]">
-                                            <SelectValue placeholder="Select role" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {Object.values(Role).map(role => (
-                                              <SelectItem key={role} value={role}>{role}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Button
-                                          variant="destructive"
-                                          size="sm"
-                                          onClick={() => handleDeleteUser(user.id, user.username)}
-                                          disabled={currentUser?.id === user.id}
-                                        >
-                                          삭제
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>                ))}
+                    <TableCell>
+                        <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)}>
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="현장 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Asan">아산</SelectItem>
+                                <SelectItem value="Hwaseong">화성</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </TableCell>
+                    <TableCell>
+                        <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="역할 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(Role).map(role => (
+                                <SelectItem key={role} value={role}>{role}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user.username)}
+                            disabled={currentUser?.id === user.id}
+                        >
+                            삭제
+                        </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>

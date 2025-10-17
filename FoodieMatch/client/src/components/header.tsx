@@ -2,20 +2,12 @@ import React, { useState } from 'react';
 import { Link } from "wouter";
 import { Shield, BookOpen, Home, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useSite, Site } from "@/hooks/use-site";
 import { Button } from "./ui/button";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 
 export function Header() {
   const { user, logout } = useAuth();
-  const { site, setSite } = useSite();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  const handleSiteChange = (newSite: Site) => {
-    setSite(newSite);
-  };
 
   const navLinks = (
     <>
@@ -28,9 +20,11 @@ export function Header() {
       <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
         TBM
       </Link>
-      <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
-        월별 보고서
-      </Link>
+      {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM' || user?.role === 'TEAM_LEADER') && (
+        <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+          월별 보고서
+        </Link>
+      )}
       {user?.role === 'ADMIN' && (
         <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
           사용자 관리
@@ -88,17 +82,6 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            <RadioGroup defaultValue={site} onValueChange={handleSiteChange} className="hidden sm:flex items-center space-x-2">
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="Asan" id="site-asan" />
-                <Label htmlFor="site-asan" className="text-base font-medium whitespace-nowrap">아산</Label>
-              </div>
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="Hwaseong" id="site-hwaseong" />
-                <Label htmlFor="site-hwaseong" className="text-base font-medium whitespace-nowrap">화성</Label>
-              </div>
-            </RadioGroup>
-            
             <div className="hidden sm:flex items-center gap-2">
               {user ? (
                 <>

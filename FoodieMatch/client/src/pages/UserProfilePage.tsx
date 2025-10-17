@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { User, Team } from '@shared/schema';
 
@@ -97,12 +97,16 @@ export default function UserProfilePage() {
   });
 
   const [name, setName] = useState('');
+  const [site, setSite] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
       setName(userProfile.name || '');
+      setSite(userProfile.site || 'Asan');
+      setIsInitialized(true);
     }
   }, [userProfile]);
 
@@ -123,7 +127,7 @@ export default function UserProfilePage() {
     e.preventDefault();
     if (!currentUser?.id) return;
 
-    const userData: { name: string, password?: string } = { name };
+    const userData: { name: string, site: string, password?: string } = { name, site };
     if (password) {
       if (password.length < 8) {
         toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
@@ -138,6 +142,17 @@ export default function UserProfilePage() {
 
     updateMutation.mutate({ userId: currentUser.id, userData });
   };
+
+  if (authLoading || !isInitialized) {
+    return (
+        <div>
+            <Header />
+            <main className="container mx-auto p-4 lg:p-8">
+                <ProfileSkeleton />
+            </main>
+        </div>
+    );
+  }
 
   if (!currentUser || !userProfile) {
     return <div>로그인이 필요하거나 사용자 정보를 찾을 수 없습니다.</div>;
@@ -183,6 +198,18 @@ export default function UserProfilePage() {
                      <div className="space-y-2 max-w-md">
                         <Label htmlFor="name">이름</Label>
                         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2 max-w-md">
+                        <Label htmlFor="site">소속 현장</Label>
+                        <Select onValueChange={setSite} value={site}>
+                            <SelectTrigger id="site" className="w-[180px]">
+                                <SelectValue placeholder="현장 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Asan">아산</SelectItem>
+                                <SelectItem value="Hwaseong">화성</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

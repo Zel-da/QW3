@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     teamId: '',
+    site: 'Asan',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,6 +44,10 @@ export default function RegisterPage() {
 
   const handleTeamChange = (value: string) => {
     setFormData({ ...formData, teamId: value });
+  };
+
+  const handleSiteChange = (value: string) => {
+    setFormData({ ...formData, site: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,6 +108,19 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호 (8자 이상)</Label>
                 <Input id="password" name="password" type="password" required onChange={handleChange} />
+              </div>
+              <div className="space-y-2">
+                <Label>소속 현장</Label>
+                <RadioGroup defaultValue={formData.site} onValueChange={handleSiteChange} className="flex space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Asan" id="site-asan" />
+                    <Label htmlFor="site-asan">아산</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Hwaseong" id="site-hwaseong" />
+                    <Label htmlFor="site-hwaseong">화성</Label>
+                  </div>
+                </RadioGroup>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="team">팀 선택</Label>

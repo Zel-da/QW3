@@ -5,15 +5,20 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 
-const ReportListView = ({ onSelectReport }) => {
+const ReportListView = ({ onSelectReport, onBack, site }) => {
     const [reports, setReports] = useState([]);
     const [teams, setTeams] = useState([]);
     const [filters, setFilters] = useState({
         startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().slice(0, 10),
         endDate: new Date().toISOString().slice(0, 10),
-        teamId: ''
+        teamId: '',
+        site: site,
     });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        setFilters(prev => ({ ...prev, site: site }));
+    }, [site]);
 
     useEffect(() => {
         apiClient.get('/api/teams')
@@ -44,7 +49,10 @@ const ReportListView = ({ onSelectReport }) => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-3xl font-bold tracking-tight">제출된 점검표 목록</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold tracking-tight">제출된 점검표 목록</h2>
+                <Button onClick={onBack} variant="outline">작성하기</Button>
+            </div>
             <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Label htmlFor="startDate">시작일:</Label>

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { format } from "date-fns"
+import { useState, useEffect } from 'react';
+import { format } from "date-fns";
+import axios from 'axios';
 import { Header } from "@/components/header";
 import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,41 +16,65 @@ import { ko } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import ReportListView from '../features/tbm/ReportListView.jsx';
 import ReportDetailView from '../features/tbm/ReportDetailView.jsx';
+import { useSite, Site } from "@/hooks/use-site";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/context/AuthContext";
+import { stripSiteSuffix } from '@/lib/utils';
 
 export default function TbmPage() {
-  const [view, setView] = useState('checklist'); // 'checklist', 'list', 'detail'
-  const [reportIdForEdit, setReportIdForEdit] = useState<number | null>(null);
+  const [view, setView] = useState('checklist');
+  const [reportForEdit, setReportForEdit] = useState<any | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const { site, setSite } = useSite();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role !== 'ADMIN' && user.site) {
+        setSite(user.site as Site);
+      }
+    }
+  }, [user, setSite]);
 
   const handleSelectReport = (reportId: number) => {
-    setReportIdForEdit(reportId);
+    // This function is for viewing details, not editing.
+    // We create a temporary object to pass to the detail view to avoid a state variable.
+    setReportForEdit({ id: reportId }); 
     setView('detail');
   };
 
   const handleModifyReport = (reportId: number) => {
-    setReportIdForEdit(reportId);
-    setView('checklist');
+    axios.get(`/api/reports/${reportId}`).then(res => {
+      const report = res.data;
+      setReportForEdit(report);
+      setDate(new Date(report.reportDate));
+      setView('checklist');
+    }).catch(err => {
+      console.error("Failed to fetch report for editing:", err);
+    });
   };
 
   const handleBackToList = () => {
-    setReportIdForEdit(null);
+    setReportForEdit(null);
     setView('list');
   };
 
   const handleFinishEditing = () => {
-    setReportIdForEdit(null);
+    setReportForEdit(null);
     setView('list');
   }
 
   const renderView = () => {
+    if (!site) return <p>현장 정보를 불러오는 중...</p>;
+
     switch (view) {
       case 'list':
-        return <ReportListView onSelectReport={handleSelectReport} />;
+        return <ReportListView onSelectReport={handleSelectReport} onBack={() => setView('checklist')} site={site} />;
       case 'detail':
-        return <ReportDetailView reportId={reportIdForEdit} onBackToList={handleBackToList} onModify={handleModifyReport} />;
+        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} />;
       case 'checklist':
       default:
-        return <TBMChecklist reportIdForEdit={reportIdForEdit} onFinishEditing={handleFinishEditing} date={date} />;
+        return <TBMChecklist reportForEdit={reportForEdit} onFinishEditing={handleFinishEditing} date={date} site={site} />;
     }
   };
 
@@ -59,20 +84,25 @@ export default function TbmPage() {
       <main className="container mx-auto p-4 lg:p-6">
         <Card>
           <CardHeader>
-            <CardTitle>TBM 일지</CardTitle>
-            <div className="grid gap-2 mt-4">
+            <div className="flex justify-between items-center">
+                <CardTitle>TBM 일지</CardTitle>
+                {view === 'checklist' && (
+                    <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>목록 보기</Button>
+                )}
+            </div>
+            <div className="flex items-center space-x-4 mt-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
                     variant={"outline"}
                     className={cn(
-                      "w-[300px] justify-start text-left font-normal",
+                      "w-[240px] justify-start text-left font-normal",
                       !date && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>날짜 선택</span>}
+                    {date ? format(date, "PPP", { locale: ko }) : <span>날짜 선택</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -85,6 +115,17 @@ export default function TbmPage() {
                   />
                 </PopoverContent>
               </Popover>
+              {user?.role === 'ADMIN' && (
+                <Select onValueChange={(value: Site) => setSite(value)} value={site}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="현장 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Asan">아산</SelectItem>
+                    <SelectItem value="Hwaseong">화성</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </CardHeader>
           <CardContent>

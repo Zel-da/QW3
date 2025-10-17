@@ -1,0 +1,6566 @@
+[
+  {
+    "itemId": 354,
+    "itemDescription": "아침 체조 스트레칭",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": {
+      "id": 56,
+      "itemId": 354,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 354,
+    "itemDescription": "아침 체조 스트레칭",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 354,
+    "itemDescription": "아침 체조 스트레칭",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 44,
+      "itemId": 354,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 354,
+    "itemDescription": "아침 체조 스트레칭",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 61,
+      "itemId": 354,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 355,
+    "itemDescription": "음주상태",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": {
+      "id": 57,
+      "itemId": 355,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 355,
+    "itemDescription": "음주상태",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 355,
+    "itemDescription": "음주상태",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 45,
+      "itemId": 355,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 355,
+    "itemDescription": "음주상태",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 62,
+      "itemId": 355,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 356,
+    "itemDescription": "건강상태",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": {
+      "id": 58,
+      "itemId": 356,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 356,
+    "itemDescription": "건강상태",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 356,
+    "itemDescription": "건강상태",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 46,
+      "itemId": 356,
+      "checkState": "△"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 356,
+    "itemDescription": "건강상태",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 63,
+      "itemId": 356,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 357,
+    "itemDescription": "복장",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": {
+      "id": 59,
+      "itemId": 357,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 357,
+    "itemDescription": "복장",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 357,
+    "itemDescription": "복장",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 357,
+    "itemDescription": "복장",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 64,
+      "itemId": 357,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 358,
+    "itemDescription": "보호구",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": {
+      "id": 60,
+      "itemId": 358,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 358,
+    "itemDescription": "보호구",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 358,
+    "itemDescription": "보호구",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 358,
+    "itemDescription": "보호구",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 65,
+      "itemId": 358,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 359,
+    "itemDescription": "생산회의",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 359,
+    "itemDescription": "생산회의",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 359,
+    "itemDescription": "생산회의",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 359,
+    "itemDescription": "생산회의",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 66,
+      "itemId": 359,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 360,
+    "itemDescription": "금일 안전작업 내용지시",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 360,
+    "itemDescription": "금일 안전작업 내용지시",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 360,
+    "itemDescription": "금일 안전작업 내용지시",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 360,
+    "itemDescription": "금일 안전작업 내용지시",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 67,
+      "itemId": 360,
+      "checkState": "X"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 361,
+    "itemDescription": "각 팀원 최근 아차사고 사례 공유",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 361,
+    "itemDescription": "각 팀원 최근 아차사고 사례 공유",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 50,
+      "itemId": 361,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 361,
+    "itemDescription": "각 팀원 최근 아차사고 사례 공유",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 361,
+    "itemDescription": "각 팀원 최근 아차사고 사례 공유",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 68,
+      "itemId": 361,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 362,
+    "itemDescription": "작업장소 등 환경에 대한 위험",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 362,
+    "itemDescription": "작업장소 등 환경에 대한 위험",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 51,
+      "itemId": 362,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 362,
+    "itemDescription": "작업장소 등 환경에 대한 위험",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 362,
+    "itemDescription": "작업장소 등 환경에 대한 위험",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 69,
+      "itemId": 362,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 363,
+    "itemDescription": "입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 363,
+    "itemDescription": "입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 52,
+      "itemId": 363,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 363,
+    "itemDescription": "입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 363,
+    "itemDescription": "입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 70,
+      "itemId": 363,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 364,
+    "itemDescription": "크레인, 리프트, 지게차 등 설비에 대한 위험",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 364,
+    "itemDescription": "크레인, 리프트, 지게차 등 설비에 대한 위험",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 364,
+    "itemDescription": "크레인, 리프트, 지게차 등 설비에 대한 위험",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 364,
+    "itemDescription": "크레인, 리프트, 지게차 등 설비에 대한 위험",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 71,
+      "itemId": 364,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 365,
+    "itemDescription": "작업장 개구부, 고소작업 등에 대한 위험",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 365,
+    "itemDescription": "작업장 개구부, 고소작업 등에 대한 위험",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 365,
+    "itemDescription": "작업장 개구부, 고소작업 등에 대한 위험",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 365,
+    "itemDescription": "작업장 개구부, 고소작업 등에 대한 위험",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 72,
+      "itemId": 365,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 366,
+    "itemDescription": "그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 366,
+    "itemDescription": "그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 366,
+    "itemDescription": "그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 366,
+    "itemDescription": "그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 73,
+      "itemId": 366,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 367,
+    "itemDescription": "중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 367,
+    "itemDescription": "중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 367,
+    "itemDescription": "중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 367,
+    "itemDescription": "중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 74,
+      "itemId": 367,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 368,
+    "itemDescription": "설비, 기계, 기구 등 점검 후 조치",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 368,
+    "itemDescription": "설비, 기계, 기구 등 점검 후 조치",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 368,
+    "itemDescription": "설비, 기계, 기구 등 점검 후 조치",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 47,
+      "itemId": 368,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 368,
+    "itemDescription": "설비, 기계, 기구 등 점검 후 조치",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 75,
+      "itemId": 368,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 369,
+    "itemDescription": "각 종 기계기구의 이상 유무",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 369,
+    "itemDescription": "각 종 기계기구의 이상 유무",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 369,
+    "itemDescription": "각 종 기계기구의 이상 유무",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 48,
+      "itemId": 369,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 369,
+    "itemDescription": "각 종 기계기구의 이상 유무",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 76,
+      "itemId": 369,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 370,
+    "itemDescription": "작업장 정리정돈, 통로확보 개구부 확인 점검결과",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 370,
+    "itemDescription": "작업장 정리정돈, 통로확보 개구부 확인 점검결과",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 370,
+    "itemDescription": "작업장 정리정돈, 통로확보 개구부 확인 점검결과",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 370,
+    "itemDescription": "작업장 정리정돈, 통로확보 개구부 확인 점검결과",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 77,
+      "itemId": 370,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 371,
+    "itemDescription": "올바른 자세, 복장 및 보호구착용 여부",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 371,
+    "itemDescription": "올바른 자세, 복장 및 보호구착용 여부",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 371,
+    "itemDescription": "올바른 자세, 복장 및 보호구착용 여부",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 371,
+    "itemDescription": "올바른 자세, 복장 및 보호구착용 여부",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 78,
+      "itemId": 371,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 372,
+    "itemDescription": "주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 372,
+    "itemDescription": "주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 372,
+    "itemDescription": "주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": {
+      "id": 49,
+      "itemId": 372,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 372,
+    "itemDescription": "주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 79,
+      "itemId": 372,
+      "checkState": "X"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 373,
+    "itemDescription": "권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 373,
+    "itemDescription": "권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 373,
+    "itemDescription": "권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 373,
+    "itemDescription": "권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 80,
+      "itemId": 373,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 374,
+    "itemDescription": "슬링, 와이어로프등의 이상 유무 및 매달린 상태",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 374,
+    "itemDescription": "슬링, 와이어로프등의 이상 유무 및 매달린 상태",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 374,
+    "itemDescription": "슬링, 와이어로프등의 이상 유무 및 매달린 상태",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 374,
+    "itemDescription": "슬링, 와이어로프등의 이상 유무 및 매달린 상태",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 81,
+      "itemId": 374,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 375,
+    "itemDescription": "인양물 하부 작업 여부",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 375,
+    "itemDescription": "인양물 하부 작업 여부",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 375,
+    "itemDescription": "인양물 하부 작업 여부",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 375,
+    "itemDescription": "인양물 하부 작업 여부",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 82,
+      "itemId": 375,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 376,
+    "itemDescription": "안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 376,
+    "itemDescription": "안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 53,
+      "itemId": 376,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 376,
+    "itemDescription": "안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 376,
+    "itemDescription": "안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 83,
+      "itemId": 376,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 377,
+    "itemDescription": "제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 377,
+    "itemDescription": "제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 54,
+      "itemId": 377,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 377,
+    "itemDescription": "제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 377,
+    "itemDescription": "제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 84,
+      "itemId": 377,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 378,
+    "itemDescription": "전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 378,
+    "itemDescription": "전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": {
+      "id": 55,
+      "itemId": 378,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 378,
+    "itemDescription": "전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 378,
+    "itemDescription": "전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 85,
+      "itemId": 378,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 379,
+    "itemDescription": "고소작업시 안전모 착용, 안전고리 체결 유무",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 379,
+    "itemDescription": "고소작업시 안전모 착용, 안전고리 체결 유무",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 379,
+    "itemDescription": "고소작업시 안전모 착용, 안전고리 체결 유무",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 379,
+    "itemDescription": "고소작업시 안전모 착용, 안전고리 체결 유무",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 86,
+      "itemId": 379,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 380,
+    "itemDescription": "용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 380,
+    "itemDescription": "용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 380,
+    "itemDescription": "용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 380,
+    "itemDescription": "용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 87,
+      "itemId": 380,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 381,
+    "itemDescription": "통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 381,
+    "itemDescription": "통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 381,
+    "itemDescription": "통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 381,
+    "itemDescription": "통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 88,
+      "itemId": 381,
+      "checkState": "O"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  },
+  {
+    "itemId": 382,
+    "itemDescription": "작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검",
+    "reportDate": "2025-10-12T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 382,
+    "itemDescription": "작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검",
+    "reportDate": "2025-10-13T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 382,
+    "itemDescription": "작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검",
+    "reportDate": "2025-10-14T15:00:00.000Z",
+    "foundDetail": null,
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "△"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "O"
+      }
+    ]
+  },
+  {
+    "itemId": 382,
+    "itemDescription": "작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검",
+    "reportDate": "2025-10-17T04:49:42.434Z",
+    "foundDetail": {
+      "id": 89,
+      "itemId": 382,
+      "checkState": "X"
+    },
+    "assignedStatus": "",
+    "reportDetailsForDay": [
+      {
+        "itemId": 354,
+        "checkState": "O"
+      },
+      {
+        "itemId": 355,
+        "checkState": "O"
+      },
+      {
+        "itemId": 356,
+        "checkState": "O"
+      },
+      {
+        "itemId": 357,
+        "checkState": "O"
+      },
+      {
+        "itemId": 358,
+        "checkState": "O"
+      },
+      {
+        "itemId": 359,
+        "checkState": "O"
+      },
+      {
+        "itemId": 360,
+        "checkState": "X"
+      },
+      {
+        "itemId": 361,
+        "checkState": "O"
+      },
+      {
+        "itemId": 362,
+        "checkState": "O"
+      },
+      {
+        "itemId": 363,
+        "checkState": "O"
+      },
+      {
+        "itemId": 364,
+        "checkState": "O"
+      },
+      {
+        "itemId": 365,
+        "checkState": "O"
+      },
+      {
+        "itemId": 366,
+        "checkState": "O"
+      },
+      {
+        "itemId": 367,
+        "checkState": "O"
+      },
+      {
+        "itemId": 368,
+        "checkState": "O"
+      },
+      {
+        "itemId": 369,
+        "checkState": "O"
+      },
+      {
+        "itemId": 370,
+        "checkState": "O"
+      },
+      {
+        "itemId": 371,
+        "checkState": "O"
+      },
+      {
+        "itemId": 372,
+        "checkState": "X"
+      },
+      {
+        "itemId": 373,
+        "checkState": "O"
+      },
+      {
+        "itemId": 374,
+        "checkState": "O"
+      },
+      {
+        "itemId": 375,
+        "checkState": "O"
+      },
+      {
+        "itemId": 376,
+        "checkState": "O"
+      },
+      {
+        "itemId": 377,
+        "checkState": "O"
+      },
+      {
+        "itemId": 378,
+        "checkState": "O"
+      },
+      {
+        "itemId": 379,
+        "checkState": "O"
+      },
+      {
+        "itemId": 380,
+        "checkState": "O"
+      },
+      {
+        "itemId": 381,
+        "checkState": "O"
+      },
+      {
+        "itemId": 382,
+        "checkState": "X"
+      }
+    ]
+  }
+]

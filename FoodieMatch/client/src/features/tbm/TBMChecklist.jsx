@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,8 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Terminal, Camera } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog'; // Import the new component
+import { stripSiteSuffix } from '@/lib/utils';
 
-const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
+const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState([]);
@@ -33,43 +36,59 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
   const [signingUser, setSigningUser] = useState(null);
 
   useEffect(() => {
-    axios.get('/api/teams').then(res => setTeams(res.data));
-    if (user?.teamId) setSelectedTeam(user.teamId);
-  }, [user]);
-
-  useEffect(() => {
-    if (reportIdForEdit) {
-      setLoading(true);
-      axios.get(`/api/reports/${reportIdForEdit}`)
-        .then(res => {
-          const report = res.data;
-          setSelectedTeam(report.teamId);
-          
-          const initialResults = {};
-          const initialPhotos = {};
-          const initialDescriptions = {};
-          report.reportDetails.forEach(detail => {
-            initialResults[detail.itemId] = detail.checkState;
-            if (detail.photoUrl) initialPhotos[detail.itemId] = detail.photoUrl;
-            if (detail.actionDescription) initialDescriptions[detail.itemId] = detail.actionDescription;
-          });
-          setResults(initialResults);
-          setPhotoUrls(initialPhotos);
-          setItemDescriptions(initialDescriptions);
-
-          const initialSignatures = {};
-          report.reportSignatures.forEach(sig => {
-            if (sig.signatureImage) initialSignatures[sig.userId] = sig.signatureImage;
-          });
-          setSignatures(initialSignatures);
-        })
-        .catch(err => setError('기존 보고서 데이터를 불러오는 데 실패했습니다.'))
-        .finally(() => setLoading(false));
+    if (site) {
+        axios.get(`/api/teams?site=${site}`).then(res => {
+            setTeams(res.data);
+            const userTeamInList = res.data.some(team => team.id === user?.teamId);
+            if (user?.teamId && userTeamInList && !reportForEdit) {
+                setSelectedTeam(user.teamId);
+            } else if (reportForEdit) {
+                setSelectedTeam(reportForEdit.teamId);
+            }
+            else {
+                setSelectedTeam(null);
+            }
+        });
+    } else {
+        setTeams([]);
     }
-  }, [reportIdForEdit]);
+  }, [user, site, reportForEdit]);
+
+  // This effect now populates state from the passed-in report object
+  useEffect(() => {
+    if (reportForEdit) {
+      const report = reportForEdit;
+      setSelectedTeam(report.teamId);
+      
+      const initialResults = {};
+      const initialPhotos = {};
+      const initialDescriptions = {};
+      report.reportDetails.forEach(detail => {
+        initialResults[detail.itemId] = detail.checkState;
+        if (detail.photoUrl) initialPhotos[detail.itemId] = detail.photoUrl;
+        if (detail.actionDescription) initialDescriptions[detail.itemId] = detail.actionDescription;
+      });
+      setResults(initialResults);
+      setPhotoUrls(initialPhotos);
+      setItemDescriptions(initialDescriptions);
+
+      const initialSignatures = {};
+      report.reportSignatures.forEach(sig => {
+        if (sig.signatureImage) initialSignatures[sig.userId] = sig.signatureImage;
+      });
+      setSignatures(initialSignatures);
+    } else {
+      // Clear fields when creating a new report
+      setResults({});
+      setPhotoUrls({});
+      setItemDescriptions({});
+      setSignatures({});
+      setAbsentUsers({});
+    }
+  }, [reportForEdit]);
 
   useEffect(() => {
-    if (selectedTeam && !reportIdForEdit) {
+    if (selectedTeam) {
       setLoading(true);
       setError(null);
       
@@ -86,8 +105,11 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
           setError(`데이터를 불러오는 중 오류가 발생했습니다.`);
         })
         .finally(() => setLoading(false));
+    } else {
+      setChecklist(null);
+      setTeamUsers([]);
     }
-  }, [selectedTeam, reportIdForEdit]);
+  }, [selectedTeam]);
 
   const handleSignClick = (worker) => {
     setSigningUser(worker);
@@ -140,9 +162,10 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
 
     const reportData = {
       teamId: selectedTeam,
-      reportDate: dateRange?.from || new Date(),
+      reportDate: date || new Date(),
       managerName: user?.name || 'N/A',
       remarks: `연차자: ${Object.keys(absentUsers).filter(id => absentUsers[id]).length}명`,
+      site: site, // Add site to the report data
       results: Object.entries(results).map(([itemId, checkState]) => ({
         itemId: parseInt(itemId),
         checkState,
@@ -157,13 +180,14 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
     };
 
     try {
-      if (reportIdForEdit) {
-        await axios.put(`/api/reports/${reportIdForEdit}`, reportData);
+      if (reportForEdit) {
+        await axios.put(`/api/reports/${reportForEdit.id}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
       } else {
         await axios.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
       }
+      queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
       onFinishEditing();
     } catch (err) {
       setError('제출 중 오류가 발생했습니다.');
@@ -177,7 +201,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
           <SelectValue placeholder="팀을 선택하세요" />
         </SelectTrigger>
         <SelectContent>
-          {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+          {teams.map(team => <SelectItem key={team.id} value={team.id}>{stripSiteSuffix(team.name)}</SelectItem>)}
         </SelectContent>
       </Select>
 
@@ -205,7 +229,7 @@ const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
                   <TableCell>{item.category}</TableCell>
                   <TableCell>{item.description}</TableCell>
                   <TableCell>
-                    <RadioGroup onValueChange={(value) => handleResultChange(item.id, value)} className="flex justify-center gap-4">
+                    <RadioGroup value={results[item.id] || null} onValueChange={(value) => handleResultChange(item.id, value)} className="flex justify-center gap-4">
                       <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
                       <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
                       <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>

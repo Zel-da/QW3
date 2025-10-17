@@ -10,6 +10,7 @@ import { dirname } from 'path';
 import { prisma } from "./db";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import ExcelJS from "exceljs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,6 +23,7 @@ declare module "express-session" {
       role: string;
       teamId?: number | null;
       name?: string | null;
+      site?: string | null;
     };
   }
 }
@@ -99,9 +101,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           site: site || null,
         },
       });
-
-      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name };
-      res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name });
+      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
+      res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
     } catch (error) {
       console.error('Registration error:', error);
       res.status(500).json({ message: "회원가입 중 오류가 발생했습니다" });
@@ -129,8 +130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
 
-      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name };
-      res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name });
+      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
+      res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ message: "로그인 중 오류가 발생했습니다" });
@@ -430,7 +431,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all teams
   app.get("/api/teams", async (req, res) => {
     try {
+      const { site } = req.query;
+      const where: any = {};
+
+      if (site) {
+        where.site = site as string;
+      }
+
       const teams = await prisma.team.findMany({
+        where,
         orderBy: { id: 'asc' }
       });
       res.json(teams);
@@ -601,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get reports (with optional filters)
   app.get("/api/reports", async (req, res) => {
     try {
-      const { startDate, endDate, teamId } = req.query;
+      const { startDate, endDate, teamId, site } = req.query;
       const where: any = {};
 
       if (startDate) {
@@ -622,6 +631,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (teamId) {
         where.teamId = parseInt(teamId as string);
+      }
+
+      if (site) {
+        where.site = site as string;
       }
 
       const reports = await prisma.dailyReport.findMany({
@@ -680,6 +693,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get monthly report for EXCEL (Final Fix)
+  app.get("/api/reports/monthly-excel", requireAuth, async (req, res) => {
+    try {
+      const { teamId, year, month, site } = req.query;
+      if (!teamId || !year || !month) {
+        return res.status(400).json({ message: "teamId, year, and month are required." });
+      }
+
+      const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
+      const endDate = new Date(parseInt(year as string), parseInt(month as string), 0, 23, 59, 59, 999);
+
+      // 1. Fetch Data
+      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
+      if (!team) return res.status(404).json({ message: "Team not found" });
+
+      const dailyReports = await prisma.dailyReport.findMany({
+        where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
+        include: {
+          reportDetails: { include: { item: true } },
+          reportSignatures: { include: { user: { select: { name: true } } } },
+        },
+        orderBy: { reportDate: 'asc' },
+      });
+
+      const checklistTemplate = await prisma.checklistTemplate.findFirst({
+        where: { teamId: parseInt(teamId as string) },
+        include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
+      });
+      if (!checklistTemplate) return res.status(404).json({ message: "Checklist template not found" });
+
+      // 2. Create Workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'FoodieMatch Safety';
+      workbook.created = new Date();
+
+      // --- SHEET 1: Monthly Status ---
+      const statusSheet = workbook.addWorksheet('월별 점검 현황');
+      const daysInMonth = new Date(parseInt(year as string), parseInt(month as string), 0).getDate();
+
+      statusSheet.addRow([`TBM 월별 점검 보고서 (${year}년 ${month}월)`]);
+      statusSheet.addRow([`현장: ${site || team.site || 'N/A'}`, `팀명: ${team.name}`]);
+      statusSheet.addRow([]);
+
+      const headerRow = ['구분', '점검내용'];
+      for (let i = 1; i <= daysInMonth; i++) headerRow.push(String(i));
+      statusSheet.addRow(headerRow);
+
+      const remarks: any[] = [];
+      checklistTemplate.templateItems.forEach(item => {
+        const rowData = [item.category, item.description];
+        for (let day = 1; day <= daysInMonth; day++) {
+          // Based on user feedback, the data is already filtered by month, so only match the day.
+          const reportForDay = dailyReports.find(report => {
+            const d = new Date(report.reportDate);
+            return d.getDate() === day;
+          });
+
+          let status = '';
+          if (reportForDay) {
+            const detail = reportForDay.reportDetails.find(d => d.itemId === item.id);
+            if (detail) {
+              switch (detail.checkState) {
+                case 'OK': status = 'O'; break;
+                case 'WARN': status = '△'; break;
+                case 'NG': status = 'X'; break;
+              }
+              if (detail.checkState === 'WARN' || detail.checkState === 'NG') {
+                remarks.push({
+                  date: new Date(reportForDay.reportDate).toLocaleDateString(),
+                  checkItem: item.description,
+                  problem: detail.actionDescription || '',
+                  action: '', // Placeholder
+                  confirmation: '', // Placeholder
+                  photoUrl: detail.photoUrl
+                });
+              }
+            }
+          }
+          rowData.push(status);
+        }
+        statusSheet.addRow(rowData);
+      });
+
+      // --- SHEET 2: Remarks ---
+      const remarksSheet = workbook.addWorksheet('특이사항 상세');
+      remarksSheet.addRow(['날짜', '점검 내용', '문제점 및 위험예측 사항', '조치사항', '확인', '사진']);
+      remarks.forEach(remark => {
+        const remarkRow = remarksSheet.addRow([remark.date, remark.checkItem, remark.problem, remark.action, remark.confirmation, '']);
+        if (remark.photoUrl) {
+          remarkRow.getCell(6).value = { text: '사진 보기', hyperlink: remark.photoUrl };
+        }
+      });
+
+      // --- SHEET 3: Signatures ---
+      const signatureSheet = workbook.addWorksheet('서명');
+      signatureSheet.addRow(['날짜', '서명자', '서명']);
+
+      const signaturePromises = dailyReports.flatMap(report =>
+        report.reportSignatures.map(async sig => {
+          if (sig.signatureImage && sig.signatureImage.startsWith('data:image/png;base64,')) {
+            const imageId = workbook.addImage({ base64: sig.signatureImage.replace('data:image/png;base64,', ''), extension: 'png' });
+            return { date: new Date(report.reportDate).toLocaleDateString(), user: sig.user?.name || 'Unknown', imageId };
+          }
+          return null;
+        })
+      );
+      const signatureData = (await Promise.all(signaturePromises)).filter(Boolean);
+
+      signatureData.forEach((sig, index) => {
+        if (!sig) return;
+        const row = signatureSheet.addRow([sig.date, sig.user]);
+        row.height = 60;
+        signatureSheet.addImage(sig.imageId, { tl: { col: 2, row: index + 2 }, ext: { width: 150, height: 50 } });
+      });
+
+      // 3. Send File
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="TBM_Report_${year}_${month}.xlsx"`);
+      await workbook.xlsx.write(res);
+      res.end();
+
+    } catch (error) {
+      console.error('Failed to generate simplified Excel report:', error);
+      res.status(500).json({ message: "Failed to generate Excel report" });
+    }
+  });
+
   // Get specific report
   app.get("/api/reports/:id", async (req, res) => {
     try {
@@ -714,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new report
   app.post("/api/reports", requireAuth, async (req, res) => {
     try {
-      const { teamId, reportDate, managerName, remarks, results, signatures } = req.body;
+      const { teamId, reportDate, managerName, remarks, results, signatures, site } = req.body;
 
       const report = await prisma.dailyReport.create({
         data: {
@@ -722,6 +862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reportDate: new Date(reportDate),
           managerName,
           remarks,
+          site,
           reportDetails: {
             create: results.map((r: any) => ({
               itemId: r.itemId,
@@ -757,7 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/reports/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { results, signatures, remarks } = req.body;
+      const { results, signatures, remarks, reportDate } = req.body; // Added reportDate
 
       // Use a transaction to ensure atomicity
       const transaction = await prisma.$transaction(async (tx) => {
@@ -770,6 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           where: { id: parseInt(id) },
           data: {
             remarks,
+            reportDate: new Date(reportDate), // Added reportDate update
             reportDetails: {
               create: results.map((r: any) => ({
                 itemId: r.itemId,
@@ -1019,7 +1161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/users/:id", requireAuth, requireOwnership, async (req, res) => {
     try {
-      const { name, email, username, password } = req.body;
+      const { name, email, username, password, site } = req.body;
       let hashedPassword = undefined;
       if (password) {
         hashedPassword = await bcrypt.hash(password, 10);
