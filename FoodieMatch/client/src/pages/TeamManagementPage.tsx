@@ -1,101 +1,233 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import type { User, Team } from '@shared/schema';
 
-const fetchTeamMembers = async () => {
-  const res = await fetch('/api/my-team/members');
-  if (!res.ok) throw new Error('팀원 정보를 불러오는데 실패했습니다.');
+// API Fetching Functions
+const fetchTeams = async (): Promise<Team[]> => {
+  const res = await fetch('/api/teams');
+  if (!res.ok) throw new Error('Failed to fetch teams');
   return res.json();
 };
 
-const addTeamMember = async (name) => {
-  const res = await fetch('/api/my-team/members', {
+const fetchTeamData = async (teamId: number) => {
+  const res = await fetch(`/api/teams/${teamId}`); // Assuming an endpoint to get team details including leader
+  if (!res.ok) throw new Error('Failed to fetch team data');
+  return res.json();
+};
+
+const fetchAllUsers = async (): Promise<User[]> => {
+  const res = await fetch('/api/users');
+  if (!res.ok) throw new Error('Failed to fetch all users');
+  return res.json();
+};
+
+const addUserToTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
+  const res = await fetch(`/api/teams/${teamId}/members`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ userId }),
   });
-  if (!res.ok) throw new Error('팀원 추가에 실패했습니다.');
+  if (!res.ok) throw new Error('Failed to add user');
   return res.json();
 };
 
-const removeTeamMember = async (id) => {
-  const res = await fetch(`/api/my-team/members/${id}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('팀원 삭제에 실패했습니다.');
+const removeUserFromTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
+  await fetch(`/api/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
+};
+
+const setTeamLeader = async ({ teamId, userId }: { teamId: number; userId: string }) => {
+  const res = await fetch(`/api/teams/${teamId}/leader`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) throw new Error('Failed to set team leader');
+  return res.json();
 };
 
 export default function TeamManagementPage() {
+  const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [newMemberName, setNewMemberName] = useState('');
+  const { toast } = useToast();
 
-  const { data: members, isLoading, error } = useQuery({ 
-    queryKey: ['teamMembers'], 
-    queryFn: fetchTeamMembers 
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  // Set initial team selection
+  useEffect(() => {
+    if (currentUser?.role === 'TEAM_LEADER' && currentUser.teamId) {
+      setSelectedTeamId(currentUser.teamId);
+    }
+  }, [currentUser]);
+
+  // Queries
+  const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
+    queryKey: ['teams'],
+    queryFn: fetchTeams,
+    enabled: currentUser?.role === 'ADMIN',
   });
 
-  const addMutation = useMutation({
-    mutationFn: addTeamMember,
+  const { data: teamData, isLoading: teamDataLoading } = useQuery<Team & { members: User[] }>({
+    queryKey: ['teamData', selectedTeamId],
+    queryFn: () => fetchTeamData(selectedTeamId!),
+    enabled: !!selectedTeamId,
+  });
+
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ['allUsers'],
+    queryFn: fetchAllUsers,
+    enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER',
+  });
+
+  // Mutations
+  const addMutation = useMutation({ mutationFn: addUserToTeam, 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teamMembers'] });
-      setNewMemberName('');
-    },
+      toast({ title: '성공', description: '사용자가 팀에 추가되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+      setSelectedUser(null);
+    }
   });
 
-  const removeMutation = useMutation({
-    mutationFn: removeTeamMember,
+  const removeMutation = useMutation({ mutationFn: removeUserFromTeam, 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teamMembers'] });
-    },
+      toast({ title: '성공', description: '사용자가 팀에서 삭제되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+    }
   });
 
-  const handleAddMember = (e) => {
-    e.preventDefault();
-    if (newMemberName.trim()) {
-      addMutation.mutate(newMemberName.trim());
+  const leaderMutation = useMutation({ mutationFn: setTeamLeader, 
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀장이 지정되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+    }
+  });
+
+  // Handlers
+  const handleAddUser = () => {
+    if (selectedUser && selectedTeamId) {
+      addMutation.mutate({ teamId: selectedTeamId, userId: selectedUser });
     }
   };
+
+  const handleRemoveUser = (userId: string) => {
+    if (selectedTeamId) {
+      removeMutation.mutate({ teamId: selectedTeamId, userId });
+    }
+  };
+
+  const handleSetLeader = (userId: string) => {
+    if (selectedTeamId) {
+      leaderMutation.mutate({ teamId: selectedTeamId, userId });
+    }
+  };
+
+  // Render Logic
+  const unassignedUsers = allUsers.filter(u => !u.teamId);
+  const currentLeader = teamData?.members.find(m => m.id === teamData.leaderId);
 
   return (
     <div>
       <Header />
-      <main className="container mx-auto p-4 lg:p-6">
-        <Card>
+      <main className="container mx-auto p-4 lg:p-8">
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>팀원 관리</CardTitle>
+            <CardTitle>팀 선택</CardTitle>
+            <CardDescription>관리할 팀을 선택하세요.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddMember} className="flex gap-2 mb-6">
-              <Input 
-                placeholder="새 팀원 이름" 
-                value={newMemberName} 
-                onChange={(e) => setNewMemberName(e.target.value)}
-              />
-              <Button type="submit" disabled={addMutation.isPending}>
-                {addMutation.isPending ? '추가 중...' : '추가'}
-              </Button>
-            </form>
-            {isLoading && <p>로딩 중...</p>}
-            {error && <p className="text-destructive">오류: {error.message}</p>}
-            <ul className="space-y-2">
-              {members?.map(member => (
-                <li key={member.id} className="flex justify-between items-center p-2 border rounded-md">
-                  <span>{member.name}</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => removeMutation.mutate(member.id)}
-                    disabled={removeMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            {currentUser?.role === 'ADMIN' ? (
+              <Select onValueChange={(val) => setSelectedTeamId(Number(val))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="팀을 선택하세요..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p>{teamData?.name || '당신의 팀'}</p>
+            )}
           </CardContent>
         </Card>
+
+        {selectedTeamId && (
+          <div className="grid gap-8 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>팀원 목록</CardTitle>
+                {currentLeader && <CardDescription>현재 팀장: {currentLeader.name}</CardDescription>}
+              </CardHeader>
+              <CardContent>
+                {teamDataLoading ? <p>로딩 중...</p> : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>이름</TableHead>
+                        <TableHead>아이디</TableHead>
+                        <TableHead className="text-right">작업</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamData?.members.map((member) => (
+                        <TableRow key={member.id} className={member.id === teamData.leaderId ? 'bg-primary/10' : ''}>
+                          <TableCell>{member.name}</TableCell>
+                          <TableCell>{member.username}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => handleSetLeader(member.id)} disabled={leaderMutation.isPending || member.id === teamData.leaderId}>
+                              팀장 지정
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => handleRemoveUser(member.id)} disabled={removeMutation.isPending}>
+                              삭제
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>팀원 추가</CardTitle>
+                <CardDescription>팀에 소속되지 않은 사용자를 추가합니다.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                {usersLoading ? <p>사용자 로딩 중...</p> : (
+                  <>
+                    <Select onValueChange={setSelectedUser}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="사용자를 선택하세요..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unassignedUsers.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.username})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddUser} disabled={!selectedUser || addMutation.isPending}>
+                      {addMutation.isPending ? '추가 중...' : '팀에 추가'}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   );

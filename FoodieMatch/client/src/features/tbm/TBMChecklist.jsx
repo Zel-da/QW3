@@ -1,180 +1,284 @@
-import React, { useState, useRef, useEffect } from 'react';
-import SignatureCanvas from 'react-signature-canvas';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '../../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
-import { Input } from '../../components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
-import { Calendar } from '../../components/ui/calendar';
-import { Checkbox } from '../../components/ui/checkbox';
-import { Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '../../lib/utils';
-import imageCompression from 'browser-image-compression';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { useAuth } from '@/context/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Terminal, Camera } from "lucide-react";
+import { SignatureDialog } from '@/components/SignatureDialog'; // Import the new component
 
-// API-Funktionen
-const apiClient = {
-    get: async (url) => {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-        return response.json();
-    },
-    post: async (url, data) => {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error(`Failed to post to ${url}`);
-        return response.json();
-    },
-};
+const TBMChecklist = ({ reportIdForEdit, onFinishEditing, dateRange }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [teams, setTeams] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [checklist, setChecklist] = useState(null);
+  const [teamUsers, setTeamUsers] = useState([]);
+  const [results, setResults] = useState({});
+  const [photoUrls, setPhotoUrls] = useState({});
+  const [itemDescriptions, setItemDescriptions] = useState({});
+  const [signatures, setSignatures] = useState({});
+  const [absentUsers, setAbsentUsers] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-const TBMChecklist = ({ reportIdForEdit, onFinishEditing }) => {
-    const [selectedTeam, setSelectedTeam] = useState('');
-    const [reportDate, setReportDate] = useState(new Date());
-    const [checklistData, setChecklistData] = useState(null);
-    const [checkResults, setCheckResults] = useState({});
-    const [signatures, setSignatures] = useState([]);
-    const [remarks, setRemarks] = useState('특이사항 없음');
-    const [managerName, setManagerName] = useState('');
-    const [excludedUserIds, setExcludedUserIds] = useState([]);
-    const sigPads = useRef({});
+  // Signature Dialog State
+  const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
+  const [signingUser, setSigningUser] = useState(null);
 
-    const queryClient = useQueryClient();
+  useEffect(() => {
+    axios.get('/api/teams').then(res => setTeams(res.data));
+    if (user?.teamId) setSelectedTeam(user.teamId);
+  }, [user]);
 
-    const { data: teams, isLoading: teamsLoading } = useQuery({ queryKey: ['teams'], queryFn: () => apiClient.get('/api/teams') });
-    const { data: users, isLoading: usersLoading } = useQuery({ queryKey: ['users', selectedTeam], queryFn: () => apiClient.get(`/api/teams/${selectedTeam}/users`), enabled: !!selectedTeam });
-    const { data: template, isLoading: templateLoading } = useQuery({ queryKey: ['template', selectedTeam], queryFn: () => apiClient.get(`/api/teams/${selectedTeam}/template`), enabled: !!selectedTeam });
+  useEffect(() => {
+    if (reportIdForEdit) {
+      setLoading(true);
+      axios.get(`/api/reports/${reportIdForEdit}`)
+        .then(res => {
+          const report = res.data;
+          setSelectedTeam(report.teamId);
+          
+          const initialResults = {};
+          const initialPhotos = {};
+          const initialDescriptions = {};
+          report.reportDetails.forEach(detail => {
+            initialResults[detail.itemId] = detail.checkState;
+            if (detail.photoUrl) initialPhotos[detail.itemId] = detail.photoUrl;
+            if (detail.actionDescription) initialDescriptions[detail.itemId] = detail.actionDescription;
+          });
+          setResults(initialResults);
+          setPhotoUrls(initialPhotos);
+          setItemDescriptions(initialDescriptions);
 
-    useEffect(() => {
-        if (template) setChecklistData(template);
-    }, [template]);
+          const initialSignatures = {};
+          report.reportSignatures.forEach(sig => {
+            if (sig.signatureImage) initialSignatures[sig.userId] = sig.signatureImage;
+          });
+          setSignatures(initialSignatures);
+        })
+        .catch(err => setError('기존 보고서 데이터를 불러오는 데 실패했습니다.'))
+        .finally(() => setLoading(false));
+    }
+  }, [reportIdForEdit]);
 
-    const mutation = useMutation({
-        mutationFn: (newReport) => apiClient.post('/api/reports', newReport),
-        onSuccess: () => {
-            alert('TBM 보고서가 성공적으로 제출되었습니다.');
-            onFinishEditing();
-            queryClient.invalidateQueries({ queryKey: ['dailyReports'] });
-        },
-        onError: (error) => alert(`오류: ${error.message}`),
-    });
+  useEffect(() => {
+    if (selectedTeam && !reportIdForEdit) {
+      setLoading(true);
+      setError(null);
+      
+      const templatePromise = axios.get(`/api/teams/${selectedTeam}/template`);
+      const usersPromise = axios.get(`/api/teams/${selectedTeam}/users`);
 
-    const handleFileChange = async (e, itemId) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-            const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
-            const formData = new FormData();
-            formData.append('file', compressedFile, compressedFile.name);
-            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-            if (!res.ok) throw new Error('File upload failed');
-            const data = await res.json();
-            setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], photoUrl: data.url } }));
-        } catch (error) { alert('이미지 처리 중 오류: ' + error.message); }
+      Promise.all([templatePromise, usersPromise])
+        .then(([templateResponse, usersResponse]) => {
+          setChecklist(templateResponse.data);
+          setTeamUsers(usersResponse.data);
+        })
+        .catch(err => {
+          console.error(`Error fetching data for team ${selectedTeam}:`, err);
+          setError(`데이터를 불러오는 중 오류가 발생했습니다.`);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [selectedTeam, reportIdForEdit]);
+
+  const handleSignClick = (worker) => {
+    setSigningUser(worker);
+    setIsSigDialogOpen(true);
+  };
+
+  const handleSaveSignature = (signatureData) => {
+    if (signingUser) {
+      setSignatures(prev => ({ ...prev, [signingUser.id]: signatureData }));
+    }
+    setSigningUser(null);
+  };
+
+  const handleResultChange = (itemId, value) => {
+    setResults(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const handleDescriptionChange = (itemId, value) => {
+    setItemDescriptions(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const handlePhotoUpload = async (itemId, file) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axios.post('/api/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setPhotoUrls(prev => ({ ...prev, [itemId]: res.data.url }));
+      toast({ title: "사진이 업로드되었습니다." });
+    } catch (err) {
+      toast({ title: "사진 업로드 실패", variant: "destructive" });
+    }
+  };
+
+  const handleAbsentChange = (userId, isAbsent) => {
+    setAbsentUsers(prev => ({ ...prev, [userId]: isAbsent }));
+    if (isAbsent) {
+      const newSignatures = { ...signatures };
+      delete newSignatures[userId];
+      setSignatures(newSignatures);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!user?.id) {
+      toast({ title: "로그인이 필요합니다.", variant: "destructive" });
+      return;
+    }
+
+    const reportData = {
+      teamId: selectedTeam,
+      reportDate: dateRange?.from || new Date(),
+      managerName: user?.name || 'N/A',
+      remarks: `연차자: ${Object.keys(absentUsers).filter(id => absentUsers[id]).length}명`,
+      results: Object.entries(results).map(([itemId, checkState]) => ({
+        itemId: parseInt(itemId),
+        checkState,
+        photoUrl: photoUrls[itemId] || null,
+        actionDescription: itemDescriptions[itemId] || null,
+        authorId: user.id,
+      })),
+      signatures: Object.entries(signatures).map(([userId, signatureImage]) => ({ 
+        userId, 
+        signatureImage 
+      })),
     };
 
-    const handleCheck = (itemId, value) => setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], checkState: value } }));
-    const handleCommentChange = (itemId, value) => setCheckResults(prev => ({ ...prev, [itemId]: { ...prev[itemId], comment: value } }));
-    const handleExcludeUserToggle = (userId) => setExcludedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
-    const handleSaveSignature = (userId) => {
-        if (sigPads.current[userId] && !sigPads.current[userId].isEmpty()) {
-            const signatureImage = sigPads.current[userId].toDataURL('image/png');
-            setSignatures(prev => [...prev.filter(s => s.userId !== userId), { userId, signatureImage }]);
-            alert('서명이 저장되었습니다.');
-        } else { alert('서명을 먼저 해주세요.'); }
-    };
+    try {
+      if (reportIdForEdit) {
+        await axios.put(`/api/reports/${reportIdForEdit}`, reportData);
+        toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
+      } else {
+        await axios.post('/api/reports', reportData);
+        toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
+      }
+      onFinishEditing();
+    } catch (err) {
+      setError('제출 중 오류가 발생했습니다.');
+    }
+  };
 
-    const handleSubmit = () => {
-        const attendingUsers = users.filter(u => !excludedUserIds.includes(u.id));
-        if (attendingUsers.length !== signatures.length) {
-            alert('서명하지 않은 참석자가 있습니다.');
-            return;
-        }
-        mutation.mutate({ teamId: selectedTeam, reportDate, managerName, remarks, results, signatures });
-    };
+  return (
+    <div className="space-y-6">
+      <Select onValueChange={setSelectedTeam} value={selectedTeam || ''}>
+        <SelectTrigger className="w-[200px]">
+          <SelectValue placeholder="팀을 선택하세요" />
+        </SelectTrigger>
+        <SelectContent>
+          {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+        </SelectContent>
+      </Select>
 
-    const isLoading = teamsLoading || usersLoading || templateLoading;
+      {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+      {loading && <p>로딩 중...</p>}
 
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>TBM 안전점검표</CardTitle>
-                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                        <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                            <SelectTrigger><SelectValue placeholder="팀을 선택하세요" /></SelectTrigger>
-                            <SelectContent>{teams?.map(team => <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Popover>
-                            <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !reportDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{reportDate ? format(reportDate, "PPP") : <span>날짜 선택</span>}</Button></PopoverTrigger>
-                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={reportDate} onSelect={setReportDate} initialFocus /></PopoverContent>
-                        </Popover>
-                    </div>
-                </CardHeader>
-            </Card>
-
-            {isLoading && <p>로딩 중...</p>}
-            {selectedTeam && !isLoading && !template && <p>선택된 팀의 점검표를 찾을 수 없습니다.</p>}
-            {template && (
-                <>
-                    {template.templateItems.map(item => (
-                        <Card key={item.id}>
-                            <CardContent className="p-4 space-y-3">
-                                <label className="font-semibold">{item.description}</label>
-                                <div className="flex gap-2 flex-wrap">
-                                    {['O', '△', 'X'].map(state => <Button key={state} type="button" size="sm" variant={checkResults[item.id]?.checkState === state ? 'default' : 'outline'} onClick={() => handleCheck(item.id, state)}>{state}</Button>)}
-                                </div>
-                                {(checkResults[item.id]?.checkState === '△' || checkResults[item.id]?.checkState === 'X') && (
-                                    <div className="space-y-2 pt-3 border-t">
-                                        <Textarea placeholder="개선 조치 내용" value={checkResults[item.id]?.comment || ''} onChange={(e) => handleCommentChange(item.id, e.target.value)} />
-                                        <Input type="file" accept="image/*" onChange={(e) => handleFileChange(e, item.id)} />
-                                        {checkResults[item.id]?.photoUrl && <img src={checkResults[item.id].photoUrl} alt="preview" className="mt-2 max-w-xs rounded-md border"/>}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))}
-
-                    <Card>
-                        <CardHeader><CardTitle>참석자 서명</CardTitle></CardHeader>
-                        <CardContent>
-                            <div className="p-3 mb-4 border rounded-md space-y-2 bg-secondary/50">
-                                <label className="font-medium">서명 제외자 선택 (연차, 휴가 등)</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{users?.map(user => (
-                                    <div key={user.id} className="flex items-center space-x-2">
-                                        <Checkbox id={`exclude-${user.id}`} checked={excludedUserIds.includes(user.id)} onCheckedChange={() => handleExcludeUserToggle(user.id)} />
-                                        <label htmlFor={`exclude-${user.id}`}>{user.name}</label>
-                                    </div>
-                                ))}</div>
+      {checklist && (
+        <>
+          <div className="mb-4">
+            <h3 className="font-semibold text-lg">작성자: {user?.name}</h3>
+          </div>
+          <h3 className="font-semibold text-xl mt-6">점검항목</h3>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>구분</TableHead>
+                <TableHead>점검항목</TableHead>
+                <TableHead className="text-center">점검결과</TableHead>
+                <TableHead className="text-center">사진/내용</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {checklist.templateItems.map(item => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell>{item.description}</TableCell>
+                  <TableCell>
+                    <RadioGroup onValueChange={(value) => handleResultChange(item.id, value)} className="flex justify-center gap-4">
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                    </RadioGroup>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(results[item.id] === '△' || results[item.id] === 'X') && (
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="flex items-center justify-center">
+                          <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
+                            <div className="flex items-center gap-2 p-2 border rounded-md hover:bg-muted">
+                              <Camera className="h-5 w-5" />
+                              <span>{photoUrls[item.id] ? '변경' : '사진 업로드'}</span>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{users?.filter(u => !excludedUserIds.includes(u.id)).map(user => (
-                                <div key={user.id} className="border rounded-md p-2 text-center">
-                                    <label className="block text-sm font-medium mb-1">{user.name}</label>
-                                    {signatures.find(s => s.userId === user.id) ? <p className="text-green-600 font-bold py-8">서명 완료</p> : <SignatureCanvas ref={ref => (sigPads.current[user.id] = ref)} penColor='black' canvasProps={{ className: 'w-full h-24 bg-white rounded-md border' }} />}
-                                    {!signatures.find(s => s.userId === user.id) && <Button type="button" size="sm" className="w-full mt-2" onClick={() => handleSaveSignature(user.id)}>서명 저장</Button>}
-                                </div>
-                            ))}</div>
-                        </CardContent>
-                    </Card>
+                          </Label>
+                          <Input id={`photo-${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(item.id, e.target.files[0])} />
+                          {photoUrls[item.id] && <img src={photoUrls[item.id]} alt="preview" className="w-16 h-16 object-cover ml-4 rounded-md"/>}
+                        </div>
+                        <Textarea
+                          placeholder="내용 작성..."
+                          value={itemDescriptions[item.id] || ''}
+                          onChange={(e) => handleDescriptionChange(item.id, e.target.value)}
+                          className="mt-2 w-full"
+                        />
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-                    <Card>
-                        <CardHeader><CardTitle>관리감독자 확인</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <Textarea placeholder="특이사항" value={remarks} onChange={e => setRemarks(e.target.value)} />
-                            <Input placeholder="관리감독자 성명" value={managerName} onChange={e => setManagerName(e.target.value)} required />
-                        </CardContent>
-                    </Card>
+          <h3 className="font-semibold text-xl mt-8">참석자 서명</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
+              <div key={worker.id} className={`p-4 border rounded-lg text-center space-y-3 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
+                <p className="font-semibold">{worker.name}</p>
+                <div className="flex items-center justify-center space-x-2">
+                    <input type="checkbox" id={`absent-${worker.id}`} checked={!!absentUsers[worker.id]} onChange={(e) => handleAbsentChange(worker.id, e.target.checked)} />
+                    <Label htmlFor={`absent-${worker.id}`}>연차</Label>
+                </div>
+                {signatures[worker.id] ? (
+                  <div className="flex flex-col items-center">
+                    <p className="text-sm text-green-600 mb-2">서명 완료</p>
+                    <img src={signatures[worker.id]} alt={`${worker.name} signature`} className="w-full h-16 object-contain border rounded-md"/>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={() => handleSignClick(worker)}
+                    disabled={absentUsers[worker.id]}
+                    className="w-full"
+                  >
+                    서명
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
-                    <Button type="button" onClick={handleSubmit} disabled={mutation.isPending} className="w-full text-lg py-6">{mutation.isPending ? '제출 중...' : '최종 제출'}</Button>
-                </>
-            )}
-        </div>
-    );
+      <SignatureDialog 
+        isOpen={isSigDialogOpen}
+        onClose={() => setIsSigDialogOpen(false)}
+        onSave={handleSaveSignature}
+        userName={signingUser?.name || ''}
+      />
+
+      <div className="flex justify-end mt-6">
+        <Button onClick={handleSubmit} size="lg" disabled={!checklist}>제출하기</Button>
+      </div>
+    </div>
+  );
 };
 
 export default TBMChecklist;

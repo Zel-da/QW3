@@ -3,19 +3,45 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+interface Team {
+  id: number;
+  name: string;
+}
+
+const fetchTeams = async (): Promise<Team[]> => {
+  const res = await fetch('/api/teams');
+  if (!res.ok) {
+    throw new Error('Failed to fetch teams');
+  }
+  return res.json();
+};
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
+    name: '',
     email: '',
     password: '',
+    teamId: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const { data: teams, isLoading: isLoadingTeams } = useQuery({ 
+    queryKey: ['teams'], 
+    queryFn: fetchTeams 
+  });
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleTeamChange = (value: string) => {
+    setFormData({ ...formData, teamId: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,8 +88,12 @@ export default function RegisterPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">사용자 이름</Label>
+                <Label htmlFor="username">사용자 ID</Label>
                 <Input id="username" name="username" type="text" required onChange={handleChange} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">이름</Label>
+                <Input id="name" name="name" type="text" required onChange={handleChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">이메일</Label>
@@ -72,6 +102,19 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호 (8자 이상)</Label>
                 <Input id="password" name="password" type="password" required onChange={handleChange} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="team">팀 선택</Label>
+                <Select onValueChange={handleTeamChange} name="teamId">
+                  <SelectTrigger id="team">
+                    <SelectValue placeholder={isLoadingTeams ? "팀 목록 로딩 중..." : "팀을 선택하세요"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams?.map(team => (
+                      <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {success && <p className="text-sm text-green-600">{success}</p>}

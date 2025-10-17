@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
-import TBMChecklist from '../features/tbm/TBMChecklist.jsx';
+import { useState } from 'react';
+import { format } from "date-fns"
+import { Header } from "@/components/header";
+import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "../components/ui/button";
+import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { ko } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import ReportListView from '../features/tbm/ReportListView.jsx';
 import ReportDetailView from '../features/tbm/ReportDetailView.jsx';
-import { Button } from '../components/ui/button';
-import { Header } from '@/components/header';
 
 export default function TbmPage() {
   const [view, setView] = useState('checklist'); // 'checklist', 'list', 'detail'
   const [reportIdForEdit, setReportIdForEdit] = useState<number | null>(null);
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
   const handleSelectReport = (reportId: number) => {
     setReportIdForEdit(reportId);
@@ -37,7 +49,7 @@ export default function TbmPage() {
         return <ReportDetailView reportId={reportIdForEdit} onBackToList={handleBackToList} onModify={handleModifyReport} />;
       case 'checklist':
       default:
-        return <TBMChecklist reportIdForEdit={reportIdForEdit} onFinishEditing={handleFinishEditing} />;
+        return <TBMChecklist reportIdForEdit={reportIdForEdit} onFinishEditing={handleFinishEditing} date={date} />;
     }
   };
 
@@ -45,22 +57,40 @@ export default function TbmPage() {
     <div>
       <Header />
       <main className="container mx-auto p-4 lg:p-6">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold tracking-tight">TBM 안전점검</h2>
-            <div className="flex gap-2">
-              <Button variant={view === 'checklist' ? 'default' : 'outline'} onClick={() => { setReportIdForEdit(null); setView('checklist'); }}>
-                점검표 작성
-              </Button>
-              <Button variant={view === 'list' ? 'default' : 'outline'} onClick={() => setView('list')}>
-                제출 내역 보기
-              </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>TBM 일지</CardTitle>
+            <div className="grid gap-2 mt-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-[300px] justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>날짜 선택</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    locale={ko}
+                    initialFocus
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-          </div>
-          <div>
+          </CardHeader>
+          <CardContent>
             {renderView()}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

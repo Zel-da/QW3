@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,13 @@ import { ArrowLeft, Play, Pause, CheckCircle, Clock } from "lucide-react";
 import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+const getYouTubeId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
 
 export default function CourseContentPage() {
   const { id: courseId } = useParams();
@@ -27,7 +35,7 @@ export default function CourseContentPage() {
     const userId = localStorage.getItem("currentUserId");
     console.log("CourseContent - localStorage userId:", userId);
     if (!userId) {
-      setLocation(`/course/${courseId}`);
+      setLocation('/login');
       return;
     }
     setCurrentUserId(userId);
@@ -60,28 +68,47 @@ export default function CourseContentPage() {
   });
 
   useEffect(() => {
+    if (userProgress) {
+      setTimeSpent(userProgress.timeSpent || 0);
+      setVideoProgress(userProgress.progress || 0);
+      setCurrentStep(userProgress.currentStep || 1);
+    }
+  }, [userProgress]);
+
+  useEffect(() => {
+    if (course?.videoUrl) {
+      setIsPlaying(true);
+    }
+  }, [course]);
+
+  useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isPlaying) {
+    if (isPlaying && course) {
       interval = setInterval(() => {
-        setTimeSpent(prev => prev + 1);
-        setVideoProgress(prev => {
-          const newProgress = Math.min(prev + (100 / (7 * 60)), 100); // 7 minutes total
-          
-          // Update progress every 10 seconds
-          if (Math.floor(newProgress) % 10 === 0 && newProgress !== prev) {
-            updateProgressMutation.mutate({
-              progress: Math.floor(newProgress),
-              timeSpent: timeSpent + 1,
-              currentStep: newProgress >= 100 ? 3 : 2,
-            });
-          }
-          
-          return newProgress;
+        setTimeSpent(prevTime => {
+          const newTime = prevTime + 1;
+          setVideoProgress(prevProgress => {
+            const newProgress = Math.min(prevProgress + (100 / (course.duration * 60)), 100);
+
+            if (newTime > 0 && newTime % 10 === 0) {
+              updateProgressMutation.mutate({
+                progress: Math.floor(newProgress),
+                timeSpent: newTime,
+                currentStep: newProgress >= 100 ? 3 : 2,
+              });
+            }
+            return newProgress;
+          });
+          return newTime;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, timeSpent, updateProgressMutation]);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isPlaying, course, updateProgressMutation]);
 
   const handleVideoComplete = () => {
     setIsPlaying(false);
@@ -118,6 +145,7 @@ export default function CourseContentPage() {
     );
   }
 
+  const videoId = course.videoUrl ? getYouTubeId(course.videoUrl) : null;
   const progressPercent = userProgress?.progress || 0;
   const isVideoComplete = videoProgress >= 100 || progressPercent >= 100;
 
@@ -163,23 +191,23 @@ export default function CourseContentPage() {
             <Card data-testid="video-player">
               <CardContent className="p-6">
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                        {isPlaying ? (
-                          <Pause className="w-8 h-8" />
-                        ) : (
-                          <Play className="w-8 h-8" />
-                        )}
+                  {videoId ? (
+                    <iframe
+                      key={videoId}
+                      className="absolute inset-0 w-full h-full"
+                      src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                      title="YouTube video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black">
+                      <div className="text-center text-white korean-text">
+                        <p>교육 영상이 없거나 주소가 올바르지 않습니다.</p>
                       </div>
-                      <p className="korean-text">
-                        {isVideoComplete ? "교육 영상 완료" : "안전 교육 영상"}
-                      </p>
-                      <p className="text-sm text-white/80 korean-text">
-                        {Math.floor(timeSpent / 60)}분 {timeSpent % 60}초 / {course.duration}분
-                      </p>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4">

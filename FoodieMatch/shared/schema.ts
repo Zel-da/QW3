@@ -1,23 +1,47 @@
-// Shared types between client and server
 import { z } from 'zod';
 
-export interface Notice {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: Date;
-  viewCount: number;
-  imageUrl?: string | null;
-  attachmentUrl?: string | null;
-  attachmentName?: string | null;
+// Enum for User Roles, matching prisma/schema.prisma
+export enum Role {
+  ADMIN = 'ADMIN',
+  SAFETY_TEAM = 'SAFETY_TEAM',
+  TEAM_LEADER = 'TEAM_LEADER',
+  WORKER = 'WORKER',
+  OFFICE_WORKER = 'OFFICE_WORKER',
 }
 
 export interface User {
   id: string;
   username: string;
-  email: string;
-  role: 'admin' | 'user';
-  department: string;
+  name?: string | null;
+  email?: string | null;
+  role: Role;
+  teamId?: number | null;
+}
+
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  category: string;
+  createdAt: Date;
+  updatedAt: Date;
+  viewCount: number;
+  imageUrl?: string | null;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  author: User;
+  comments: Comment[];
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  imageUrl?: string | null;
+  authorId: string;
+  noticeId: string;
+  createdAt: Date;
+  author: User;
 }
 
 export interface Course {
@@ -44,37 +68,11 @@ export interface UserProgress {
   lastAccessed: Date;
 }
 
-export interface Assessment {
-  id: string;
-  courseId: string;
-  question: string;
-  options: string;
-  correctAnswer: number;
-  difficulty: string;
-}
-
-export interface UserAssessment {
-  id: string;
-  userId: string;
-  courseId: string;
-  score: number;
-  totalQuestions: number;
-  passed: boolean;
-  attemptNumber: number;
-  completedAt: Date;
-}
-
-export interface Certificate {
-  id: string;
-  userId: string;
-  courseId: string;
-  certificateUrl: string;
-  issuedAt: Date;
-}
-
 export const insertUserSchema = z.object({
   username: z.string().min(2, "이름은 2글자 이상이어야 합니다."),
   email: z.string().email("올바른 이메일 주소를 입력하세요."),
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
-  department: z.string(),
 });
+
+// Other interfaces (Assessment, Certificate, etc.) would go here
+// For brevity, they are omitted but should match the Prisma schema

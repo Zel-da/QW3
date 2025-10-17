@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AssessmentPage() {
-  const { id: courseId } = useParams();
+  const { courseId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,8 +40,9 @@ export default function AssessmentPage() {
     enabled: !!courseId,
   });
 
-  const { data: assessments = [] } = useQuery<Assessment[]>({
-    queryKey: ["/api/courses", courseId, "assessments"],
+  const { data: assessments = [], isLoading: assessmentsLoading } = useQuery<Assessment[]>({
+    queryKey: ["assessments", courseId],
+    queryFn: () => fetch(`/api/courses/${courseId}/assessments`).then(res => res.json()),
     enabled: !!courseId,
   });
 
@@ -161,7 +162,7 @@ export default function AssessmentPage() {
     return { percentage: 0, label: "4차 이후" };
   };
 
-  if (!currentUserId || !course || assessments.length === 0) {
+  if (!currentUserId || !course || assessmentsLoading) { // Use assessmentsLoading here
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -174,8 +175,26 @@ export default function AssessmentPage() {
     );
   }
 
+  // Handle case where there are no assessments after loading
+  if (assessments.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center korean-text">
+            <div className="text-lg text-destructive">이 과정에 대한 평가가 없습니다.</div>
+            <p className="text-muted-foreground">관리자에게 문의하세요.</p>
+            <Link href="/">
+                <Button variant="link" className="mt-4">대시보드로 돌아가기</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentAssessment = assessments[currentQuestion];
-  const options = currentAssessment ? JSON.parse(currentAssessment.options) : [];
+  const options = currentAssessment?.options ? currentAssessment.options.split(';') : [];
   const progressPercent = ((currentQuestion + 1) / assessments.length) * 100;
 
   if (isSubmitted && assessmentResult) {

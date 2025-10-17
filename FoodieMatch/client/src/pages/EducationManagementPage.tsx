@@ -1,0 +1,208 @@
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Header } from '@/components/header';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import type { Course } from '@shared/schema';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { CourseEditDialog } from '@/components/CourseEditDialog';
+
+const fetchCourses = async () => {
+    const res = await fetch('/api/courses');
+    if (!res.ok) throw new Error('Failed to fetch courses');
+    return res.json();
+}
+
+const createCourse = async (courseData: Partial<Course>) => {
+    const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(courseData),
+    });
+    if (!res.ok) throw new Error('Failed to create course');
+    return res.json();
+}
+
+const deleteCourse = async (courseId: string) => {
+    const res = await fetch(`/api/courses/${courseId}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete course');
+    // No need to return JSON for a 204 response
+}
+
+const createAssessments = async ({ courseId, questions }: { courseId: string; questions: any[] }) => {
+    const res = await fetch(`/api/courses/${courseId}/assessments-bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions }),
+    });
+    if (!res.ok) throw new Error('Failed to create assessments');
+    return res.json();
+}
+
+export default function EducationManagementPage() {
+  const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [duration, setDuration] = useState(0);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [quizFile, setQuizFile] = useState<File | null>(null);
+  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  const { data: courses = [], isLoading } = useQuery<Course[]>({ 
+      queryKey: ['courses'], 
+      queryFn: fetchCourses 
+  });
+
+  const courseMutation = useMutation({
+      mutationFn: createCourse,
+      onSuccess: (newCourse) => {
+        if (quizFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target?.result;
+                if (typeof text !== 'string') return;
+                
+                const questions = text.split('\n').slice(1).map(line => {
+                    const [question, options, correctAnswer] = line.split(',');
+                    return { question, options, correctAnswer: parseInt(correctAnswer, 10) };
+                }).filter(q => q.question && q.options && !isNaN(q.correctAnswer));
+
+                if (questions.length > 0) {
+                    assessmentMutation.mutate({ courseId: newCourse.id, questions });
+                } else {
+                    toast({ title: 'CSV 파일 형식이 잘못되었거나 내용이 없습니다.', variant: 'destructive' });
+                }
+            };
+            reader.readAsText(quizFile);
+        } else {
+            toast({ title: '교육 과정이 생성되었습니다.' });
+            queryClient.invalidateQueries({ queryKey: ['courses'] });
+        }
+      }
+  });
+
+  const deleteCourseMutation = useMutation({
+    mutationFn: deleteCourse,
+    onSuccess: () => {
+      toast({ title: '교육 과정이 삭제되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+    onError: () => {
+        toast({ title: '삭제 중 오류가 발생했습니다.', variant: 'destructive' });
+    }
+  });
+
+  const assessmentMutation = useMutation({
+      mutationFn: createAssessments,
+      onSuccess: () => {
+        toast({ title: '교육 과정과 퀴즈가 성공적으로 생성되었습니다.' });
+        queryClient.invalidateQueries({ queryKey: ['courses'] });
+      }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let youtubeEmbedUrl = videoUrl;
+    if (videoUrl.includes('watch?v=')) {
+        youtubeEmbedUrl = videoUrl.replace('watch?v=', 'embed/');
+    }
+    courseMutation.mutate({ title, description, videoUrl: youtubeEmbedUrl, type: 'video', duration, icon: 'book-open', color: 'blue' });
+  };
+
+  const handleDelete = (courseId: string) => {
+    if (window.confirm('정말로 이 교육 과정을 삭제하시겠습니까? 관련된 모든 평가와 진행 기록이 삭제됩니다.')) {
+        deleteCourseMutation.mutate(courseId);
+    }
+  }
+
+  const handleEdit = (course: Course) => {
+    setSelectedCourse(course);
+    setIsEditDialogOpen(true);
+  }
+
+  return (
+    <div>
+      <Header />
+      <main className="container mx-auto p-4 lg:p-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">교육 콘텐츠 관리</CardTitle>
+            <CardDescription>새로운 교육 영상과 퀴즈를 업로드합니다.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="title">교육 제목</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 지게차 안전 운행 수칙" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">상세 설명</Label>
+                <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="교육 과정에 대한 간단한 설명" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="videoUrl">유튜브 영상 URL</Label>
+                <Input id="videoUrl" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="duration">교육 시간 (분)</Label>
+                <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} placeholder="예: 30" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quizFile">퀴즈 파일 (CSV)</Label>
+                <Input id="quizFile" type="file" accept=".csv" onChange={(e) => setQuizFile(e.target.files ? e.target.files[0] : null)} />
+                <p className="text-sm text-muted-foreground">CSV 파일 형식: question,options (세미콜론으로 구분),correctAnswer (0-based index)</p>
+              </div>
+              <Button type="submit" disabled={courseMutation.isPending || assessmentMutation.isPending}>업로드</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-8">
+            <CardHeader><CardTitle>현재 교육 과정 목록</CardTitle></CardHeader>
+            <CardContent>
+                {isLoading ? <p>로딩 중...</p> : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>제목</TableHead>
+                                <TableHead>설명</TableHead>
+                                <TableHead className="text-right">작업</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {courses.map(course => (
+                                <TableRow key={course.id}>
+                                    <TableCell>{course.title}</TableCell>
+                                    <TableCell>{course.description}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(course)}>수정</Button>
+                                        <Button variant="destructive" size="sm" onClick={() => handleDelete(course.id)}>삭제</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+        <CourseEditDialog 
+            isOpen={isEditDialogOpen}
+            onClose={() => setIsEditDialogOpen(false)}
+            course={selectedCourse}
+        />
+      </main>
+    </div>
+  );
+}

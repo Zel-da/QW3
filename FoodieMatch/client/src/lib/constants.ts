@@ -25,20 +25,20 @@ export const COURSE_TYPES = {
 export const PROGRESS_STEPS = [
   {
     number: 1,
-    title: '참가자 정보 입력',
-    description: '이름, 부서, 이메일 주소를 입력하여 계정을 생성합니다.',
+    title: '시작할 교육을 선택합니다',
+    description: '아래 목록에서 원하는 교육 과정을 선택하여 학습을 시작하세요.',
     icon: 'clipboard-list',
   },
   {
     number: 2,
-    title: '7분 연수 교육',
-    description: '핵심적인 교육 내용을 영상으로 시청하여 안전지식을 습득합니다.',
+    title: '동영상을 통한 학습을 진행합니다',
+    description: '각 과정의 핵심 내용을 담은 동영상 강의를 시청합니다.',
     icon: 'clock',
   },
   {
     number: 3,
-    title: '확인 테스트 응시',
-    description: '교육 완료 후 테스트를 응시하여 이해도를 확인합니다.',
+    title: '테스트를 응시하여 이해도를 확인합니다',
+    description: '학습을 마친 후, 간단한 테스트를 통해 이수 여부를 확인받습니다.',
     icon: 'certificate',
   },
 ];

@@ -44,7 +44,6 @@
     "@tanstack/react-query": "^5.60.5",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
-    "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -79,13 +78,14 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.3.1",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
-    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.3",
     "@types/bcrypt": "^6.0.0",
     "@types/connect-pg-simple": "^7.0.3",
@@ -111,7 +111,7 @@
     "vite": "^5.4.20"
   },
   "prisma": {
-    "seed": "tsx prisma/master_seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

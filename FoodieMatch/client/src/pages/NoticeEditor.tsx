@@ -4,14 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/context/AuthContext";
 import { Notice } from "@shared/schema";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 
 export default function NoticeEditor() {
-  const { user } = useAuth();
   const [match, params] = useRoute("/notices/edit/:id");
   const noticeId = params?.id;
   const isEditing = !!noticeId;
@@ -97,15 +95,6 @@ export default function NoticeEditor() {
       setError((err as Error).message);
     }
   };
-
-  if (user?.role !== 'admin') {
-    return (
-        <div>
-            <Header />
-            <main className="container mx-auto p-4 lg:p-6"><p className="text-lg">권한이 없습니다.</p></main>
-        </div>
-    )
-  }
 
   return (
     <div>

@@ -1,99 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
+import apiClient from './apiConfig';
 import { Button } from '../../components/ui/button';
-import { Calendar } from '../../components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '../../lib/utils';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
-const fetchReports = async (startDate, endDate) => {
-  const params = new URLSearchParams();
-  if (startDate) params.append('startDate', startDate.toISOString());
-  if (endDate) params.append('endDate', endDate.toISOString());
+const ReportListView = ({ onSelectReport }) => {
+    const [reports, setReports] = useState([]);
+    const [teams, setTeams] = useState([]);
+    const [filters, setFilters] = useState({
+        startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().slice(0, 10),
+        endDate: new Date().toISOString().slice(0, 10),
+        teamId: ''
+    });
+    const [loading, setLoading] = useState(false);
 
-  const response = await fetch(`/api/daily-reports?${params.toString()}`);
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-  return response.json();
+    useEffect(() => {
+        apiClient.get('/api/teams')
+            .then(response => setTeams(response.data))
+            .catch(error => console.error("Error fetching teams:", error));
+    }, []);
+
+    const fetchReports = useCallback(() => {
+        setLoading(true);
+        apiClient.get('/api/reports', { params: filters })
+            .then(response => setReports(response.data))
+            .catch(error => console.error("Error fetching reports:", error))
+            .finally(() => setLoading(false));
+    }, [filters]);
+
+    useEffect(() => {
+        if (filters.startDate && filters.endDate) {
+            fetchReports();
+        } else {
+            setReports([]);
+        }
+    }, [filters, fetchReports]);
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-3xl font-bold tracking-tight">제출된 점검표 목록</h2>
+            <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="startDate">시작일:</Label>
+                    <Input
+                        id="startDate"
+                        type="date"
+                        name="startDate"
+                        value={filters.startDate}
+                        onChange={handleFilterChange}
+                        className="w-48"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="endDate">종료일:</Label>
+                    <Input
+                        id="endDate"
+                        type="date"
+                        name="endDate"
+                        value={filters.endDate}
+                        onChange={handleFilterChange}
+                        className="w-48"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="team">팀:</Label>
+                    <select
+                        id="team"
+                        name="teamId"
+                        value={filters.teamId}
+                        onChange={handleFilterChange}
+                        className="flex h-10 w-48 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <option value="">모든 팀</option>
+                        {Array.isArray(teams) && teams.map(team => (
+                            <option key={team.id} value={team.id}>{team.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+            {loading ? (
+                <p>목록을 불러오는 중...</p>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {reports.length > 0 ? reports.map(report => (
+                        <Card key={report.id} className="flex flex-col">
+                            <CardHeader>
+                                <CardTitle>점검표 #{report.id}</CardTitle>
+                                <CardDescription>{new Date(report.reportDate).toLocaleDateString()}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="text-sm text-muted-foreground flex-grow">
+                                <p><b>팀:</b> {report.team?.name}</p>
+                                <p><b>작성자:</b> {report.managerName}</p>
+                            </CardContent>
+                            <CardFooter>
+                                <Button onClick={() => onSelectReport(report.id)} className="w-full">
+                                    상세 보기
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )) : (
+                        <div className="col-span-full text-center text-muted-foreground py-10">
+                            <p>선택한 기간에 해당하는 점검표가 없습니다.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };
 
-export default function ReportListView({ onSelectReport }) {
-  const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)));
-  const [endDate, setEndDate] = useState(new Date());
-
-  const { data: reports, isLoading, error, refetch } = useQuery({
-    queryKey: ['dailyReports', startDate, endDate],
-    queryFn: () => fetchReports(startDate, endDate),
-  });
-
-  const handleSearch = () => {
-    refetch();
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2 items-center p-4 border rounded-lg">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "w-[280px] justify-start text-left font-normal",
-                !startDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {startDate ? format(startDate, "PPP") : <span>시작일 선택</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={setStartDate}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-        <span className='mx-2'>~</span>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "w-[280px] justify-start text-left font-normal",
-                !endDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {endDate ? format(endDate, "PPP") : <span>종료일 선택</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={endDate}
-              onSelect={setEndDate}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-        <Button onClick={handleSearch} className="w-full sm:w-auto">조회</Button>
-      </div>
-
-      {isLoading && <p>로딩 중...</p>}
-      {error && <p>오류: {error.message}</p>}
-      <ul className="space-y-2">
-        {reports && reports.map(report => (
-          <li key={report.id} onClick={() => onSelectReport(report.id)} className="p-3 border rounded-md hover:bg-secondary cursor-pointer">
-            <p className="font-semibold">{report.team.name} - {new Date(report.reportDate).toLocaleDateString()}</p>
-            <p className="text-sm text-muted-foreground">작성자: {report.writerName}</p>
-          </li>
-        ))}
-        {reports && reports.length === 0 && <p>해당 기간에 작성된 보고서가 없습니다.</p>}
-      </ul>
-    </div>
-  );
-}
+export default ReportListView;

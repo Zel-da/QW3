@@ -5,12 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 
+import { useAuth } from "@/context/AuthContext";
+import { useLocation } from "wouter";
+
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
   const [error, setError] = useState('');
+  const [, setLocation] = useLocation();
+  const { refreshUser } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,8 +38,13 @@ export default function LoginPage() {
         throw new Error(data.message || '로그인에 실패했습니다.');
       }
 
-      // Reload the page to update auth state via AuthProvider
-      window.location.href = '/';
+      // Refresh the user context to get the new session data
+      await refreshUser();
+
+      // Handle redirect after login
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectTo = searchParams.get('redirect') || '/';
+      setLocation(redirectTo);
 
     } catch (err) {
       setError((err as Error).message);

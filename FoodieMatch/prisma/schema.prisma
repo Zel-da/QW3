@@ -7,26 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      Role     @default(worker)
-  createdAt DateTime @default(now())
-  teamId    Int?
-  team      Team?    @relation(fields: [teamId], references: [id])
-  notices   Notice[]
-
-  @@map("User")
+// Enum for User Roles
+enum Role {
+  ADMIN         // 전체 관리자
+  SAFETY_TEAM   // 안전보건팀 (교육 콘텐츠 관리)
+  TEAM_LEADER   // 팀장 (팀원 관리, TBM 작성)
+  WORKER        // 일반 작업자 (교육 수강, 서명)
+  OFFICE_WORKER // 사무직 (서명 예외)
 }
 
-enum Role {
-  admin
-  safety_team
-  team_leader
-  worker
-  office_worker
+// Enum for Action Item Status
+enum ActionStatus {
+  PENDING     // 조치 대기
+  IN_PROGRESS // 조치 중
+  COMPLETED   // 조치 완료
+  REVIEW      // 검토 필요
+}
+
+// Consolidated User Model
+model User {
+  id               String            @id @default(uuid())
+  username         String            @unique
+  name             String?           // User's full name
+  email            String?           @unique
+  password         String?           // Optional for workers without login
+  role             Role              @default(WORKER)
+  site             String?           // e.g., Asan, Hwaseong
+  teamId           Int?              // Relation to Team
+  createdAt        DateTime          @default(now())
+
+  team             Team?             @relation("TeamMembers", fields: [teamId], references: [id])
+  ledTeams         Team[]            @relation("TeamLeader") // Back-relation for teams led by this user
+  notices          Notice[]
+  createdApprovals MonthlyApproval[] @relation("Approver")
+  signatures       ReportSignature[]
+  comments         Comment[]
+  reportDetails    ReportDetail[]
+
+  @@index([teamId])
 }
 
 model Notice {
@@ -34,18 +52,36 @@ model Notice {
   title          String
   content        String
   authorId       String
+  category       String   @default("GENERAL") // e.g., GENERAL, SAFETY_CHECK_DAY
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   isActive       Boolean  @default(true)
   viewCount      Int      @default(0)
   imageUrl       String?
   attachmentUrl  String?
   attachmentName String?
   author         User     @relation(fields: [authorId], references: [id])
+  comments       Comment[]
 
   @@index([authorId])
 }
 
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  imageUrl  String?
+  authorId  String
+  noticeId  String
+  createdAt DateTime @default(now())
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  notice    Notice   @relation(fields: [noticeId], references: [id])
+
+  @@index([authorId])
+  @@index([noticeId])
+}
+
+// Models for Safety Education (No changes proposed for now)
 model Course {
   id              String           @id @default(uuid())
   title           String
@@ -117,32 +153,27 @@ model Certificate {
   @@index([courseId])
 }
 
+// --- TBM & Team Management Models ---
+
 model Team {
-  id                 Int                 @id @default(autoincrement()) @map("TeamID")
-  name               String?             @map("TeamName")
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  leaderId           String?             // Team Leader
+
+  leader             User?               @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  members            User[]              @relation("TeamMembers")
   checklistTemplates ChecklistTemplate[]
   dailyReports       DailyReport[]
-  users              TbmUser[]
-  loginUsers         User[] // This is the new field for the back-relation
+  monthlyApprovals   MonthlyApproval[]
 
   @@map("Teams")
 }
 
-model TbmUser {
-  id               Int               @id @default(autoincrement()) @map("UserID")
-  name             String?           @map("UserName")
-  teamId           Int               @map("TeamID")
-  reportSignatures ReportSignature[]
-  team             Team              @relation(fields: [teamId], references: [id])
-
-  @@index([teamId])
-  @@map("Users")
-}
-
 model ChecklistTemplate {
-  id            Int            @id @default(autoincrement()) @map("TemplateID")
-  name          String?        @map("TemplateName")
-  teamId        Int            @map("TeamID")
+  id            Int            @id @default(autoincrement())
+  name          String
+  teamId        Int
+
   team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   templateItems TemplateItem[]
 
@@ -151,26 +182,29 @@ model ChecklistTemplate {
 }
 
 model TemplateItem {
-  id            Int               @id @default(autoincrement()) @map("ItemID")
-  templateId    Int               @map("TemplateID")
-  category      String?           @map("Category")
-  subCategory   String?           @map("SubCategory")
-  description   String?           @map("Description")
-  displayOrder  Int               @default(0) @map("DisplayOrder")
-  reportDetails ReportDetail[]
+  id            Int               @id @default(autoincrement())
+  templateId    Int
+  category      String
+  subCategory   String?
+  description   String
+  displayOrder  Int               @default(0)
+
   template      ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reportDetails ReportDetail[]
 
   @@index([templateId])
   @@map("TemplateItems")
 }
 
 model DailyReport {
-  id               Int               @id @default(autoincrement()) @map("ReportID")
-  teamId           Int               @map("TeamID")
-  reportDate       DateTime          @map("ReportDate")
-  managerName      String?           @map("ManagerName")
-  remarks          String?           @map("Remarks")
-  managerSignatureImage String?
+  id               Int               @id @default(autoincrement())
+  teamId           Int
+  reportDate       DateTime
+  managerName      String?           // This could be derived from User going forward
+  remarks          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
   team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
@@ -180,30 +214,58 @@ model DailyReport {
 }
 
 model ReportDetail {
-  id         Int          @id @default(autoincrement()) @map("DetailID")
-  reportId   Int          @map("ReportID")
-  itemId     Int          @map("ItemID")
-  checkState String?      @map("CheckState")
-  photoUrl   String?
-  comment    String?
-  item       TemplateItem @relation(fields: [itemId], references: [id])
-  report     DailyReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id                Int           @id @default(autoincrement())
+  reportId          Int
+  itemId            Int
+  checkState        String?       // "O", "△", "X"
+  authorId          String?       // New: User who made this check
+
+  // New fields for photo and action items
+  photoUrl          String?
+  actionDescription String?
+  actionStatus      ActionStatus? @default(PENDING)
+
+  item              TemplateItem  @relation(fields: [itemId], references: [id])
+  report            DailyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author            User?         @relation(fields: [authorId], references: [id])
 
   @@index([reportId])
   @@index([itemId])
+  @@index([authorId])
   @@map("ReportDetails")
 }
 
 model ReportSignature {
-  id             Int         @id @default(autoincrement()) @map("SignatureID")
-  reportId       Int         @map("ReportID")
-  userId         Int         @map("UserID")
-  signedAt       DateTime    @default(now()) @map("SignedAt")
-  signatureImage String?     @map("SignatureImage")
+  id             Int         @id @default(autoincrement())
+  reportId       Int
+  userId         String      // Changed to String to match new User model ID
+  signedAt       DateTime    @default(now())
+  signatureImage String?     // Kept here for historical signatures, new ones can link to User.signature
+
   report         DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user           TbmUser     @relation(fields: [userId], references: [id])
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
   @@index([userId])
   @@map("ReportSignatures")
+}
+
+// New model for Monthly TBM Approval
+model MonthlyApproval {
+  id          String   @id @default(uuid())
+  teamId      Int
+  year        Int
+  month       Int
+  status      String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
+  pdfUrl      String?
+  approverId  String?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+
+  team        Team     @relation(fields: [teamId], references: [id])
+  approver    User?    @relation("Approver", fields: [approverId], references: [id])
+
+  @@unique([teamId, year, month])
+  @@index([teamId])
+  @@index([approverId])
 }

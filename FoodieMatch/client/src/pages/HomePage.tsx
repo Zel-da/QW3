@@ -236,7 +236,7 @@ export default function HomePage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="text-2xl md:text-3xl">공지사항</CardTitle>
-            {user?.role === 'admin' && (
+            {user?.role === 'ADMIN' && (
               <Button asChild className="text-base h-12 min-w-[140px]">
                 <Link href="/notices/new">새 공지사항 작성</Link>
               </Button>
