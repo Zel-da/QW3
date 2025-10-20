@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Site = 'Asan' | 'Hwaseong';
+export type Site = '아산' | '화성';
 
 interface SiteState {
   site: Site;
@@ -8,6 +8,6 @@ interface SiteState {
 }
 
 export const useSite = create<SiteState>((set) => ({
-  site: 'Asan', // Default site
+  site: '아산', // Default site
   setSite: (site) => set({ site }),
 }));

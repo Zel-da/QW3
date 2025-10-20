@@ -21,6 +21,18 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
         }
     }, [reportId]);
 
+    const handleDelete = async () => {
+        if (window.confirm('정말로 이 점검표를 삭제하시겠습니까?')) {
+            try {
+                await apiClient.delete(`/api/reports/${reportId}`);
+                alert('삭제되었습니다.');
+                onBackToList(); // Go back to the list view
+            } catch (err) {
+                setError('삭제 중 오류가 발생했습니다.');
+            }
+        }
+    };
+
     if (loading) return <p>상세 정보를 불러오는 중...</p>;
     if (error) return <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>;
     if (!report) return <p>표시할 정보가 없습니다.</p>;
@@ -29,7 +41,10 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={onBackToList}><ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기</Button>
-                <Button onClick={() => onModify(report.id)}>이 점검표 수정하기</Button>
+                <div className="flex gap-2">
+                    <Button onClick={() => onModify(report.id)}>이 점검표 수정하기</Button>
+                    <Button variant="destructive" onClick={handleDelete}>삭제</Button>
+                </div>
             </div>
             <Card>
                 <CardHeader>

@@ -16,6 +16,7 @@ export interface User {
   email?: string | null;
   role: Role;
   teamId?: number | null;
+  site?: string | null;
 }
 
 export interface Notice {
@@ -73,6 +74,53 @@ export const insertUserSchema = z.object({
   email: z.string().email("올바른 이메일 주소를 입력하세요."),
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
 });
+
+export interface Team {
+  id: number;
+  name: string;
+  site?: string | null;
+  leaderId?: string | null;
+  members?: User[];
+}
+
+export interface Assessment {
+  id: string;
+  courseId: string;
+  question: string;
+  options: string;
+  correctAnswer: number;
+  difficulty: string;
+}
+
+export interface UserAssessment {
+  id: string;
+  userId: string;
+  courseId: string;
+  score: number;
+  totalQuestions: number;
+  passed: boolean;
+  attemptNumber: number;
+  completedAt: Date;
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  courseId: string;
+  certificateUrl: string;
+  issuedAt: Date;
+}
+
+export interface DailyReport {
+  id: number;
+  reportDate: Date;
+  // Add other fields as needed
+}
+
+export interface ReportDetail {
+  id: number;
+  // Add other fields as needed
+}
 
 // Other interfaces (Assessment, Certificate, etc.) would go here
 // For brevity, they are omitted but should match the Prisma schema

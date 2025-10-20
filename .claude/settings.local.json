@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(node analyze_excel.js)",
+      "Bash(npm install exceljs)",
+      "Bash(npm run dev)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5001)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

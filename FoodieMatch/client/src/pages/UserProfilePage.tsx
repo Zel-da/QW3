@@ -105,7 +105,7 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (userProfile) {
       setName(userProfile.name || '');
-      setSite(userProfile.site || 'Asan');
+      setSite(userProfile.site || '아산');
       setIsInitialized(true);
     }
   }, [userProfile]);
@@ -206,8 +206,8 @@ export default function UserProfilePage() {
                                 <SelectValue placeholder="현장 선택" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Asan">아산</SelectItem>
-                                <SelectItem value="Hwaseong">화성</SelectItem>
+                                <SelectItem value="아산">아산</SelectItem>
+                                <SelectItem value="화성">화성</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

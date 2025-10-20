@@ -9,9 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import type { User, Team } from '@shared/schema';
 
-// API Fetching Functions
-const fetchTeams = async (): Promise<Team[]> => {
+const fetchAllTeams = async (): Promise<Team[]> => {
   const res = await fetch('/api/teams');
+  if (!res.ok) throw new Error('Failed to fetch teams');
+  return res.json();
+};
+
+const fetchTeams = async (site: string): Promise<Team[]> => {
+  const res = await fetch(`/api/teams?site=${site}`);
   if (!res.ok) throw new Error('Failed to fetch teams');
   return res.json();
 };
@@ -69,9 +74,9 @@ export default function TeamManagementPage() {
 
   // Queries
   const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ['teams'],
-    queryFn: fetchTeams,
-    enabled: currentUser?.role === 'ADMIN',
+    queryKey: ['teams', currentUser?.role === 'ADMIN' ? 'all' : currentUser?.site],
+    queryFn: () => currentUser?.role === 'ADMIN' ? fetchAllTeams() : fetchTeams(currentUser!.site!),
+    enabled: !!currentUser,
   });
 
   const { data: teamData, isLoading: teamDataLoading } = useQuery<Team & { members: User[] }>({

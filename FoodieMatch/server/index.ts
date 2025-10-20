@@ -1,10 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('SESSION_SECRET environment variable must be set in production');
+}
+
+app.set('trust proxy', 1);
+
+app.use(session({
+  secret: sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', 
+    httpOnly: true, 
+    maxAge: 1000 * 60 * 60 * 24,
+    sameSite: 'lax'
+  }
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();

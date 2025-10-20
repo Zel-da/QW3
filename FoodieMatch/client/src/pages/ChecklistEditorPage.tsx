@@ -41,9 +41,7 @@ export default function ChecklistEditorPage() {
     queryKey: ['checklistTemplate', selectedTeam],
     queryFn: () => fetchTemplate(parseInt(selectedTeam!)),
     enabled: !!selectedTeam,
-    onSuccess: (data) => {
-      setEditingItems(data.templateItems || []);
-    },
+
   });
 
   useEffect(() => {

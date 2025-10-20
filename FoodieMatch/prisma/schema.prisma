@@ -7,23 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum for User Roles
-enum Role {
-  ADMIN         // 전체 관리자
-  SAFETY_TEAM   // 안전보건팀 (교육 콘텐츠 관리)
-  TEAM_LEADER   // 팀장 (팀원 관리, TBM 작성)
-  WORKER        // 일반 작업자 (교육 수강, 서명)
-  OFFICE_WORKER // 사무직 (서명 예외)
-}
-
-// Enum for Action Item Status
-enum ActionStatus {
-  PENDING     // 조치 대기
-  IN_PROGRESS // 조치 중
-  COMPLETED   // 조치 완료
-  REVIEW      // 검토 필요
-}
-
 // Consolidated User Model
 model User {
   id               String            @id @default(uuid())
@@ -31,13 +14,13 @@ model User {
   name             String?           // User's full name
   email            String?           @unique
   password         String?           // Optional for workers without login
-  role             Role              @default(WORKER)
+  role             String            @default("WORKER")
   site             String?           // e.g., Asan, Hwaseong
-  teamId           Int?              // Relation to Team
+  teamId           Int?
   createdAt        DateTime          @default(now())
 
   team             Team?             @relation("TeamMembers", fields: [teamId], references: [id])
-  ledTeams         Team[]            @relation("TeamLeader") // Back-relation for teams led by this user
+  ledTeams         Team[]            @relation("TeamLeader")
   notices          Notice[]
   createdApprovals MonthlyApproval[] @relation("Approver")
   signatures       ReportSignature[]
@@ -48,19 +31,19 @@ model User {
 }
 
 model Notice {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   title          String
   content        String
   authorId       String
-  category       String   @default("GENERAL") // e.g., GENERAL, SAFETY_CHECK_DAY
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  isActive       Boolean  @default(true)
-  viewCount      Int      @default(0)
+  category       String    @default("GENERAL")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  isActive       Boolean   @default(true)
+  viewCount      Int       @default(0)
   imageUrl       String?
   attachmentUrl  String?
   attachmentName String?
-  author         User     @relation(fields: [authorId], references: [id])
+  author         User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments       Comment[]
 
   @@index([authorId])
@@ -75,13 +58,12 @@ model Comment {
   createdAt DateTime @default(now())
 
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  notice    Notice   @relation(fields: [noticeId], references: [id])
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
 
   @@index([authorId])
   @@index([noticeId])
 }
 
-// Models for Safety Education (No changes proposed for now)
 model Course {
   id              String           @id @default(uuid())
   title           String
@@ -108,7 +90,7 @@ model UserProgress {
   currentStep  Int      @default(1)
   timeSpent    Int      @default(0)
   lastAccessed DateTime @default(now())
-  course       Course   @relation(fields: [courseId], references: [id])
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([courseId])
@@ -121,7 +103,7 @@ model Assessment {
   options       String
   correctAnswer Int
   difficulty    String @default("medium")
-  course        Course @relation(fields: [courseId], references: [id])
+  course        Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
 }
@@ -135,7 +117,7 @@ model UserAssessment {
   passed         Boolean
   attemptNumber  Int      @default(1)
   completedAt    DateTime @default(now())
-  course         Course   @relation(fields: [courseId], references: [id])
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([courseId])
@@ -147,13 +129,11 @@ model Certificate {
   courseId       String
   certificateUrl String
   issuedAt       DateTime @default(now())
-  course         Course   @relation(fields: [courseId], references: [id])
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([courseId])
 }
-
-// --- TBM & Team Management Models ---
 
 model Team {
   id                 Int                 @id @default(autoincrement())
@@ -201,13 +181,13 @@ model DailyReport {
   id               Int               @id @default(autoincrement())
   teamId           Int
   reportDate       DateTime
-  managerName      String?           // This could be derived from User going forward
+  managerName      String?
   remarks          String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  site             String? // e.g., Asan, Hwaseong
+  site             String?
 
-  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team             Team              @relation(fields: [teamId], references: [id], onDelete: NoAction)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
 
@@ -219,15 +199,14 @@ model ReportDetail {
   id                Int           @id @default(autoincrement())
   reportId          Int
   itemId            Int
-  checkState        String?       // "O", "△", "X"
-  authorId          String?       // New: User who made this check
+  checkState        String?
+  authorId          String?
 
-  // New fields for photo and action items
   photoUrl          String?
   actionDescription String?
-  actionStatus      ActionStatus? @default(PENDING)
+  actionStatus      String?       @default("PENDING")
 
-  item              TemplateItem  @relation(fields: [itemId], references: [id])
+  item              TemplateItem  @relation(fields: [itemId], references: [id], onDelete: NoAction)
   report            DailyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   author            User?         @relation(fields: [authorId], references: [id])
 
@@ -240,9 +219,9 @@ model ReportDetail {
 model ReportSignature {
   id             Int         @id @default(autoincrement())
   reportId       Int
-  userId         String      // Changed to String to match new User model ID
+  userId         String
   signedAt       DateTime    @default(now())
-  signatureImage String?     // Kept here for historical signatures, new ones can link to User.signature
+  signatureImage String?
 
   report         DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -252,20 +231,19 @@ model ReportSignature {
   @@map("ReportSignatures")
 }
 
-// New model for Monthly TBM Approval
 model MonthlyApproval {
   id          String   @id @default(uuid())
   teamId      Int
   year        Int
   month       Int
-  status      String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
+  status      String   @default("DRAFT")
   pdfUrl      String?
   approverId  String?
   submittedAt DateTime?
   approvedAt  DateTime?
 
   team        Team     @relation(fields: [teamId], references: [id])
-  approver    User?    @relation("Approver", fields: [approverId], references: [id])
+  approver    User?    @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
 
   @@unique([teamId, year, month])
   @@index([teamId])

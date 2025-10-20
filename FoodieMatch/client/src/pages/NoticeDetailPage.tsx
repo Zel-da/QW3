@@ -166,7 +166,7 @@ export default function NoticeDetailPage() {
                 <div className="space-y-4">
                   <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="댓글을 입력하세요..." required />
                   <Input type="file" accept="image/*" onChange={(e) => setCommentImage(e.target.files ? e.target.files[0] : null)} />
-                  <Button type="submit" disabled={commentMutation.isLoading}>댓글 작성</Button>
+                  <Button type="submit" disabled={commentMutation.isPending}>댓글 작성</Button>
                 </div>
               </form>
             )}

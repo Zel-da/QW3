@@ -1,14 +1,12 @@
 import express from "express";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import session from "express-session";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { prisma } from "./db";
-import { z } from "zod";
 import bcrypt from "bcrypt";
 import ExcelJS from "exceljs";
 
@@ -30,42 +28,17 @@ declare module "express-session" {
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // Serve uploaded files statically
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-  // Multer setup for file uploads
   const uploadDir = path.join(__dirname, 'uploads');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
   const upload = multer({ dest: uploadDir });
 
-  const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
-  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
-    throw new Error('SESSION_SECRET environment variable must be set in production');
-  }
-
-  app.use(session({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 1000 * 60 * 60 * 24 }
-  }));
-
-  // Auth middleware
   const requireAuth = (req: any, res: any, next: any) => {
     if (!req.session.user) {
       return res.status(401).json({ message: "인증이 필요합니다" });
-    }
-    next();
-  };
-
-  const requireOwnership = (req: any, res: any, next: any) => {
-    if (!req.session.user) {
-      return res.status(401).json({ message: "인증이 필요합니다" });
-    }
-    if (req.session.user.id !== req.params.id && req.session.user.role !== 'ADMIN') {
-      return res.status(403).json({ message: "권한이 없습니다" });
     }
     next();
   };
@@ -74,29 +47,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, email, password, teamId, name, site } = req.body;
-
       if (!username || !email || !password || !name) {
         return res.status(400).json({ message: "모든 필드를 입력해주세요" });
       }
-
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ username }, { email }]
-        }
-      });
-
+      const existingUser = await prisma.user.findFirst({ where: { OR: [{ username }, { email }] } });
       if (existingUser) {
         return res.status(400).json({ message: "이미 존재하는 사용자명 또는 이메일입니다" });
       }
-
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
         data: {
-          username,
-          name,
-          email,
-          password: hashedPassword,
-          role: 'WORKER', // Corrected role to match the new schema
+          username, name, email, password: hashedPassword, role: 'WORKER',
           teamId: teamId ? parseInt(teamId, 10) : null,
           site: site || null,
         },
@@ -112,24 +73,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-
       if (!username || !password) {
         return res.status(400).json({ message: "사용자명과 비밀번호를 입력해주세요" });
       }
-
       const user = await prisma.user.findUnique({ where: { username } });
-
-      // Also check for password, as some users (TBM workers) might not have one
       if (!user || !user.password) {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
-
       const validPassword = await bcrypt.compare(password, user.password);
-
       if (!validPassword) {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
-
       req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
       res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
     } catch (error) {
@@ -156,1067 +110,592 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // UPLOAD ROUTE
-  app.post("/api/upload", upload.single('file'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded.' });
-    }
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.status(200).json({ url: fileUrl, name: req.file.originalname });
+  // USER MANAGEMENT
+  app.get("/api/users", requireAuth, async (req, res) => {
+    try {
+      const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+      res.json(users);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch users" }); }
   });
 
-  // Get all courses
-  app.get("/api/courses", async (req, res) => {
+  app.get("/api/users/:userId", requireAuth, async (req, res) => {
     try {
-      const courses = await prisma.course.findMany({ where: { isActive: true } });
-      res.json(courses);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch courses" });
-    }
+      const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch user" }); }
   });
 
-  // Get specific course
-  app.get("/api/courses/:id", async (req, res) => {
+  app.post("/api/users", async (req, res) => {
     try {
-      const course = await prisma.course.findUnique({ where: { id: req.params.id } });
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
-      }
-      res.json(course);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch course" });
-    }
+      const { username, email } = req.body;
+      const user = await prisma.user.create({ data: { username, email, name: username, role: 'WORKER' } });
+      res.status(201).json(user);
+    } catch (error) { res.status(500).json({ message: "Failed to create user" }); }
   });
 
-  // Create a new course
-  app.post("/api/courses", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
+  app.put("/api/users/:userId", requireAuth, async (req, res) => {
     try {
-      const course = await prisma.course.create({ data: req.body });
-      res.status(201).json(course);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create course" });
-    }
+      const { name, site, password } = req.body;
+      const data: any = { name, site };
+      if (password) { data.password = await bcrypt.hash(password, 10); }
+      const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data });
+      res.json(updatedUser);
+    } catch (error) { res.status(500).json({ message: "Failed to update user" }); }
   });
 
-  // Update a course
-  app.put("/api/courses/:id", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
+  app.put("/api/users/:userId/role", requireAuth, async (req, res) => {
     try {
-      const course = await prisma.course.update({
-        where: { id: req.params.id },
-        data: req.body,
-      });
-      res.json(course);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update course" });
-    }
+      const { role } = req.body;
+      const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { role } });
+      res.json(updatedUser);
+    } catch (error) { res.status(500).json({ message: "Failed to update role" }); }
   });
 
-  // Delete a course
-  app.delete("/api/courses/:id", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
+  app.put("/api/users/:userId/site", requireAuth, async (req, res) => {
     try {
-      await prisma.course.delete({ where: { id: req.params.id } });
+      const { site } = req.body;
+      const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { site } });
+      res.json(updatedUser);
+    } catch (error) { res.status(500).json({ message: "Failed to update site" }); }
+  });
+
+  app.delete("/api/users/:userId", requireAuth, async (req, res) => {
+    try {
+      await prisma.user.delete({ where: { id: req.params.userId } });
       res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete course" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to delete user" }); }
   });
 
-  // Bulk update assessments for a course
-  app.put("/api/courses/:courseId/assessments", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const { courseId } = req.params;
-      const { questions } = req.body;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.assessment.deleteMany({ where: { courseId: courseId } });
-        await tx.assessment.createMany({
-          data: questions.map((q: any) => ({
-            courseId: courseId,
-            question: q.question,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-          }))
-        });
-      });
-
-      res.status(200).json({ message: "Assessments updated successfully" });
-    } catch (error) {
-      console.error("Failed to update assessments:", error);
-      res.status(500).json({ message: "Failed to update assessments" });
-    }
-  });
-
-  // Bulk create assessments for a course
-  app.post("/api/courses/:courseId/assessments-bulk", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const { courseId } = req.params;
-      const { questions } = req.body;
-
-      const createdAssessments = await prisma.assessment.createMany({
-        data: questions.map((q: any) => ({
-          courseId,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        }))
-      });
-      res.status(201).json(createdAssessments);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create assessments" });
-    }
-  });
-
-  // Get user progress for all courses
-  app.get("/api/users/:userId/progress", requireOwnership, async (req, res) => {
-    try {
-      const progress = await prisma.userProgress.findMany({ 
-        where: { userId: req.params.userId }
-      });
-      res.json(progress);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user progress" });
-    }
-  });
-
-  // Get user progress for specific course
-  app.get("/api/users/:userId/progress/:courseId", requireOwnership, async (req, res) => {
-    try {
-      const progress = await prisma.userProgress.findFirst({ 
-        where: { userId: req.params.userId, courseId: req.params.courseId }
-      });
-      if (!progress) {
-        // To maintain consistency with old MemStorage, don't return 404, return empty/null
-        return res.json(null);
-      }
-      res.json(progress);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch progress" });
-    }
-  });
-
-  // Update user progress
-  app.put("/api/users/:userId/progress/:courseId", requireOwnership, async (req, res) => {
-    try {
-      const progressUpdateSchema = z.object({
-        progress: z.number().min(0).max(100).optional(),
-        currentStep: z.number().min(1).max(3).optional(),
-        timeSpent: z.number().min(0).optional(),
-        completed: z.boolean().optional(),
-      }).partial();
-      
-      const progressData = progressUpdateSchema.parse(req.body);
-      
-      const existing = await prisma.userProgress.findFirst({
-        where: { userId: req.params.userId, courseId: req.params.courseId }
-      });
-      
-      if (!existing) {
-        const newProgress = await prisma.userProgress.create({
-          data: {
-            userId: req.params.userId,
-            courseId: req.params.courseId,
-            progress: progressData.progress,
-            currentStep: progressData.currentStep,
-            timeSpent: progressData.timeSpent,
-            completed: progressData.completed,
-          }
-        });
-        return res.json(newProgress);
-      }
-
-      const updated = await prisma.userProgress.update({
-        where: { id: existing.id },
-        data: { ...progressData, lastAccessed: new Date() }
-      });
-      res.json(updated);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid progress data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to update progress" });
-    }
-  });
-
-  // Get course assessments
-  app.get("/api/courses/:courseId/assessments", async (req, res) => {
-    try {
-      const assessments = await prisma.assessment.findMany({ 
-        where: { courseId: req.params.courseId }
-      });
-      res.json(assessments);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch assessments" });
-    }
-  });
-
-  // Submit assessment
-  app.post("/api/users/:userId/assessments/:courseId", async (req, res) => {
-    try {
-      // Note: We are not using a pre-defined Zod schema here for simplicity in refactoring
-      const assessmentData = {
-        userId: req.params.userId,
-        courseId: req.params.courseId,
-        score: req.body.score,
-        totalQuestions: req.body.totalQuestions,
-        passed: req.body.passed,
-        attemptNumber: req.body.attemptNumber,
-      };
-
-      const result = await prisma.userAssessment.create({ data: assessmentData });
-      
-      // If passed, create certificate
-      if (result.passed) {
-        await prisma.certificate.create({
-          data: {
-            userId: req.params.userId,
-            courseId: req.params.courseId,
-            certificateUrl: `/certificates/${result.id}.pdf`, // Example URL
-          }
-        });
-      }
-
-      res.status(201).json(result);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid assessment data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to submit assessment" });
-    }
-  });
-
-  // Get user certificates
-  app.get("/api/users/:userId/certificates", requireAuth, async (req, res) => {
-    try {
-      const certificates = await prisma.certificate.findMany({ 
-        where: { userId: req.params.userId },
-        include: { course: true } // Include course details
-      });
-      res.json(certificates);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch certificates" });
-    }
-  });
-
-  // Get all user assessments for a user
-  app.get("/api/users/:userId/assessments", requireOwnership, async (req, res) => {
-    try {
-      const assessments = await prisma.userAssessment.findMany({
-        where: { userId: req.params.userId },
-        include: { course: true },
-        orderBy: { completedAt: 'desc' },
-      });
-      res.json(assessments);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user assessments" });
-    }
-  });
-
-  // ==================== TBM API ====================
-  
-  // Get all teams
-  app.get("/api/teams", async (req, res) => {
+  // TEAM MANAGEMENT
+  app.get("/api/teams", requireAuth, async (req, res) => {
     try {
       const { site } = req.query;
-      const where: any = {};
-
-      if (site) {
-        where.site = site as string;
-      }
-
-      const teams = await prisma.team.findMany({
-        where,
-        orderBy: { id: 'asc' }
-      });
+      const whereClause = site ? { site: site as string } : {};
+      const teams = await prisma.team.findMany({ where: whereClause, orderBy: { name: 'asc' } });
       res.json(teams);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch teams" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to fetch teams" }); }
   });
 
-  // Get a single team with members
-  app.get("/api/teams/:id", async (req, res) => {
+  app.get("/api/teams/:teamId", requireAuth, async (req, res) => {
     try {
-      const teamId = parseInt(req.params.id);
-      const team = await prisma.team.findUnique({
-        where: { id: teamId },
-        include: {
-          members: true, // Include members of the team
-        },
-      });
-      if (!team) {
-        return res.status(404).json({ message: "Team not found" });
-      }
+      const team = await prisma.team.findUnique({ where: { id: parseInt(req.params.teamId) }, include: { members: true } });
+      if (!team) return res.status(404).json({ message: "Team not found" });
       res.json(team);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch team" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to fetch team" }); }
   });
 
-  // Get users for a specific team
-    app.get('/api/teams/:id/users', async (req, res) => {
-      try {
-        const users = await prisma.user.findMany({
-          where: { teamId: parseInt(req.params.id) },
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            role: true,
-            teamId: true,
-          },
-        });
-        res.json(users);
-      } catch (error: any) {
-        console.error(`Error fetching users for team ${req.params.id}:`, error);
-        res.status(500).json({
-          message: `Error fetching users for team ${req.params.id}`,
-          error: error.message,
-          stack: error.stack,
-        });
-      }
-    });
-
-  // Add a user to a team
-  app.post("/api/teams/:teamId/members", requireAuth, async (req, res) => {
-    const { teamId } = req.params;
-    const { userId } = req.body;
-    const currentUser = req.session.user;
-
+  app.get("/api/teams/:teamId/template", requireAuth, async (req, res) => {
     try {
-      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId) } });
-      if (!team || (team.leaderId !== currentUser?.id && currentUser?.role !== 'ADMIN')) {
-        return res.status(403).json({ message: "Permission denied" });
-      }
-
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { teamId: parseInt(teamId) },
-      });
-      res.status(201).json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to add user to team" });
-    }
-  });
-
-  // Remove a user from a team
-  app.delete("/api/teams/:teamId/members/:userId", requireAuth, async (req, res) => {
-    const { teamId, userId } = req.params;
-    const currentUser = req.session.user;
-
-    try {
-      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId) } });
-      if (!team || (team.leaderId !== currentUser?.id && currentUser?.role !== 'ADMIN')) {
-        return res.status(403).json({ message: "Permission denied" });
-      }
-
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { teamId: null },
-      });
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to remove user from team" });
-    }
-  });
-
-  // Set team leader
-  app.put("/api/teams/:teamId/leader", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "Permission denied. Admins only." });
-    }
-    try {
-        const { teamId } = req.params;
-        const { userId } = req.body;
-
-        const updatedTeam = await prisma.team.update({
-            where: { id: parseInt(teamId) },
-            data: { leaderId: userId },
-        });
-        res.json(updatedTeam);
-    } catch (error) {
-        res.status(500).json({ message: "Failed to set team leader" });
-    }
-  });
-
-  // Get checklist template with items for a team
-  app.get("/api/teams/:teamId/template", async (req, res) => {
-    try {
-      const teamId = parseInt(req.params.teamId);
+      const { teamId } = req.params;
       const template = await prisma.checklistTemplate.findFirst({
-        where: { teamId: teamId },
-        include: {
-          templateItems: {
-            orderBy: { displayOrder: 'asc' }
-          }
-        }
+        where: { teamId: parseInt(teamId) },
+        include: { templateItems: { orderBy: { displayOrder: 'asc' } } },
       });
-      
       if (!template) {
-        return res.status(404).json({ message: "Template not found for this team" });
+        const emptyTemplate = { templateItems: [] };
+        console.log("Template not found for teamId:", teamId, "Returning:", emptyTemplate);
+        return res.json(emptyTemplate);
       }
+      console.log("Returning template for teamId:", teamId, "Payload:", template);
       res.json(template);
     } catch (error) {
-      console.error('Error fetching template:', error);
-      res.status(500).json({ message: "Failed to fetch template" });
+      console.error(`Error fetching template for team ${req.params.teamId}:`, error);
+      res.status(500).json({ message: "Failed to fetch checklist template" });
     }
   });
 
-  // Update checklist template
-  app.put("/api/checklist-templates/:templateId", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'SAFETY_TEAM') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
+  app.get("/api/teams/:teamId/users", requireAuth, async (req, res) => {
     try {
-      const { templateId } = req.params;
-      const { items } = req.body;
-
-      await prisma.$transaction(async (tx) => {
-        // 1. Delete all existing items for the template
-        await tx.templateItem.deleteMany({ where: { templateId: parseInt(templateId) } });
-
-        // 2. Create new items from the request
-        await tx.templateItem.createMany({
-          data: items.map((item: any, index: number) => ({
-            templateId: parseInt(templateId),
-            category: item.category,
-            description: item.description,
-            displayOrder: index,
-          }))
-        });
-      });
-
-      res.status(200).json({ message: "Template updated successfully" });
-    } catch (error) {
-      console.error('Error updating template:', error);
-      res.status(500).json({ message: "Failed to update template" });
-    }
+      const { teamId } = req.params;
+      const users = await prisma.user.findMany({ where: { teamId: parseInt(teamId) }, orderBy: { name: 'asc' } });
+      res.json(users);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch team users" }); }
   });
 
-  // Get reports (with optional filters)
-  app.get("/api/reports", async (req, res) => {
+  app.post("/api/teams/:teamId/members", requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const updatedUser = await prisma.user.update({ where: { id: userId }, data: { teamId: parseInt(req.params.teamId) } });
+      res.status(201).json(updatedUser);
+    } catch (error) { res.status(500).json({ message: "Failed to add member" }); }
+  });
+
+  app.delete("/api/teams/:teamId/members/:userId", requireAuth, async (req, res) => {
+    try {
+      await prisma.user.update({ where: { id: req.params.userId }, data: { teamId: null } });
+      res.status(204).send();
+    } catch (error) { res.status(500).json({ message: "Failed to remove member" }); }
+  });
+
+  app.put("/api/teams/:teamId/leader", requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const updatedTeam = await prisma.team.update({ where: { id: parseInt(req.params.teamId) }, data: { leaderId: userId } });
+      res.json(updatedTeam);
+    } catch (error) { res.status(500).json({ message: "Failed to set team leader" }); }
+  });
+
+  // NOTICE MANAGEMENT
+  app.get("/api/notices", async (req, res) => {
+    try {
+      const { latest } = req.query;
+      if (latest === 'true') {
+        const notice = await prisma.notice.findFirst({ orderBy: { createdAt: 'desc' } });
+        return res.json(notice);
+      }
+      const notices = await prisma.notice.findMany({ orderBy: { createdAt: 'desc' } });
+      res.json(notices);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch notices" }); }
+  });
+
+  app.get("/api/notices/:noticeId", async (req, res) => {
+    try {
+      const notice = await prisma.notice.findUnique({ where: { id: req.params.noticeId } });
+      if (!notice) return res.status(404).json({ message: "Notice not found" });
+      await prisma.notice.update({ where: { id: req.params.noticeId }, data: { viewCount: { increment: 1 } } });
+      res.json(notice);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch notice" }); }
+  });
+
+  app.post("/api/notices", requireAuth, upload.single('attachment'), async (req, res) => {
+    try {
+      const { title, content, category } = req.body;
+      const newNotice = await prisma.notice.create({
+        data: {
+          title, content, category: category || 'GENERAL', authorId: req.session.user!.id,
+          attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+          attachmentName: req.file ? req.file.originalname : undefined,
+        },
+      });
+      res.status(201).json(newNotice);
+    } catch (error) { res.status(500).json({ message: "Failed to create notice" }); }
+  });
+
+  app.put("/api/notices/:noticeId", requireAuth, async (req, res) => {
+    try {
+      const { title, content, imageUrl, attachmentUrl, attachmentName } = req.body;
+      const updatedNotice = await prisma.notice.update({
+        where: { id: req.params.noticeId },
+        data: { title, content, imageUrl, attachmentUrl, attachmentName },
+      });
+      res.json(updatedNotice);
+    } catch (error) { res.status(500).json({ message: "Failed to update notice" }); }
+  });
+
+  app.delete("/api/notices/:noticeId", requireAuth, async (req, res) => {
+    try {
+      await prisma.notice.delete({ where: { id: req.params.noticeId } });
+      res.status(204).send();
+    } catch (error) { res.status(500).json({ message: "Failed to delete notice" }); }
+  });
+
+  app.get("/api/notices/:noticeId/comments", async (req, res) => {
+    try {
+      const comments = await prisma.comment.findMany({ where: { noticeId: req.params.noticeId }, include: { author: true }, orderBy: { createdAt: 'asc' } });
+      res.json(comments);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch comments" }); }
+  });
+
+  app.post("/api/notices/:noticeId/comments", requireAuth, async (req, res) => {
+    try {
+      const { content, imageUrl } = req.body;
+      const newComment = await prisma.comment.create({
+        data: { content, imageUrl, noticeId: req.params.noticeId, authorId: req.session.user!.id },
+        include: { author: true },
+      });
+      res.status(201).json(newComment);
+    } catch (error) { res.status(500).json({ message: "Failed to create comment" }); }
+  });
+
+  // TBM & REPORT MANAGEMENT
+  app.get("/api/reports", requireAuth, async (req, res) => {
     try {
       const { startDate, endDate, teamId, site } = req.query;
       const where: any = {};
-
-      if (startDate) {
-        const queryStartDate = new Date(startDate as string);
+      if (site) { where.site = site as string; }
+      if (teamId) { where.teamId = parseInt(teamId as string); }
+      if (startDate && endDate) {
         where.reportDate = {
-          ...where.reportDate,
-          gte: new Date(queryStartDate.setHours(0, 0, 0, 0)),
+          gte: new Date(startDate as string),
+          lte: new Date(new Date(endDate as string).setHours(23, 59, 59, 999)),
         };
       }
-
-      if (endDate) {
-        const queryEndDate = new Date(endDate as string);
-        where.reportDate = {
-          ...where.reportDate,
-          lte: new Date(queryEndDate.setHours(23, 59, 59, 999)),
-        };
-      }
-
-      if (teamId) {
-        where.teamId = parseInt(teamId as string);
-      }
-
-      if (site) {
-        where.site = site as string;
-      }
-
-      const reports = await prisma.dailyReport.findMany({
-        where,
-        include: {
-          team: true,
-          reportDetails: {
-            include: {
-              item: true
-            }
-          },
-          reportSignatures: {
-            include: {
-              user: true
-            }
-          }
-        },
-        orderBy: { reportDate: 'desc' }
-      });
-      
+      const reports = await prisma.dailyReport.findMany({ where, include: { team: true }, orderBy: { reportDate: 'desc' } });
       res.json(reports);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch reports" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to fetch reports" }); }
   });
 
-  // Get monthly report
   app.get("/api/reports/monthly", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
-      const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
-      const endDate = new Date(parseInt(year as string), parseInt(month as string), 0, 23, 59, 59, 999);
-
-      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
-
-      const dailyReports = await prisma.dailyReport.findMany({
+      const reports = await prisma.dailyReport.findMany({
         where: {
           teamId: parseInt(teamId as string),
-          reportDate: { gte: startDate, lte: endDate },
+          reportDate: {
+            gte: new Date(parseInt(year as string), parseInt(month as string) - 1, 1),
+            lt: new Date(parseInt(year as string), parseInt(month as string), 1),
+          },
         },
-        include: {
-          reportDetails: { include: { item: true, author: { select: { name: true } } } },
-          reportSignatures: { include: { user: true } },
-        },
+        include: { reportDetails: true },
         orderBy: { reportDate: 'asc' },
+      });
+      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
+      const checklistTemplate = await prisma.checklistTemplate.findFirst({
+        where: { teamId: parseInt(teamId as string) },
+        include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
       });
 
       res.json({ 
-          teamName: team?.name,
-          year: parseInt(year as string),
-          month: parseInt(month as string),
-          dailyReports 
+        dailyReports: reports, 
+        teamName: team?.name,
+        year: year,
+        month: month,
+        checklistTemplate: checklistTemplate,
       });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch monthly report" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to fetch monthly report" }); }
   });
 
-  // Get monthly report for EXCEL (Final Fix)
   app.get("/api/reports/monthly-excel", requireAuth, async (req, res) => {
     try {
-      const { teamId, year, month, site } = req.query;
+      const { teamId, year, month } = req.query;
+      const currentUser = req.session.user;
       if (!teamId || !year || !month) {
         return res.status(400).json({ message: "teamId, year, and month are required." });
       }
-
-      const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
-      const endDate = new Date(parseInt(year as string), parseInt(month as string), 0, 23, 59, 59, 999);
-
-      // 1. Fetch Data
+      const yearNum = parseInt(year as string), monthNum = parseInt(month as string);
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
       const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
       if (!team) return res.status(404).json({ message: "Team not found" });
-
       const dailyReports = await prisma.dailyReport.findMany({
         where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
-        include: {
-          reportDetails: { include: { item: true } },
-          reportSignatures: { include: { user: { select: { name: true } } } },
-        },
+        include: { reportDetails: { include: { item: true } } },
         orderBy: { reportDate: 'asc' },
       });
-
       const checklistTemplate = await prisma.checklistTemplate.findFirst({
         where: { teamId: parseInt(teamId as string) },
         include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
       });
       if (!checklistTemplate) return res.status(404).json({ message: "Checklist template not found" });
-
-      // 2. Create Workbook
+      
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'FoodieMatch Safety';
-      workbook.created = new Date();
+      const sheet = workbook.addWorksheet('TBM 활동일지');
+      const font = { name: '맑은 고딕', size: 11 };
+      const boldFont = { ...font, bold: true };
+      const titleFont = { name: '맑은 고딕', size: 20, bold: true };
+      const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
+      const centerAlignment = { vertical: 'middle' as const, horizontal: 'center' as const, wrapText: true };
 
-      // --- SHEET 1: Monthly Status ---
-      const statusSheet = workbook.addWorksheet('월별 점검 현황');
-      const daysInMonth = new Date(parseInt(year as string), parseInt(month as string), 0).getDate();
+      sheet.getColumn(1).width = 15; sheet.getColumn(2).width = 59;
+      for (let i = 3; i <= 33; i++) { sheet.getColumn(i).width = 4; }
 
-      statusSheet.addRow([`TBM 월별 점검 보고서 (${year}년 ${month}월)`]);
-      statusSheet.addRow([`현장: ${site || team.site || 'N/A'}`, `팀명: ${team.name}`]);
-      statusSheet.addRow([]);
+      sheet.mergeCells('A1:P4'); sheet.getCell('A1').value = `${year}년 ${month}월 TBM 실시 및 안전점검 활동 일지`;
+      sheet.mergeCells('Q1:S4'); sheet.mergeCells('T1:Z2'); sheet.getCell('T1').value = '관리감독자';
+      sheet.mergeCells('AA1:AG2'); sheet.getCell('AA1').value = '승인/확인';
+      sheet.mergeCells('T3:Z4'); sheet.mergeCells('AA3:AG4');
 
-      const headerRow = ['구분', '점검내용'];
-      for (let i = 1; i <= daysInMonth; i++) headerRow.push(String(i));
-      statusSheet.addRow(headerRow);
+      sheet.getRow(5).height = 21;
+      sheet.mergeCells('A5:B5'); sheet.getCell('A5').value = `부서명: ${team.name}`;
+      sheet.mergeCells('C5:S5'); sheet.getCell('C5').value = '※ 범례 : ○ 양호, △ 관찰, X 불량';
+      sheet.mergeCells('T5:AG5'); sheet.getCell('T5').value = `작성자: ${currentUser?.name || ''}`;
 
-      const remarks: any[] = [];
-      checklistTemplate.templateItems.forEach(item => {
-        const rowData = [item.category, item.description];
-        for (let day = 1; day <= daysInMonth; day++) {
-          // Based on user feedback, the data is already filtered by month, so only match the day.
-          const reportForDay = dailyReports.find(report => {
-            const d = new Date(report.reportDate);
-            return d.getDate() === day;
-          });
+      sheet.getRow(6).height = 20; sheet.getRow(7).height = 20;
+      sheet.mergeCells('A6:A7'); sheet.getCell('A6').value = '구분';
+      sheet.mergeCells('B6:B7'); sheet.getCell('B6').value = '점검내용';
+      sheet.mergeCells('C6:AG6'); sheet.getCell('C6').value = '날짜';
 
-          let status = '';
-          if (reportForDay) {
-            const detail = reportForDay.reportDetails.find(d => d.itemId === item.id);
-            if (detail) {
-              switch (detail.checkState) {
-                case 'OK': status = 'O'; break;
-                case 'WARN': status = '△'; break;
-                case 'NG': status = 'X'; break;
-              }
-              if (detail.checkState === 'WARN' || detail.checkState === 'NG') {
-                remarks.push({
-                  date: new Date(reportForDay.reportDate).toLocaleDateString(),
-                  checkItem: item.description,
-                  problem: detail.actionDescription || '',
-                  action: '', // Placeholder
-                  confirmation: '', // Placeholder
-                  photoUrl: detail.photoUrl
-                });
+      const lastDayOfMonth = new Date(yearNum, monthNum, 0).getDate();
+      const dateColMap: Record<number, number> = {};
+      for (let day = 1; day <= lastDayOfMonth; day++) {
+        const col = 2 + day;
+        if (col > 33) break;
+        sheet.getCell(7, col).value = day;
+        dateColMap[day] = col;
+      }
+
+      const detailsMap = new Map<string, string>();
+      dailyReports.forEach(report => {
+        const day = new Date(report.reportDate).getDate();
+        report.reportDetails.forEach(detail => {
+          const key = `${detail.itemId}-${day}`;
+          detailsMap.set(key, detail.checkState || '');
+        });
+      });
+
+      let currentRow = 8;
+      const remarksData: any[] = [];
+      if (checklistTemplate.templateItems.length > 0) {
+        const categoryGroups: { [key: string]: any[] } = {};
+        checklistTemplate.templateItems.forEach(item => {
+          if (!categoryGroups[item.category]) { categoryGroups[item.category] = []; }
+          categoryGroups[item.category].push(item);
+        });
+
+        Object.keys(categoryGroups).forEach(category => {
+          const items = categoryGroups[category];
+          const categoryStartRow = currentRow;
+          items.forEach(item => {
+            sheet.getCell(currentRow, 2).value = item.description;
+            for (const day in dateColMap) {
+              const col = dateColMap[day];
+              const key = `${item.id}-${day}`;
+              if (detailsMap.has(key)) {
+                const status = detailsMap.get(key);
+                sheet.getCell(currentRow, col).value = status;
+
+                if (status === 'X' || status === '△') {
+                    const reportForDay = dailyReports.find(r => new Date(r.reportDate).getDate() === parseInt(day));
+                    const detailForDay = reportForDay?.reportDetails.find(d => d.itemId === item.id);
+                    remarksData.push({
+                        date: new Date(reportForDay!.reportDate).toLocaleDateString(),
+                        problem: item.description,
+                        prediction: detailForDay?.actionDescription || ''
+                    });
+                }
               }
             }
-          }
-          rowData.push(status);
+            currentRow++;
+          });
+          sheet.mergeCells(`A${categoryStartRow}:A${currentRow - 1}`);
+          sheet.getCell(categoryStartRow, 1).value = category;
+        });
+      }
+
+      const footerStartRow = currentRow;
+      sheet.getRow(footerStartRow).height = 21;
+      sheet.getCell(footerStartRow, 1).value = '날짜'; sheet.getCell(footerStartRow, 2).value = '문제점';
+      sheet.mergeCells(`C${footerStartRow}:L${footerStartRow}`); sheet.getCell(footerStartRow, 3).value = '위험예측 사항';
+      sheet.mergeCells(`M${footerStartRow}:V${footerStartRow}`); sheet.getCell(footerStartRow, 13).value = '조치사항';
+      sheet.mergeCells(`W${footerStartRow}:Z${footerStartRow}`); sheet.getCell(footerStartRow, 23).value = '확인';
+      sheet.mergeCells(`AA${footerStartRow}:AG${footerStartRow}`);
+
+      let footerCurrentRow = footerStartRow + 1;
+      if (remarksData.length > 0) {
+        remarksData.forEach(remark => {
+          sheet.getRow(footerCurrentRow).height = 21;
+          sheet.getCell(footerCurrentRow, 1).value = remark.date;
+          sheet.getCell(footerCurrentRow, 2).value = remark.problem;
+          sheet.mergeCells(`C${footerCurrentRow}:L${footerCurrentRow}`); sheet.getCell(footerCurrentRow, 3).value = remark.prediction;
+          sheet.mergeCells(`M${footerCurrentRow}:V${footerCurrentRow}`); sheet.mergeCells(`W${footerCurrentRow}:Z${footerCurrentRow}`);
+          sheet.mergeCells(`AA${footerCurrentRow}:AG${footerCurrentRow}`);
+          footerCurrentRow++;
+        });
+      } else {
+        sheet.getRow(footerCurrentRow).height = 21; footerCurrentRow++;
+      }
+
+      const totalRows = footerCurrentRow - 1;
+      for (let r = 1; r <= totalRows; r++) {
+        for (let c = 1; c <= 33; c++) {
+          sheet.getCell(r, c).border = border;
+          sheet.getCell(r, c).alignment = centerAlignment;
+          sheet.getCell(r, c).font = font;
         }
-        statusSheet.addRow(rowData);
+      }
+
+      sheet.getCell('A1').font = titleFont;
+      ['A6', 'B6', 'C6', 'A5', 'C5', 'T5', `A${footerStartRow}`, `B${footerStartRow}`, `C${footerStartRow}`, `M${footerStartRow}`, `W${footerStartRow}`].forEach(cellRef => {
+        sheet.getCell(cellRef).font = boldFont;
       });
 
-      // --- SHEET 2: Remarks ---
-      const remarksSheet = workbook.addWorksheet('특이사항 상세');
-      remarksSheet.addRow(['날짜', '점검 내용', '문제점 및 위험예측 사항', '조치사항', '확인', '사진']);
-      remarks.forEach(remark => {
-        const remarkRow = remarksSheet.addRow([remark.date, remark.checkItem, remark.problem, remark.action, remark.confirmation, '']);
-        if (remark.photoUrl) {
-          remarkRow.getCell(6).value = { text: '사진 보기', hyperlink: remark.photoUrl };
-        }
-      });
-
-      // --- SHEET 3: Signatures ---
-      const signatureSheet = workbook.addWorksheet('서명');
-      signatureSheet.addRow(['날짜', '서명자', '서명']);
-
-      const signaturePromises = dailyReports.flatMap(report =>
-        report.reportSignatures.map(async sig => {
-          if (sig.signatureImage && sig.signatureImage.startsWith('data:image/png;base64,')) {
-            const imageId = workbook.addImage({ base64: sig.signatureImage.replace('data:image/png;base64,', ''), extension: 'png' });
-            return { date: new Date(report.reportDate).toLocaleDateString(), user: sig.user?.name || 'Unknown', imageId };
-          }
-          return null;
-        })
-      );
-      const signatureData = (await Promise.all(signaturePromises)).filter(Boolean);
-
-      signatureData.forEach((sig, index) => {
-        if (!sig) return;
-        const row = signatureSheet.addRow([sig.date, sig.user]);
-        row.height = 60;
-        signatureSheet.addImage(sig.imageId, { tl: { col: 2, row: index + 2 }, ext: { width: 150, height: 50 } });
-      });
-
-      // 3. Send File
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="TBM_Report_${year}_${month}.xlsx"`);
       await workbook.xlsx.write(res);
       res.end();
-
     } catch (error) {
-      console.error('Failed to generate simplified Excel report:', error);
+      console.error('Failed to generate Excel report:', error);
       res.status(500).json({ message: "Failed to generate Excel report" });
     }
   });
 
-  // Get specific report
-  app.get("/api/reports/:id", async (req, res) => {
+  app.get("/api/reports/:reportId", requireAuth, async (req, res) => {
     try {
       const report = await prisma.dailyReport.findUnique({
-        where: { id: parseInt(req.params.id) },
-        include: {
-          team: true,
-          reportDetails: {
-            include: {
-              item: true,
-              author: { select: { name: true } }
-            }
-          },
-          reportSignatures: {
-            include: {
-              user: true
-            }
-          }
-        }
+        where: { id: parseInt(req.params.reportId) },
+        include: { team: true, reportDetails: { include: { item: true, author: true } }, reportSignatures: { include: { user: true } } },
       });
-      
-      if (!report) {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      
+      if (!report) return res.status(404).json({ message: "Report not found" });
       res.json(report);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch report" });
-    }
+    } catch (error) { res.status(500).json({ message: "Failed to fetch report" }); }
   });
 
-  // Create new report
-  app.post("/api/reports", requireAuth, async (req, res) => {
+  app.put("/api/reports/:reportId", requireAuth, async (req, res) => {
     try {
-      const { teamId, reportDate, managerName, remarks, results, signatures, site } = req.body;
-
-      const report = await prisma.dailyReport.create({
+      const { reportId } = req.params;
+      const { results, signatures, remarks, reportDate } = req.body;
+      await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
+      await prisma.reportSignature.deleteMany({ where: { reportId: parseInt(reportId) } });
+      const updatedReport = await prisma.dailyReport.update({
+        where: { id: parseInt(reportId) },
         data: {
-          teamId: parseInt(teamId),
-          reportDate: new Date(reportDate),
-          managerName,
           remarks,
-          site,
-          reportDetails: {
-            create: results.map((r: any) => ({
-              itemId: r.itemId,
-              checkState: r.checkState,
-              photoUrl: r.photoUrl,
-              actionDescription: r.actionDescription,
-              authorId: r.authorId,
-            })),
-          },
-          reportSignatures: {
-            create: signatures.map((sig: any) => ({
-              userId: sig.userId,
-              signatureImage: sig.signatureImage, // Add this field
-              signedAt: new Date(),
-            })),
-          },
-        },
-        include: {
-          team: true,
-          reportDetails: { include: { item: true, author: { select: { name: true } } } },
-          reportSignatures: true,
+          reportDate: reportDate ? new Date(reportDate) : undefined,
+          reportDetails: { create: results.map((r: any) => ({ itemId: r.itemId, checkState: r.checkState, photoUrl: r.photoUrl, actionDescription: r.actionDescription, authorId: r.authorId })) },
+          reportSignatures: { create: signatures.map((s: any) => ({ userId: s.userId, signatureImage: s.signatureImage })) },
         },
       });
-
-      res.status(201).json(report);
-    } catch (error) {
-      console.error('Error creating report:', error);
-      res.status(500).json({ message: "Failed to create report" });
-    }
+      res.json(updatedReport);
+    } catch (error) { res.status(500).json({ message: "Failed to update report" }); }
   });
 
-  // Update report
-  app.put("/api/reports/:id", requireAuth, async (req, res) => {
+  app.delete("/api/reports/:reportId", requireAuth, async (req, res) => {
     try {
-      const { id } = req.params;
-      const { results, signatures, remarks, reportDate } = req.body; // Added reportDate
+      const { reportId } = req.params;
+      await prisma.dailyReport.delete({ where: { id: parseInt(reportId) } });
+      res.status(204).send();
+    } catch (error) { res.status(500).json({ message: "Failed to delete report" }); }
+  });
 
-      // Use a transaction to ensure atomicity
-      const transaction = await prisma.$transaction(async (tx) => {
-        // 1. Delete old details and signatures
-        await tx.reportDetail.deleteMany({ where: { reportId: parseInt(id) } });
-        await tx.reportSignature.deleteMany({ where: { reportId: parseInt(id) } });
+  // EDUCATION & COURSE MANAGEMENT
+  app.get("/api/courses", async (req, res) => {
+    try {
+      const courses = await prisma.course.findMany({ orderBy: { title: 'asc' } });
+      res.json(courses);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch courses" }); }
+  });
 
-        // 2. Create new details and signatures
-        const updatedReport = await tx.dailyReport.update({
-          where: { id: parseInt(id) },
-          data: {
-            remarks,
-            reportDate: new Date(reportDate), // Added reportDate update
-            reportDetails: {
-              create: results.map((r: any) => ({
-                itemId: r.itemId,
-                checkState: r.checkState,
-                photoUrl: r.photoUrl,
-                actionDescription: r.actionDescription,
-                authorId: r.authorId,
-              })),
-            },
-            reportSignatures: {
-              create: signatures.map((sig: any) => ({
-                userId: sig.userId,
-                signatureImage: sig.signatureImage, // Add this field
-                signedAt: new Date(),
-              })),
-            },
-          },
-          include: { reportDetails: { include: { item: true, author: { select: { name: true } } } }, reportSignatures: true },
-        });
-        return updatedReport;
+  app.post("/api/courses", requireAuth, async (req, res) => {
+    try {
+      const newCourse = await prisma.course.create({ data: req.body });
+      res.status(201).json(newCourse);
+    } catch (error) { res.status(500).json({ message: "Failed to create course" }); }
+  });
+
+  app.get("/api/courses/:courseId", async (req, res) => {
+    try {
+      const course = await prisma.course.findUnique({ where: { id: req.params.courseId } });
+      if (!course) return res.status(404).json({ message: "Course not found" });
+      res.json(course);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch course" }); }
+  });
+
+  app.put("/api/courses/:courseId", requireAuth, async (req, res) => {
+    try {
+      const updatedCourse = await prisma.course.update({ where: { id: req.params.courseId }, data: req.body });
+      res.json(updatedCourse);
+    } catch (error) { res.status(500).json({ message: "Failed to update course" }); }
+  });
+
+  app.delete("/api/courses/:courseId", requireAuth, async (req, res) => {
+    try {
+      await prisma.course.delete({ where: { id: req.params.courseId } });
+      res.status(204).send();
+    } catch (error) { res.status(500).json({ message: "Failed to delete course" }); }
+  });
+
+  app.get("/api/courses/:courseId/assessments", async (req, res) => {
+    try {
+      const assessments = await prisma.assessment.findMany({ where: { courseId: req.params.courseId } });
+      res.json(assessments);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch assessments" }); }
+  });
+
+  app.put("/api/courses/:courseId/assessments", requireAuth, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { questions } = req.body;
+      await prisma.assessment.deleteMany({ where: { courseId } });
+      const newAssessments = await prisma.assessment.createMany({ data: questions.map((q: any) => ({ ...q, courseId })) });
+      res.status(201).json(newAssessments);
+    } catch (error) { res.status(500).json({ message: "Failed to update assessments" }); }
+  });
+
+  app.post("/api/courses/:courseId/assessments-bulk", requireAuth, async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { questions } = req.body;
+      await prisma.assessment.createMany({ data: questions.map((q: any) => ({ ...q, courseId })) });
+      res.status(201).send();
+    } catch (error) { res.status(500).json({ message: "Failed to create assessments" }); }
+  });
+
+  app.get("/api/users/:userId/progress", requireAuth, async (req, res) => {
+    try {
+      const progress = await prisma.userProgress.findMany({ where: { userId: req.params.userId } });
+      res.json(progress);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
+  });
+
+  app.get("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
+    try {
+      const progress = await prisma.userProgress.findFirst({ where: { userId: req.params.userId, courseId: req.params.courseId } });
+      res.json(progress);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
+  });
+
+  app.put("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
+    try {
+      const { userId, courseId } = req.params;
+      const { progress, completed, currentStep } = req.body;
+      const id = `${userId}_${courseId}`;
+      const updatedProgress = await prisma.userProgress.upsert({
+        where: { id },
+        update: { progress, completed, currentStep },
+        create: { userId, courseId, progress, completed, currentStep, id },
       });
-
-      res.json(transaction);
-    } catch (error) {
-      console.error('Error updating report:', error);
-      res.status(500).json({ message: "Failed to update report" });
-    }
+      res.json(updatedProgress);
+    } catch (error) { res.status(500).json({ message: "Failed to update progress" }); }
   });
 
-  // NOTICE ROUTES
-  // Get all notices (public)
-  // Get all notices or the latest one
-  app.get('/api/notices', async (req, res) => {
-    const { latest } = req.query;
-
+  app.get("/api/users/:userId/assessments", requireAuth, async (req, res) => {
     try {
-      if (latest === 'true') {
-        const notice = await prisma.notice.findFirst({
-          orderBy: { createdAt: 'desc' },
-        });
-        res.json(notice);
-      } else {
-        const notices = await prisma.notice.findMany({
-          orderBy: { createdAt: 'desc' },
-        });
-        res.json(notices);
+      const assessments = await prisma.userAssessment.findMany({ where: { userId: req.params.userId } });
+      res.json(assessments);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch user assessments" }); }
+  });
+
+  app.get("/api/users/:userId/assessments/:courseId", requireAuth, async (req, res) => {
+    try {
+      const assessment = await prisma.userAssessment.findFirst({ where: { userId: req.params.userId, courseId: req.params.courseId } });
+      res.json(assessment);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch user assessment" }); }
+  });
+
+  app.post("/api/users/:userId/assessments/:courseId", requireAuth, async (req, res) => {
+    try {
+      const { userId, courseId } = req.params;
+      const { score, totalQuestions, passed, attemptNumber } = req.body;
+      const newAssessment = await prisma.userAssessment.create({ data: { userId, courseId, score, totalQuestions, passed, attemptNumber } });
+      if (passed) {
+        await prisma.certificate.create({ data: { userId, courseId, certificateUrl: `/certs/${userId}-${courseId}.pdf` } });
       }
-    } catch (error) {
-      console.error('Error fetching notices:', error);
-      res.status(500).json({ message: 'Error fetching notices' });
-    }
+      res.status(201).json(newAssessment);
+    } catch (error) { res.status(500).json({ message: "Failed to create user assessment" }); }
   });
 
-  // Get single notice (public)
-  app.get("/api/notices/:id", async (req, res) => {
+  app.get("/api/users/:userId/certificates", requireAuth, async (req, res) => {
     try {
-      const notice = await prisma.notice.findUnique({
-        where: { id: req.params.id }
-      });
-      
-      if (!notice) {
-        return res.status(404).json({ message: "공지사항을 찾을 수 없습니다" });
-      }
-      
-      res.json(notice);
-    } catch (error) {
-      console.error('Error fetching notice:', error);
-      res.status(500).json({ message: "Failed to fetch notice" });
-    }
+      const certificates = await prisma.certificate.findMany({ where: { userId: req.params.userId }, include: { course: true } });
+      res.json(certificates);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch certificates" }); }
   });
 
-  // Create notice (admin only)
-  app.post("/api/notices", requireAuth, async (req, res) => {
-    try {
-      console.log("Checking user role for notice creation:", req.session.user);
-      if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자만 공지사항을 작성할 수 있습니다" });
-      }
-
-      const { title, content, category } = req.body;
-      
-      if (!title || !content) {
-        return res.status(400).json({ message: "제목과 내용을 입력해주세요" });
-      }
-
-      const notice = await prisma.notice.create({
-        data: {
-          title,
-          content,
-          authorId: req.session.user.id,
-          category: category || 'GENERAL',
-          imageUrl: req.body.imageUrl,
-          attachmentUrl: req.body.attachmentUrl,
-          attachmentName: req.body.attachmentName
-        }
-      });
-
-      res.status(201).json(notice);
-    } catch (error) {
-      console.error('Error creating notice:', error);
-      res.status(500).json({ message: "Failed to create notice" });
+  // MISCELLANEOUS ROUTES
+  app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded.' });
     }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl, name: req.file.originalname });
   });
 
-  // Update notice (admin only)
-  app.put("/api/notices/:id", requireAuth, async (req, res) => {
+  app.put('/api/checklist-templates/:templateId', requireAuth, async (req, res) => {
     try {
-      if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자만 공지사항을 수정할 수 있습니다" });
-      }
-
-      const { title, content, category } = req.body;
-      
-      const notice = await prisma.notice.update({
-        where: { id: req.params.id },
-        data: {
-          title,
-          content,
-          category: category || 'GENERAL',
-          updatedAt: new Date(),
-          imageUrl: req.body.imageUrl,
-          attachmentUrl: req.body.attachmentUrl,
-          attachmentName: req.body.attachmentName
-        }
+      const { templateId } = req.params;
+      const { items } = req.body;
+      await prisma.templateItem.deleteMany({ where: { templateId: parseInt(templateId) } });
+      await prisma.templateItem.createMany({
+        data: items.map((item: any, index: number) => ({
+          templateId: parseInt(templateId),
+          category: item.category,
+          subCategory: item.subCategory,
+          description: item.description,
+          displayOrder: index,
+        })),
       });
-
-      res.json(notice);
-    } catch (error) {
-      console.error('Error updating notice:', error);
-      res.status(500).json({ message: "Failed to update notice" });
-    }
-  });
-
-  // Delete notice (admin only)
-  app.delete("/api/notices/:id", requireAuth, async (req, res) => {
-    try {
-      if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자만 공지사항을 삭제할 수 있습니다" });
-      }
-
-      await prisma.notice.delete({
-        where: { id: req.params.id }
-      });
-
-      res.json({ message: "공지사항이 삭제되었습니다" });
-    } catch (error) {
-      console.error('Error deleting notice:', error);
-      res.status(500).json({ message: "Failed to delete notice" });
-    }
-  });
-
-  // USER MANAGEMENT ROUTES (Admin only)
-  app.get("/api/users", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN' && req.session.user?.role !== 'TEAM_LEADER') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const users = await prisma.user.findMany({
-        orderBy: { createdAt: 'desc' },
-      });
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
-
-  app.put("/api/users/:id/role", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const { role } = req.body;
-      const updatedUser = await prisma.user.update({
-        where: { id: req.params.id },
-        data: { role },
-      });
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update user role" });
-    }
-  });
-
-  // Update user site (Admin only)
-  app.put("/api/users/:id/site", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const { site } = req.body;
-      const updatedUser = await prisma.user.update({
-        where: { id: req.params.id },
-        data: { site },
-      });
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update user site" });
-    }
-  });
-
-  // Get comments for a notice
-  app.get("/api/notices/:noticeId/comments", async (req, res) => {
-    try {
-      const comments = await prisma.comment.findMany({
-        where: { noticeId: req.params.noticeId },
-        include: { author: { select: { name: true } } },
-        orderBy: { createdAt: 'asc' },
-      });
-      res.json(comments);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch comments" });
-    }
-  });
-
-  // Post a comment on a notice
-  app.post("/api/notices/:noticeId/comments", requireAuth, async (req, res) => {
-    try {
-      const { content, imageUrl } = req.body;
-      const comment = await prisma.comment.create({
-        data: {
-          content,
-          imageUrl,
-          authorId: req.session.user.id,
-          noticeId: req.params.noticeId,
-        },
-      });
-      res.status(201).json(comment);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create comment" });
-    }
-  });
-
-  // USER PROFILE ROUTES
-  app.get("/api/users/:id", requireAuth, requireOwnership, async (req, res) => {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: req.params.id },
-        select: { id: true, username: true, name: true, email: true, role: true, teamId: true },
-      });
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  app.put("/api/users/:id", requireAuth, requireOwnership, async (req, res) => {
-    try {
-      const { name, email, username, password, site } = req.body;
-      let hashedPassword = undefined;
-      if (password) {
-        hashedPassword = await bcrypt.hash(password, 10);
-      }
-
-      const updatedUser = await prisma.user.update({
-        where: { id: req.params.id },
-        data: { name, site, password: hashedPassword }, // Re-add site
-        select: { id: true, username: true, name: true, email: true, role: true, teamId: true },
-      });
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update user" });
-    }
-  });
-
-  // Delete user (Admin only)
-  app.delete("/api/users/:id", requireAuth, async (req, res) => {
-    if (req.session.user?.role !== 'ADMIN') {
-      return res.status(403).json({ message: "Permission denied" });
-    }
-    try {
-      const userId = req.params.id;
-
-      // Use a transaction to ensure atomicity
-      await prisma.$transaction(async (tx) => {
-        // Unset user as a team leader from any teams
-        await tx.team.updateMany({
-          where: { leaderId: userId },
-          data: { leaderId: null },
-        });
-
-        // Nullify optional author fields in other models
-        await tx.reportDetail.updateMany({
-            where: { authorId: userId },
-            data: { authorId: null },
-        });
-        await tx.monthlyApproval.updateMany({
-            where: { approverId: userId },
-            data: { approverId: null },
-        });
-
-        // NOTE: This will still fail if the user has authored required relations
-        // like Notices, Comments, or Signatures. A full implementation would
-        // require deleting or re-assigning that content.
-
-        // Finally, delete the user
-        await tx.user.delete({ where: { id: userId } });
-      });
-
-      res.json({ message: "User deleted successfully" });
-    } catch (error) {
-      console.error("Failed to delete user:", error); // Log the actual error
-      res.status(500).json({ message: "Failed to delete user. They may still be associated with required data like reports, notices, or comments." });
-    }
+      res.json(newItems);
+    } catch (error) { res.status(500).json({ message: 'Failed to update checklist template' }); }
   });
 
   const httpServer = createServer(app);
