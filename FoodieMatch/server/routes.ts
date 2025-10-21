@@ -10,6 +10,7 @@ import { prisma } from "./db";
 import bcrypt from "bcrypt";
 import ExcelJS from "exceljs";
 import { tbmReportSchema } from "@shared/schema";
+import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,7 +36,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
-  const upload = multer({ dest: uploadDir });
+
+  // Multer configuration with file type and size limits
+  const upload = multer({
+    dest: uploadDir,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+      files: 10 // Maximum 10 files
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedDocTypes = [
+        'application/pdf',
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+
+      const allowed = [...allowedImageTypes, ...allowedDocTypes];
+
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`허용되지 않는 파일 형식입니다. (${file.mimetype})`));
+      }
+    }
+  });
 
   const requireAuth = (req: any, res: any, next: any) => {
     if (!req.session.user) {
@@ -248,35 +276,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/notices/:noticeId", async (req, res) => {
     try {
-      const notice = await prisma.notice.findUnique({ where: { id: req.params.noticeId } });
+      const notice = await prisma.notice.findUnique({
+        where: { id: req.params.noticeId },
+        include: { attachments: true }
+      });
       if (!notice) return res.status(404).json({ message: "Notice not found" });
       await prisma.notice.update({ where: { id: req.params.noticeId }, data: { viewCount: { increment: 1 } } });
       res.json(notice);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch notice" }); }
+    } catch (error) {
+      console.error('Failed to fetch notice:', error);
+      res.status(500).json({ message: "Failed to fetch notice" });
+    }
   });
 
   app.post("/api/notices", requireAuth, async (req, res) => {
     try {
-      const { title, content, category, imageUrl, attachmentUrl, attachmentName } = req.body;
+      const { title, content, category, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
       const newNotice = await prisma.notice.create({
         data: {
-          title, content, category: category || 'GENERAL', authorId: req.session.user!.id,
-          imageUrl, attachmentUrl, attachmentName,
+          title,
+          content,
+          category: category || 'GENERAL',
+          authorId: req.session.user!.id,
+          imageUrl,
+          attachmentUrl,
+          attachmentName,
+          attachments: attachments ? {
+            create: attachments.map((att: any) => ({
+              url: att.url,
+              name: att.name,
+              type: att.type || 'file',
+              size: att.size || 0,
+              mimeType: att.mimeType || 'application/octet-stream'
+            }))
+          } : undefined
         },
+        include: { attachments: true }
       });
       res.status(201).json(newNotice);
-    } catch (error) { res.status(500).json({ message: "Failed to create notice" }); }
+    } catch (error) {
+      console.error('Failed to create notice:', error);
+      res.status(500).json({ message: "Failed to create notice" });
+    }
   });
 
   app.put("/api/notices/:noticeId", requireAuth, async (req, res) => {
     try {
-      const { title, content, imageUrl, attachmentUrl, attachmentName } = req.body;
+      const { title, content, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
+
+      // Delete existing attachments and create new ones
+      await prisma.attachment.deleteMany({
+        where: { noticeId: req.params.noticeId }
+      });
+
       const updatedNotice = await prisma.notice.update({
         where: { id: req.params.noticeId },
-        data: { title, content, imageUrl, attachmentUrl, attachmentName },
+        data: {
+          title,
+          content,
+          imageUrl,
+          attachmentUrl,
+          attachmentName,
+          attachments: attachments ? {
+            create: attachments.map((att: any) => ({
+              url: att.url,
+              name: att.name,
+              type: att.type || 'file',
+              size: att.size || 0,
+              mimeType: att.mimeType || 'application/octet-stream'
+            }))
+          } : undefined
+        },
+        include: { attachments: true }
       });
       res.json(updatedNotice);
-    } catch (error) { res.status(500).json({ message: "Failed to update notice" }); }
+    } catch (error) {
+      console.error('Failed to update notice:', error);
+      res.status(500).json({ message: "Failed to update notice" });
+    }
   });
 
   app.delete("/api/notices/:noticeId", requireAuth, async (req, res) => {
@@ -827,13 +904,150 @@ actionDescription, authorId: r.authorId })) } : undefined,
     } catch (error) { res.status(500).json({ message: "Failed to fetch certificates" }); }
   });
 
-  // MISCELLANEOUS ROUTES
-  app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded.' });
+  // MISCELLANEOUS ROUTES - FILE UPLOAD
+
+  // Single file upload with Korean filename support and image compression
+  app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded.' });
+      }
+
+      // Fix Korean filename encoding
+      const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+      let finalPath = req.file.path;
+      let finalSize = req.file.size;
+
+      // Auto-compress images over 2MB
+      if (req.file.mimetype.startsWith('image/')) {
+        const fileSizeInMB = req.file.size / (1024 * 1024);
+
+        if (fileSizeInMB > 2) {
+          const compressedPath = `${req.file.path}_compressed`;
+
+          try {
+            await sharp(req.file.path)
+              .resize(1920, 1920, {
+                fit: 'inside',
+                withoutEnlargement: true
+              })
+              .jpeg({ quality: 80 })
+              .toFile(compressedPath);
+
+            const compressedSize = fs.statSync(compressedPath).size;
+            const compressedSizeInMB = compressedSize / (1024 * 1024);
+
+            if (compressedSizeInMB <= 2) {
+              // Use compressed file
+              fs.unlinkSync(req.file.path);
+              finalPath = compressedPath;
+              finalSize = compressedSize;
+            } else {
+              // Still too large even after compression
+              fs.unlinkSync(req.file.path);
+              fs.unlinkSync(compressedPath);
+              return res.status(400).json({
+                message: '이미지가 너무 큽니다. 압축 후에도 2MB를 초과합니다.'
+              });
+            }
+          } catch (compressError) {
+            console.error('Image compression error:', compressError);
+            // If compression fails, use original file (if under 10MB limit)
+          }
+        }
+      }
+
+      // Create safe filename with timestamp and original name
+      const timestamp = Date.now();
+      const safeFileName = `${timestamp}_${originalName}`;
+      const newPath = path.join(uploadDir, safeFileName);
+
+      fs.renameSync(finalPath, newPath);
+
+      res.json({
+        url: `/uploads/${safeFileName}`,
+        name: originalName,
+        size: finalSize,
+        mimeType: req.file.mimetype
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ message: '파일 업로드 실패' });
     }
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl, name: req.file.originalname });
+  });
+
+  // Multiple files upload (max 10 files)
+  app.post('/api/upload-multiple', requireAuth, upload.array('files', 10), async (req, res) => {
+    try {
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ message: 'No files uploaded.' });
+      }
+
+      const uploadedFiles = [];
+
+      for (const file of req.files) {
+        // Fix Korean filename encoding
+        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        let finalPath = file.path;
+        let finalSize = file.size;
+
+        // Auto-compress images over 2MB
+        if (file.mimetype.startsWith('image/')) {
+          const fileSizeInMB = file.size / (1024 * 1024);
+
+          if (fileSizeInMB > 2) {
+            const compressedPath = `${file.path}_compressed`;
+
+            try {
+              await sharp(file.path)
+                .resize(1920, 1920, {
+                  fit: 'inside',
+                  withoutEnlargement: true
+                })
+                .jpeg({ quality: 80 })
+                .toFile(compressedPath);
+
+              const compressedSize = fs.statSync(compressedPath).size;
+              const compressedSizeInMB = compressedSize / (1024 * 1024);
+
+              if (compressedSizeInMB <= 2) {
+                fs.unlinkSync(file.path);
+                finalPath = compressedPath;
+                finalSize = compressedSize;
+              } else {
+                // Skip files that are still too large
+                fs.unlinkSync(file.path);
+                fs.unlinkSync(compressedPath);
+                console.warn(`Skipped file ${originalName}: too large even after compression`);
+                continue;
+              }
+            } catch (compressError) {
+              console.error('Image compression error:', compressError);
+            }
+          }
+        }
+
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 10000);
+        const safeFileName = `${timestamp}_${random}_${originalName}`;
+        const newPath = path.join(uploadDir, safeFileName);
+
+        fs.renameSync(finalPath, newPath);
+
+        uploadedFiles.push({
+          url: `/uploads/${safeFileName}`,
+          name: originalName,
+          size: finalSize,
+          mimeType: file.mimetype,
+          type: file.mimetype.startsWith('image/') ? 'image' : 'file'
+        });
+      }
+
+      res.json({ files: uploadedFiles });
+    } catch (error) {
+      console.error('Multiple files upload error:', error);
+      res.status(500).json({ message: '파일 업로드 실패' });
+    }
   });
 
   app.put('/api/checklist-templates/:templateId', requireAuth, async (req, res) => {

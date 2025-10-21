@@ -12,7 +12,15 @@
       "Bash(git add -A)",
       "Bash(git commit -m \"백업: 개선 작업 전 현재 상태 저장 (라우팅 수정, 진행률 복원 기능 완료)\")",
       "Bash(git branch backup-before-improvements-2025-10-21)",
-      "Bash(git tag v1.0-before-improvements)"
+      "Bash(git tag v1.0-before-improvements)",
+      "Bash(npm run db:push)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma db push --accept-data-loss)",
+      "Bash(npm install sharp)",
+      "Bash(Get-Process)",
+      "Bash(Where-Object {$_rocessName -eq \"node\"})",
+      "Bash(Select-Object Id,ProcessName,Path)",
+      "Bash(Format-Table)"
     ],
     "deny": [],
     "ask": []

@@ -38,6 +38,9 @@ model Notice {
   updatedAt   DateTime     @updatedAt
   isActive    Boolean      @default(true)
   viewCount   Int          @default(0)
+  imageUrl    String?
+  attachmentUrl String?
+  attachmentName String?
   author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments    Comment[]
   attachments Attachment[]
@@ -46,14 +49,15 @@ model Notice {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  content   String
-  imageUrl  String?
-  authorId  String
-  noticeId  String
-  createdAt DateTime @default(now())
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  id          String       @id @default(uuid())
+  content     String
+  imageUrl    String?
+  authorId    String
+  noticeId    String
+  createdAt   DateTime     @default(now())
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  notice      Notice       @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
 
   @@index([authorId])
   @@index([noticeId])
@@ -241,12 +245,18 @@ model Attachment {
   id             String        @id @default(uuid())
   url            String
   name           String
+  type           String        @default("file") // 'image' | 'file'
+  size           Int           @default(0)
+  mimeType       String        @default("application/octet-stream")
   createdAt      DateTime      @default(now())
   noticeId       String?
   notice         Notice?       @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  commentId      String?
+  comment        Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
   reportDetailId Int?
   reportDetail   ReportDetail? @relation(fields: [reportDetailId], references: [id], onDelete: Cascade)
 
   @@index([noticeId])
+  @@index([commentId])
   @@index([reportDetailId])
 }

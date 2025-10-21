@@ -22,6 +22,7 @@ export default function NoticeEditor() {
   });
 
   const [formData, setFormData] = useState({ title: '', content: '', imageUrl: '', attachmentUrl: '', attachmentName: '' });
+  const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -34,6 +35,16 @@ export default function NoticeEditor() {
         attachmentUrl: noticeToEdit.attachmentUrl || '',
         attachmentName: noticeToEdit.attachmentName || '',
       });
+
+      // Load existing attachments
+      if ((noticeToEdit as any).attachments && Array.isArray((noticeToEdit as any).attachments)) {
+        setAttachments((noticeToEdit as any).attachments.map((att: any) => ({
+          url: att.url,
+          name: att.name,
+          type: att.type || 'file',
+          size: att.size || 0
+        })));
+      }
     }
   }, [isEditing, noticeToEdit]);
 
@@ -42,25 +53,40 @@ export default function NoticeEditor() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'attachment') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Check if adding these files would exceed the limit of 10
+    const currentCount = attachments.filter(a => a.type === fileType).length;
+    if (currentCount + files.length > 10) {
+      setError(`파일은 최대 10개까지 업로드 가능합니다. (현재: ${currentCount}개)`);
+      return;
+    }
 
     const uploadFormData = new FormData();
-    uploadFormData.append('file', file);
+    files.forEach(file => uploadFormData.append('files', file));
 
     try {
-      const response = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
 
-      if (fileType === 'image') {
-        setFormData(prev => ({ ...prev, imageUrl: data.url }));
-      } else {
-        setFormData(prev => ({ ...prev, attachmentUrl: data.url, attachmentName: data.name }));
-      }
+      const newFiles = data.files.map((f: any) => ({
+        url: f.url,
+        name: f.name,
+        size: f.size,
+        type: fileType
+      }));
+
+      setAttachments(prev => [...prev, ...newFiles]);
+      setError(''); // Clear any previous errors
     } catch (err) {
       setError((err as Error).message);
     }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,11 +97,17 @@ export default function NoticeEditor() {
     const url = isEditing ? `/api/notices/${noticeId}` : '/api/notices';
     const method = isEditing ? 'PUT' : 'POST';
 
+    // Prepare data with attachments
+    const submitData = {
+      ...formData,
+      attachments: attachments.length > 0 ? attachments : undefined
+    };
+
     try {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const data = await response.json();
@@ -117,14 +149,71 @@ export default function NoticeEditor() {
                 <Textarea id="content" name="content" required value={formData.content} onChange={handleChange} rows={12} className="text-base" />
               </div>
               <div className="space-y-3">
-                <Label htmlFor="image" className="text-base md:text-lg">이미지 업로드</Label>
-                <Input id="image" type="file" onChange={(e) => handleFileChange(e, 'image')} className="text-base h-12" accept="image/*" />
+                <Label htmlFor="image" className="text-base md:text-lg">이미지 업로드 (최대 10개)</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  onChange={(e) => handleFileChange(e, 'image')}
+                  className="text-base h-12"
+                  accept="image/*"
+                  multiple
+                />
                 {formData.imageUrl && <img src={formData.imageUrl} alt="Preview" className="mt-3 rounded-md max-h-64 w-full object-contain" />}
+
+                {/* Display uploaded images */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                  {attachments.filter(f => f.type === 'image').map((file, idx) => (
+                    <div key={idx} className="relative border rounded-lg p-2">
+                      <img src={file.url} alt={file.name} className="w-full h-32 object-cover rounded" />
+                      <p className="text-xs truncate mt-1">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1"
+                        onClick={() => removeAttachment(attachments.indexOf(file))}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
+
               <div className="space-y-3">
-                <Label htmlFor="attachment" className="text-base md:text-lg">파일 첨부</Label>
-                <Input id="attachment" type="file" onChange={(e) => handleFileChange(e, 'attachment')} className="text-base h-12" />
+                <Label htmlFor="attachment" className="text-base md:text-lg">파일 첨부 (최대 10개)</Label>
+                <Input
+                  id="attachment"
+                  type="file"
+                  onChange={(e) => handleFileChange(e, 'attachment')}
+                  className="text-base h-12"
+                  multiple
+                />
                 {formData.attachmentName && <p className="text-base text-muted-foreground mt-2">📎 첨부된 파일: {formData.attachmentName}</p>}
+
+                {/* Display uploaded files */}
+                <div className="space-y-2 mt-3">
+                  {attachments.filter(f => f.type === 'attachment').map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-2xl">📎</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeAttachment(attachments.indexOf(file))}
+                      >
+                        삭제
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
               {error && <p className="text-base text-destructive">{error}</p>}
               {success && <p className="text-base text-green-600">{success}</p>}
