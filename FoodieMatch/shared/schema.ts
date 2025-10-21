@@ -81,6 +81,13 @@ export const reportResultSchema = z.object({
   photoUrl: z.string().nullish(),
   actionDescription: z.string().nullish(),
   authorId: z.string(),
+  attachments: z.array(z.object({
+    url: z.string(),
+    name: z.string(),
+    type: z.string(),
+    size: z.number(),
+    mimeType: z.string().optional()
+  })).optional(),
 });
 
 export const reportSignatureSchema = z.object({

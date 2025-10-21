@@ -56,13 +56,6 @@ export default function NoticeEditor() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Check if adding these files would exceed the limit of 10
-    const currentCount = attachments.filter(a => a.type === fileType).length;
-    if (currentCount + files.length > 10) {
-      setError(`파일은 최대 10개까지 업로드 가능합니다. (현재: ${currentCount}개)`);
-      return;
-    }
-
     const uploadFormData = new FormData();
     files.forEach(file => uploadFormData.append('files', file));
 
@@ -149,7 +142,7 @@ export default function NoticeEditor() {
                 <Textarea id="content" name="content" required value={formData.content} onChange={handleChange} rows={12} className="text-base" />
               </div>
               <div className="space-y-3">
-                <Label htmlFor="image" className="text-base md:text-lg">이미지 업로드 (최대 10개)</Label>
+                <Label htmlFor="image" className="text-base md:text-lg">이미지 업로드</Label>
                 <Input
                   id="image"
                   type="file"
@@ -182,7 +175,7 @@ export default function NoticeEditor() {
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="attachment" className="text-base md:text-lg">파일 첨부 (최대 10개)</Label>
+                <Label htmlFor="attachment" className="text-base md:text-lg">파일 첨부</Label>
                 <Input
                   id="attachment"
                   type="file"

@@ -68,12 +68,6 @@ export default function NoticeDetailPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const currentCount = commentAttachments.filter(a => a.type === fileType).length;
-    if (currentCount + files.length > 10) {
-      alert(`파일은 최대 10개까지 업로드 가능합니다. (현재: ${currentCount}개)`);
-      return;
-    }
-
     const uploadFormData = new FormData();
     files.forEach(file => uploadFormData.append('files', file));
 
@@ -287,7 +281,7 @@ export default function NoticeDetailPage() {
 
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-2">이미지 (최대 10개)</label>
+                      <label className="block text-sm font-medium mb-2">이미지</label>
                       <Input
                         type="file"
                         accept="image/*"
@@ -319,7 +313,7 @@ export default function NoticeDetailPage() {
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">파일 (최대 10개)</label>
+                      <label className="block text-sm font-medium mb-2">파일</label>
                       <Input
                         type="file"
                         multiple

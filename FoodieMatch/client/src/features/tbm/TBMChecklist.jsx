@@ -109,15 +109,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     if (!files || files.length === 0) return;
 
     const currentAttachments = formState[itemId]?.attachments || [];
-    if (currentAttachments.length + files.length > 10) {
-      toast({
-        title: "파일은 최대 10개까지 업로드 가능합니다.",
-        description: `현재: ${currentAttachments.length}개`,
-        variant: "destructive"
-      });
-      return;
-    }
-
     const formData = new FormData();
     Array.from(files).forEach(file => formData.append('files', file));
 
@@ -243,7 +234,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                             <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
                               <div className="flex items-center justify-center gap-2 p-2 border rounded-md hover:bg-muted">
                                 <Camera className="h-5 w-5" />
-                                <span>사진 업로드 (최대 10개)</span>
+                                <span>사진 업로드</span>
                               </div>
                             </Label>
                             <Input
