@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Terminal, Camera } from "lucide-react";
-import { SignatureDialog } from '@/components/SignatureDialog'; // Import the new component
+import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
@@ -23,65 +23,47 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [checklist, setChecklist] = useState(null);
   const [teamUsers, setTeamUsers] = useState([]);
-  const [results, setResults] = useState({});
-  const [photoUrls, setPhotoUrls] = useState({});
-  const [itemDescriptions, setItemDescriptions] = useState({});
+  const [formState, setFormState] = useState({});
   const [signatures, setSignatures] = useState({});
   const [absentUsers, setAbsentUsers] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Signature Dialog State
   const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [signingUser, setSigningUser] = useState(null);
 
   useEffect(() => {
     if (site) {
-        axios.get(`/api/teams?site=${site}`).then(res => {
-            setTeams(res.data);
-            const userTeamInList = res.data.some(team => team.id === user?.teamId);
-            if (user?.teamId && userTeamInList && !reportForEdit) {
-                setSelectedTeam(user.teamId);
-            } else if (reportForEdit) {
-                setSelectedTeam(reportForEdit.teamId);
-            }
-            else {
-                setSelectedTeam(null);
-            }
-        });
-    } else {
-        setTeams([]);
+      axios.get(`/api/teams?site=${site}`).then(res => {
+        setTeams(res.data);
+        const userTeamInList = res.data.some(team => team.id === user?.teamId);
+        if (user?.teamId && userTeamInList && !reportForEdit) {
+          setSelectedTeam(user.teamId);
+        } else if (reportForEdit) {
+          setSelectedTeam(reportForEdit.teamId);
+        }
+      });
     }
   }, [user, site, reportForEdit]);
 
-  // This effect now populates state from the passed-in report object
   useEffect(() => {
     if (reportForEdit) {
-      const report = reportForEdit;
-      setSelectedTeam(report.teamId);
-      
-      const initialResults = {};
-      const initialPhotos = {};
-      const initialDescriptions = {};
-      report.reportDetails.forEach(detail => {
-        initialResults[detail.itemId] = detail.checkState;
-        if (detail.photoUrl) initialPhotos[detail.itemId] = detail.photoUrl;
-        if (detail.actionDescription) initialDescriptions[detail.itemId] = detail.actionDescription;
+      const initialFormState = {};
+      reportForEdit.reportDetails.forEach(detail => {
+        initialFormState[detail.itemId] = {
+          checkState: detail.checkState,
+          photoUrl: detail.photoUrl,
+          description: detail.actionDescription,
+        };
       });
-      setResults(initialResults);
-      setPhotoUrls(initialPhotos);
-      setItemDescriptions(initialDescriptions);
+      setFormState(initialFormState);
 
       const initialSignatures = {};
-      report.reportSignatures.forEach(sig => {
+      reportForEdit.reportSignatures.forEach(sig => {
         if (sig.signatureImage) initialSignatures[sig.userId] = sig.signatureImage;
       });
       setSignatures(initialSignatures);
     } else {
-      // Clear fields when creating a new report
-      setResults({});
-      setPhotoUrls({});
-      setItemDescriptions({});
+      setFormState({});
       setSignatures({});
       setAbsentUsers({});
     }
@@ -91,7 +73,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     if (selectedTeam) {
       setLoading(true);
       setError(null);
-      
       const templatePromise = axios.get(`/api/teams/${selectedTeam}/template`);
       const usersPromise = axios.get(`/api/teams/${selectedTeam}/users`);
 
@@ -111,34 +92,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [selectedTeam]);
 
-  const handleSignClick = (worker) => {
-    setSigningUser(worker);
-    setIsSigDialogOpen(true);
-  };
-
-  const handleSaveSignature = (signatureData) => {
-    if (signingUser) {
-      setSignatures(prev => ({ ...prev, [signingUser.id]: signatureData }));
-    }
-    setSigningUser(null);
-  };
-
-  const handleResultChange = (itemId, value) => {
-    setResults(prev => ({ ...prev, [itemId]: value }));
-  };
-
-  const handleDescriptionChange = (itemId, value) => {
-    setItemDescriptions(prev => ({ ...prev, [itemId]: value }));
+  const updateFormState = (itemId, field, value) => {
+    setFormState(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], [field]: value },
+    }));
   };
 
   const handlePhotoUpload = async (itemId, file) => {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       const res = await axios.post('/api/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setPhotoUrls(prev => ({ ...prev, [itemId]: res.data.url }));
+      updateFormState(itemId, 'photoUrl', res.data.url);
       toast({ title: "사진이 업로드되었습니다." });
     } catch (err) {
       toast({ title: "사진 업로드 실패", variant: "destructive" });
@@ -165,12 +132,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       reportDate: date || new Date(),
       managerName: user?.name || 'N/A',
       remarks: `연차자: ${Object.keys(absentUsers).filter(id => absentUsers[id]).length}명`,
-      site: site, // Add site to the report data
-      results: Object.entries(results).map(([itemId, checkState]) => ({
+      site: site,
+      results: Object.entries(formState).map(([itemId, data]) => ({
         itemId: parseInt(itemId),
-        checkState,
-        photoUrl: photoUrls[itemId] || null,
-        actionDescription: itemDescriptions[itemId] || null,
+        checkState: data.checkState,
+        photoUrl: data.photoUrl || null,
+        actionDescription: data.description || null,
         authorId: user.id,
       })),
       signatures: Object.entries(signatures).map(([userId, signatureImage]) => ({ 
@@ -224,41 +191,44 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {checklist.templateItems.map(item => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell>
-                    <RadioGroup value={results[item.id] || null} onValueChange={(value) => handleResultChange(item.id, value)} className="flex justify-center gap-4">
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
-                      <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
-                    </RadioGroup>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {(results[item.id] === '△' || results[item.id] === 'X') && (
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="flex items-center justify-center">
-                          <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
-                            <div className="flex items-center gap-2 p-2 border rounded-md hover:bg-muted">
-                              <Camera className="h-5 w-5" />
-                              <span>{photoUrls[item.id] ? '변경' : '사진 업로드'}</span>
-                            </div>
-                          </Label>
-                          <Input id={`photo-${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(item.id, e.target.files[0])} />
-                          {photoUrls[item.id] && <img src={photoUrls[item.id]} alt="preview" className="w-16 h-16 object-cover ml-4 rounded-md"/>}
+              {checklist.templateItems.map(item => {
+                const currentItemState = formState[item.id] || {};
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell>
+                      <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4">
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                      </RadioGroup>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="flex items-center justify-center">
+                            <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
+                              <div className="flex items-center gap-2 p-2 border rounded-md hover:bg-muted">
+                                <Camera className="h-5 w-5" />
+                                <span>{currentItemState.photoUrl ? '변경' : '사진 업로드'}</span>
+                              </div>
+                            </Label>
+                            <Input id={`photo-${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(item.id, e.target.files[0])} />
+                            {currentItemState.photoUrl && <img src={currentItemState.photoUrl} alt="preview" className="w-16 h-16 object-cover ml-4 rounded-md"/>}
+                          </div>
+                          <Textarea
+                            placeholder="내용 작성..."
+                            value={currentItemState.description || ''}
+                            onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
+                            className="mt-2 w-full"
+                          />
                         </div>
-                        <Textarea
-                          placeholder="내용 작성..."
-                          value={itemDescriptions[item.id] || ''}
-                          onChange={(e) => handleDescriptionChange(item.id, e.target.value)}
-                          className="mt-2 w-full"
-                        />
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              )}
             </TableBody>
           </Table>
 
@@ -278,7 +248,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   </div>
                 ) : (
                   <Button 
-                    onClick={() => handleSignClick(worker)}
+                    onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
                     disabled={absentUsers[worker.id]}
                     className="w-full"
                   >
@@ -294,7 +264,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       <SignatureDialog 
         isOpen={isSigDialogOpen}
         onClose={() => setIsSigDialogOpen(false)}
-        onSave={handleSaveSignature}
+        onSave={(signatureData) => { if(signingUser) { setSignatures(prev => ({ ...prev, [signingUser.id]: signatureData })); } setSigningUser(null); }}
         userName={signingUser?.name || ''}
       />
 

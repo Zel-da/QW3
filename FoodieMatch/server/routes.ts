@@ -193,14 +193,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: { templateItems: { orderBy: { displayOrder: 'asc' } } },
       });
       if (!template) {
-        const emptyTemplate = { templateItems: [] };
-        console.log("Template not found for teamId:", teamId, "Returning:", emptyTemplate);
-        return res.json(emptyTemplate);
+        return res.json({ templateItems: [] });
       }
-      console.log("Returning template for teamId:", teamId, "Payload:", template);
       res.json(template);
     } catch (error) {
-      console.error(`Error fetching template for team ${req.params.teamId}:`, error);
       res.status(500).json({ message: "Failed to fetch checklist template" });
     }
   });
@@ -258,14 +254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch notice" }); }
   });
 
-  app.post("/api/notices", requireAuth, upload.single('attachment'), async (req, res) => {
+  app.post("/api/notices", requireAuth, async (req, res) => {
     try {
-      const { title, content, category } = req.body;
+      const { title, content, category, imageUrl, attachmentUrl, attachmentName } = req.body;
       const newNotice = await prisma.notice.create({
         data: {
           title, content, category: category || 'GENERAL', authorId: req.session.user!.id,
-          attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
-          attachmentName: req.file ? req.file.originalname : undefined,
+          imageUrl, attachmentUrl, attachmentName,
         },
       });
       res.status(201).json(newNotice);
@@ -345,14 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: { teamId: parseInt(teamId as string) },
         include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
       });
-
-      res.json({ 
-        dailyReports: reports, 
-        teamName: team?.name,
-        year: year,
-        month: month,
-        checklistTemplate: checklistTemplate,
-      });
+      res.json({ dailyReports: reports, teamName: team?.name, year: year, month: month, checklistTemplate: checklistTemplate });
     } catch (error) { res.status(500).json({ message: "Failed to fetch monthly report" }); }
   });
 
@@ -366,146 +354,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string), monthNum = parseInt(month as string);
       const startDate = new Date(yearNum, monthNum - 1, 1);
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
-      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
+      
+      // 1. Fetch all necessary data in parallel
+      const [team, dailyReports, checklistTemplate, teamUsers] = await Promise.all([
+        prisma.team.findUnique({ where: { id: parseInt(teamId as string) } }),
+        prisma.dailyReport.findMany({
+          where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
+          include: {
+            reportDetails: { include: { item: true } },
+            reportSignatures: { include: { user: true } },
+          },
+          orderBy: { reportDate: 'asc' },
+        }),
+        prisma.checklistTemplate.findFirst({
+          where: { teamId: parseInt(teamId as string) },
+          include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
+        }),
+        prisma.user.findMany({ where: { teamId: parseInt(teamId as string) } })
+      ]);
+
       if (!team) return res.status(404).json({ message: "Team not found" });
-      const dailyReports = await prisma.dailyReport.findMany({
-        where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
-        include: { reportDetails: { include: { item: true } } },
-        orderBy: { reportDate: 'asc' },
-      });
-      const checklistTemplate = await prisma.checklistTemplate.findFirst({
-        where: { teamId: parseInt(teamId as string) },
-        include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
-      });
       if (!checklistTemplate) return res.status(404).json({ message: "Checklist template not found" });
       
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('TBM 활동일지');
+
+      // --- SHEET 1: TBM Report ---
+      const sheet1 = workbook.addWorksheet('TBM 활동일지');
       const font = { name: '맑은 고딕', size: 11 };
       const boldFont = { ...font, bold: true };
       const titleFont = { name: '맑은 고딕', size: 20, bold: true };
       const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
       const centerAlignment = { vertical: 'middle' as const, horizontal: 'center' as const, wrapText: true };
 
-      sheet.getColumn(1).width = 15; sheet.getColumn(2).width = 59;
-      for (let i = 3; i <= 33; i++) { sheet.getColumn(i).width = 4; }
-
-      sheet.mergeCells('A1:P4'); sheet.getCell('A1').value = `${year}년 ${month}월 TBM 실시 및 안전점검 활동 일지`;
-      sheet.mergeCells('Q1:S4'); sheet.mergeCells('T1:Z2'); sheet.getCell('T1').value = '관리감독자';
-      sheet.mergeCells('AA1:AG2'); sheet.getCell('AA1').value = '승인/확인';
-      sheet.mergeCells('T3:Z4'); sheet.mergeCells('AA3:AG4');
-
-      sheet.getRow(5).height = 21;
-      sheet.mergeCells('A5:B5'); sheet.getCell('A5').value = `부서명: ${team.name}`;
-      sheet.mergeCells('C5:S5'); sheet.getCell('C5').value = '※ 범례 : ○ 양호, △ 관찰, X 불량';
-      sheet.mergeCells('T5:AG5'); sheet.getCell('T5').value = `작성자: ${currentUser?.name || ''}`;
-
-      sheet.getRow(6).height = 20; sheet.getRow(7).height = 20;
-      sheet.mergeCells('A6:A7'); sheet.getCell('A6').value = '구분';
-      sheet.mergeCells('B6:B7'); sheet.getCell('B6').value = '점검내용';
-      sheet.mergeCells('C6:AG6'); sheet.getCell('C6').value = '날짜';
+      sheet1.getColumn(1).width = 15; sheet1.getColumn(2).width = 59;
+      for (let i = 3; i <= 33; i++) { sheet1.getColumn(i).width = 4; }
+      sheet1.mergeCells('A1:P4'); sheet1.getCell('A1').value = `${year}년 ${month}월 TBM 실시 및 안전점검 활동 일지`;
+      sheet1.mergeCells('Q1:S4'); sheet1.mergeCells('T1:Z2'); sheet1.getCell('T1').value = '관리감독자';
+      sheet1.mergeCells('AA1:AG2'); sheet1.getCell('AA1').value = '승인/확인';
+      sheet1.mergeCells('T3:Z4'); sheet1.mergeCells('AA3:AG4');
+      sheet1.getRow(5).height = 21;
+      sheet1.mergeCells('A5:B5'); sheet1.getCell('A5').value = `부서명: ${team.name}`;
+      sheet1.mergeCells('C5:S5'); sheet1.getCell('C5').value = '※ 범례 : ○ 양호, △ 관찰, X 불량';
+      sheet1.mergeCells('T5:AG5'); sheet1.getCell('T5').value = `작성자: ${currentUser?.name || ''}`;
+      sheet1.getRow(6).height = 20; sheet1.getRow(7).height = 20;
+      sheet1.mergeCells('A6:A7'); sheet1.getCell('A6').value = '구분';
+      sheet1.mergeCells('B6:B7'); sheet1.getCell('B6').value = '점검내용';
+      sheet1.mergeCells('C6:AG6'); sheet1.getCell('C6').value = '날짜';
 
       const lastDayOfMonth = new Date(yearNum, monthNum, 0).getDate();
       const dateColMap: Record<number, number> = {};
       for (let day = 1; day <= lastDayOfMonth; day++) {
         const col = 2 + day;
         if (col > 33) break;
-        sheet.getCell(7, col).value = day;
+        sheet1.getCell(7, col).value = day;
         dateColMap[day] = col;
       }
 
       const detailsMap = new Map<string, string>();
+      const remarksMap = new Map<string, string>();
       dailyReports.forEach(report => {
         const day = new Date(report.reportDate).getDate();
         report.reportDetails.forEach(detail => {
           const key = `${detail.itemId}-${day}`;
           detailsMap.set(key, detail.checkState || '');
+          if (detail.checkState === 'X' || detail.checkState === '△') {
+            remarksMap.set(key, detail.actionDescription || '');
+          }
         });
       });
 
-      let currentRow = 8;
+      let currentRow1 = 8;
       const remarksData: any[] = [];
       if (checklistTemplate.templateItems.length > 0) {
-        const categoryGroups: { [key: string]: any[] } = {};
-        checklistTemplate.templateItems.forEach(item => {
-          if (!categoryGroups[item.category]) { categoryGroups[item.category] = []; }
-          categoryGroups[item.category].push(item);
-        });
-
-        Object.keys(categoryGroups).forEach(category => {
-          const items = categoryGroups[category];
-          const categoryStartRow = currentRow;
+        Object.values(checklistTemplate.templateItems.reduce((acc, item) => {
+          acc[item.category] = [...(acc[item.category] || []), item];
+          return acc;
+        }, {} as Record<string, any[]>)).forEach(items => {
+          const categoryStartRow = currentRow1;
           items.forEach(item => {
-            sheet.getCell(currentRow, 2).value = item.description;
+            sheet1.getCell(currentRow1, 2).value = item.description;
             for (const day in dateColMap) {
               const col = dateColMap[day];
               const key = `${item.id}-${day}`;
               if (detailsMap.has(key)) {
                 const status = detailsMap.get(key);
-                sheet.getCell(currentRow, col).value = status;
-
+                sheet1.getCell(currentRow1, col).value = status;
                 if (status === 'X' || status === '△') {
-                    const reportForDay = dailyReports.find(r => new Date(r.reportDate).getDate() === parseInt(day));
-                    const detailForDay = reportForDay?.reportDetails.find(d => d.itemId === item.id);
-                    remarksData.push({
-                        date: new Date(reportForDay!.reportDate).toLocaleDateString(),
-                        problem: item.description,
-                        prediction: detailForDay?.actionDescription || ''
-                    });
+                  const reportForDay = dailyReports.find(r => new Date(r.reportDate).getDate() === parseInt(day));
+                  remarksData.push({ date: new Date(reportForDay!.reportDate).toLocaleDateString(), problem: item.description, prediction: remarksMap.get(key) || '' });
                 }
               }
             }
-            currentRow++;
+            currentRow1++;
           });
-          sheet.mergeCells(`A${categoryStartRow}:A${currentRow - 1}`);
-          sheet.getCell(categoryStartRow, 1).value = category;
+          sheet1.mergeCells(`A${categoryStartRow}:A${currentRow1 - 1}`);
+          sheet1.getCell(categoryStartRow, 1).value = items[0].category;
         });
       }
 
-      const footerStartRow = currentRow;
-      sheet.getRow(footerStartRow).height = 21;
-      sheet.getCell(footerStartRow, 1).value = '날짜'; sheet.getCell(footerStartRow, 2).value = '문제점';
-      sheet.mergeCells(`C${footerStartRow}:L${footerStartRow}`); sheet.getCell(footerStartRow, 3).value = '위험예측 사항';
-      sheet.mergeCells(`M${footerStartRow}:V${footerStartRow}`); sheet.getCell(footerStartRow, 13).value = '조치사항';
-      sheet.mergeCells(`W${footerStartRow}:Z${footerStartRow}`); sheet.getCell(footerStartRow, 23).value = '확인';
-      sheet.mergeCells(`AA${footerStartRow}:AG${footerStartRow}`);
-
+      const footerStartRow = currentRow1;
+      sheet1.getRow(footerStartRow).height = 21;
+      sheet1.getCell(footerStartRow, 1).value = '날짜'; sheet1.getCell(footerStartRow, 2).value = '문제점';
+      sheet1.mergeCells(`C${footerStartRow}:L${footerStartRow}`); sheet1.getCell(footerStartRow, 3).value = '위험예측 사항';
+      sheet1.mergeCells(`M${footerStartRow}:V${footerStartRow}`); sheet1.getCell(footerStartRow, 13).value = '조치사항';
+      sheet1.mergeCells(`W${footerStartRow}:Z${footerStartRow}`); sheet1.getCell(footerStartRow, 23).value = '확인';
+      sheet1.mergeCells(`AA${footerStartRow}:AG${footerStartRow}`);
       let footerCurrentRow = footerStartRow + 1;
-      if (remarksData.length > 0) {
-        remarksData.forEach(remark => {
-          sheet.getRow(footerCurrentRow).height = 21;
-          sheet.getCell(footerCurrentRow, 1).value = remark.date;
-          sheet.getCell(footerCurrentRow, 2).value = remark.problem;
-          sheet.mergeCells(`C${footerCurrentRow}:L${footerCurrentRow}`); sheet.getCell(footerCurrentRow, 3).value = remark.prediction;
-          sheet.mergeCells(`M${footerCurrentRow}:V${footerCurrentRow}`); sheet.mergeCells(`W${footerCurrentRow}:Z${footerCurrentRow}`);
-          sheet.mergeCells(`AA${footerCurrentRow}:AG${footerCurrentRow}`);
-          footerCurrentRow++;
-        });
-      } else {
-        sheet.getRow(footerCurrentRow).height = 21; footerCurrentRow++;
-      }
-
-      const totalRows = footerCurrentRow - 1;
-      for (let r = 1; r <= totalRows; r++) {
-        for (let c = 1; c <= 33; c++) {
-          sheet.getCell(r, c).border = border;
-          sheet.getCell(r, c).alignment = centerAlignment;
-          sheet.getCell(r, c).font = font;
-        }
-      }
-
-      sheet.getCell('A1').font = titleFont;
-      ['A6', 'B6', 'C6', 'A5', 'C5', 'T5', `A${footerStartRow}`, `B${footerStartRow}`, `C${footerStartRow}`, `M${footerStartRow}`, `W${footerStartRow}`].forEach(cellRef => {
-        sheet.getCell(cellRef).font = boldFont;
+      remarksData.forEach(remark => {
+        sheet1.getRow(footerCurrentRow).height = 21;
+        sheet1.getCell(footerCurrentRow, 1).value = remark.date;
+        sheet1.getCell(footerCurrentRow, 2).value = remark.problem;
+        sheet1.mergeCells(`C${footerCurrentRow}:L${footerCurrentRow}`); sheet1.getCell(footerCurrentRow, 3).value = remark.prediction;
+        sheet1.mergeCells(`M${footerCurrentRow}:V${footerCurrentRow}`); sheet1.mergeCells(`W${footerCurrentRow}:Z${footerCurrentRow}`);
+        sheet1.mergeCells(`AA${footerCurrentRow}:AG${footerCurrentRow}`);
+        footerCurrentRow++;
       });
 
+      for (let r = 1; r < footerCurrentRow; r++) {
+        for (let c = 1; c <= 33; c++) {
+          sheet1.getCell(r, c).border = border;
+          sheet1.getCell(r, c).alignment = centerAlignment;
+          sheet1.getCell(r, c).font = font;
+        }
+      }
+      sheet1.getCell('A1').font = titleFont;
+      ['A6', 'B6', 'C6', 'A5', 'C5', 'T5', `A${footerStartRow}`, `B${footerStartRow}`, `C${footerStartRow}`, `M${footerStartRow}`, `W${footerStartRow}`].forEach(ref => { sheet1.getCell(ref).font = boldFont; });
+
+      // --- SHEET 2: Signatures ---
+      const sheet2 = workbook.addWorksheet('서명');
+      sheet2.getColumn(1).width = 20;
+      sheet2.getCell('A1').value = '이름';
+      sheet2.getCell('A1').font = boldFont;
+      sheet2.getCell('A1').alignment = centerAlignment;
+      sheet2.getCell('A1').border = border;
+
+      const sigDateColMap: Record<number, number> = {};
+      for (let day = 1; day <= lastDayOfMonth; day++) {
+        const col = 1 + day;
+        sheet2.getColumn(col).width = 7.5;
+        sheet2.getCell(1, col).value = day;
+        sheet2.getCell(1, col).font = boldFont;
+        sheet2.getCell(1, col).alignment = centerAlignment;
+        sheet2.getCell(1, col).border = border;
+        sigDateColMap[day] = col;
+      }
+
+      const userRowMap: Record<string, number> = {};
+      teamUsers.forEach((u, index) => {
+        const row = 2 + index;
+        userRowMap[u.id] = row;
+        sheet2.getRow(row).height = 30;
+        sheet2.getCell(row, 1).value = u.name;
+        sheet2.getCell(row, 1).font = font;
+        sheet2.getCell(row, 1).alignment = centerAlignment;
+        sheet2.getCell(row, 1).border = border;
+      });
+
+      dailyReports.forEach(report => {
+        const day = new Date(report.reportDate).getDate();
+        const col = sigDateColMap[day];
+        if (!col) return;
+
+        report.reportSignatures.forEach(sig => {
+          const row = userRowMap[sig.userId];
+          if (row && sig.signatureImage) {
+            try {
+              const base64Data = sig.signatureImage.split('base64,').pop();
+              if (!base64Data) return;
+
+              const imageId = workbook.addImage({ base64: base64Data, extension: 'png' });
+              sheet2.addImage(imageId, {
+                tl: { col: col - 0.5, row: row - 0.5 },
+                ext: { width: 50, height: 25 }
+              });
+            } catch (e) { console.error("Error adding image:", e); }
+          }
+        });
+      });
+      
+      for (let r = 2; r <= teamUsers.length + 1; r++) {
+          for (let c = 2; c <= lastDayOfMonth + 1; c++) {
+              sheet2.getCell(r, c).border = border;
+          }
+      }
+
+      // --- Finalize and send ---
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="TBM_Report_${year}_${month}.xlsx"`);
       await workbook.xlsx.write(res);
       res.end();
+
     } catch (error) {
       console.error('Failed to generate Excel report:', error);
       res.status(500).json({ message: "Failed to generate Excel report" });
+    }
+  });
+
+  app.post("/api/reports", requireAuth, async (req, res) => {
+    try {
+      const { teamId, reportDate, managerName, remarks, site, results, signatures } = req.body;
+      const newReport = await prisma.dailyReport.create({
+        data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
+      });
+      if (results && results.length > 0) {
+        await prisma.reportDetail.createMany({
+          data: results.map((r: any) => ({
+            reportId: newReport.id, itemId: r.itemId, checkState: r.checkState,
+            photoUrl: r.photoUrl, actionDescription: r.actionDescription, authorId: r.authorId,
+          })),
+        });
+      }
+      if (signatures && signatures.length > 0) {
+        await prisma.reportSignature.createMany({
+          data: signatures.map((s: any) => ({
+            reportId: newReport.id, userId: s.userId, signatureImage: s.signatureImage,
+          })),
+        });
+      }
+      const fullReport = await prisma.dailyReport.findUnique({
+          where: { id: newReport.id },
+          include: { reportDetails: true, reportSignatures: true }
+      });
+      res.status(201).json(fullReport);
+    } catch (error) {
+      console.error("Error creating report:", error);
+      res.status(500).json({ message: "Failed to create report" });
     }
   });
 

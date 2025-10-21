@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from "date-fns";
 import axios from 'axios';
 import { Header } from "@/components/header";
@@ -36,14 +36,12 @@ export default function TbmPage() {
     }
   }, [user, setSite]);
 
-  const handleSelectReport = (reportId: number) => {
-    // This function is for viewing details, not editing.
-    // We create a temporary object to pass to the detail view to avoid a state variable.
+  const handleSelectReport = useCallback((reportId: number) => {
     setReportForEdit({ id: reportId }); 
     setView('detail');
-  };
+  }, []);
 
-  const handleModifyReport = (reportId: number) => {
+  const handleModifyReport = useCallback((reportId: number) => {
     axios.get(`/api/reports/${reportId}`).then(res => {
       const report = res.data;
       setReportForEdit(report);
@@ -52,17 +50,17 @@ export default function TbmPage() {
     }).catch(err => {
       console.error("Failed to fetch report for editing:", err);
     });
-  };
+  }, []);
 
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     setReportForEdit(null);
     setView('list');
-  };
+  }, []);
 
-  const handleFinishEditing = () => {
+  const handleFinishEditing = useCallback(() => {
     setReportForEdit(null);
     setView('list');
-  }
+  }, []);
 
   const renderView = () => {
     if (!site) return <p>현장 정보를 불러오는 중...</p>;

@@ -12,17 +12,16 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('SESSION_SECRET environment variable must be set in production');
 }
 
-app.set('trust proxy', 1);
+app.set('trust proxy', 1); // Add this line
 
 app.use(session({
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', 
+    secure: false, // Explicitly set to false for http
     httpOnly: true, 
-    maxAge: 1000 * 60 * 60 * 24,
-    sameSite: 'lax'
+    maxAge: 1000 * 60 * 60 * 24 
   }
 }));
 

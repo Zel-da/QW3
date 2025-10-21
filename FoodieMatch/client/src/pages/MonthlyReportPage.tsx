@@ -168,20 +168,19 @@ export default function MonthlyReportPage() {
                                                                                                                                     ))}
                                                                                                                                 </TableRow>
                                                                                                                             </TableHeader>
-                                                                                                                            <TableBody>
-                                                                                                                                {report.checklistTemplate?.templateItems.map(item => (
-                                                                                                                                    <TableRow key={item.id}>
-                                                                                                                                        <TableCell className="border border-slate-300 whitespace-nowrap">{item.category}</TableCell>
-                                                                                                                                        <TableCell className="border border-slate-300 whitespace-nowrap">{item.description}</TableCell>                          {Array.from({ length: new Date(report.year, report.month, 0).getDate() }, (_, i) => i + 1).map(day => {
-                            const reportForDay = report.dailyReports.find(r => new Date(r.reportDate).getDate() === day);
-                            const detail = reportForDay && reportForDay.reportDetails ? reportForDay.reportDetails.find(d => d.itemId === item.id) : undefined;
-                            return (
-                              <TableCell key={day} className="border border-slate-300 text-center">{detail?.checkState || ''}</TableCell>
-                            );
-                          })}
-                        </TableRow>
-                    ))}
-                  </TableBody>
+                                                                                                                                                        <TableBody>
+                                                                                                                                                            {report.checklistTemplate?.templateItems.map(item => (
+                                                                                                                                                                <TableRow key={item.id}>
+                                                                                                                                                                    <TableCell className="border border-slate-300 whitespace-nowrap">{item.category}</TableCell><TableCell className="border border-slate-300 whitespace-nowrap">{item.description}</TableCell>{Array.from({ length: new Date(report.year, report.month, 0).getDate() }, (_, i) => i + 1).map(day => {
+                                                                                                                                                                        const reportForDay = report.dailyReports.find(r => new Date(r.reportDate).getDate() === day);
+                                                                                                                                                                        const detail = reportForDay && reportForDay.reportDetails ? reportForDay.reportDetails.find(d => d.itemId === item.id) : undefined;
+                                                                                                                                                                        return (
+                                                                                                                                                                            <TableCell key={day} className="border border-slate-300 text-center">{detail?.checkState || ''}</TableCell>
+                                                                                                                                                                        );
+                                                                                                                                                                    })}
+                                                                                                                                                                </TableRow>
+                                                                                                                                                            ))}
+                                                                                                                                                        </TableBody>
                 </Table>
               </CardContent>
             </Card>
