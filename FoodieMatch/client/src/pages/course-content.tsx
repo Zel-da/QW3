@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { ArrowLeft, Play, Pause, CheckCircle, Clock } from "lucide-react";
 import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const getYouTubeId = (url: string): string | null => {
   if (!url) return null;
@@ -24,115 +24,129 @@ export default function CourseContentPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [videoProgress, setVideoProgress] = useState(0);
+  const { user } = useAuth();
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeSpent, setTimeSpent] = useState(0);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const timeSpentRef = useRef(timeSpent); // Ref to hold the latest timeSpent
 
   useEffect(() => {
-    const userId = localStorage.getItem("currentUserId");
-    console.log("CourseContent - localStorage userId:", userId);
-    if (!userId) {
-      setLocation('/login');
-      return;
-    }
-    setCurrentUserId(userId);
-  }, [courseId, setLocation]);
+    timeSpentRef.current = timeSpent;
+  }, [timeSpent]);
 
   const { data: course } = useQuery<Course>({
     queryKey: ["/api/courses", courseId],
     enabled: !!courseId,
   });
 
-  const { data: userProgress } = useQuery<UserProgress>({
-    queryKey: ["/api/users", currentUserId, "progress", courseId],
-    enabled: !!currentUserId && !!courseId,
+  const { data: userProgress, isLoading: progressLoading } = useQuery<UserProgress>({
+    queryKey: ["/api/users", user?.id, "progress", courseId],
+    enabled: !!user?.id && !!courseId,
   });
 
   const updateProgressMutation = useMutation({
-    mutationFn: async (progressData: any) => {
+    mutationFn: async (progressData: Partial<UserProgress>) => {
+      if (!user?.id || !courseId) return;
       const response = await apiRequest(
-        "PUT", 
-        `/api/users/${currentUserId}/progress/${courseId}`, 
+        "PUT",
+        `/api/users/${user.id}/progress/${courseId}`,
         progressData
       );
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/users", currentUserId, "progress", courseId],
+        queryKey: ["/api/users", user?.id, "progress", courseId],
       });
     },
   });
 
-  useEffect(() => {
-    if (userProgress) {
-      setTimeSpent(userProgress.timeSpent || 0);
-      setVideoProgress(userProgress.progress || 0);
-      setCurrentStep(userProgress.currentStep || 1);
+  // Stable function to save progress
+  const saveProgress = useCallback(() => {
+    if (!user?.id || !courseId || !course) return;
+
+    let currentProgress: number;
+
+    // If duration is 0, immediately set to 100%
+    if (course.duration === 0) {
+      currentProgress = 100;
+    } else {
+      currentProgress = Math.min(Math.floor((timeSpentRef.current / (course.duration * 60)) * 100), 100);
     }
-  }, [userProgress]);
+
+    // Call API directly without using mutation object
+    // Don't invalidate queries to prevent resetting timeSpent
+    apiRequest(
+      "PUT",
+      `/api/users/${user.id}/progress/${courseId}`,
+      {
+        progress: currentProgress,
+        timeSpent: timeSpentRef.current,
+        currentStep: currentProgress >= 100 ? 3 : 2,
+      }
+    ).catch(err => {
+      console.error('Failed to save progress:', err);
+    });
+  }, [course, courseId, user?.id]);
 
   useEffect(() => {
-    if (course?.videoUrl) {
+    if (!progressLoading) {
+      if (userProgress && userProgress.timeSpent) {
+        // Load saved progress
+        setTimeSpent(userProgress.timeSpent);
+      }
+      setProgressLoaded(true);
+    }
+  }, [userProgress, progressLoading]);
+
+  useEffect(() => {
+    // Only start auto-play after progress is loaded
+    if (course?.videoUrl && progressLoaded) {
       setIsPlaying(true);
     }
-  }, [course]);
 
+    // If duration is 0, save 100% progress immediately
+    if (course && course.duration === 0 && progressLoaded) {
+      saveProgress();
+    }
+  }, [course, saveProgress, progressLoaded]);
+
+  // Timer effect - update time and save progress periodically
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isPlaying && course) {
+    let saveInterval: NodeJS.Timeout;
+
+    if (isPlaying) {
       interval = setInterval(() => {
-        setTimeSpent(prevTime => {
-          const newTime = prevTime + 1;
-          setVideoProgress(prevProgress => {
-            const newProgress = Math.min(prevProgress + (100 / (course.duration * 60)), 100);
-
-            if (newTime > 0 && newTime % 10 === 0) {
-              updateProgressMutation.mutate({
-                progress: Math.floor(newProgress),
-                timeSpent: newTime,
-                currentStep: newProgress >= 100 ? 3 : 2,
-              });
-            }
-            return newProgress;
-          });
-          return newTime;
-        });
+        setTimeSpent(prevTime => prevTime + 1);
       }, 1000);
+
+      // Save progress every 10 seconds
+      saveInterval = setInterval(() => {
+        saveProgress();
+      }, 10000);
     }
+
     return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
+      if (interval) clearInterval(interval);
+      if (saveInterval) clearInterval(saveInterval);
     };
-  }, [isPlaying, course, updateProgressMutation]);
+  }, [isPlaying, saveProgress]);
 
-  const handleVideoComplete = () => {
-    setIsPlaying(false);
-    setVideoProgress(100);
-    setCurrentStep(3);
-    
-    updateProgressMutation.mutate({
-      progress: 100,
-      timeSpent,
-      currentStep: 3,
-      completed: false, // Will be completed after assessment
-    });
+  // Save progress on unmount
+  useEffect(() => {
+    return () => {
+      saveProgress();
+    };
+  }, [saveProgress]);
 
-    toast({
-      title: "교육 영상 완료",
-      description: "이제 평가를 진행할 수 있습니다.",
-    });
-  };
 
   const handleStartAssessment = () => {
     setLocation(`/assessment/${courseId}`);
   };
 
-  if (!currentUserId || !course) {
+  if (!user || !course) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -146,19 +160,19 @@ export default function CourseContentPage() {
   }
 
   const videoId = course.videoUrl ? getYouTubeId(course.videoUrl) : null;
-  const progressPercent = userProgress?.progress || 0;
-  const isVideoComplete = videoProgress >= 100 || progressPercent >= 100;
+  const progressPercent = course.duration === 0 ? 100 : Math.min(Math.floor((timeSpent / (course.duration * 60)) * 100), 100);
+  const isVideoComplete = progressPercent >= 100 || (userProgress?.progress || 0) >= 100;
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <Link href="/">
+          <Link href="/courses">
             <Button variant="ghost" className="korean-text" data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              대시보드로 돌아가기
+              교육 목록으로 돌아가기
             </Button>
           </Link>
         </div>
@@ -180,9 +194,9 @@ export default function CourseContentPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="korean-text">진행률</span>
-                    <span data-testid="video-progress-text">{Math.floor(videoProgress)}%</span>
+                    <span data-testid="video-progress-text">{progressPercent}%</span>
                   </div>
-                  <Progress value={videoProgress} className="h-2" data-testid="video-progress-bar" />
+                  <Progress value={progressPercent} className="h-2" data-testid="video-progress-bar" />
                 </div>
               </CardContent>
             </Card>
@@ -213,7 +227,6 @@ export default function CourseContentPage() {
                 <div className="flex gap-4">
                   <Button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    disabled={isVideoComplete}
                     className="korean-text"
                     data-testid="button-play-pause"
                   >
@@ -230,14 +243,25 @@ export default function CourseContentPage() {
                     )}
                   </Button>
 
-                  {isVideoComplete && (
+                  {(timeSpent > 0 || isVideoComplete) && (
                     <Button
-                      onClick={() => setVideoProgress(0)}
+                      onClick={() => {
+                        setTimeSpent(0);
+                        setIsPlaying(true);
+                        // Reset progress in database
+                        if (user?.id && courseId) {
+                          apiRequest("PUT", `/api/users/${user.id}/progress/${courseId}`, {
+                            progress: 0,
+                            timeSpent: 0,
+                            currentStep: 1,
+                          });
+                        }
+                      }}
                       variant="outline"
                       className="korean-text"
                       data-testid="button-replay"
                     >
-                      다시 보기
+                      처음부터 다시보기
                     </Button>
                   )}
                 </div>
@@ -261,13 +285,23 @@ export default function CourseContentPage() {
                 <CardTitle className="text-lg korean-text">학습 진행 상황</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {userProgress && userProgress.progress > 0 && userProgress.progress < 100 && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 korean-text">
+                      이전 진행률: {userProgress.progress}%
+                      <br />
+                      <span className="text-xs">이어서 학습이 진행됩니다</span>
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm korean-text">영상 시청</span>
                   <span className="text-sm font-medium" data-testid="video-completion-status">
                     {isVideoComplete ? "완료" : "진행 중"}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm korean-text">소요 시간</span>
                   <span className="text-sm font-medium" data-testid="time-spent">
@@ -302,15 +336,16 @@ export default function CourseContentPage() {
                   <div className="text-center py-4">
                     <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-600" />
                     <p className="text-sm text-muted-foreground mb-4 korean-text">
-                      교육 영상 시청이 완료되었습니다!<br />
-                      이제 평가를 진행하세요.
+                      {userProgress?.completed ? '모든 과정을 이수했습니다.' : '교육 영상 시청이 완료되었습니다!'}
+                      <br />
+                      {userProgress?.completed ? '평가를 다시 보거나 영상을 복습할 수 있습니다.' : '이제 평가를 진행하세요.'}
                     </p>
                     <Button
                       onClick={handleStartAssessment}
                       className="w-full korean-text"
                       data-testid="button-start-assessment"
                     >
-                      평가 시작하기
+                      {userProgress?.completed ? '평가 다시 응시하기' : '평가 시작하기'}
                     </Button>
                   </div>
                 )}

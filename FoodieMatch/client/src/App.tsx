@@ -37,9 +37,22 @@ function App() {
           <Route path="/education" component={Dashboard} />
           <Route path="/login" component={LoginPage} />
           <Route path="/register" component={RegisterPage} />
-          <Route path="/course/:id" component={CoursePage} />
-          <Route path="/course/:id/content" component={CourseContent} />
-          <Route path="/assessment/:courseId" component={AssessmentPage} />
+          <Route path="/courses" component={Dashboard} />
+          <Route path="/courses/:id">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+              <CoursePage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/courses/:id/content">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+              <CourseContent />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/assessment/:courseId">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+              <AssessmentPage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/tbm">
             <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER]}>
               <TbmPage />

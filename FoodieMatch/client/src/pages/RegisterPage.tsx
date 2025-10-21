@@ -13,8 +13,8 @@ interface Team {
   name: string;
 }
 
-const fetchTeams = async (): Promise<Team[]> => {
-  const res = await fetch('/api/teams');
+const fetchTeams = async (site: string): Promise<Team[]> => {
+  const res = await fetch(`/api/teams?site=${site}`);
   if (!res.ok) {
     throw new Error('Failed to fetch teams');
   }
@@ -28,14 +28,14 @@ export default function RegisterPage() {
     email: '',
     password: '',
     teamId: '',
-    site: 'Asan',
+    site: '아산', // Default to '아산'
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { data: teams, isLoading: isLoadingTeams } = useQuery({ 
-    queryKey: ['teams'], 
-    queryFn: fetchTeams 
+  const { data: teams, isLoading: isLoadingTeams } = useQuery({
+    queryKey: ['teams', formData.site],
+    queryFn: () => fetchTeams(formData.site),
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,11 +113,11 @@ export default function RegisterPage() {
                 <Label>소속 현장</Label>
                 <RadioGroup defaultValue={formData.site} onValueChange={handleSiteChange} className="flex space-x-4">
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Asan" id="site-asan" />
+                    <RadioGroupItem value="아산" id="site-asan" />
                     <Label htmlFor="site-asan">아산</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Hwaseong" id="site-hwaseong" />
+                    <RadioGroupItem value="화성" id="site-hwaseong" />
                     <Label htmlFor="site-hwaseong">화성</Label>
                   </div>
                 </RadioGroup>

@@ -1,5 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import pgSimple from "connect-pg-simple";
+import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -12,16 +14,23 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('SESSION_SECRET environment variable must be set in production');
 }
 
-app.set('trust proxy', 1); // Add this line
+const PgSession = pgSimple(session);
+
+app.set('trust proxy', 1);
 
 app.use(session({
+  store: new PgSession({
+    pool: prisma.$pool as any, // Use the connection pool from Prisma
+    tableName: 'user_sessions', // Name of the session table
+    createTableIfMissing: true,
+  }),
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: { 
     secure: false, // Explicitly set to false for http
     httpOnly: true, 
-    maxAge: 1000 * 60 * 60 * 24 
+    maxAge: 1000 * 60 * 60 * 24 * 30 // 30 days
   }
 }));
 

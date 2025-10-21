@@ -117,7 +117,7 @@ export default function CoursePage() {
       
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <Link href="/education">
+          <Link href="/courses">
             <Button variant="ghost" className="korean-text" data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
               교육 목록으로 돌아가기
@@ -151,12 +151,7 @@ export default function CoursePage() {
                 </div>
               </div>
 
-              <Button
-                onClick={handleStartCourse}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground korean-text"
-                size="lg"
-                data-testid="button-start-course"
-              >
+                            <Button onClick={() => setLocation(`/courses/${course.id}/content`)} className="w-full">
                 <PlayCircle className="w-5 h-5 mr-2" />
                 교육 시작하기
               </Button>

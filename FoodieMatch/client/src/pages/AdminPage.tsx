@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
 
 const fetchUsers = async (): Promise<User[]> => {
@@ -51,6 +52,7 @@ const deleteUser = async (userId: string) => {
 export default function AdminPage() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedTeamId, setSelectedTeamId] = useState('all');
 
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]> ({
@@ -65,17 +67,26 @@ export default function AdminPage() {
 
   const roleMutation = useMutation({
     mutationFn: updateUserRole,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
+    onSuccess: () => {
+      toast({ title: '성공', description: '사용자 역할이 변경되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
   });
 
   const siteMutation = useMutation({
     mutationFn: updateUserSite,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
+    onSuccess: () => {
+      toast({ title: '성공', description: '사용자의 소속 현장이 변경되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
+    onSuccess: () => {
+      toast({ title: '성공', description: '사용자가 삭제되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
   });
 
   const handleRoleChange = (userId: string, role: Role) => {
@@ -88,7 +99,7 @@ export default function AdminPage() {
 
   const handleDeleteUser = (userId: string, username: string) => {
     if (currentUser?.id === userId) {
-      alert("현재 로그인된 관리자 계정은 삭제할 수 없습니다.");
+      toast({ title: "오류", description: "현재 로그인된 관리자 계정은 삭제할 수 없습니다.", variant: "destructive" });
       return;
     }
     if (window.confirm(`${username} 사용자를 정말로 삭제하시겠습니까?`)) {
@@ -98,7 +109,6 @@ export default function AdminPage() {
 
   const filteredUsers = users.filter(user => {
     if (selectedTeamId === 'all') return true;
-    // teamId can be null, so handle that case
     return user.teamId ? user.teamId === parseInt(selectedTeamId) : false;
   });
 
@@ -116,17 +126,17 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-                <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-                    <SelectTrigger className="w-[280px]">
-                        <SelectValue placeholder="팀별로 보기" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">모든 팀</SelectItem>
-                        {teams.map(team => (
-                            <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger className="w-[280px]">
+                  <SelectValue placeholder="팀별로 보기" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">모든 팀</SelectItem>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Table>
               <TableHeader>
@@ -144,37 +154,37 @@ export default function AdminPage() {
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.name}</TableCell>
                     <TableCell>
-                        <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)}>
-                            <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="현장 선택" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="아산">아산</SelectItem>
-                                <SelectItem value="화성">화성</SelectItem>
-                            </SelectContent>
-                        </Select>
+                      <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue placeholder="현장 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="아산">아산</SelectItem>
+                          <SelectItem value="화성">화성</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
-                        <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="역할 선택" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.values(Role).map(role => (
-                                <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                      <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="역할 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(Role).map(role => (
+                          <SelectItem key={role} value={role}>{role}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-right">
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id, user.username)}
-                            disabled={currentUser?.id === user.id}
-                        >
-                            삭제
-                        </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user.id, user.username)}
+                        disabled={currentUser?.id === user.id}
+                      >
+                        삭제
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

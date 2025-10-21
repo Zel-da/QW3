@@ -41,7 +41,7 @@ export default function Dashboard() {
       setLocation('/login');
       return;
     }
-    window.location.href = `/course/${courseId}`;
+    setLocation(`/courses/${courseId}`);
   };
 
   const getStepStatus = (stepNumber: number) => {

@@ -1,402 +1,162 @@
-import { useState, useEffect } from "react";
-import { useParams, useLocation, Link } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Header } from "@/components/header";
-import { ArrowLeft, Clock, CheckCircle, XCircle, Award } from "lucide-react";
-import { Course, Assessment, UserAssessment } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { Header } from '@/components/header';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+
+interface AssessmentQuestion {
+  id: string;
+  question: string;
+  options: string;
+  correctAnswer: number;
+}
+
+interface AssessmentResult {
+  passed: boolean;
+  score: number;
+  totalQuestions: number;
+}
+
+const fetchAssessments = async (courseId: string): Promise<AssessmentQuestion[]> => {
+  const { data } = await axios.get(`/api/courses/${courseId}/assessments`);
+  return data || [];
+};
+
+const submitAssessment = async ({ courseId, userId, answers }: { courseId: string; userId: string; answers: { [key: string]: string } }) => {
+  const { data: questions } = await axios.get(`/api/courses/${courseId}/assessments`);
+  let score = 0;
+  questions.forEach((q: AssessmentQuestion) => {
+    if (parseInt(answers[q.id]) === q.correctAnswer) {
+      score++;
+    }
+  });
+
+  const passed = (score / questions.length) >= 0.8;
+
+  if (passed) {
+    await axios.put(`/api/users/${userId}/progress/${courseId}`, {
+      progress: 100,
+      completed: true,
+    });
+  }
+
+  await axios.post(`/api/users/${userId}/assessments/${courseId}`, {
+    score,
+    totalQuestions: questions.length,
+    passed,
+    attemptNumber: 1, // This could be incremented based on previous attempts
+  });
+
+  return { passed, score, totalQuestions: questions.length };
+};
 
 export default function AssessmentPage() {
   const { courseId } = useParams();
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [assessmentResult, setAssessmentResult] = useState<UserAssessment | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const userId = localStorage.getItem("currentUserId");
-    if (!userId) {
-      setLocation(`/course/${courseId}`);
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [result, setResult] = useState<AssessmentResult | null>(null);
+
+  const { data: questions, isLoading } = useQuery<AssessmentQuestion[]>({
+    queryKey: ['assessments', courseId],
+    queryFn: () => fetchAssessments(courseId!),
+    enabled: !!courseId,
+  });
+
+  const mutation = useMutation({
+    mutationFn: submitAssessment,
+    onSuccess: (data) => {
+      setResult(data);
+      queryClient.invalidateQueries({ queryKey: ['userAssessments', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['userProgress', user?.id, courseId] });
+      queryClient.invalidateQueries({ queryKey: ['userCertificates', user?.id] });
+    },
+    onError: (error) => {
+      toast({ title: "오류", description: "평가 제출 중 오류가 발생했습니다.", variant: "destructive" });
+    }
+  });
+
+  const handleAnswerChange = (questionId: string, value: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!user || !questions) return;
+
+    const unansweredQuestions = questions.filter(q => !answers[q.id]);
+    if (unansweredQuestions.length > 0) {
+      toast({
+        title: "미완료",
+        description: `모든 질문에 답변해주세요. (${unansweredQuestions.length}개 남음)`,
+        variant: "destructive",
+      });
       return;
     }
-    setCurrentUserId(userId);
-  }, [courseId, setLocation]);
 
-  const { data: course } = useQuery<Course>({
-    queryKey: ["/api/courses", courseId],
-    enabled: !!courseId,
-  });
-
-  const { data: assessments = [], isLoading: assessmentsLoading } = useQuery<Assessment[]>({
-    queryKey: ["assessments", courseId],
-    queryFn: () => fetch(`/api/courses/${courseId}/assessments`).then(res => res.json()),
-    enabled: !!courseId,
-  });
-
-  const { data: previousAttempts = [] } = useQuery<UserAssessment[]>({
-    queryKey: ["/api/users", currentUserId, "assessments", courseId],
-    enabled: !!currentUserId && !!courseId,
-  });
-
-  const submitAssessmentMutation = useMutation({
-    mutationFn: async (assessmentData: any) => {
-      const response = await apiRequest(
-        "POST", 
-        `/api/users/${currentUserId}/assessments/${courseId}`, 
-        assessmentData
-      );
-      return response.json();
-    },
-    onSuccess: (result) => {
-      setAssessmentResult(result);
-      setIsSubmitted(true);
-      
-      if (result.passed) {
-        // Update course progress to completed
-        apiRequest("PUT", `/api/users/${currentUserId}/progress/${courseId}`, {
-          progress: 100,
-          completed: true,
-          currentStep: 3,
-        });
-        
-        toast({
-          title: "평가 통과!",
-          description: "축하합니다! 이수증이 발급됩니다.",
-        });
-      } else {
-        toast({
-          title: "평가 미통과",
-          description: "다시 시도해보세요.",
-          variant: "destructive",
-        });
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: ["/api/users", currentUserId, "assessments", courseId],
-      });
-    },
-  });
-
-  // Timer countdown
-  useEffect(() => {
-    if (isSubmitted || timeRemaining <= 0) return;
-    
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          handleSubmitAssessment();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isSubmitted, timeRemaining]);
-
-  const handleAnswerSelect = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex);
+    mutation.mutate({ courseId: courseId!, userId: user.id, answers });
   };
 
-  const handleNextQuestion = () => {
-    if (selectedAnswer === null) return;
-    
-    const newAnswers = [...answers];
-    newAnswers[currentQuestion] = selectedAnswer;
-    setAnswers(newAnswers);
-    setSelectedAnswer(null);
-
-    if (currentQuestion < assessments.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      handleSubmitAssessment(newAnswers);
-    }
-  };
-
-  const handleSubmitAssessment = (finalAnswers = answers) => {
-    let correctCount = 0;
-    
-    assessments.forEach((assessment, index) => {
-      if (finalAnswers[index] === assessment.correctAnswer) {
-        correctCount++;
-      }
-    });
-
-    const score = correctCount;
-    const totalQuestions = assessments.length;
-    const passed = (score / totalQuestions) >= 0.7; // 70% to pass
-    const attemptNumber = previousAttempts.length + 1;
-
-    submitAssessmentMutation.mutate({
-      score,
-      totalQuestions,
-      passed,
-      attemptNumber,
-    });
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const getRetryInfo = () => {
-    const attemptCount = previousAttempts.length + 1;
-    if (attemptCount === 1) return { percentage: 40, label: "1차 재시험" };
-    if (attemptCount === 2) return { percentage: 20, label: "2차 재시험" };
-    if (attemptCount === 3) return { percentage: 10, label: "3차 재시험" };
-    return { percentage: 0, label: "4차 이후" };
-  };
-
-  if (!currentUserId || !course || assessmentsLoading) { // Use assessmentsLoading here
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center korean-text">
-            <div className="text-lg">평가를 불러오는 중...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle case where there are no assessments after loading
-  if (assessments.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center korean-text">
-            <div className="text-lg text-destructive">이 과정에 대한 평가가 없습니다.</div>
-            <p className="text-muted-foreground">관리자에게 문의하세요.</p>
-            <Link href="/">
-                <Button variant="link" className="mt-4">대시보드로 돌아가기</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const currentAssessment = assessments[currentQuestion];
-  const options = currentAssessment?.options ? currentAssessment.options.split(';') : [];
-  const progressPercent = ((currentQuestion + 1) / assessments.length) * 100;
-
-  if (isSubmitted && assessmentResult) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="text-center" data-testid="assessment-result">
-            <CardContent className="p-8">
-              {assessmentResult.passed ? (
-                <>
-                  <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
-                  <h2 className="text-2xl font-bold text-green-600 mb-2 korean-text">
-                    평가 통과!
-                  </h2>
-                  <p className="text-muted-foreground mb-6 korean-text">
-                    축하합니다! 안전교육을 성공적으로 완료했습니다.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
-                  <h2 className="text-2xl font-bold text-red-600 mb-2 korean-text">
-                    평가 미통과
-                  </h2>
-                  <p className="text-muted-foreground mb-6 korean-text">
-                    다시 시도해보세요. 교육 자료를 다시 확인하신 후 재응시하실 수 있습니다.
-                  </p>
-                </>
-              )}
-
-              <div className="bg-secondary p-4 rounded-lg mb-6">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="font-medium korean-text">점수</div>
-                    <div data-testid="assessment-score">
-                      {assessmentResult.score} / {assessmentResult.totalQuestions}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium korean-text">정답률</div>
-                    <div data-testid="assessment-percentage">
-                      {Math.round((assessmentResult.score / assessmentResult.totalQuestions) * 100)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-medium korean-text">시도 횟수</div>
-                    <div data-testid="attempt-number">{assessmentResult.attemptNumber}회</div>
-                  </div>
-                  <div>
-                    <div className="font-medium korean-text">통과 기준</div>
-                    <div>70%</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {assessmentResult.passed ? (
-                  <Button 
-                    className="w-full korean-text" 
-                    onClick={() => setLocation("/")}
-                    data-testid="button-view-certificate"
-                  >
-                    <Award className="w-4 h-4 mr-2" />
-                    이수증 확인하기
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <Button 
-                      className="w-full korean-text"
-                      onClick={() => {
-                        setIsSubmitted(false);
-                        setAssessmentResult(null);
-                        setCurrentQuestion(0);
-                        setAnswers([]);
-                        setSelectedAnswer(null);
-                        setTimeRemaining(600);
-                      }}
-                      data-testid="button-retry-assessment"
-                    >
-                      재시험 응시하기
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full korean-text"
-                      onClick={() => setLocation(`/course/${courseId}/content`)}
-                      data-testid="button-review-content"
-                    >
-                      교육 자료 다시 보기
-                    </Button>
-                  </div>
-                )}
-                
-                <Button 
-                  variant="ghost" 
-                  className="w-full korean-text"
-                  onClick={() => setLocation("/")}
-                  data-testid="button-back-dashboard"
-                >
-                  대시보드로 돌아가기
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
+  if (isLoading) return <div>평가 정보를 불러오는 중...</div>;
+  if (!questions || questions.length === 0) return <div>평가 문제가 없습니다.</div>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <Header />
-      
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <Link href={`/course/${courseId}/content`}>
-            <Button variant="ghost" className="korean-text" data-testid="button-back">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              교육 내용으로 돌아가기
-            </Button>
-          </Link>
-        </div>
-
-        <Card data-testid="assessment-question">
+      <main className="container mx-auto p-4 lg:p-8">
+        <Card>
           <CardHeader>
-            <div className="flex justify-between items-center mb-4">
-              <CardTitle className="korean-text">안전교육 평가</CardTitle>
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  <span data-testid="time-remaining">{formatTime(timeRemaining)}</span>
-                </div>
-                <span data-testid="question-counter">
-                  {currentQuestion + 1} / {assessments.length}
-                </span>
-              </div>
-            </div>
-            <Progress value={progressPercent} className="h-2" data-testid="assessment-progress" />
+            <CardTitle className="text-2xl">과정 평가</CardTitle>
           </CardHeader>
-
-          <CardContent className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-4 korean-text" data-testid="question-text">
-                문제 {currentQuestion + 1}. {currentAssessment?.question}
-              </h3>
-
-              <RadioGroup 
-                value={selectedAnswer?.toString()} 
-                onValueChange={(value) => handleAnswerSelect(parseInt(value))}
-                className="space-y-3"
-                data-testid="answer-options"
-              >
-                {options.map((option: string, index: number) => (
-                  <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-secondary/50">
-                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                    <Label 
-                      htmlFor={`option-${index}`} 
-                      className="flex-1 cursor-pointer korean-text"
-                      data-testid={`option-${index}`}
-                    >
-                      {option}
-                    </Label>
+          <CardContent>
+            {!result ? (
+              <div className="space-y-8">
+                {questions.map((question, index) => (
+                  <div key={question.id}>
+                    <p className="font-semibold mb-4">{index + 1}. {question.question}</p>
+                    <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)}>
+                      {question.options.split(';').map((option, i) => (
+                        <div key={i} className="flex items-center space-x-2 mb-2">
+                          <RadioGroupItem value={String(i)} id={`q-${question.id}-o-${i}`} />
+                          <Label htmlFor={`q-${question.id}-o-${i}`} className="flex-1 cursor-pointer">{option}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
                   </div>
                 ))}
-              </RadioGroup>
-            </div>
-
-            <div className="flex justify-between items-center pt-4">
-              <div className="text-sm text-muted-foreground korean-text">
-                {previousAttempts.length > 0 && (
-                  <span data-testid="retry-info">
-                    {getRetryInfo().label} ({getRetryInfo().percentage}% 새 문제)
-                  </span>
+                <Button onClick={handleSubmit} disabled={mutation.isPending}>
+                  {mutation.isPending ? '제출 중...' : '제출'}
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center space-y-4">
+                <h2 className="text-3xl font-bold">{result.passed ? '합격' : '불합격'}</h2>
+                <p className="text-xl">점수: {result.score} / {result.totalQuestions}</p>
+                {result.passed ? (
+                  <div>
+                    <p className="text-green-600">축하합니다! 과정을 성공적으로 이수하셨습니다.</p>
+                    <Button onClick={async () => {
+                      if (!user) return;
+                      await queryClient.invalidateQueries({ queryKey: ['userCertificates', user.id] });
+                      navigate('/my-certificates');
+                    }} className="mt-4">내 이수증 보러가기</Button>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-red-600">아쉽지만 합격 기준에 도달하지 못했습니다. 다시 시도해주세요.</p>
+                    <Button onClick={() => navigate(`/courses/${courseId}/content`)} className="mt-4">과정으로 돌아가기</Button>
+                  </div>
                 )}
               </div>
-
-              <Button
-                onClick={handleNextQuestion}
-                disabled={selectedAnswer === null || submitAssessmentMutation.isPending}
-                className="korean-text"
-                data-testid="button-next-question"
-              >
-                {currentQuestion < assessments.length - 1 ? "다음 문제" : "평가 완료"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Assessment Info */}
-        <Card className="mt-6" data-testid="assessment-info">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4 text-sm text-center">
-              <div>
-                <div className="font-medium korean-text">통과 기준</div>
-                <div className="text-primary">70% 이상</div>
-              </div>
-              <div>
-                <div className="font-medium korean-text">제한 시간</div>
-                <div className="text-primary">10분</div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </main>

@@ -14,7 +14,7 @@ export function Header() {
       <Link href="/" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
         메인
       </Link>
-      <Link href="/education" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+            <Link href="/courses" className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground">
         안전교육
       </Link>
       <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">

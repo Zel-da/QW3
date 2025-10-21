@@ -9,6 +9,7 @@ import { dirname } from 'path';
 import { prisma } from "./db";
 import bcrypt from "bcrypt";
 import ExcelJS from "exceljs";
+import { tbmReportSchema } from "@shared/schema";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -168,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TEAM MANAGEMENT
-  app.get("/api/teams", requireAuth, async (req, res) => {
+  app.get("/api/teams", async (req, res) => {
     try {
       const { site } = req.query;
       const whereClause = site ? { site: site as string } : {};
@@ -354,8 +355,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string), monthNum = parseInt(month as string);
       const startDate = new Date(yearNum, monthNum - 1, 1);
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
-      
-      // 1. Fetch all necessary data in parallel
       const [team, dailyReports, checklistTemplate, teamUsers] = await Promise.all([
         prisma.team.findUnique({ where: { id: parseInt(teamId as string) } }),
         prisma.dailyReport.findMany({
@@ -375,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!team) return res.status(404).json({ message: "Team not found" });
       if (!checklistTemplate) return res.status(404).json({ message: "Checklist template not found" });
-      
+
       const workbook = new ExcelJS.Workbook();
 
       // --- SHEET 1: TBM Report ---
@@ -531,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       });
-      
+
       for (let r = 2; r <= teamUsers.length + 1; r++) {
           for (let c = 2; c <= lastDayOfMonth + 1; c++) {
               sheet2.getCell(r, c).border = border;
@@ -543,7 +542,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="TBM_Report_${year}_${month}.xlsx"`);
       await workbook.xlsx.write(res);
       res.end();
-
     } catch (error) {
       console.error('Failed to generate Excel report:', error);
       res.status(500).json({ message: "Failed to generate Excel report" });
@@ -552,21 +550,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/reports", requireAuth, async (req, res) => {
     try {
-      const { teamId, reportDate, managerName, remarks, site, results, signatures } = req.body;
+      const reportData = tbmReportSchema.parse(req.body);
+      const { teamId, reportDate, managerName, remarks, site, results, signatures } = reportData;
       const newReport = await prisma.dailyReport.create({
         data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
       });
       if (results && results.length > 0) {
         await prisma.reportDetail.createMany({
-          data: results.map((r: any) => ({
-            reportId: newReport.id, itemId: r.itemId, checkState: r.checkState,
+          data: results.map(r => ({
+            reportId: newReport.id, itemId: r.itemId, checkState: r.checkState || undefined,
             photoUrl: r.photoUrl, actionDescription: r.actionDescription, authorId: r.authorId,
           })),
         });
       }
       if (signatures && signatures.length > 0) {
         await prisma.reportSignature.createMany({
-          data: signatures.map((s: any) => ({
+          data: signatures.map(s => ({
             reportId: newReport.id, userId: s.userId, signatureImage: s.signatureImage,
           })),
         });
@@ -596,7 +595,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/reports/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
-      const { results, signatures, remarks, reportDate } = req.body;
+      const reportData = tbmReportSchema.partial().parse(req.body);
+      const { results, signatures, remarks, reportDate } = reportData;
       await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
       await prisma.reportSignature.deleteMany({ where: { reportId: parseInt(reportId) } });
       const updatedReport = await prisma.dailyReport.update({
@@ -604,8 +604,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           remarks,
           reportDate: reportDate ? new Date(reportDate) : undefined,
-          reportDetails: { create: results.map((r: any) => ({ itemId: r.itemId, checkState: r.checkState, photoUrl: r.photoUrl, actionDescription: r.actionDescription, authorId: r.authorId })) },
-          reportSignatures: { create: signatures.map((s: any) => ({ userId: s.userId, signatureImage: s.signatureImage })) },
+          reportDetails: results ? { create: results.map(r => ({ itemId: r.itemId, checkState: r.checkState, photoUrl: r.photoUrl, actionDescription: r.
+actionDescription, authorId: r.authorId })) } : undefined,
+          reportSignatures: signatures ? { create: signatures.map(s => ({ userId: s.userId, signatureImage: s.signatureImage })) } : undefined,
         },
       });
       res.json(updatedReport);
@@ -660,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/courses/:courseId/assessments", async (req, res) => {
     try {
       const assessments = await prisma.assessment.findMany({ where: { courseId: req.params.courseId } });
-      res.json(assessments);
+      res.json(assessments || []); // Return empty array if null
     } catch (error) { res.status(500).json({ message: "Failed to fetch assessments" }); }
   });
 
@@ -674,42 +675,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update assessments" }); }
   });
 
-  app.post("/api/courses/:courseId/assessments-bulk", requireAuth, async (req, res) => {
-    try {
-      const { courseId } = req.params;
-      const { questions } = req.body;
-      await prisma.assessment.createMany({ data: questions.map((q: any) => ({ ...q, courseId })) });
-      res.status(201).send();
-    } catch (error) { res.status(500).json({ message: "Failed to create assessments" }); }
-  });
+      app.post("/api/courses/:courseId/assessments-bulk", requireAuth, async (req, res) => {
 
-  app.get("/api/users/:userId/progress", requireAuth, async (req, res) => {
-    try {
-      const progress = await prisma.userProgress.findMany({ where: { userId: req.params.userId } });
-      res.json(progress);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
-  });
+        try {
 
-  app.get("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
-    try {
-      const progress = await prisma.userProgress.findFirst({ where: { userId: req.params.userId, courseId: req.params.courseId } });
-      res.json(progress);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
-  });
+          const { courseId } = req.params;
 
-  app.put("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
-    try {
-      const { userId, courseId } = req.params;
-      const { progress, completed, currentStep } = req.body;
-      const id = `${userId}_${courseId}`;
-      const updatedProgress = await prisma.userProgress.upsert({
-        where: { id },
-        update: { progress, completed, currentStep },
-        create: { userId, courseId, progress, completed, currentStep, id },
+          const { questions } = req.body;
+
+          await prisma.assessment.createMany({
+
+            data: questions.map((q: any) => ({ 
+
+              question: q.question,
+
+              options: q.options,
+
+              correctAnswer: parseInt(q.correctAnswer, 10),
+
+              courseId: courseId 
+
+            })),
+
+          });
+
+          res.status(201).send();
+
+        } catch (error) { res.status(500).json({ message: "Failed to create assessments" }); }
+
       });
-      res.json(updatedProgress);
-    } catch (error) { res.status(500).json({ message: "Failed to update progress" }); }
-  });
+
+  
+
+    app.get("/api/users/:userId/progress", requireAuth, async (req, res) => {
+
+      try {
+
+        const progress = await prisma.userProgress.findMany({ where: { userId: req.params.userId } });
+
+        res.json(progress);
+
+      } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
+
+    });
+
+  
+
+    app.get("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
+
+      try {
+
+        const progress = await prisma.userProgress.findFirst({ 
+
+          where: { userId: req.params.userId, courseId: req.params.courseId } 
+
+        });
+
+        res.json(progress);
+
+      } catch (error) { res.status(500).json({ message: "Failed to fetch progress" }); }
+
+    });
+
+  
+
+    app.put("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
+
+      try {
+
+        const { userId, courseId } = req.params;
+
+        const { progress, completed, currentStep } = req.body;
+
+        
+
+        const existingProgress = await prisma.userProgress.findFirst({
+
+          where: { userId, courseId }
+
+        });
+
+  
+
+        if (existingProgress) {
+
+          const updatedProgress = await prisma.userProgress.update({
+
+            where: { id: existingProgress.id },
+
+            data: { progress, completed, currentStep },
+
+          });
+
+          res.json(updatedProgress);
+
+        } else {
+
+          const newProgress = await prisma.userProgress.create({
+
+            data: { userId, courseId, progress, completed, currentStep },
+
+          });
+
+          res.json(newProgress);
+
+        }
+
+      } catch (error) { res.status(500).json({ message: "Failed to update progress" }); }
+
+    });
 
   app.get("/api/users/:userId/assessments", requireAuth, async (req, res) => {
     try {
@@ -718,12 +792,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch user assessments" }); }
   });
 
-  app.get("/api/users/:userId/assessments/:courseId", requireAuth, async (req, res) => {
-    try {
-      const assessment = await prisma.userAssessment.findFirst({ where: { userId: req.params.userId, courseId: req.params.courseId } });
-      res.json(assessment);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch user assessment" }); }
-  });
+    app.get("/api/users/:userId/assessments/:courseId", requireAuth, async (req, res) => {
+
+      try {
+
+        const assessment = await prisma.userAssessment.findFirst({ 
+
+          where: { userId: req.params.userId, courseId: req.params.courseId }
+
+        });
+
+        res.json(assessment || []); // Return empty array if null
+
+      } catch (error) { res.status(500).json({ message: "Failed to fetch user assessment" }); }
+
+    });
 
   app.post("/api/users/:userId/assessments/:courseId", requireAuth, async (req, res) => {
     try {
@@ -757,18 +840,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { templateId } = req.params;
       const { items } = req.body;
-      await prisma.templateItem.deleteMany({ where: { templateId: parseInt(templateId) } });
-      await prisma.templateItem.createMany({
-        data: items.map((item: any, index: number) => ({
+
+      const updatePromises = items.map((item: any, index: number) => {
+        const itemData = {
           templateId: parseInt(templateId),
           category: item.category,
-          subCategory: item.subCategory,
+          subCategory: item.subCategory || null,
           description: item.description,
-          displayOrder: index,
-        })),
+          displayOrder: item.displayOrder || (index + 1) * 10,
+        };
+
+        if (item.id) {
+          // If item has an id, update it
+          return prisma.templateItem.update({
+            where: { id: item.id },
+            data: itemData,
+          });
+        } else {
+          // If item has no id, create it
+          return prisma.templateItem.create({
+            data: itemData,
+          });
+        }
       });
-      res.json(newItems);
-    } catch (error) { res.status(500).json({ message: 'Failed to update checklist template' }); }
+
+      // Also, find and delete items that are no longer in the list
+      const incomingItemIds = items.map((item: any) => item.id).filter(Boolean);
+      await prisma.templateItem.deleteMany({
+        where: {
+          templateId: parseInt(templateId),
+          id: { notIn: incomingItemIds },
+        },
+      });
+
+      await Promise.all(updatePromises);
+
+      res.json({ message: "Template updated successfully" });
+    } catch (error) { 
+      console.error("Error updating template:", error);
+      res.status(500).json({ message: 'Failed to update checklist template' }); 
+    }
   });
 
   const httpServer = createServer(app);

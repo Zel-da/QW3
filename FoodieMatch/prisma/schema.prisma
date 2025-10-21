@@ -7,18 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Consolidated User Model
 model User {
   id               String            @id @default(uuid())
   username         String            @unique
-  name             String?           // User's full name
+  name             String?
   email            String?           @unique
-  password         String?           // Optional for workers without login
+  password         String?
   role             String            @default("WORKER")
-  site             String?           // e.g., Asan, Hwaseong
+  site             String?
   teamId           Int?
   createdAt        DateTime          @default(now())
-
   team             Team?             @relation("TeamMembers", fields: [teamId], references: [id])
   ledTeams         Team[]            @relation("TeamLeader")
   notices          Notice[]
@@ -31,20 +29,18 @@ model User {
 }
 
 model Notice {
-  id             String    @id @default(uuid())
-  title          String
-  content        String
-  authorId       String
-  category       String    @default("GENERAL")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  isActive       Boolean   @default(true)
-  viewCount      Int       @default(0)
-  imageUrl       String?
-  attachmentUrl  String?
-  attachmentName String?
-  author         User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments       Comment[]
+  id          String       @id @default(uuid())
+  title       String
+  content     String
+  authorId    String
+  category    String       @default("GENERAL")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  isActive    Boolean      @default(true)
+  viewCount   Int          @default(0)
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  attachments Attachment[]
 
   @@index([authorId])
 }
@@ -56,7 +52,6 @@ model Comment {
   authorId  String
   noticeId  String
   createdAt DateTime @default(now())
-
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
 
@@ -139,8 +134,7 @@ model Team {
   id                 Int                 @id @default(autoincrement())
   name               String
   site               String?
-  leaderId           String?             // Team Leader
-
+  leaderId           String?
   leader             User?               @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   members            User[]              @relation("TeamMembers")
   checklistTemplates ChecklistTemplate[]
@@ -154,7 +148,6 @@ model ChecklistTemplate {
   id            Int            @id @default(autoincrement())
   name          String
   teamId        Int
-
   team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   templateItems TemplateItem[]
 
@@ -163,14 +156,13 @@ model ChecklistTemplate {
 }
 
 model TemplateItem {
-  id            Int               @id @default(autoincrement())
-  templateId    Int
-  category      String
-  subCategory   String?
-  description   String
-  displayOrder  Int               @default(0)
-
-  template      ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  id           Int               @id @default(autoincrement())
+  templateId   Int
+  category     String
+  subCategory  String?
+  description  String
+  displayOrder Int               @default(0)
+  template     ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   reportDetails ReportDetail[]
 
   @@index([templateId])
@@ -186,7 +178,6 @@ model DailyReport {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   site             String?
-
   team             Team              @relation(fields: [teamId], references: [id], onDelete: NoAction)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
@@ -201,14 +192,12 @@ model ReportDetail {
   itemId            Int
   checkState        String?
   authorId          String?
-
-  photoUrl          String?
   actionDescription String?
   actionStatus      String?       @default("PENDING")
-
   item              TemplateItem  @relation(fields: [itemId], references: [id], onDelete: NoAction)
   report            DailyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   author            User?         @relation(fields: [authorId], references: [id])
+  attachments       Attachment[]
 
   @@index([reportId])
   @@index([itemId])
@@ -222,7 +211,6 @@ model ReportSignature {
   userId         String
   signedAt       DateTime    @default(now())
   signatureImage String?
-
   report         DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -241,11 +229,24 @@ model MonthlyApproval {
   approverId  String?
   submittedAt DateTime?
   approvedAt  DateTime?
-
   team        Team     @relation(fields: [teamId], references: [id])
   approver    User?    @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
 
   @@unique([teamId, year, month])
   @@index([teamId])
   @@index([approverId])
+}
+
+model Attachment {
+  id             String        @id @default(uuid())
+  url            String
+  name           String
+  createdAt      DateTime      @default(now())
+  noticeId       String?
+  notice         Notice?       @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  reportDetailId Int?
+  reportDetail   ReportDetail? @relation(fields: [reportDetailId], references: [id], onDelete: Cascade)
+
+  @@index([noticeId])
+  @@index([reportDetailId])
 }

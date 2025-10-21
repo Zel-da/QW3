@@ -75,6 +75,29 @@ export const insertUserSchema = z.object({
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
 });
 
+export const reportResultSchema = z.object({
+  itemId: z.number(),
+  checkState: z.string().optional(),
+  photoUrl: z.string().nullish(),
+  actionDescription: z.string().nullish(),
+  authorId: z.string(),
+});
+
+export const reportSignatureSchema = z.object({
+  userId: z.string(),
+  signatureImage: z.string(),
+});
+
+export const tbmReportSchema = z.object({
+  teamId: z.number(),
+  reportDate: z.string().datetime(),
+  managerName: z.string(),
+  remarks: z.string().optional(),
+  site: z.string(),
+  results: z.array(reportResultSchema),
+  signatures: z.array(reportSignatureSchema),
+});
+
 export interface Team {
   id: number;
   name: string;

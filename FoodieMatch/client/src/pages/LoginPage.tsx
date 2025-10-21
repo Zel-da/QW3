@@ -72,7 +72,7 @@ export default function LoginPage() {
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full">로그인</Button>
               <div className="text-center text-sm text-muted-foreground">
-                <p>테스트 계정: admin / password123</p>
+                
                 <p className="mt-2">계정이 없으신가요? <a href="/register" className="text-primary hover:underline">회원가입</a></p>
               </div>
             </form>

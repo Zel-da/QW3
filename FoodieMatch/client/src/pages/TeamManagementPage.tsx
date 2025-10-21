@@ -145,7 +145,7 @@ export default function TeamManagementPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>팀 선택</CardTitle>
+            <CardTitle>팀 관리</CardTitle>
             <CardDescription>관리할 팀을 선택하세요.</CardDescription>
           </CardHeader>
           <CardContent>
