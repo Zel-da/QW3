@@ -53,6 +53,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           checkState: detail.checkState,
           photoUrl: detail.photoUrl,
           description: detail.actionDescription,
+          attachments: detail.attachments ? detail.attachments.map(att => ({
+            url: att.url,
+            name: att.name,
+            size: att.size || 0,
+            type: att.type || 'image'
+          })) : []
         };
       });
       setFormState(initialFormState);
@@ -99,17 +105,42 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }));
   };
 
-  const handlePhotoUpload = async (itemId, file) => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const res = await axios.post('/api/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      updateFormState(itemId, 'photoUrl', res.data.url);
-      toast({ title: "사진이 업로드되었습니다." });
-    } catch (err) {
-      toast({ title: "사진 업로드 실패", variant: "destructive" });
+  const handlePhotoUpload = async (itemId, files) => {
+    if (!files || files.length === 0) return;
+
+    const currentAttachments = formState[itemId]?.attachments || [];
+    if (currentAttachments.length + files.length > 10) {
+      toast({
+        title: "파일은 최대 10개까지 업로드 가능합니다.",
+        description: `현재: ${currentAttachments.length}개`,
+        variant: "destructive"
+      });
+      return;
     }
+
+    const formData = new FormData();
+    Array.from(files).forEach(file => formData.append('files', file));
+
+    try {
+      const res = await axios.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const newAttachments = res.data.files.map(f => ({
+        url: f.url,
+        name: f.name,
+        size: f.size,
+        type: 'image'
+      }));
+
+      updateFormState(itemId, 'attachments', [...currentAttachments, ...newAttachments]);
+      toast({ title: `${files.length}개의 사진이 업로드되었습니다.` });
+    } catch (err) {
+      toast({ title: "사진 업로드 실패", description: err.response?.data?.message || err.message, variant: "destructive" });
+    }
+  };
+
+  const removeAttachment = (itemId, attachmentIndex) => {
+    const currentAttachments = formState[itemId]?.attachments || [];
+    const updatedAttachments = currentAttachments.filter((_, idx) => idx !== attachmentIndex);
+    updateFormState(itemId, 'attachments', updatedAttachments);
   };
 
   const handleAbsentChange = (userId, isAbsent) => {
@@ -139,10 +170,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         photoUrl: data.photoUrl || null,
         actionDescription: data.description || null,
         authorId: user.id,
+        attachments: data.attachments || []
       })),
-      signatures: Object.entries(signatures).map(([userId, signatureImage]) => ({ 
-        userId, 
-        signatureImage 
+      signatures: Object.entries(signatures).map(([userId, signatureImage]) => ({
+        userId,
+        signatureImage
       })),
     };
 
@@ -206,16 +238,49 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     </TableCell>
                     <TableCell className="text-center">
                       {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="flex items-center justify-center">
+                        <div className="flex flex-col items-center justify-center gap-2 w-full">
+                          <div className="w-full">
                             <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
-                              <div className="flex items-center gap-2 p-2 border rounded-md hover:bg-muted">
+                              <div className="flex items-center justify-center gap-2 p-2 border rounded-md hover:bg-muted">
                                 <Camera className="h-5 w-5" />
-                                <span>{currentItemState.photoUrl ? '변경' : '사진 업로드'}</span>
+                                <span>사진 업로드 (최대 10개)</span>
                               </div>
                             </Label>
-                            <Input id={`photo-${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(item.id, e.target.files[0])} />
-                            {currentItemState.photoUrl && <img src={currentItemState.photoUrl} alt="preview" className="w-16 h-16 object-cover ml-4 rounded-md"/>}
+                            <Input
+                              id={`photo-${item.id}`}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handlePhotoUpload(item.id, e.target.files)}
+                            />
+
+                            {/* Display uploaded images */}
+                            {currentItemState.attachments && currentItemState.attachments.length > 0 && (
+                              <div className="grid grid-cols-2 gap-2 mt-3">
+                                {currentItemState.attachments.map((file, idx) => (
+                                  <div key={idx} className="relative border rounded-lg p-2">
+                                    <img src={file.url} alt={file.name} className="w-full h-20 object-cover rounded" />
+                                    <p className="text-xs truncate mt-1">{file.name}</p>
+                                    <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0"
+                                      onClick={() => removeAttachment(item.id, idx)}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Legacy single photo support */}
+                            {currentItemState.photoUrl && !currentItemState.attachments?.length && (
+                              <img src={currentItemState.photoUrl} alt="preview" className="w-24 h-24 object-cover mt-2 rounded-md border"/>
+                            )}
                           </div>
                           <Textarea
                             placeholder="내용 작성..."

@@ -365,20 +365,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/notices/:noticeId/comments", async (req, res) => {
     try {
-      const comments = await prisma.comment.findMany({ where: { noticeId: req.params.noticeId }, include: { author: true }, orderBy: { createdAt: 'asc' } });
+      const comments = await prisma.comment.findMany({
+        where: { noticeId: req.params.noticeId },
+        include: { author: true, attachments: true },
+        orderBy: { createdAt: 'asc' }
+      });
       res.json(comments);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch comments" }); }
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
   });
 
   app.post("/api/notices/:noticeId/comments", requireAuth, async (req, res) => {
     try {
-      const { content, imageUrl } = req.body;
+      const { content, imageUrl, attachments } = req.body;
       const newComment = await prisma.comment.create({
-        data: { content, imageUrl, noticeId: req.params.noticeId, authorId: req.session.user!.id },
-        include: { author: true },
+        data: {
+          content,
+          imageUrl,
+          noticeId: req.params.noticeId,
+          authorId: req.session.user!.id,
+          attachments: attachments ? {
+            create: attachments.map((att: any) => ({
+              url: att.url,
+              name: att.name,
+              type: att.type || 'file',
+              size: att.size || 0,
+              mimeType: att.mimeType || 'application/octet-stream'
+            }))
+          } : undefined
+        },
+        include: { author: true, attachments: true },
       });
       res.status(201).json(newComment);
-    } catch (error) { res.status(500).json({ message: "Failed to create comment" }); }
+    } catch (error) {
+      console.error('Failed to create comment:', error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
   });
 
   // TBM & REPORT MANAGEMENT
@@ -633,12 +657,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
       });
       if (results && results.length > 0) {
-        await prisma.reportDetail.createMany({
-          data: results.map(r => ({
-            reportId: newReport.id, itemId: r.itemId, checkState: r.checkState || undefined,
-            photoUrl: r.photoUrl, actionDescription: r.actionDescription, authorId: r.authorId,
-          })),
-        });
+        for (const r of results) {
+          await prisma.reportDetail.create({
+            data: {
+              reportId: newReport.id,
+              itemId: r.itemId,
+              checkState: r.checkState || undefined,
+              photoUrl: r.photoUrl,
+              actionDescription: r.actionDescription,
+              authorId: r.authorId,
+              attachments: r.attachments ? {
+                create: r.attachments.map((att: any) => ({
+                  url: att.url,
+                  name: att.name,
+                  type: att.type || 'image',
+                  size: att.size || 0,
+                  mimeType: att.mimeType || 'image/jpeg'
+                }))
+              } : undefined
+            }
+          });
+        }
       }
       if (signatures && signatures.length > 0) {
         await prisma.reportSignature.createMany({
@@ -649,7 +688,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const fullReport = await prisma.dailyReport.findUnique({
           where: { id: newReport.id },
-          include: { reportDetails: true, reportSignatures: true }
+          include: {
+            reportDetails: { include: { attachments: true } },
+            reportSignatures: true
+          }
       });
       res.status(201).json(fullReport);
     } catch (error) {
@@ -662,11 +704,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const report = await prisma.dailyReport.findUnique({
         where: { id: parseInt(req.params.reportId) },
-        include: { team: true, reportDetails: { include: { item: true, author: true } }, reportSignatures: { include: { user: true } } },
+        include: {
+          team: true,
+          reportDetails: { include: { item: true, author: true, attachments: true } },
+          reportSignatures: { include: { user: true } }
+        },
       });
       if (!report) return res.status(404).json({ message: "Report not found" });
       res.json(report);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch report" }); }
+    } catch (error) {
+      console.error('Failed to fetch report:', error);
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
   });
 
   app.put("/api/reports/:reportId", requireAuth, async (req, res) => {
@@ -676,18 +725,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { results, signatures, remarks, reportDate } = reportData;
       await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
       await prisma.reportSignature.deleteMany({ where: { reportId: parseInt(reportId) } });
+
       const updatedReport = await prisma.dailyReport.update({
         where: { id: parseInt(reportId) },
         data: {
           remarks,
           reportDate: reportDate ? new Date(reportDate) : undefined,
-          reportDetails: results ? { create: results.map(r => ({ itemId: r.itemId, checkState: r.checkState, photoUrl: r.photoUrl, actionDescription: r.
-actionDescription, authorId: r.authorId })) } : undefined,
-          reportSignatures: signatures ? { create: signatures.map(s => ({ userId: s.userId, signatureImage: s.signatureImage })) } : undefined,
         },
       });
-      res.json(updatedReport);
-    } catch (error) { res.status(500).json({ message: "Failed to update report" }); }
+
+      if (results && results.length > 0) {
+        for (const r of results) {
+          await prisma.reportDetail.create({
+            data: {
+              reportId: parseInt(reportId),
+              itemId: r.itemId,
+              checkState: r.checkState,
+              photoUrl: r.photoUrl,
+              actionDescription: r.actionDescription,
+              authorId: r.authorId,
+              attachments: r.attachments ? {
+                create: r.attachments.map((att: any) => ({
+                  url: att.url,
+                  name: att.name,
+                  type: att.type || 'image',
+                  size: att.size || 0,
+                  mimeType: att.mimeType || 'image/jpeg'
+                }))
+              } : undefined
+            }
+          });
+        }
+      }
+
+      if (signatures && signatures.length > 0) {
+        await prisma.reportSignature.createMany({
+          data: signatures.map(s => ({
+            reportId: parseInt(reportId),
+            userId: s.userId,
+            signatureImage: s.signatureImage
+          })),
+        });
+      }
+
+      const finalReport = await prisma.dailyReport.findUnique({
+        where: { id: parseInt(reportId) },
+        include: {
+          reportDetails: { include: { attachments: true } },
+          reportSignatures: true
+        }
+      });
+
+      res.json(finalReport);
+    } catch (error) {
+      console.error('Failed to update report:', error);
+      res.status(500).json({ message: "Failed to update report" });
+    }
   });
 
   app.delete("/api/reports/:reportId", requireAuth, async (req, res) => {

@@ -22,11 +22,11 @@ const fetchComments = async (noticeId: string) => {
   return res.json();
 }
 
-const postComment = async ({ noticeId, content, imageUrl }: { noticeId: string; content: string; imageUrl: string | null }) => {
+const postComment = async ({ noticeId, content, imageUrl, attachments }: { noticeId: string; content: string; imageUrl: string | null; attachments?: any[] }) => {
   const res = await fetch(`/api/notices/${noticeId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, imageUrl }),
+    body: JSON.stringify({ content, imageUrl, attachments }),
   });
   if (!res.ok) throw new Error('Failed to post comment');
   return res.json();
@@ -40,6 +40,7 @@ export default function NoticeDetailPage() {
 
   const [newComment, setNewComment] = useState('');
   const [commentImage, setCommentImage] = useState<File | null>(null);
+  const [commentAttachments, setCommentAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
 
   const { data: notice, isLoading, error } = useQuery<Notice>({
     queryKey: ['notice', noticeId],
@@ -59,8 +60,44 @@ export default function NoticeDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['comments', noticeId] });
       setNewComment('');
       setCommentImage(null);
+      setCommentAttachments([]);
     }
   });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'attachment') => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentCount = commentAttachments.filter(a => a.type === fileType).length;
+    if (currentCount + files.length > 10) {
+      alert(`파일은 최대 10개까지 업로드 가능합니다. (현재: ${currentCount}개)`);
+      return;
+    }
+
+    const uploadFormData = new FormData();
+    files.forEach(file => uploadFormData.append('files', file));
+
+    try {
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'File upload failed');
+
+      const newFiles = data.files.map((f: any) => ({
+        url: f.url,
+        name: f.name,
+        size: f.size,
+        type: fileType
+      }));
+
+      setCommentAttachments(prev => [...prev, ...newFiles]);
+    } catch (err) {
+      alert((err as Error).message);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setCommentAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +112,7 @@ export default function NoticeDetailPage() {
       imageUrl = uploadData.url;
     }
 
-    commentMutation.mutate({ noticeId, content: newComment, imageUrl });
+    commentMutation.mutate({ noticeId, content: newComment, imageUrl, attachments: commentAttachments } as any);
   };
 
   const handleDelete = async () => {
@@ -130,7 +167,57 @@ export default function NoticeDetailPage() {
             <CardContent className="p-6 md:p-8 pt-0">
               {notice.imageUrl && <img src={notice.imageUrl} alt={notice.title} className="w-full h-auto object-cover rounded-md mb-8 border" />}
               <div className="prose prose-2xl max-w-none leading-relaxed whitespace-pre-wrap">{notice.content}</div>
-              {notice.attachmentUrl && (
+
+              {/* Display new multi-file attachments */}
+              {(notice as any).attachments && (notice as any).attachments.length > 0 && (
+                <div className="mt-10 border-t pt-8">
+                  <h3 className="text-2xl font-semibold mb-4">첨부 파일</h3>
+
+                  {/* Display images */}
+                  {(notice as any).attachments.filter((a: any) => a.type === 'image').length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-xl font-medium mb-3">이미지</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {(notice as any).attachments.filter((a: any) => a.type === 'image').map((file: any, idx: number) => (
+                          <div key={idx} className="border rounded-lg p-2">
+                            <img src={file.url} alt={file.name} className="w-full h-48 object-cover rounded" />
+                            <p className="text-sm truncate mt-2">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display file attachments */}
+                  {(notice as any).attachments.filter((a: any) => a.type === 'attachment').length > 0 && (
+                    <div>
+                      <h4 className="text-xl font-medium mb-3">파일</h4>
+                      <div className="space-y-3">
+                        {(notice as any).attachments.filter((a: any) => a.type === 'attachment').map((file: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <span className="text-3xl">📎</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-lg font-medium truncate">{file.name}</p>
+                                <p className="text-sm text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </div>
+                            <Button asChild variant="outline" className="text-lg h-12 ml-4">
+                              <a href={file.url} download={file.name}>
+                                다운로드
+                              </a>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Legacy single file support */}
+              {notice.attachmentUrl && !(notice as any).attachments?.length && (
                 <div className="mt-10 border-t pt-8">
                   <Button asChild variant="outline" className="text-xl h-16 w-full sm:w-auto min-w-[250px]">
                     <a href={notice.attachmentUrl} download={notice.attachmentName || true}>
@@ -155,6 +242,38 @@ export default function NoticeDetailPage() {
                     <p className="font-semibold">{comment.author.name}</p>
                     <p className="whitespace-pre-wrap">{comment.content}</p>
                     {comment.imageUrl && <img src={comment.imageUrl} alt="comment image" className="mt-2 w-full max-w-xs rounded-md border" />}
+
+                    {/* Display multi-file attachments */}
+                    {(comment as any).attachments && (comment as any).attachments.length > 0 && (
+                      <div className="mt-3 space-y-3">
+                        {/* Images */}
+                        {(comment as any).attachments.filter((a: any) => a.type === 'image').length > 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {(comment as any).attachments.filter((a: any) => a.type === 'image').map((file: any, idx: number) => (
+                              <div key={idx} className="border rounded-lg p-2">
+                                <img src={file.url} alt={file.name} className="w-full h-32 object-cover rounded" />
+                                <p className="text-xs truncate mt-1">{file.name}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Files */}
+                        {(comment as any).attachments.filter((a: any) => a.type === 'attachment').length > 0 && (
+                          <div className="space-y-2">
+                            {(comment as any).attachments.filter((a: any) => a.type === 'attachment').map((file: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 p-2 border rounded-lg">
+                                <span className="text-lg">📎</span>
+                                <a href={file.url} download={file.name} className="text-sm hover:underline flex-1 truncate">
+                                  {file.name}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
@@ -165,7 +284,75 @@ export default function NoticeDetailPage() {
               <form onSubmit={handleCommentSubmit} className="mt-6 pt-6 border-t">
                 <div className="space-y-4">
                   <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="댓글을 입력하세요..." required />
-                  <Input type="file" accept="image/*" onChange={(e) => setCommentImage(e.target.files ? e.target.files[0] : null)} />
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">이미지 (최대 10개)</label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleFileChange(e, 'image')}
+                      />
+                    </div>
+
+                    {/* Display uploaded images */}
+                    {commentAttachments.filter(f => f.type === 'image').length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {commentAttachments.filter(f => f.type === 'image').map((file, idx) => (
+                          <div key={idx} className="relative border rounded-lg p-2">
+                            <img src={file.url} alt={file.name} className="w-full h-24 object-cover rounded" />
+                            <p className="text-xs truncate mt-1">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={() => removeAttachment(commentAttachments.indexOf(file))}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">파일 (최대 10개)</label>
+                      <Input
+                        type="file"
+                        multiple
+                        onChange={(e) => handleFileChange(e, 'attachment')}
+                      />
+                    </div>
+
+                    {/* Display uploaded files */}
+                    {commentAttachments.filter(f => f.type === 'attachment').length > 0 && (
+                      <div className="space-y-2">
+                        {commentAttachments.filter(f => f.type === 'attachment').map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 border rounded-lg">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="text-xl">📎</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeAttachment(commentAttachments.indexOf(file))}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <Button type="submit" disabled={commentMutation.isPending}>댓글 작성</Button>
                 </div>
               </form>
