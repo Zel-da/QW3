@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m \"$(cat <<''EOF''\nfix: Multer 에러 핸들링 미들웨어 추가\n\n문제점:\n- 파일 2개 이상 업로드 시 서버 크래시\n- Multer 에러가 처리되지 않아 ERR_EMPTY_RESPONSE 발생\n\n수정사항:\n- upload.single() 및 upload.array()에 에러 핸들링 미들웨어 추가\n- Multer 에러 발생 시 400 응답 반환\n- 에러 메시지를 클라이언트에 전달\n\n개선 효과:\n- Multer 파일 크기 초과, 파일 타입 제한 등의 에러를 안전하게 처리\n- 서버 크래시 방지\n- 사용자에게 명확한 에러 메시지 제공\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"fix: 허용 파일 타입에 text/plain과 zip 추가\n\n- .txt 파일 업로드 허용\n- .zip 파일 업로드 허용\n- 파일 타입 제한으로 인한 400 에러 해결\")"
     ],
     "deny": [],
     "ask": []

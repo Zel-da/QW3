@@ -48,11 +48,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       const allowedDocTypes = [
         'application/pdf',
+        'text/plain',
         'text/csv',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/zip',
+        'application/x-zip-compressed'
       ];
 
       const allowed = [...allowedImageTypes, ...allowedDocTypes];
