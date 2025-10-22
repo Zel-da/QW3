@@ -1079,67 +1079,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadedFiles = [];
 
       for (const file of req.files) {
-        // Fix Korean filename encoding
-        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        let finalPath = file.path;
-        let finalSize = file.size;
+        try {
+          // Fix Korean filename encoding
+          const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+          let finalPath = file.path;
+          let finalSize = file.size;
 
-        // Auto-compress images over 2MB
-        if (file.mimetype.startsWith('image/')) {
-          const fileSizeInMB = file.size / (1024 * 1024);
+          // Auto-compress images over 2MB
+          if (file.mimetype.startsWith('image/')) {
+            const fileSizeInMB = file.size / (1024 * 1024);
 
-          if (fileSizeInMB > 2) {
-            const compressedPath = `${file.path}_compressed`;
+            if (fileSizeInMB > 2) {
+              const compressedPath = `${file.path}_compressed`;
 
-            try {
-              await sharp(file.path)
-                .resize(1920, 1920, {
-                  fit: 'inside',
-                  withoutEnlargement: true
-                })
-                .jpeg({ quality: 80 })
-                .toFile(compressedPath);
+              try {
+                await sharp(file.path)
+                  .resize(1920, 1920, {
+                    fit: 'inside',
+                    withoutEnlargement: true
+                  })
+                  .jpeg({ quality: 80 })
+                  .toFile(compressedPath);
 
-              const compressedSize = fs.statSync(compressedPath).size;
-              const compressedSizeInMB = compressedSize / (1024 * 1024);
+                const compressedSize = fs.statSync(compressedPath).size;
+                const compressedSizeInMB = compressedSize / (1024 * 1024);
 
-              if (compressedSizeInMB <= 2) {
-                fs.unlinkSync(file.path);
-                finalPath = compressedPath;
-                finalSize = compressedSize;
-              } else {
-                // Skip files that are still too large
-                fs.unlinkSync(file.path);
-                fs.unlinkSync(compressedPath);
-                console.warn(`Skipped file ${originalName}: too large even after compression`);
-                continue;
+                if (compressedSizeInMB <= 2) {
+                  fs.unlinkSync(file.path);
+                  finalPath = compressedPath;
+                  finalSize = compressedSize;
+                } else {
+                  // Still too large after compression, skip this file
+                  fs.unlinkSync(file.path);
+                  if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath);
+                  console.warn(`Skipped file ${originalName}: too large even after compression (${compressedSizeInMB.toFixed(2)}MB)`);
+                  continue;
+                }
+              } catch (compressError) {
+                console.error(`Image compression error for ${originalName}:`, compressError);
+                // Use original file if compression fails
+                console.log(`Using original file for ${originalName}`);
               }
-            } catch (compressError) {
-              console.error('Image compression error:', compressError);
             }
           }
+
+          const timestamp = Date.now();
+          const random = Math.floor(Math.random() * 10000);
+          const safeFileName = `${timestamp}_${random}_${originalName}`;
+          const newPath = path.join(uploadDir, safeFileName);
+
+          if (fs.existsSync(finalPath)) {
+            fs.renameSync(finalPath, newPath);
+
+            uploadedFiles.push({
+              url: `/uploads/${safeFileName}`,
+              name: originalName,
+              size: finalSize,
+              mimeType: file.mimetype,
+              type: file.mimetype.startsWith('image/') ? 'image' : 'file'
+            });
+          } else {
+            console.error(`File path does not exist: ${finalPath}`);
+          }
+        } catch (fileError) {
+          console.error(`Error processing file:`, fileError);
+          // Continue with next file
         }
+      }
 
-        const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 10000);
-        const safeFileName = `${timestamp}_${random}_${originalName}`;
-        const newPath = path.join(uploadDir, safeFileName);
-
-        fs.renameSync(finalPath, newPath);
-
-        uploadedFiles.push({
-          url: `/uploads/${safeFileName}`,
-          name: originalName,
-          size: finalSize,
-          mimeType: file.mimetype,
-          type: file.mimetype.startsWith('image/') ? 'image' : 'file'
-        });
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: '업로드된 파일이 없습니다.' });
       }
 
       res.json({ files: uploadedFiles });
     } catch (error) {
       console.error('Multiple files upload error:', error);
-      res.status(500).json({ message: '파일 업로드 실패' });
+      res.status(500).json({ message: '파일 업로드 실패', error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
