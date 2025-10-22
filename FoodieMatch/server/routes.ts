@@ -225,41 +225,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { page, limit, role, site } = req.query;
 
-      // Pagination parameters
-      const pageNum = parseInt(page as string) || 1;
-      const limitNum = parseInt(limit as string) || 50;
-      const skip = (pageNum - 1) * limitNum;
-
       // Build where clause
       const where: any = {};
       if (role) where.role = role as string;
       if (site) where.site = site as string;
 
-      // Get total count
-      const total = await prisma.user.count({ where });
+      // Check if pagination is requested
+      const usePagination = page !== undefined || limit !== undefined;
 
-      // Get paginated users
-      const users = await prisma.user.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum,
-        include: {
-          team: {
-            select: { id: true, name: true }
+      if (usePagination) {
+        // Pagination parameters
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 50;
+        const skip = (pageNum - 1) * limitNum;
+
+        // Get total count
+        const total = await prisma.user.count({ where });
+
+        // Get paginated users
+        const users = await prisma.user.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum,
+          include: {
+            team: {
+              select: { id: true, name: true }
+            }
           }
-        }
-      });
+        });
 
-      res.json({
-        data: users,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum)
-        }
-      });
+        res.json({
+          data: users,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum)
+          }
+        });
+      } else {
+        // Legacy format: return array directly
+        const users = await prisma.user.findMany({
+          where,
+          orderBy: { createdAt: 'desc' }
+        });
+        res.json(users);
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -397,42 +409,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(notice);
       }
 
-      // Pagination parameters
-      const pageNum = parseInt(page as string) || 1;
-      const limitNum = parseInt(limit as string) || 20;
-      const skip = (pageNum - 1) * limitNum;
-
       // Build where clause
       const where: any = {};
       if (category && category !== 'ALL') {
         where.category = category as string;
       }
 
-      // Get total count for pagination
-      const total = await prisma.notice.count({ where });
+      // Check if pagination is requested
+      const usePagination = page !== undefined || limit !== undefined;
 
-      // Get paginated notices
-      const notices = await prisma.notice.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum,
-        include: {
-          author: {
-            select: { id: true, name: true, role: true }
+      if (usePagination) {
+        // Pagination parameters
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 20;
+        const skip = (pageNum - 1) * limitNum;
+
+        // Get total count for pagination
+        const total = await prisma.notice.count({ where });
+
+        // Get paginated notices
+        const notices = await prisma.notice.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum,
+          include: {
+            author: {
+              select: { id: true, name: true, role: true }
+            }
           }
-        }
-      });
+        });
 
-      res.json({
-        data: notices,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum)
-        }
-      });
+        res.json({
+          data: notices,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum)
+          }
+        });
+      } else {
+        // Legacy format: return array directly (backward compatibility)
+        const notices = await prisma.notice.findMany({
+          where,
+          orderBy: { createdAt: 'desc' }
+        });
+        res.json(notices);
+      }
     } catch (error) {
       console.error('Failed to fetch notices:', error);
       res.status(500).json({ message: "Failed to fetch notices" });
@@ -589,36 +613,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
-      // Pagination parameters
-      const pageNum = parseInt(page as string) || 1;
-      const limitNum = parseInt(limit as string) || 30;
-      const skip = (pageNum - 1) * limitNum;
+      // Check if pagination is requested
+      const usePagination = page !== undefined || limit !== undefined;
 
-      // Get total count
-      const total = await prisma.dailyReport.count({ where });
+      if (usePagination) {
+        // Pagination parameters
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 30;
+        const skip = (pageNum - 1) * limitNum;
 
-      // Get paginated reports
-      const reports = await prisma.dailyReport.findMany({
-        where,
-        include: {
-          team: {
-            select: { id: true, name: true, site: true }
+        // Get total count
+        const total = await prisma.dailyReport.count({ where });
+
+        // Get paginated reports
+        const reports = await prisma.dailyReport.findMany({
+          where,
+          include: {
+            team: {
+              select: { id: true, name: true, site: true }
+            }
+          },
+          orderBy: { reportDate: 'desc' },
+          skip,
+          take: limitNum
+        });
+
+        res.json({
+          data: reports,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum)
           }
-        },
-        orderBy: { reportDate: 'desc' },
-        skip,
-        take: limitNum
-      });
-
-      res.json({
-        data: reports,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum)
-        }
-      });
+        });
+      } else {
+        // Legacy format: return array directly
+        const reports = await prisma.dailyReport.findMany({
+          where,
+          include: { team: true },
+          orderBy: { reportDate: 'desc' }
+        });
+        res.json(reports);
+      }
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       res.status(500).json({ message: "Failed to fetch reports" });
