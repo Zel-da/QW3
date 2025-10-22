@@ -26,6 +26,9 @@ model User {
   reportDetails    ReportDetail[]
 
   @@index([teamId])
+  @@index([role])
+  @@index([site])
+  @@index([role, site])
 }
 
 model Notice {
@@ -46,6 +49,9 @@ model Notice {
   attachments Attachment[]
 
   @@index([authorId])
+  @@index([createdAt])
+  @@index([category])
+  @@index([category, createdAt])
 }
 
 model Comment {
@@ -187,6 +193,10 @@ model DailyReport {
   reportSignatures ReportSignature[]
 
   @@index([teamId])
+  @@index([reportDate])
+  @@index([site])
+  @@index([teamId, reportDate])
+  @@index([site, reportDate])
   @@map("DailyReports")
 }
 

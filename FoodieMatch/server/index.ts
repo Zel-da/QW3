@@ -4,6 +4,7 @@ import pgSimple from "connect-pg-simple";
 import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import logger from "./logger";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +38,7 @@ app.use(session({
   rolling: true, // Reset maxAge on every response (keep active sessions alive)
 }));
 
+// HTTP request logging middleware with Winston
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -51,7 +53,23 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      const message = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+
+      // Use Winston logger with appropriate level
+      const logLevel = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'http';
+
+      logger.log(logLevel, message, {
+        method: req.method,
+        path,
+        statusCode: res.statusCode,
+        duration,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        userId: (req.session as any)?.user?.id,
+      });
+
+      // Also log to console for backward compatibility
+      let logLine = message;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }

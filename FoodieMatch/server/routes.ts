@@ -220,12 +220,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // USER MANAGEMENT
-  // Admin-only: List all users
+  // Admin-only: List all users with pagination
   app.get("/api/users", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-      res.json(users);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch users" }); }
+      const { page, limit, role, site } = req.query;
+
+      // Pagination parameters
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 50;
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build where clause
+      const where: any = {};
+      if (role) where.role = role as string;
+      if (site) where.site = site as string;
+
+      // Get total count
+      const total = await prisma.user.count({ where });
+
+      // Get paginated users
+      const users = await prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+        include: {
+          team: {
+            select: { id: true, name: true }
+          }
+        }
+      });
+
+      res.json({
+        data: users,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
   });
 
   // Users can view their own profile, admins can view any
@@ -351,14 +389,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTICE MANAGEMENT
   app.get("/api/notices", async (req, res) => {
     try {
-      const { latest } = req.query;
+      const { latest, page, limit, category } = req.query;
+
+      // Latest single notice
       if (latest === 'true') {
         const notice = await prisma.notice.findFirst({ orderBy: { createdAt: 'desc' } });
         return res.json(notice);
       }
-      const notices = await prisma.notice.findMany({ orderBy: { createdAt: 'desc' } });
-      res.json(notices);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch notices" }); }
+
+      // Pagination parameters
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 20;
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build where clause
+      const where: any = {};
+      if (category && category !== 'ALL') {
+        where.category = category as string;
+      }
+
+      // Get total count for pagination
+      const total = await prisma.notice.count({ where });
+
+      // Get paginated notices
+      const notices = await prisma.notice.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+        include: {
+          author: {
+            select: { id: true, name: true, role: true }
+          }
+        }
+      });
+
+      res.json({
+        data: notices,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch notices:', error);
+      res.status(500).json({ message: "Failed to fetch notices" });
+    }
   });
 
   app.get("/api/notices/:noticeId", async (req, res) => {
@@ -498,7 +576,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TBM & REPORT MANAGEMENT
   app.get("/api/reports", requireAuth, async (req, res) => {
     try {
-      const { startDate, endDate, teamId, site } = req.query;
+      const { startDate, endDate, teamId, site, page, limit } = req.query;
+
+      // Build where clause
       const where: any = {};
       if (site) { where.site = site as string; }
       if (teamId) { where.teamId = parseInt(teamId as string); }
@@ -508,9 +588,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lte: new Date(new Date(endDate as string).setHours(23, 59, 59, 999)),
         };
       }
-      const reports = await prisma.dailyReport.findMany({ where, include: { team: true }, orderBy: { reportDate: 'desc' } });
-      res.json(reports);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch reports" }); }
+
+      // Pagination parameters
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 30;
+      const skip = (pageNum - 1) * limitNum;
+
+      // Get total count
+      const total = await prisma.dailyReport.count({ where });
+
+      // Get paginated reports
+      const reports = await prisma.dailyReport.findMany({
+        where,
+        include: {
+          team: {
+            select: { id: true, name: true, site: true }
+          }
+        },
+        orderBy: { reportDate: 'desc' },
+        skip,
+        take: limitNum
+      });
+
+      res.json({
+        data: reports,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
   });
 
   app.get("/api/reports/monthly", requireAuth, async (req, res) => {
