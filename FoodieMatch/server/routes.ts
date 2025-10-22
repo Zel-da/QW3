@@ -1000,7 +1000,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MISCELLANEOUS ROUTES - FILE UPLOAD
 
   // Single file upload with Korean filename support and image compression
-  app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => {
+  app.post('/api/upload', requireAuth, (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        return res.status(400).json({
+          message: '파일 업로드 중 오류가 발생했습니다.',
+          error: err.message
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded.' });
@@ -1070,7 +1081,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Multiple files upload (max 10 files)
-  app.post('/api/upload-multiple', requireAuth, upload.array('files', 10), async (req, res) => {
+  app.post('/api/upload-multiple', requireAuth, (req, res, next) => {
+    upload.array('files', 10)(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        return res.status(400).json({
+          message: '파일 업로드 중 오류가 발생했습니다.',
+          error: err.message
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
         return res.status(400).json({ message: 'No files uploaded.' });
