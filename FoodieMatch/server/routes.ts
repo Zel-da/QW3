@@ -11,6 +11,7 @@ import bcrypt from "bcrypt";
 import ExcelJS from "exceljs";
 import { tbmReportSchema } from "@shared/schema";
 import sharp from "sharp";
+import rateLimit from "express-rate-limit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -75,8 +76,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // RBAC Middleware: Require specific role(s)
+  const requireRole = (...allowedRoles: string[]) => {
+    return (req: any, res: any, next: any) => {
+      if (!req.session.user) {
+        return res.status(401).json({ message: "로그인이 필요합니다" });
+      }
+
+      const userRole = req.session.user.role;
+      if (!allowedRoles.includes(userRole)) {
+        console.warn(`Access denied for user ${req.session.user.id} with role ${userRole}. Required: ${allowedRoles.join(', ')}`);
+        return res.status(403).json({
+          message: "이 작업을 수행할 권한이 없습니다",
+          requiredRoles: allowedRoles
+        });
+      }
+
+      next();
+    };
+  };
+
+  // RBAC Middleware: Require ownership or admin role
+  const requireOwnership = (userIdParam: string = 'userId') => {
+    return (req: any, res: any, next: any) => {
+      if (!req.session.user) {
+        return res.status(401).json({ message: "로그인이 필요합니다" });
+      }
+
+      const currentUserId = req.session.user.id;
+      const currentUserRole = req.session.user.role;
+      const targetUserId = req.params[userIdParam] || req.body[userIdParam];
+
+      // Admin can access any resource
+      if (currentUserRole === 'ADMIN') {
+        return next();
+      }
+
+      // User must be the owner
+      if (currentUserId !== targetUserId) {
+        console.warn(`Ownership check failed for user ${currentUserId} accessing ${targetUserId}`);
+        return res.status(403).json({
+          message: "본인의 정보만 접근할 수 있습니다"
+        });
+      }
+
+      next();
+    };
+  };
+
+  // RATE LIMITING
+  // General API rate limiter: 100 requests per 15 minutes
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per window
+    message: { message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  });
+
+  // Strict rate limiter for authentication endpoints: 5 requests per 15 minutes
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 login attempts per window
+    message: { message: "로그인 시도가 너무 많습니다. 15분 후에 다시 시도해주세요." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // File upload limiter: 20 uploads per hour
+  const uploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // 20 uploads per hour
+    message: { message: "파일 업로드 횟수가 제한을 초과했습니다. 1시간 후에 다시 시도해주세요." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // AUTH ROUTES
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const { username, email, password, teamId, name, site } = req.body;
       if (!username || !email || !password || !name) {
@@ -102,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const { username, password } = req.body;
       if (!username || !password) {
@@ -143,14 +220,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // USER MANAGEMENT
-  app.get("/api/users", requireAuth, async (req, res) => {
+  // Admin-only: List all users
+  app.get("/api/users", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
       res.json(users);
     } catch (error) { res.status(500).json({ message: "Failed to fetch users" }); }
   });
 
-  app.get("/api/users/:userId", requireAuth, async (req, res) => {
+  // Users can view their own profile, admins can view any
+  app.get("/api/users/:userId", requireAuth, requireOwnership(), async (req, res) => {
     try {
       const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
       if (!user) return res.status(404).json({ message: "User not found" });
@@ -158,7 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch user" }); }
   });
 
-  app.post("/api/users", async (req, res) => {
+  // Admin-only: Create new user
+  app.post("/api/users", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { username, email } = req.body;
       const user = await prisma.user.create({ data: { username, email, name: username, role: 'WORKER' } });
@@ -166,7 +246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to create user" }); }
   });
 
-  app.put("/api/users/:userId", requireAuth, async (req, res) => {
+  // Users can update their own profile, admins can update any
+  app.put("/api/users/:userId", requireAuth, requireOwnership(), async (req, res) => {
     try {
       const { name, site, password } = req.body;
       const data: any = { name, site };
@@ -176,7 +257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update user" }); }
   });
 
-  app.put("/api/users/:userId/role", requireAuth, async (req, res) => {
+  // Admin-only: Update user role
+  app.put("/api/users/:userId/role", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { role } = req.body;
       const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { role } });
@@ -184,7 +266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update role" }); }
   });
 
-  app.put("/api/users/:userId/site", requireAuth, async (req, res) => {
+  // Admin-only: Update user site
+  app.put("/api/users/:userId/site", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { site } = req.body;
       const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { site } });
@@ -192,7 +275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update site" }); }
   });
 
-  app.delete("/api/users/:userId", requireAuth, async (req, res) => {
+  // Admin-only: Delete user
+  app.delete("/api/users/:userId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       await prisma.user.delete({ where: { id: req.params.userId } });
       res.status(204).send();
@@ -292,7 +376,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/notices", requireAuth, async (req, res) => {
+  // Admin-only: Create notice
+  app.post("/api/notices", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { title, content, category, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
       const newNotice = await prisma.notice.create({
@@ -323,7 +408,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/notices/:noticeId", requireAuth, async (req, res) => {
+  // Admin-only: Update notice
+  app.put("/api/notices/:noticeId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { title, content, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
 
@@ -359,7 +445,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/notices/:noticeId", requireAuth, async (req, res) => {
+  // Admin-only: Delete notice
+  app.delete("/api/notices/:noticeId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       await prisma.notice.delete({ where: { id: req.params.noticeId } });
       res.status(204).send();
@@ -668,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
 
-            console.log(`Creating reportDetail for item ${r.itemId}, attachments: ${hasAttachments ? r.attachments.length : 0}`);
+            console.log(`Creating reportDetail for item ${r.itemId}, attachments: ${hasAttachments ? r.attachments!.length : 0}`);
 
             await prisma.reportDetail.create({
               data: {
@@ -677,8 +764,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 checkState: r.checkState || undefined,
                 actionDescription: r.actionDescription,
                 authorId: r.authorId,
-                attachments: hasAttachments ? {
-                  create: r.attachments.map((att: any) => ({
+                attachments: hasAttachments && r.attachments ? {
+                  create: r.attachments!.map((att: any) => ({
                     url: att.url,
                     name: att.name,
                     type: att.type || 'image',
@@ -769,8 +856,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               checkState: r.checkState,
               actionDescription: r.actionDescription,
               authorId: r.authorId,
-              attachments: hasAttachments ? {
-                create: r.attachments.map((att: any) => ({
+              attachments: hasAttachments && r.attachments ? {
+                create: r.attachments!.map((att: any) => ({
                   url: att.url,
                   name: att.name,
                   type: att.type || 'image',
@@ -824,7 +911,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch courses" }); }
   });
 
-  app.post("/api/courses", requireAuth, async (req, res) => {
+  // Admin-only: Create course
+  app.post("/api/courses", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const newCourse = await prisma.course.create({ data: req.body });
       res.status(201).json(newCourse);
@@ -839,14 +927,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch course" }); }
   });
 
-  app.put("/api/courses/:courseId", requireAuth, async (req, res) => {
+  // Admin-only: Update course
+  app.put("/api/courses/:courseId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const updatedCourse = await prisma.course.update({ where: { id: req.params.courseId }, data: req.body });
       res.json(updatedCourse);
     } catch (error) { res.status(500).json({ message: "Failed to update course" }); }
   });
 
-  app.delete("/api/courses/:courseId", requireAuth, async (req, res) => {
+  // Admin-only: Delete course
+  app.delete("/api/courses/:courseId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       await prisma.course.delete({ where: { id: req.params.courseId } });
       res.status(204).send();
@@ -860,7 +950,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch assessments" }); }
   });
 
-  app.put("/api/courses/:courseId/assessments", requireAuth, async (req, res) => {
+  // Admin-only: Update assessments
+  app.put("/api/courses/:courseId/assessments", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { courseId } = req.params;
       const { questions } = req.body;
@@ -870,7 +961,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update assessments" }); }
   });
 
-      app.post("/api/courses/:courseId/assessments-bulk", requireAuth, async (req, res) => {
+      // Admin-only: Create assessments in bulk
+      app.post("/api/courses/:courseId/assessments-bulk", requireAuth, requireRole('ADMIN'), async (req, res) => {
 
         try {
 
@@ -1025,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MISCELLANEOUS ROUTES - FILE UPLOAD
 
   // Single file upload with Korean filename support and image compression
-  app.post('/api/upload', requireAuth, (req, res, next) => {
+  app.post('/api/upload', requireAuth, uploadLimiter, (req, res, next) => {
     upload.single('file')(req, res, (err) => {
       if (err) {
         console.error('Multer error:', err);
@@ -1106,7 +1198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Multiple files upload (max 10 files)
-  app.post('/api/upload-multiple', requireAuth, (req, res, next) => {
+  app.post('/api/upload-multiple', requireAuth, uploadLimiter, (req, res, next) => {
     upload.array('files', 10)(req, res, (err) => {
       if (err) {
         console.error('Multer error:', err);

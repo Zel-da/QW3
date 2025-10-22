@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft } from "lucide-react";
 import type { Notice, Comment as CommentType } from "@shared/schema";
+import { sanitizeText } from "@/lib/sanitize";
 
 const fetchNotice = async (noticeId: string) => {
   const res = await fetch(`/api/notices/${noticeId}`);
@@ -152,15 +153,15 @@ export default function NoticeDetailPage() {
         {notice && (
           <Card className="shadow-lg">
             <CardHeader className="p-6 md:p-8">
-              <CardTitle className="text-4xl md:text-5xl leading-tight font-bold">{notice.title}</CardTitle>
+              <CardTitle className="text-4xl md:text-5xl leading-tight font-bold">{sanitizeText(notice.title)}</CardTitle>
               <div className="text-lg md:text-xl text-muted-foreground pt-4 flex flex-wrap gap-x-6 gap-y-2">
                 <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
                 <span>조회수: {notice.viewCount}</span>
               </div>
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0">
-              {notice.imageUrl && <img src={notice.imageUrl} alt={notice.title} className="w-full h-auto object-cover rounded-md mb-8 border" />}
-              <div className="prose prose-2xl max-w-none leading-relaxed whitespace-pre-wrap">{notice.content}</div>
+              {notice.imageUrl && <img src={notice.imageUrl} alt={sanitizeText(notice.title)} className="w-full h-auto object-cover rounded-md mb-8 border" />}
+              <div className="prose prose-2xl max-w-none leading-relaxed whitespace-pre-wrap">{sanitizeText(notice.content)}</div>
 
               {/* Display new multi-file attachments */}
               {(notice as any).attachments && (notice as any).attachments.length > 0 && (
@@ -233,8 +234,8 @@ export default function NoticeDetailPage() {
               {comments.map(comment => (
                 <div key={comment.id} className="flex items-start gap-4">
                   <div className="flex-1 space-y-2">
-                    <p className="font-semibold">{comment.author.name}</p>
-                    <p className="whitespace-pre-wrap">{comment.content}</p>
+                    <p className="font-semibold">{sanitizeText(comment.author.name || '')}</p>
+                    <p className="whitespace-pre-wrap">{sanitizeText(comment.content)}</p>
                     {comment.imageUrl && <img src={comment.imageUrl} alt="comment image" className="mt-2 w-full max-w-xs rounded-md border" />}
 
                     {/* Display multi-file attachments */}

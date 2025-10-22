@@ -3,7 +3,10 @@
     "allow": [
       "Bash(git commit -m \"fix: 허용 파일 타입에 text/plain과 zip 추가\n\n- .txt 파일 업로드 허용\n- .zip 파일 업로드 허용\n- 파일 타입 제한으로 인한 400 에러 해결\")",
       "Bash(git commit -m \"fix: TBM 리포트 생성 시 에러 로깅 개선\n\n- attachments 배열 체크 강화\n- 개별 reportDetail 생성 시 에러 캐치\n- 상세한 에러 메시지 로깅\n- 에러 발생 시 클라이언트에 에러 메시지 반환\")",
-      "Bash(git commit -m \"fix: ReportDetail에서 photoUrl 필드 제거\n\n- Prisma 스키마에 photoUrl이 없어서 발생하던 에러 수정\n- reportResultSchema에서 photoUrl 제거\n- TBMChecklist에서 photoUrl 관련 코드 제거\n- POST/PUT /api/reports에서 photoUrl 제거\n- TBM 사진 업로드 이제 정상 작동\")"
+      "Bash(git commit -m \"fix: ReportDetail에서 photoUrl 필드 제거\n\n- Prisma 스키마에 photoUrl이 없어서 발생하던 에러 수정\n- reportResultSchema에서 photoUrl 제거\n- TBMChecklist에서 photoUrl 관련 코드 제거\n- POST/PUT /api/reports에서 photoUrl 제거\n- TBM 사진 업로드 이제 정상 작동\")",
+      "Bash(npm install dompurify)",
+      "Bash(npm install --save-dev @types/dompurify)",
+      "Bash(npm install express-rate-limit)"
     ],
     "deny": [],
     "ask": []

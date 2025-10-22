@@ -27,11 +27,14 @@ app.use(session({
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-    secure: false, // Explicitly set to false for http
-    httpOnly: true, 
-    maxAge: 1000 * 60 * 60 * 24 * 30 // 30 days
-  }
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
+    httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
+    sameSite: 'strict', // Protect against CSRF attacks
+    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days (reduced from 30 for better security)
+  },
+  name: 'sessionId', // Custom name instead of default 'connect.sid' for security through obscurity
+  rolling: true, // Reset maxAge on every response (keep active sessions alive)
 }));
 
 app.use((req, res, next) => {
