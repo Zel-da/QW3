@@ -656,32 +656,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const reportData = tbmReportSchema.parse(req.body);
       const { teamId, reportDate, managerName, remarks, site, results, signatures } = reportData;
+
+      console.log('Creating TBM report with results:', results?.length || 0);
+
       const newReport = await prisma.dailyReport.create({
         data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
       });
+
       if (results && results.length > 0) {
         for (const r of results) {
-          await prisma.reportDetail.create({
-            data: {
-              reportId: newReport.id,
-              itemId: r.itemId,
-              checkState: r.checkState || undefined,
-              photoUrl: r.photoUrl,
-              actionDescription: r.actionDescription,
-              authorId: r.authorId,
-              attachments: r.attachments ? {
-                create: r.attachments.map((att: any) => ({
-                  url: att.url,
-                  name: att.name,
-                  type: att.type || 'image',
-                  size: att.size || 0,
-                  mimeType: att.mimeType || 'image/jpeg'
-                }))
-              } : undefined
-            }
-          });
+          try {
+            const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
+
+            console.log(`Creating reportDetail for item ${r.itemId}, attachments: ${hasAttachments ? r.attachments.length : 0}`);
+
+            await prisma.reportDetail.create({
+              data: {
+                reportId: newReport.id,
+                itemId: r.itemId,
+                checkState: r.checkState || undefined,
+                photoUrl: r.photoUrl,
+                actionDescription: r.actionDescription,
+                authorId: r.authorId,
+                attachments: hasAttachments ? {
+                  create: r.attachments.map((att: any) => ({
+                    url: att.url,
+                    name: att.name,
+                    type: att.type || 'image',
+                    size: att.size || 0,
+                    mimeType: att.mimeType || 'image/jpeg'
+                  }))
+                } : undefined
+              }
+            });
+          } catch (detailError) {
+            console.error(`Error creating reportDetail for item ${r.itemId}:`, detailError);
+            throw detailError;
+          }
         }
       }
+
       if (signatures && signatures.length > 0) {
         await prisma.reportSignature.createMany({
           data: signatures.map(s => ({
@@ -689,6 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
         });
       }
+
       const fullReport = await prisma.dailyReport.findUnique({
           where: { id: newReport.id },
           include: {
@@ -699,7 +714,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(fullReport);
     } catch (error) {
       console.error("Error creating report:", error);
-      res.status(500).json({ message: "Failed to create report" });
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      res.status(500).json({
+        message: "Failed to create report",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

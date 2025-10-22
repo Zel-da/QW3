@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m \"fix: 허용 파일 타입에 text/plain과 zip 추가\n\n- .txt 파일 업로드 허용\n- .zip 파일 업로드 허용\n- 파일 타입 제한으로 인한 400 에러 해결\")"
+      "Bash(git commit -m \"fix: 허용 파일 타입에 text/plain과 zip 추가\n\n- .txt 파일 업로드 허용\n- .zip 파일 업로드 허용\n- 파일 타입 제한으로 인한 400 에러 해결\")",
+      "Bash(git commit -m \"fix: TBM 리포트 생성 시 에러 로깅 개선\n\n- attachments 배열 체크 강화\n- 개별 reportDetail 생성 시 에러 캐치\n- 상세한 에러 메시지 로깅\n- 에러 발생 시 클라이언트에 에러 메시지 반환\")"
     ],
     "deny": [],
     "ask": []
