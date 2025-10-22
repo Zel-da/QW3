@@ -31,7 +31,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
     httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
-    sameSite: 'strict', // Protect against CSRF attacks
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Strict in production, lax in development
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days (reduced from 30 for better security)
   },
   name: 'sessionId', // Custom name instead of default 'connect.sid' for security through obscurity

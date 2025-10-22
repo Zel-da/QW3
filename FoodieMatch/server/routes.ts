@@ -193,8 +193,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validPassword) {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
+
+      // Set session user data
       req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
-      res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
+
+      // Explicitly save session before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ message: "세션 저장 중 오류가 발생했습니다" });
+        }
+        res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
+      });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ message: "로그인 중 오류가 발생했습니다" });
