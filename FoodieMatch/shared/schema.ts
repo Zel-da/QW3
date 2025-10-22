@@ -78,7 +78,6 @@ export const insertUserSchema = z.object({
 export const reportResultSchema = z.object({
   itemId: z.number(),
   checkState: z.string().optional(),
-  photoUrl: z.string().nullish(),
   actionDescription: z.string().nullish(),
   authorId: z.string(),
   attachments: z.array(z.object({

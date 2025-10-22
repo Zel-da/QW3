@@ -51,7 +51,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       reportForEdit.reportDetails.forEach(detail => {
         initialFormState[detail.itemId] = {
           checkState: detail.checkState,
-          photoUrl: detail.photoUrl,
           description: detail.actionDescription,
           attachments: detail.attachments ? detail.attachments.map(att => ({
             url: att.url,
@@ -158,7 +157,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       results: Object.entries(formState).map(([itemId, data]) => ({
         itemId: parseInt(itemId),
         checkState: data.checkState,
-        photoUrl: data.photoUrl || null,
         actionDescription: data.description || null,
         authorId: user.id,
         attachments: data.attachments || []
@@ -266,11 +264,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                                   </div>
                                 ))}
                               </div>
-                            )}
-
-                            {/* Legacy single photo support */}
-                            {currentItemState.photoUrl && !currentItemState.attachments?.length && (
-                              <img src={currentItemState.photoUrl} alt="preview" className="w-24 h-24 object-cover mt-2 rounded-md border"/>
                             )}
                           </div>
                           <Textarea

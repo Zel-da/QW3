@@ -675,7 +675,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 reportId: newReport.id,
                 itemId: r.itemId,
                 checkState: r.checkState || undefined,
-                photoUrl: r.photoUrl,
                 actionDescription: r.actionDescription,
                 authorId: r.authorId,
                 attachments: hasAttachments ? {
@@ -761,15 +760,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (results && results.length > 0) {
         for (const r of results) {
+          const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
+
           await prisma.reportDetail.create({
             data: {
               reportId: parseInt(reportId),
               itemId: r.itemId,
               checkState: r.checkState,
-              photoUrl: r.photoUrl,
               actionDescription: r.actionDescription,
               authorId: r.authorId,
-              attachments: r.attachments ? {
+              attachments: hasAttachments ? {
                 create: r.attachments.map((att: any) => ({
                   url: att.url,
                   name: att.name,
