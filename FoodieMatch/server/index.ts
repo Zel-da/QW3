@@ -35,9 +35,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
+    secure: false, // Internal HTTP network - set to false even in production
     httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Strict in production, lax in development
+    sameSite: 'lax', // Allow cookies in same-site requests
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days (reduced from 30 for better security)
   },
   name: 'sessionId', // Custom name instead of default 'connect.sid' for security through obscurity
