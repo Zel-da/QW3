@@ -92,8 +92,8 @@ export default function CourseContentPage() {
 
   useEffect(() => {
     if (!progressLoading) {
-      if (userProgress && userProgress.timeSpent) {
-        // Load saved progress
+      if (userProgress && userProgress.timeSpent !== undefined && userProgress.timeSpent !== null) {
+        // Load saved progress (including 0)
         setTimeSpent(userProgress.timeSpent);
       }
       setProgressLoaded(true);

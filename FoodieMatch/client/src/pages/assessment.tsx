@@ -43,6 +43,7 @@ const submitAssessment = async ({ courseId, userId, answers }: { courseId: strin
     await axios.put(`/api/users/${userId}/progress/${courseId}`, {
       progress: 100,
       completed: true,
+      currentStep: 3, // Assessment completed
     });
   }
 

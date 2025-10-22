@@ -59,7 +59,7 @@ export default function CoursePage() {
       localStorage.setItem("currentUserId", user.id);
       
       // Navigate to course content
-      setLocation(`/course/${courseId}/content`);
+      setLocation(`/courses/${courseId}/content`);
     },
     onError: () => {
       toast({
@@ -105,7 +105,7 @@ export default function CoursePage() {
 
   const handleStartCourse = () => {
     if (user) {
-      setLocation(`/course/${courseId}/content`);
+      setLocation(`/courses/${courseId}/content`);
     } else {
       setLocation('/login');
     }

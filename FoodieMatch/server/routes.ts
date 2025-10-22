@@ -1191,9 +1191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const { userId, courseId } = req.params;
 
-        const { progress, completed, currentStep } = req.body;
+        const { progress, completed, currentStep, timeSpent } = req.body;
 
-        
+
 
         const existingProgress = await prisma.userProgress.findFirst({
 
@@ -1201,7 +1201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         });
 
-  
+
 
         if (existingProgress) {
 
@@ -1209,7 +1209,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             where: { id: existingProgress.id },
 
-            data: { progress, completed, currentStep },
+            data: {
+              progress,
+              completed,
+              currentStep,
+              timeSpent: timeSpent !== undefined ? timeSpent : existingProgress.timeSpent,
+              lastAccessed: new Date()
+            },
 
           });
 
@@ -1219,7 +1225,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const newProgress = await prisma.userProgress.create({
 
-            data: { userId, courseId, progress, completed, currentStep },
+            data: {
+              userId,
+              courseId,
+              progress,
+              completed,
+              currentStep,
+              timeSpent: timeSpent || 0,
+              lastAccessed: new Date()
+            },
 
           });
 
@@ -1227,7 +1241,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         }
 
-      } catch (error) { res.status(500).json({ message: "Failed to update progress" }); }
+      } catch (error) {
+        console.error('Failed to update progress:', error);
+        res.status(500).json({ message: "Failed to update progress" });
+      }
 
     });
 
