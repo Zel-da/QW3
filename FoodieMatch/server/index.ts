@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import pgSimple from "connect-pg-simple";
+import pg from "pg";
 import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -17,12 +18,17 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
 
 const PgSession = pgSimple(session);
 
+// Create PostgreSQL connection pool for sessions
+const pgPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
 app.set('trust proxy', 1);
 
 app.use(session({
   store: new PgSession({
-    pool: prisma.$pool as any, // Use the connection pool from Prisma
-    tableName: 'user_sessions', // Name of the session table
+    pool: pgPool,
+    tableName: 'user_sessions',
     createTableIfMissing: true,
   }),
   secret: sessionSecret,
