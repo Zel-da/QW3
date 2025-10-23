@@ -76,9 +76,39 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right">
-                <nav className="grid gap-6 text-lg font-medium mt-8">
+                {user && (
+                  <div className="border-b pb-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                        <span className="text-primary-foreground font-semibold text-lg">
+                          {user.name?.charAt(0) || user.username.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-base">{user.name || user.username}님</p>
+                        <p className="text-sm text-muted-foreground">{user.role}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button asChild variant="outline" className="w-full justify-start" onClick={() => setIsSheetOpen(false)}>
+                        <Link href="/profile">내 정보</Link>
+                      </Button>
+                      <Button onClick={() => { logout(); setIsSheetOpen(false); }} variant="ghost" className="w-full justify-start text-destructive hover:text-destructive">
+                        로그아웃
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <nav className="grid gap-6 text-lg font-medium">
                   {navLinks}
                 </nav>
+                {!user && (
+                  <div className="mt-6 pt-6 border-t">
+                    <Button asChild className="w-full">
+                      <Link href="/login" onClick={() => setIsSheetOpen(false)}>로그인</Link>
+                    </Button>
+                  </div>
+                )}
               </SheetContent>
             </Sheet>
 

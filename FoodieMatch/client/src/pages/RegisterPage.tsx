@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 interface Team {
   id: number;
@@ -21,6 +23,21 @@ const fetchTeams = async (site: string): Promise<Team[]> => {
   return res.json();
 };
 
+const calculatePasswordStrength = (password: string): { strength: number; label: string; color: string } => {
+  let strength = 0;
+
+  if (password.length >= 8) strength += 25;
+  if (password.length >= 12) strength += 15;
+  if (/[a-z]/.test(password)) strength += 15;
+  if (/[A-Z]/.test(password)) strength += 15;
+  if (/[0-9]/.test(password)) strength += 15;
+  if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
+
+  if (strength <= 40) return { strength, label: '약함', color: 'bg-red-500' };
+  if (strength <= 70) return { strength, label: '보통', color: 'bg-yellow-500' };
+  return { strength, label: '강함', color: 'bg-green-500' };
+};
+
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
@@ -30,6 +47,10 @@ export default function RegisterPage() {
     teamId: '',
     site: '아산', // Default to '아산'
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -50,6 +71,8 @@ export default function RegisterPage() {
     setFormData({ ...formData, site: value });
   };
 
+  const passwordStrength = calculatePasswordStrength(formData.password);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -59,6 +82,13 @@ export default function RegisterPage() {
       setError('비밀번호는 8자 이상이어야 합니다.');
       return;
     }
+
+    if (formData.password !== confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -80,6 +110,8 @@ export default function RegisterPage() {
 
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -107,7 +139,78 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호 (8자 이상)</Label>
-                <Input id="password" name="password" type="password" required onChange={handleChange} />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    onChange={handleChange}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {formData.password && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">비밀번호 강도</span>
+                      <span className={`font-medium ${
+                        passwordStrength.label === '강함' ? 'text-green-600' :
+                        passwordStrength.label === '보통' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {passwordStrength.label}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                        style={{ width: `${passwordStrength.strength}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">비밀번호 확인</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirmPassword && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {formData.password === confirmPassword ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-green-600">비밀번호가 일치합니다</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 text-red-600" />
+                        <span className="text-red-600">비밀번호가 일치하지 않습니다</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>소속 현장</Label>
@@ -137,7 +240,10 @@ export default function RegisterPage() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {success && <p className="text-sm text-green-600">{success}</p>}
-              <Button type="submit" className="w-full">가입하기</Button>
+              <Button type="submit" className="w-full" disabled={isLoading || isLoadingTeams}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? '가입 처리 중...' : '가입하기'}
+              </Button>
               <div className="text-center text-sm text-muted-foreground">
                 <p>이미 계정이 있으신가요? <a href="/login" className="text-primary hover:underline">로그인</a></p>
               </div>
