@@ -11,6 +11,7 @@ import { PROGRESS_STEPS } from "@/lib/constants";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { NoticePopup } from "@/components/notice-popup";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -181,21 +182,39 @@ export default function Dashboard() {
         </Card>
 
         {/* Main Course Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
-          {courses.map((course) => {
-            const progress = userProgress.find(p => p.courseId === course.id);
-            const assessment = userAssessments.find(a => a.courseId === course.id);
-            return (
-              <CourseCard
-                key={course.id}
-                course={course}
-                progress={progress}
-                assessment={assessment}
-                onStartCourse={handleStartCourse}
-              />
-            );
-          })}
-        </div>
+        {courses.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title="등록된 교육 과정이 없습니다"
+            description={user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'
+              ? "교육 과정을 추가하여 안전교육을 시작하세요."
+              : "관리자가 교육 과정을 추가할 때까지 기다려주세요."}
+            action={
+              user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'
+                ? {
+                    label: "교육 과정 추가하기",
+                    onClick: () => setLocation("/education-management")
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
+            {courses.map((course) => {
+              const progress = userProgress.find(p => p.courseId === course.id);
+              const assessment = userAssessments.find(a => a.courseId === course.id);
+              return (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  progress={progress}
+                  assessment={assessment}
+                  onStartCourse={handleStartCourse}
+                />
+              );
+            })}
+          </div>
+        )}
 
       </main>
 

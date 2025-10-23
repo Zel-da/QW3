@@ -7,8 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 import { format } from 'date-fns';
-import { Award, Download } from 'lucide-react';
+import { Award, Download, BookOpen } from 'lucide-react';
 import type { Certificate, Course } from '@shared/schema';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { EmptyState } from '@/components/EmptyState';
 
 interface CertificateWithCourse extends Certificate {
   course: Course;
@@ -48,10 +50,18 @@ export default function MyCertificatesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {certificates.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-lg text-muted-foreground">아직 발급받은 이수증이 없습니다.</p>
-              </div>
+            {certsLoading ? (
+              <LoadingSpinner size="lg" text="이수증 목록을 불러오는 중..." className="py-16" />
+            ) : certificates.length === 0 ? (
+              <EmptyState
+                icon={BookOpen}
+                title="아직 발급받은 이수증이 없습니다"
+                description="교육 과정을 완료하고 평가에 합격하면 이수증이 자동으로 발급됩니다."
+                action={{
+                  label: "교육 시작하기",
+                  onClick: () => window.location.href = "/courses"
+                }}
+              />
             ) : (
               <Table>
                 <TableHeader>

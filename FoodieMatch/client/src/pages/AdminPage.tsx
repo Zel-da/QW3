@@ -113,7 +113,33 @@ export default function AdminPage() {
   });
 
   if (usersLoading || teamsLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div>
+        <Header />
+        <main className="container mx-auto p-4 lg:p-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">사용자 관리</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="h-10 w-64 bg-muted rounded animate-pulse" />
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <div className="h-12 w-1/4 bg-muted rounded animate-pulse" />
+                      <div className="h-12 w-1/4 bg-muted rounded animate-pulse" />
+                      <div className="h-12 w-1/4 bg-muted rounded animate-pulse" />
+                      <div className="h-12 w-1/4 bg-muted rounded animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
   }
 
   return (
