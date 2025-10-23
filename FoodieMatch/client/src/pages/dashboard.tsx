@@ -5,6 +5,8 @@ import { CourseCard } from "@/components/course-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
@@ -16,8 +18,11 @@ import { EmptyState } from "@/components/EmptyState";
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [filterStatus, setFilterStatus] = useState<"all" | "in-progress" | "completed">("in-progress");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
 
-  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({ 
+  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
 
@@ -30,6 +35,36 @@ export default function Dashboard() {
     queryKey: ["/api/users", user?.id, "assessments"],
     enabled: !!user?.id,
   });
+
+  // Filter courses based on status
+  const filteredCourses = courses.filter((course) => {
+    if (filterStatus === "all") return true;
+
+    const progress = userProgress.find(p => p.courseId === course.id);
+
+    if (filterStatus === "completed") {
+      return progress?.completed === true;
+    }
+
+    if (filterStatus === "in-progress") {
+      // In progress means: has started but not completed
+      return progress && !progress.completed;
+    }
+
+    return true;
+  });
+
+  // Paginate filtered courses
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -98,21 +133,16 @@ export default function Dashboard() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12" data-testid="hero-section">
-          <h1 className="text-4xl font-bold text-foreground korean-text mb-4">
-            안전관리 교육 프로그램
+        <div className="flex justify-between items-center mb-8" data-testid="hero-section">
+          <h1 className="text-4xl font-bold text-foreground korean-text">
+            안전 관리 교육 프로그램
           </h1>
-          <div className="mb-4">
-            <Link href="/my-certificates">
-              <Button variant="outline">
-                <Award className="w-4 h-4 mr-2" />
-                내 이수 현황
-              </Button>
-            </Link>
-          </div>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto korean-text">
-            교육 과정에 참여하세요
-          </p>
+          <Link href="/my-certificates">
+            <Button variant="outline">
+              <Award className="w-4 h-4 mr-2" />
+              내 이수 현황
+            </Button>
+          </Link>
         </div>
 
         {/* Progress Overview */}
@@ -181,7 +211,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Main Course Cards */}
+        {/* Course Filtering and Display */}
         {courses.length === 0 ? (
           <EmptyState
             icon={BookOpen}
@@ -199,21 +229,92 @@ export default function Dashboard() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
-            {courses.map((course) => {
-              const progress = userProgress.find(p => p.courseId === course.id);
-              const assessment = userAssessments.find(a => a.courseId === course.id);
-              return (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  progress={progress}
-                  assessment={assessment}
-                  onStartCourse={handleStartCourse}
+          <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-8">
+            <TabsList className="mb-6">
+              <TabsTrigger value="all">전체 ({courses.length})</TabsTrigger>
+              <TabsTrigger value="in-progress">
+                진행중 ({courses.filter(c => {
+                  const p = userProgress.find(up => up.courseId === c.id);
+                  return p && !p.completed;
+                }).length})
+              </TabsTrigger>
+              <TabsTrigger value="completed">
+                수료 ({courses.filter(c => {
+                  const p = userProgress.find(up => up.courseId === c.id);
+                  return p?.completed === true;
+                }).length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={filterStatus}>
+              {filteredCourses.length === 0 ? (
+                <EmptyState
+                  icon={BookOpen}
+                  title={
+                    filterStatus === "completed" ? "수료한 교육이 없습니다" :
+                    filterStatus === "in-progress" ? "진행중인 교육이 없습니다" :
+                    "교육 과정이 없습니다"
+                  }
+                  description={
+                    filterStatus === "completed" ? "교육을 완료하고 평가에 합격하면 수료됩니다." :
+                    filterStatus === "in-progress" ? "교육을 시작하면 여기에 표시됩니다." :
+                    "교육 과정을 시작하세요."
+                  }
                 />
-              );
-            })}
-          </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
+                    {paginatedCourses.map((course) => {
+                      const progress = userProgress.find(p => p.courseId === course.id);
+                      const assessment = userAssessments.find(a => a.courseId === course.id);
+                      return (
+                        <CourseCard
+                          key={course.id}
+                          course={course}
+                          progress={progress}
+                          assessment={assessment}
+                          onStartCourse={handleStartCourse}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
       </main>

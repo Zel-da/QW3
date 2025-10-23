@@ -184,11 +184,6 @@ export default function HomePage() {
     <div>
       <Header />
       <main className="container mx-auto p-4 lg:p-6">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold">메인 홈페이지</h1>
-          <p className="mt-4 text-xl md:text-2xl text-muted-foreground">안전관리 통합 플랫폼에 오신 것을 환영합니다.</p>
-        </div>
-
         {/* 공지사항 팝업 */}
         {latestNotice && (
           <Dialog open={showNoticePopup} onOpenChange={(open) => !open && handleClosePopup()}>

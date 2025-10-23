@@ -12,7 +12,7 @@ export function Header() {
   const navLinks = (
     <>
       <Link href="/" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-        메인
+        공지사항
       </Link>
             <Link href="/courses" className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground">
         안전교육
@@ -37,7 +37,7 @@ export function Header() {
       )}
       {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
         <Link href="/checklist-editor" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-          체크리스트 편집
+          TBM 편집
         </Link>
       )}
       {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (

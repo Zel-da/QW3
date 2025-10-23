@@ -83,7 +83,7 @@ export default function ChecklistEditorPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">체크리스트 편집기</CardTitle>
+            <CardTitle className="text-2xl">TBM 편집</CardTitle>
             <div className="flex items-center gap-4 mt-4">
               <Select onValueChange={setSelectedTeam} value={selectedTeam || ''}>
                 <SelectTrigger className="w-[250px]">
