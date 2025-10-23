@@ -73,8 +73,8 @@ export default function MyCertificatesPage() {
     if (filterStatus === "all") return true;
     if (filterStatus === "completed") return item.progress?.completed === true;
     if (filterStatus === "in-progress") {
-      // Has started but not completed
-      return item.progress && !item.progress.completed;
+      // NOT completed (includes not started)
+      return !item.progress?.completed;
     }
     return true;
   });
@@ -131,7 +131,7 @@ export default function MyCertificatesPage() {
                     전체 ({courseHistory.length})
                   </TabsTrigger>
                   <TabsTrigger value="in-progress">
-                    수강중 ({courseHistory.filter(h => h.progress && !h.progress.completed).length})
+                    수강중 ({courseHistory.filter(h => !h.progress?.completed).length})
                   </TabsTrigger>
                   <TabsTrigger value="completed">
                     수료 ({courseHistory.filter(h => h.progress?.completed).length})

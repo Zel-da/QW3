@@ -47,8 +47,8 @@ export default function Dashboard() {
     }
 
     if (filterStatus === "in-progress") {
-      // In progress means: has started but not completed
-      return progress && !progress.completed;
+      // In progress means: NOT completed (includes not started)
+      return !progress?.completed;
     }
 
     return true;
@@ -235,7 +235,7 @@ export default function Dashboard() {
               <TabsTrigger value="in-progress">
                 진행중 ({courses.filter(c => {
                   const p = userProgress.find(up => up.courseId === c.id);
-                  return p && !p.completed;
+                  return !p?.completed;
                 }).length})
               </TabsTrigger>
               <TabsTrigger value="completed">
