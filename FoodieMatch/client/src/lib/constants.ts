@@ -52,5 +52,6 @@ export const ROLE_LABELS = {
   ADMIN: '관리자',
   SAFETY_TEAM: '안전팀',
   TEAM_LEADER: '팀장',
-  USER: '사용자',
+  WORKER: '현장직',
+  OFFICE_WORKER: '사무직',
 } as const;

@@ -7,7 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award, Search } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
 import { Link, useLocation } from "wouter";
@@ -20,6 +22,8 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [filterStatus, setFilterStatus] = useState<"all" | "in-progress" | "completed">("in-progress");
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'latest' | 'name' | 'progress'>('latest');
   const ITEMS_PER_PAGE = 9;
 
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
@@ -36,8 +40,16 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
-  // Filter courses based on status
+  // Filter courses based on status and search
   const filteredCourses = courses.filter((course) => {
+    // 검색 필터
+    const searchMatch = searchTerm === '' ||
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!searchMatch) return false;
+
+    // 상태 필터
     if (filterStatus === "all") return true;
 
     const progress = userProgress.find(p => p.courseId === course.id);
@@ -54,17 +66,31 @@ export default function Dashboard() {
     return true;
   });
 
-  // Paginate filtered courses
-  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
-  const paginatedCourses = filteredCourses.slice(
+  // Sort filtered courses
+  const sortedCourses = [...filteredCourses].sort((a, b) => {
+    if (sortBy === 'name') {
+      return a.title.localeCompare(b.title, 'ko-KR');
+    } else if (sortBy === 'progress') {
+      const progressA = userProgress.find(p => p.courseId === a.id)?.progress || 0;
+      const progressB = userProgress.find(p => p.courseId === b.id)?.progress || 0;
+      return progressB - progressA; // 높은 진행률부터
+    } else {
+      // latest: 과정 ID 역순 (최근 생성된 것부터)
+      return b.id.localeCompare(a.id);
+    }
+  });
+
+  // Paginate sorted courses
+  const totalPages = Math.ceil(sortedCourses.length / ITEMS_PER_PAGE);
+  const paginatedCourses = sortedCourses.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Reset to page 1 when filter changes
+  // Reset to page 1 when filter, search, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus]);
+  }, [filterStatus, searchTerm, sortBy]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -229,9 +255,31 @@ export default function Dashboard() {
             }
           />
         ) : (
-          <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-8">
-            <TabsList className="mb-6">
-              <TabsTrigger value="all">전체 ({courses.length})</TabsTrigger>
+          <>
+            <div className="mb-6 flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="과정명 또는 설명으로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12 text-base"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'latest' | 'name' | 'progress')}>
+                <SelectTrigger className="w-full sm:w-[180px] h-12">
+                  <SelectValue placeholder="정렬 기준" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="latest">최신순</SelectItem>
+                  <SelectItem value="name">과정명순</SelectItem>
+                  <SelectItem value="progress">진행률순</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-8">
+              <TabsList className="mb-6">
+                <TabsTrigger value="all">전체 ({courses.length})</TabsTrigger>
               <TabsTrigger value="in-progress">
                 진행중 ({courses.filter(c => {
                   const p = userProgress.find(up => up.courseId === c.id);
@@ -315,6 +363,7 @@ export default function Dashboard() {
               )}
             </TabsContent>
           </Tabs>
+          </>
         )}
 
       </main>

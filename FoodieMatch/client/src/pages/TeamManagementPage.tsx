@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Search, Users as UsersIcon } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { EmptyState } from '@/components/EmptyState';
 
 const fetchAllTeams = async (): Promise<Team[]> => {
   const res = await fetch('/api/teams');
@@ -65,6 +69,9 @@ export default function TeamManagementPage() {
 
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Set initial team selection
   useEffect(() => {
@@ -140,6 +147,26 @@ export default function TeamManagementPage() {
   const unassignedUsers = allUsers.filter(u => !u.teamId);
   const currentLeader = teamData?.members.find(m => m.id === teamData.leaderId);
 
+  // Filter team members based on search
+  const filteredMembers = teamData?.members.filter(member => {
+    const searchMatch = searchTerm === '' ||
+      member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.username.toLowerCase().includes(searchTerm.toLowerCase());
+    return searchMatch;
+  }) || [];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
+  const paginatedMembers = filteredMembers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   return (
     <div>
       <Header />
@@ -176,6 +203,32 @@ export default function TeamManagementPage() {
               </CardHeader>
               <CardContent>
                 {teamDataLoading ? <LoadingSpinner size="md" text="팀원 정보를 불러오는 중..." className="py-8" /> : (
+                  <>
+                    {teamData && teamData.members.length > 0 && (
+                      <div className="mb-4 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="이름 또는 아이디로 검색..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    )}
+                    {!teamData || teamData.members.length === 0 ? (
+                      <EmptyState
+                        icon={UsersIcon}
+                        title="팀원이 없습니다"
+                        description="오른쪽 카드에서 팀원을 추가하세요."
+                      />
+                    ) : filteredMembers.length === 0 ? (
+                      <EmptyState
+                        icon={UsersIcon}
+                        title="검색 결과가 없습니다"
+                        description={`"${searchTerm}"에 대한 검색 결과가 없습니다.`}
+                      />
+                    ) : (
+                      <>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -185,7 +238,7 @@ export default function TeamManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {teamData?.members.map((member) => (
+                      {paginatedMembers.map((member) => (
                         <TableRow key={member.id} className={member.id === teamData.leaderId ? 'bg-primary/10' : ''}>
                           <TableCell>{member.name}</TableCell>
                           <TableCell>{member.username}</TableCell>
@@ -201,6 +254,42 @@ export default function TeamManagementPage() {
                       ))}
                     </TableBody>
                   </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center mt-6">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                      </>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

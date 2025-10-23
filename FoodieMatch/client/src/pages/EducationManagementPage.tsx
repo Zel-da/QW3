@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Search } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { Course } from '@shared/schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -58,14 +60,37 @@ export default function EducationManagementPage() {
   const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState('');
   const [quizFile, setQuizFile] = useState<File | null>(null);
-  
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
-  const { data: courses = [], isLoading } = useQuery<Course[]>({ 
-      queryKey: ['courses'], 
-      queryFn: fetchCourses 
+  const { data: courses = [], isLoading } = useQuery<Course[]>({
+      queryKey: ['courses'],
+      queryFn: fetchCourses
   });
+
+  // Filter courses based on search
+  const filteredCourses = courses.filter((course) => {
+    const searchMatch = searchTerm === '' ||
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return searchMatch;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const courseMutation = useMutation({
       mutationFn: createCourse,
@@ -174,6 +199,17 @@ export default function EducationManagementPage() {
         <Card className="mt-8">
             <CardHeader><CardTitle>현재 교육 과정 목록</CardTitle></CardHeader>
             <CardContent>
+                {courses.length > 0 && (
+                  <div className="mb-4 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="과정명 또는 설명으로 검색..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                )}
                 {isLoading ? (
                   <LoadingSpinner size="md" text="과정 목록을 불러오는 중..." className="py-8" />
                 ) : courses.length === 0 ? (
@@ -182,7 +218,14 @@ export default function EducationManagementPage() {
                     title="등록된 교육 과정이 없습니다"
                     description="위 폼을 사용하여 새로운 교육 과정을 추가하세요."
                   />
+                ) : filteredCourses.length === 0 ? (
+                  <EmptyState
+                    icon={BookOpen}
+                    title="검색 결과가 없습니다"
+                    description={`"${searchTerm}"에 대한 검색 결과가 없습니다. 다른 검색어를 입력해보세요.`}
+                  />
                 ) : (
+                    <>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -192,7 +235,7 @@ export default function EducationManagementPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {courses.map(course => (
+                            {paginatedCourses.map(course => (
                                 <TableRow key={course.id}>
                                     <TableCell>{course.title}</TableCell>
                                     <TableCell>{course.description}</TableCell>
@@ -204,6 +247,40 @@ export default function EducationManagementPage() {
                             ))}
                         </TableBody>
                     </Table>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center mt-6">
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                              />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  onClick={() => setCurrentPage(page)}
+                                  isActive={currentPage === page}
+                                  className="cursor-pointer"
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    )}
+                    </>
                 )}
             </CardContent>
         </Card>

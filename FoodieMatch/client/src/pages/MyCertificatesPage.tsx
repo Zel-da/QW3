@@ -7,8 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'wouter';
-import { BookOpen, CheckCircle2, XCircle } from 'lucide-react';
+import { BookOpen, CheckCircle2, XCircle, Search } from 'lucide-react';
 import type { Course, UserProgress, UserAssessment } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
@@ -42,6 +44,8 @@ export default function MyCertificatesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [filterStatus, setFilterStatus] = useState<"all" | "in-progress" | "completed">("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'progress'>('recent');
   const ITEMS_PER_PAGE = 9;
 
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
@@ -68,8 +72,16 @@ export default function MyCertificatesPage() {
     assessment: userAssessments.find(a => a.courseId === course.id),
   }));
 
-  // Filter based on status
+  // Filter based on status and search
   const filteredHistory = courseHistory.filter(item => {
+    // 검색 필터
+    const searchMatch = searchTerm === '' ||
+      item.course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.course.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!searchMatch) return false;
+
+    // 상태 필터
     if (filterStatus === "all") return true;
     if (filterStatus === "completed") return item.progress?.completed === true;
     if (filterStatus === "in-progress") {
@@ -79,17 +91,33 @@ export default function MyCertificatesPage() {
     return true;
   });
 
+  // Sort filtered history
+  const sortedHistory = [...filteredHistory].sort((a, b) => {
+    if (sortBy === 'name') {
+      return a.course.title.localeCompare(b.course.title, 'ko-KR');
+    } else if (sortBy === 'progress') {
+      const progressA = a.progress?.progress || 0;
+      const progressB = b.progress?.progress || 0;
+      return progressB - progressA; // 높은 진행률부터
+    } else {
+      // recent: 마지막 학습일 최신순
+      const dateA = a.progress?.lastAccessed ? new Date(a.progress.lastAccessed).getTime() : 0;
+      const dateB = b.progress?.lastAccessed ? new Date(b.progress.lastAccessed).getTime() : 0;
+      return dateB - dateA;
+    }
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
-  const paginatedHistory = filteredHistory.slice(
+  const totalPages = Math.ceil(sortedHistory.length / ITEMS_PER_PAGE);
+  const paginatedHistory = sortedHistory.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Reset to page 1 when filter changes
+  // Reset to page 1 when filter, search, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus]);
+  }, [filterStatus, searchTerm, sortBy]);
 
   const isLoading = authLoading || coursesLoading || progressLoading || assessmentsLoading;
 
@@ -125,8 +153,30 @@ export default function MyCertificatesPage() {
                 }}
               />
             ) : (
-              <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)}>
-                <TabsList className="mb-6">
+              <>
+                <div className="mb-6 flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      placeholder="과정명 또는 설명으로 검색..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 h-12 text-base"
+                    />
+                  </div>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'recent' | 'name' | 'progress')}>
+                    <SelectTrigger className="w-full sm:w-[180px] h-12">
+                      <SelectValue placeholder="정렬 기준" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent">최근 학습순</SelectItem>
+                      <SelectItem value="name">과정명순</SelectItem>
+                      <SelectItem value="progress">진행률순</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)}>
+                  <TabsList className="mb-6">
                   <TabsTrigger value="all">
                     전체 ({courseHistory.length})
                   </TabsTrigger>
@@ -143,11 +193,13 @@ export default function MyCertificatesPage() {
                     <EmptyState
                       icon={BookOpen}
                       title={
+                        searchTerm ? "검색 결과가 없습니다" :
                         filterStatus === "completed" ? "수료한 교육이 없습니다" :
                         filterStatus === "in-progress" ? "수강중인 교육이 없습니다" :
                         "교육 이력이 없습니다"
                       }
                       description={
+                        searchTerm ? `"${searchTerm}"에 대한 검색 결과가 없습니다. 다른 검색어를 입력해보세요.` :
                         filterStatus === "completed" ? "교육을 완료하고 평가에 합격하면 수료됩니다." :
                         filterStatus === "in-progress" ? "교육을 시작하면 여기에 표시됩니다." :
                         "교육을 시작하세요."
@@ -256,6 +308,7 @@ export default function MyCertificatesPage() {
                   )}
                 </TabsContent>
               </Tabs>
+              </>
             )}
           </CardContent>
         </Card>
