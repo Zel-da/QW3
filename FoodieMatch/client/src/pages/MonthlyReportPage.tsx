@@ -13,6 +13,7 @@ import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { DailyReport } from '@shared/schema';
+import { SITES } from '@/lib/constants';
 
 const fetchMonthlyReport = async (teamId: number | null, year: number, month: number) => {
   if (!teamId) return null;
@@ -117,8 +118,9 @@ export default function MonthlyReportPage() {
                     <SelectValue placeholder="현장 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="아산">아산</SelectItem>
-                    <SelectItem value="화성">화성</SelectItem>
+                    {SITES.map(site => (
+                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}

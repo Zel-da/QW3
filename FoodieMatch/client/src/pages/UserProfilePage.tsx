@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { User, Team } from '@shared/schema';
+import { SITES } from '@/lib/constants';
 
 const fetchUser = async (userId: string): Promise<User> => {
   const res = await fetch(`/api/users/${userId}`);
@@ -206,8 +207,9 @@ export default function UserProfilePage() {
                                 <SelectValue placeholder="현장 선택" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="아산">아산</SelectItem>
-                                <SelectItem value="화성">화성</SelectItem>
+                                {SITES.map(site => (
+                                    <SelectItem key={site} value={site}>{site}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>

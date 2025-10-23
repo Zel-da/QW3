@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
+import { SITES, ROLE_LABELS } from '@/lib/constants';
 
 const fetchUsers = async (): Promise<User[]> => {
   const res = await fetch('/api/users');
@@ -167,11 +168,11 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Site</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>사용자명</TableHead>
+                  <TableHead>이름</TableHead>
+                  <TableHead>현장</TableHead>
+                  <TableHead>권한</TableHead>
+                  <TableHead className="text-right">작업</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,8 +186,9 @@ export default function AdminPage() {
                           <SelectValue placeholder="현장 선택" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="아산">아산</SelectItem>
-                          <SelectItem value="화성">화성</SelectItem>
+                          {SITES.map(site => (
+                            <SelectItem key={site} value={site}>{site}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -196,8 +198,8 @@ export default function AdminPage() {
                           <SelectValue placeholder="역할 선택" />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.values(Role).map(role => (
-                          <SelectItem key={role} value={role}>{role}</SelectItem>
+                          {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                            <SelectItem key={role} value={role}>{label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { User, Team } from '@shared/schema';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 const fetchAllTeams = async (): Promise<Team[]> => {
   const res = await fetch('/api/teams');
@@ -174,7 +175,7 @@ export default function TeamManagementPage() {
                 {currentLeader && <CardDescription>현재 팀장: {currentLeader.name}</CardDescription>}
               </CardHeader>
               <CardContent>
-                {teamDataLoading ? <p>로딩 중...</p> : (
+                {teamDataLoading ? <LoadingSpinner size="md" text="팀원 정보를 불러오는 중..." className="py-8" /> : (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -210,7 +211,7 @@ export default function TeamManagementPage() {
                 <CardDescription>팀에 소속되지 않은 사용자를 추가합니다.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                {usersLoading ? <p>사용자 로딩 중...</p> : (
+                {usersLoading ? <LoadingSpinner size="md" text="사용자 목록을 불러오는 중..." className="py-8" /> : (
                   <>
                     <Select onValueChange={setSelectedUser}>
                       <SelectTrigger>

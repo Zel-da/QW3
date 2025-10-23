@@ -16,6 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { z } from "zod";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const userFormSchema = insertUserSchema.extend({
   username: z.string().min(2, "이름은 2글자 이상이어야 합니다."),
@@ -79,9 +80,7 @@ export default function CoursePage() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="flex items-center justify-center h-64">
-          <div className="text-center korean-text">
-            <div className="text-lg">로딩 중...</div>
-          </div>
+          <LoadingSpinner size="lg" text="과정 정보를 불러오는 중..." />
         </div>
       </div>
     );

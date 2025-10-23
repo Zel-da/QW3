@@ -20,6 +20,7 @@ import { useSite, Site } from "@/hooks/use-site";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { stripSiteSuffix } from '@/lib/utils';
+import { SITES } from '@/lib/constants';
 
 export default function TbmPage() {
   const [view, setView] = useState('checklist');
@@ -119,8 +120,9 @@ export default function TbmPage() {
                     <SelectValue placeholder="현장 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="아산">아산</SelectItem>
-                    <SelectItem value="화성">화성</SelectItem>
+                    {SITES.map(site => (
+                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}

@@ -42,3 +42,15 @@ export const PROGRESS_STEPS = [
     icon: 'certificate',
   },
 ];
+
+// 현장 목록
+export const SITES = ['아산', '화성'] as const;
+export type Site = typeof SITES[number];
+
+// 권한 한글 레이블
+export const ROLE_LABELS = {
+  ADMIN: '관리자',
+  SAFETY_TEAM: '안전팀',
+  TEAM_LEADER: '팀장',
+  USER: '사용자',
+} as const;

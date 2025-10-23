@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft } from "lucide-react";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
+import { useToast } from "@/hooks/use-toast";
 
 const fetchNotice = async (noticeId: string) => {
   const res = await fetch(`/api/notices/${noticeId}`);
@@ -36,6 +37,7 @@ const postComment = async ({ noticeId, content, imageUrl, attachments }: { notic
 export default function NoticeDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [, params] = useRoute("/notices/:id");
   const noticeId = params?.id;
 
@@ -86,7 +88,7 @@ export default function NoticeDetailPage() {
 
       setCommentAttachments(prev => [...prev, ...newFiles]);
     } catch (err) {
-      alert((err as Error).message);
+      toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
     }
   };
 
@@ -119,10 +121,11 @@ export default function NoticeDetailPage() {
       if (!response.ok) {
         throw new Error('삭제에 실패했습니다.');
       }
+      toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
       await queryClient.invalidateQueries({ queryKey: ['notices'] });
       window.location.href = '/';
     } catch (err) {
-      alert((err as Error).message);
+      toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
     }
   };
 

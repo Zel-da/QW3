@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { Course } from '@shared/schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { EmptyState } from '@/components/EmptyState';
+import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
 
 const fetchCourses = async () => {
@@ -172,7 +174,15 @@ export default function EducationManagementPage() {
         <Card className="mt-8">
             <CardHeader><CardTitle>현재 교육 과정 목록</CardTitle></CardHeader>
             <CardContent>
-                {isLoading ? <p>로딩 중...</p> : (
+                {isLoading ? (
+                  <LoadingSpinner size="md" text="과정 목록을 불러오는 중..." className="py-8" />
+                ) : courses.length === 0 ? (
+                  <EmptyState
+                    icon={BookOpen}
+                    title="등록된 교육 과정이 없습니다"
+                    description="위 폼을 사용하여 새로운 교육 과정을 추가하세요."
+                  />
+                ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
