@@ -16,6 +16,7 @@ import TeamManagementPage from "./pages/TeamManagementPage";
 import AdminPage from './pages/AdminPage';
 import ChecklistEditorPage from './pages/ChecklistEditorPage';
 import EducationManagementPage from './pages/EducationManagementPage';
+import EducationMonitoringPage from './pages/EducationMonitoringPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
 import UserProfilePage from './pages/UserProfilePage';
 import MyCertificatesPage from './pages/MyCertificatesPage';
@@ -87,6 +88,11 @@ function App() {
           <Route path="/education-management">
             <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM]}>
               <EducationManagementPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/education-monitoring">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM]}>
+              <EducationMonitoringPage />
             </ProtectedRoute>
           </Route>
           <Route path="/monthly-report" component={MonthlyReportPage} />

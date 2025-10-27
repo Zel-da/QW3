@@ -343,6 +343,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to delete user" }); }
   });
 
+  // EDUCATION MONITORING
+  // Admin/Safety Team: Get education overview for monitoring dashboard
+  app.get("/api/admin/education-overview", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      // Fetch all users with their basic info
+      const users = await prisma.user.findMany({
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          role: true,
+          site: true,
+          teamId: true,
+          team: {
+            select: {
+              id: true,
+              name: true,
+              site: true
+            }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+
+      // Fetch all courses
+      const courses = await prisma.course.findMany({
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          duration: true,
+          type: true
+        },
+        orderBy: { title: 'asc' }
+      });
+
+      // Fetch all user progress records
+      const allProgress = await prisma.userProgress.findMany({
+        select: {
+          userId: true,
+          courseId: true,
+          progress: true,
+          completed: true,
+          timeSpent: true,
+          lastAccessed: true
+        }
+      });
+
+      // Fetch all assessment results
+      const allAssessments = await prisma.userAssessment.findMany({
+        select: {
+          userId: true,
+          courseId: true,
+          passed: true,
+          score: true,
+          completedAt: true
+        }
+      });
+
+      res.json({
+        users,
+        courses,
+        allProgress,
+        allAssessments
+      });
+    } catch (error) {
+      console.error("Failed to fetch education overview:", error);
+      res.status(500).json({ message: "교육 현황을 불러오는데 실패했습니다" });
+    }
+  });
+
   // TEAM MANAGEMENT
   app.get("/api/teams", async (req, res) => {
     try {
