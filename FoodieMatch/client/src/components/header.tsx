@@ -12,6 +12,9 @@ export function Header() {
   const navLinks = (
     <>
       <Link href="/" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+        홈
+      </Link>
+      <Link href="/notices" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
         공지사항
       </Link>
       <Link href="/courses" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
