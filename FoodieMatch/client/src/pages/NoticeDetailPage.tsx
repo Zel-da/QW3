@@ -7,10 +7,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 const fetchNotice = async (noticeId: string) => {
   const res = await fetch(`/api/notices/${noticeId}`);
@@ -158,13 +159,45 @@ export default function NoticeDetailPage() {
             <CardHeader className="p-6 md:p-8">
               <CardTitle className="text-4xl md:text-5xl leading-tight font-bold">{sanitizeText(notice.title)}</CardTitle>
               <div className="text-lg md:text-xl text-muted-foreground pt-4 flex flex-wrap gap-x-6 gap-y-2">
+                <span>작성자: {sanitizeText(notice.author.name || notice.author.username)}</span>
                 <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
                 <span>조회수: {notice.viewCount}</span>
               </div>
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0">
-              {notice.imageUrl && <img src={notice.imageUrl} alt={sanitizeText(notice.title)} className="w-full h-auto object-cover rounded-md mb-8 border" />}
+              {notice.imageUrl && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <img
+                      src={notice.imageUrl}
+                      alt={sanitizeText(notice.title)}
+                      className="w-full h-auto object-cover rounded-md mb-8 border cursor-pointer hover:opacity-90 transition-opacity"
+                    />
+                  </DialogTrigger>
+                  <DialogContent className="max-w-7xl w-full">
+                    <img src={notice.imageUrl} alt={sanitizeText(notice.title)} className="w-full h-auto" />
+                  </DialogContent>
+                </Dialog>
+              )}
               <div className="prose prose-2xl max-w-none leading-relaxed whitespace-pre-wrap">{sanitizeText(notice.content)}</div>
+
+              {/* Video Display */}
+              {notice.videoUrl && (
+                <div className="mt-8 p-4 border rounded-lg">
+                  <h3 className="text-2xl font-semibold mb-4">동영상</h3>
+                  {notice.videoType === 'youtube' ? (
+                    <div className="aspect-video">
+                      <iframe
+                        src={notice.videoUrl.replace('watch?v=', 'embed/')}
+                        className="w-full h-full rounded"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <video src={notice.videoUrl} controls className="w-full rounded max-h-[600px]" />
+                  )}
+                </div>
+              )}
 
               {/* Display new multi-file attachments */}
               {(notice as any).attachments && (notice as any).attachments.length > 0 && (
@@ -177,11 +210,18 @@ export default function NoticeDetailPage() {
                       <h4 className="text-xl font-medium mb-3">이미지</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {(notice as any).attachments.filter((a: any) => a.type === 'image').map((file: any, idx: number) => (
-                          <div key={idx} className="border rounded-lg p-2">
-                            <img src={file.url} alt={file.name} className="w-full h-48 object-cover rounded" />
-                            <p className="text-sm truncate mt-2">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                          </div>
+                          <Dialog key={idx}>
+                            <DialogTrigger asChild>
+                              <div className="border rounded-lg p-2 cursor-pointer hover:shadow-lg transition-shadow">
+                                <img src={file.url} alt={file.name} className="w-full h-48 object-cover rounded" />
+                                <p className="text-sm truncate mt-2">{file.name}</p>
+                                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-7xl w-full">
+                              <img src={file.url} alt={file.name} className="w-full h-auto" />
+                            </DialogContent>
+                          </Dialog>
                         ))}
                       </div>
                     </div>

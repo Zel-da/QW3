@@ -21,7 +21,15 @@ export default function NoticeEditor() {
     enabled: isEditing,
   });
 
-  const [formData, setFormData] = useState({ title: '', content: '', imageUrl: '', attachmentUrl: '', attachmentName: '' });
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    imageUrl: '',
+    attachmentUrl: '',
+    attachmentName: '',
+    videoUrl: '',
+    videoType: 'file' as 'file' | 'youtube'
+  });
   const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -34,6 +42,8 @@ export default function NoticeEditor() {
         imageUrl: noticeToEdit.imageUrl || '',
         attachmentUrl: noticeToEdit.attachmentUrl || '',
         attachmentName: noticeToEdit.attachmentName || '',
+        videoUrl: noticeToEdit.videoUrl || '',
+        videoType: (noticeToEdit.videoType as 'file' | 'youtube') || 'file'
       });
 
       // Load existing attachments
@@ -80,6 +90,28 @@ export default function NoticeEditor() {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const uploadFormData = new FormData();
+    files.forEach(file => uploadFormData.append('files', file));
+
+    try {
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Video upload failed');
+
+      // Assuming single video upload
+      if (data.files.length > 0) {
+        setFormData(prev => ({ ...prev, videoUrl: data.files[0].url, videoType: 'file' }));
+      }
+      setError('');
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,6 +240,78 @@ export default function NoticeEditor() {
                   ))}
                 </div>
               </div>
+
+              {/* Video Upload / YouTube Link */}
+              <div className="space-y-3">
+                <Label htmlFor="videoType" className="text-base md:text-lg">동영상 첨부</Label>
+                <div className="flex gap-4 mb-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="videoType"
+                      value="file"
+                      checked={formData.videoType === 'file'}
+                      onChange={(e) => setFormData({ ...formData, videoType: 'file', videoUrl: '' })}
+                    />
+                    <span>파일 업로드</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="videoType"
+                      value="youtube"
+                      checked={formData.videoType === 'youtube'}
+                      onChange={(e) => setFormData({ ...formData, videoType: 'youtube', videoUrl: '' })}
+                    />
+                    <span>YouTube URL</span>
+                  </label>
+                </div>
+
+                {formData.videoType === 'file' ? (
+                  <Input
+                    type="file"
+                    onChange={handleVideoFileChange}
+                    className="text-base h-12"
+                    accept="video/*"
+                  />
+                ) : (
+                  <Input
+                    type="url"
+                    name="videoUrl"
+                    placeholder="YouTube URL 입력 (예: https://www.youtube.com/watch?v=...)"
+                    value={formData.videoUrl}
+                    onChange={handleChange}
+                    className="text-base h-12"
+                  />
+                )}
+
+                {formData.videoUrl && (
+                  <div className="mt-3 p-4 border rounded-lg">
+                    <p className="text-sm font-medium mb-2">동영상 미리보기:</p>
+                    {formData.videoType === 'youtube' ? (
+                      <div className="aspect-video">
+                        <iframe
+                          src={formData.videoUrl.replace('watch?v=', 'embed/')}
+                          className="w-full h-full rounded"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <video src={formData.videoUrl} controls className="w-full rounded max-h-96" />
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, videoUrl: '' })}
+                      className="mt-2"
+                    >
+                      동영상 제거
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               {error && <p className="text-base text-destructive">{error}</p>}
               {success && <p className="text-base text-green-600">{success}</p>}
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
