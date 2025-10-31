@@ -8,22 +8,24 @@ datasource db {
 }
 
 model User {
-  id               String            @id @default(uuid())
-  username         String            @unique
-  name             String?
-  email            String?           @unique
-  password         String?
-  role             String            @default("WORKER")
-  site             String?
-  teamId           Int?
-  createdAt        DateTime          @default(now())
-  team             Team?             @relation("TeamMembers", fields: [teamId], references: [id])
-  ledTeams         Team[]            @relation("TeamLeader")
-  notices          Notice[]
-  createdApprovals MonthlyApproval[] @relation("Approver")
-  signatures       ReportSignature[]
-  comments         Comment[]
-  reportDetails    ReportDetail[]
+  id                     String            @id @default(uuid())
+  username               String            @unique
+  name                   String?
+  email                  String?           @unique
+  password               String?
+  role                   String            @default("WORKER")
+  site                   String?
+  teamId                 Int?
+  createdAt              DateTime          @default(now())
+  team                   Team?             @relation("TeamMembers", fields: [teamId], references: [id])
+  ledTeams               Team[]            @relation("TeamLeader")
+  notices                Notice[]
+  createdApprovals       MonthlyApproval[] @relation("Approver")
+  signatures             ReportSignature[]
+  comments               Comment[]
+  reportDetails          ReportDetail[]
+  requestedApprovals     ApprovalRequest[] @relation("ApprovalRequester") // 신규: 내가 요청한 결재
+  approvalsToApprove     ApprovalRequest[] @relation("ApprovalApprover")  // 신규: 내가 승인할 결재
 
   @@index([teamId])
   @@index([role])
@@ -32,21 +34,23 @@ model User {
 }
 
 model Notice {
-  id          String       @id @default(uuid())
-  title       String
-  content     String
-  authorId    String
-  category    String       @default("GENERAL")
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  isActive    Boolean      @default(true)
-  viewCount   Int          @default(0)
-  imageUrl    String?
-  attachmentUrl String?
+  id             String       @id @default(uuid())
+  title          String
+  content        String
+  authorId       String
+  category       String       @default("GENERAL")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  isActive       Boolean      @default(true)
+  viewCount      Int          @default(0)
+  imageUrl       String?
+  attachmentUrl  String?
   attachmentName String?
-  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  attachments Attachment[]
+  videoUrl       String?      // 신규: 동영상 URL (mp4 파일 또는 유튜브)
+  videoType      String?      // 신규: 'file' | 'youtube'
+  author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments       Comment[]
+  attachments    Attachment[]
 
   @@index([authorId])
   @@index([createdAt])
@@ -76,6 +80,8 @@ model Course {
   type            String
   duration        Int
   videoUrl        String?
+  videoType       String?          // 신규: 'youtube' | 'file' | 'audio'
+  audioUrl        String?          // 신규: 음성 파일 URL
   documentUrl     String?
   color           String           @default("blue")
   icon            String
@@ -141,17 +147,54 @@ model Certificate {
 }
 
 model Team {
-  id                 Int                 @id @default(autoincrement())
-  name               String
-  site               String?
-  leaderId           String?
-  leader             User?               @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  members            User[]              @relation("TeamMembers")
-  checklistTemplates ChecklistTemplate[]
-  dailyReports       DailyReport[]
-  monthlyApprovals   MonthlyApproval[]
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  site                String?
+  leaderId            String?
+  leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  members             User[]                @relation("TeamMembers")
+  teamMembers         TeamMember[]          // 신규: User 계정 없는 팀원들
+  checklistTemplates  ChecklistTemplate[]
+  dailyReports        DailyReport[]
+  monthlyApprovals    MonthlyApproval[]
+  inspectionTemplates InspectionTemplate[]  // 신규: 안전점검 템플릿
+  safetyInspections   SafetyInspection[]    // 신규: 안전점검 기록
 
   @@map("Teams")
+}
+
+// 신규 모델: 팀원 (User 계정 없이 팀장이 직접 관리)
+model TeamMember {
+  id               Int               @id @default(autoincrement())
+  teamId           Int
+  name             String            // 팀원 이름
+  position         String?           // 직책
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reportSignatures ReportSignature[]
+  absenceRecords   AbsenceRecord[]
+
+  @@index([teamId])
+  @@index([teamId, isActive])
+  @@map("TeamMembers")
+}
+
+// 신규 모델: 부재 사유 기록
+model AbsenceRecord {
+  id          Int         @id @default(autoincrement())
+  memberId    Int
+  reportId    Int
+  absenceType String      // '연차', '반차', '출장', '교육', '기타'
+  reason      String?     // 기타 사유
+  createdAt   DateTime    @default(now())
+  member      TeamMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  report      DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([reportId])
+  @@map("AbsenceRecords")
 }
 
 model ChecklistTemplate {
@@ -191,6 +234,7 @@ model DailyReport {
   team             Team              @relation(fields: [teamId], references: [id], onDelete: NoAction)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
+  absenceRecords   AbsenceRecord[]   // 신규: 부재 사유 기록
 
   @@index([teamId])
   @@index([reportDate])
@@ -222,33 +266,58 @@ model ReportDetail {
 model ReportSignature {
   id             Int         @id @default(autoincrement())
   reportId       Int
-  userId         String
+  userId         String?     // User 계정이 있는 경우 (관리자용)
+  memberId       Int?        // TeamMember (일반 팀원용) - userId와 memberId 중 하나만 사용
   signedAt       DateTime    @default(now())
   signatureImage String?
   report         DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member         TeamMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
   @@index([userId])
+  @@index([memberId])
   @@map("ReportSignatures")
 }
 
 model MonthlyApproval {
-  id          String   @id @default(uuid())
-  teamId      Int
-  year        Int
-  month       Int
-  status      String   @default("DRAFT")
-  pdfUrl      String?
-  approverId  String?
-  submittedAt DateTime?
-  approvedAt  DateTime?
-  team        Team     @relation(fields: [teamId], references: [id])
-  approver    User?    @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
+  id              String           @id @default(uuid())
+  teamId          Int
+  year            Int
+  month           Int
+  status          String           @default("DRAFT")
+  pdfUrl          String?
+  approverId      String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  team            Team             @relation(fields: [teamId], references: [id])
+  approver        User?            @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
+  approvalRequest ApprovalRequest? // 신규: 결재 요청
 
   @@unique([teamId, year, month])
   @@index([teamId])
   @@index([approverId])
+}
+
+// 신규 모델: 결재 요청 및 승인
+model ApprovalRequest {
+  id              String          @id @default(uuid())
+  reportId        String          @unique
+  requesterId     String          // 요청자 (팀관리자)
+  approverId      String          // 승인자 (임원)
+  status          String          @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedAt     DateTime        @default(now())
+  approvedAt      DateTime?
+  rejectionReason String?         // 반려 사유
+  monthlyReport   MonthlyApproval @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  requester       User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
+  approver        User            @relation("ApprovalApprover", fields: [approverId], references: [id])
+
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("ApprovalRequests")
 }
 
 model Attachment {
@@ -269,4 +338,56 @@ model Attachment {
   @@index([noticeId])
   @@index([commentId])
   @@index([reportDetailId])
+}
+
+// ========== 안전점검 시스템 ==========
+
+// 안전점검 템플릿 (라인별 점검할 기기 목록)
+model InspectionTemplate {
+  id           Int     @id @default(autoincrement())
+  teamId       Int
+  equipmentName String  // 점검할 기기명 (예: 지게차, 크레인 등)
+  displayOrder Int     @default(0)
+  isRequired   Boolean @default(true)
+  createdAt    DateTime @default(now())
+  team         Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([teamId, displayOrder])
+  @@map("InspectionTemplates")
+}
+
+// 안전점검 메인 (월별 점검 기록)
+model SafetyInspection {
+  id              String           @id @default(uuid())
+  teamId          Int
+  year            Int
+  month           Int
+  inspectionDate  DateTime         // 실제 점검 날짜 (매월 4일)
+  isCompleted     Boolean          @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  team            Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  inspectionItems InspectionItem[]
+
+  @@unique([teamId, year, month])
+  @@index([teamId])
+  @@index([year, month])
+  @@index([teamId, year, month])
+  @@map("SafetyInspections")
+}
+
+// 안전점검 항목 (개별 기기 사진)
+model InspectionItem {
+  id            String           @id @default(uuid())
+  inspectionId  String
+  equipmentName String           // 기기명
+  photoUrl      String           // 사진 URL
+  remarks       String?          // 비고
+  uploadedAt    DateTime         @default(now())
+  inspection    SafetyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("InspectionItems")
 }
