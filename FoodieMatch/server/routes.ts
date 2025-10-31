@@ -936,6 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!col) return;
 
         report.reportSignatures.forEach(sig => {
+          if (!sig.userId) return; // TeamMember 서명은 스킵 (향후 구현)
           const row = userRowMap[sig.userId];
           if (row && sig.signatureImage) {
             try {

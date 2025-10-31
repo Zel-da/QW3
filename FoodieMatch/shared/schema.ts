@@ -31,6 +31,8 @@ export interface Notice {
   imageUrl?: string | null;
   attachmentUrl?: string | null;
   attachmentName?: string | null;
+  videoUrl?: string | null;      // 신규: 동영상 URL
+  videoType?: string | null;     // 신규: 'file' | 'youtube'
   author: User;
   comments: Comment[];
 }
@@ -52,6 +54,8 @@ export interface Course {
   type: string;
   duration: number;
   videoUrl?: string | null;
+  videoType?: string | null;    // 신규: 'youtube' | 'file' | 'audio'
+  audioUrl?: string | null;     // 신규: 음성 파일 URL
   documentUrl?: string | null;
   color: string;
   icon: string;
@@ -90,7 +94,8 @@ export const reportResultSchema = z.object({
 });
 
 export const reportSignatureSchema = z.object({
-  userId: z.string(),
+  userId: z.string().optional(),      // User 계정이 있는 경우
+  memberId: z.number().optional(),    // TeamMember인 경우
   signatureImage: z.string(),
 });
 
@@ -110,6 +115,9 @@ export interface Team {
   site?: string | null;
   leaderId?: string | null;
   members?: User[];
+  teamMembers?: TeamMember[];            // 신규: User 계정 없는 팀원들
+  inspectionTemplates?: InspectionTemplate[];  // 신규
+  safetyInspections?: SafetyInspection[];     // 신규
 }
 
 export interface Assessment {
@@ -143,13 +151,89 @@ export interface Certificate {
 export interface DailyReport {
   id: number;
   reportDate: Date;
-  // Add other fields as needed
+  managerName?: string | null;
+  remarks?: string | null;
+  site?: string | null;
+  teamId: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ReportDetail {
   id: number;
-  // Add other fields as needed
+  reportId: number;
+  itemId: number;
+  checkState?: string | null;
+  authorId?: string | null;
+  actionDescription?: string | null;
+  actionStatus?: string | null;
 }
 
-// Other interfaces (Assessment, Certificate, etc.) would go here
-// For brevity, they are omitted but should match the Prisma schema
+// ========== 신규 인터페이스 ==========
+
+// 팀원 (User 계정 없이 관리)
+export interface TeamMember {
+  id: number;
+  teamId: number;
+  name: string;
+  position?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 부재 사유
+export interface AbsenceRecord {
+  id: number;
+  memberId: number;
+  reportId: number;
+  absenceType: string;  // '연차', '반차', '출장', '교육', '기타'
+  reason?: string | null;
+  createdAt: Date;
+}
+
+// 안전점검 템플릿
+export interface InspectionTemplate {
+  id: number;
+  teamId: number;
+  equipmentName: string;
+  displayOrder: number;
+  isRequired: boolean;
+  createdAt: Date;
+}
+
+// 안전점검 메인
+export interface SafetyInspection {
+  id: string;
+  teamId: number;
+  year: number;
+  month: number;
+  inspectionDate: Date;
+  isCompleted: boolean;
+  completedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  inspectionItems?: InspectionItem[];
+}
+
+// 안전점검 항목
+export interface InspectionItem {
+  id: string;
+  inspectionId: string;
+  equipmentName: string;
+  photoUrl: string;
+  remarks?: string | null;
+  uploadedAt: Date;
+}
+
+// 결재 요청
+export interface ApprovalRequest {
+  id: string;
+  reportId: string;
+  requesterId: string;
+  approverId: string;
+  status: string;  // 'PENDING', 'APPROVED', 'REJECTED'
+  requestedAt: Date;
+  approvedAt?: Date | null;
+  rejectionReason?: string | null;
+}
