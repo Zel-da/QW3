@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Users as UsersIcon } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -36,6 +37,26 @@ const fetchAllUsers = async (): Promise<User[]> => {
   const res = await fetch('/api/users');
   if (!res.ok) throw new Error('Failed to fetch all users');
   return res.json();
+};
+
+const fetchTeamMembers = async (teamId: number) => {
+  const res = await fetch(`/api/teams/${teamId}/team-members`);
+  if (!res.ok) throw new Error('Failed to fetch team members');
+  return res.json();
+};
+
+const addTeamMember = async ({ teamId, name, position }: { teamId: number; name: string; position?: string }) => {
+  const res = await fetch(`/api/teams/${teamId}/team-members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, position }),
+  });
+  if (!res.ok) throw new Error('Failed to add team member');
+  return res.json();
+};
+
+const deleteTeamMember = async ({ teamId, memberId }: { teamId: number; memberId: string }) => {
+  await fetch(`/api/teams/${teamId}/team-members/${memberId}`, { method: 'DELETE' });
 };
 
 const addUserToTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
@@ -71,6 +92,8 @@ export default function TeamManagementPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberPosition, setNewMemberPosition] = useState('');
   const ITEMS_PER_PAGE = 10;
 
   // Set initial team selection
@@ -99,6 +122,12 @@ export default function TeamManagementPage() {
     enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER',
   });
 
+  const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery<any[]>({
+    queryKey: ['teamMembers', selectedTeamId],
+    queryFn: () => fetchTeamMembers(selectedTeamId!),
+    enabled: !!selectedTeamId,
+  });
+
   // Mutations
   const addMutation = useMutation({ mutationFn: addUserToTeam, 
     onSuccess: () => {
@@ -117,10 +146,26 @@ export default function TeamManagementPage() {
     }
   });
 
-  const leaderMutation = useMutation({ mutationFn: setTeamLeader, 
+  const leaderMutation = useMutation({ mutationFn: setTeamLeader,
     onSuccess: () => {
       toast({ title: '성공', description: '팀장이 지정되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+    }
+  });
+
+  const addMemberMutation = useMutation({ mutationFn: addTeamMember,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀원이 추가되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeamId] });
+      setNewMemberName('');
+      setNewMemberPosition('');
+    }
+  });
+
+  const deleteMemberMutation = useMutation({ mutationFn: deleteTeamMember,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀원이 삭제되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeamId] });
     }
   });
 
@@ -140,6 +185,18 @@ export default function TeamManagementPage() {
   const handleSetLeader = (userId: string) => {
     if (selectedTeamId) {
       leaderMutation.mutate({ teamId: selectedTeamId, userId });
+    }
+  };
+
+  const handleAddMember = () => {
+    if (newMemberName.trim() && selectedTeamId) {
+      addMemberMutation.mutate({ teamId: selectedTeamId, name: newMemberName.trim(), position: newMemberPosition.trim() || undefined });
+    }
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    if (selectedTeamId) {
+      deleteMemberMutation.mutate({ teamId: selectedTeamId, memberId });
     }
   };
 
@@ -322,6 +379,93 @@ export default function TeamManagementPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* 계정 없는 팀원 관리 */}
+        {selectedTeamId && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>계정 없는 팀원 관리</CardTitle>
+              <CardDescription>TBM 서명만 하는 팀원을 관리합니다 (로그인 불필요)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-8 md:grid-cols-2">
+                {/* 팀원 목록 */}
+                <div>
+                  <h3 className="font-semibold mb-4">등록된 팀원</h3>
+                  {teamMembersLoading ? (
+                    <LoadingSpinner size="md" text="팀원 목록을 불러오는 중..." className="py-8" />
+                  ) : teamMembers.length === 0 ? (
+                    <EmptyState
+                      icon={UsersIcon}
+                      title="등록된 팀원이 없습니다"
+                      description="오른쪽에서 팀원을 추가하세요."
+                    />
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>이름</TableHead>
+                          <TableHead>직책</TableHead>
+                          <TableHead className="text-right">작업</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamMembers.filter(m => m.isActive).map((member) => (
+                          <TableRow key={member.id}>
+                            <TableCell>{member.name}</TableCell>
+                            <TableCell>{member.position || '-'}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteMember(member.id)}
+                                disabled={deleteMemberMutation.isPending}
+                              >
+                                삭제
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                {/* 팀원 추가 폼 */}
+                <div>
+                  <h3 className="font-semibold mb-4">새 팀원 추가</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="memberName">이름 *</Label>
+                      <Input
+                        id="memberName"
+                        placeholder="팀원 이름"
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="memberPosition">직책 (선택)</Label>
+                      <Input
+                        id="memberPosition"
+                        placeholder="예: 반장, 작업자 등"
+                        value={newMemberPosition}
+                        onChange={(e) => setNewMemberPosition(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAddMember}
+                      disabled={!newMemberName.trim() || addMemberMutation.isPending}
+                      className="w-full"
+                    >
+                      {addMemberMutation.isPending ? '추가 중...' : '팀원 추가'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </main>
     </div>
