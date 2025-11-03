@@ -159,7 +159,7 @@ export default function NoticeDetailPage() {
             <CardHeader className="p-6 md:p-8">
               <CardTitle className="text-4xl md:text-5xl leading-tight font-bold">{sanitizeText(notice.title)}</CardTitle>
               <div className="text-lg md:text-xl text-muted-foreground pt-4 flex flex-wrap gap-x-6 gap-y-2">
-                <span>작성자: {sanitizeText(notice.author.name || notice.author.username)}</span>
+                <span>작성자: {sanitizeText(notice.author?.name || notice.author?.username || '관리자')}</span>
                 <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
                 <span>조회수: {notice.viewCount}</span>
               </div>
@@ -277,7 +277,7 @@ export default function NoticeDetailPage() {
               {comments.map(comment => (
                 <div key={comment.id} className="flex items-start gap-4">
                   <div className="flex-1 space-y-2">
-                    <p className="font-semibold">{sanitizeText(comment.author.name || '')}</p>
+                    <p className="font-semibold">{sanitizeText(comment.author?.name || comment.author?.username || '익명')}</p>
                     <p className="whitespace-pre-wrap">{sanitizeText(comment.content)}</p>
                     {comment.imageUrl && <img src={comment.imageUrl} alt="comment image" className="mt-2 w-full max-w-xs rounded-md border" />}
 

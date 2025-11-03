@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award, Search, Settings, BarChart3 } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
@@ -329,20 +330,60 @@ export default function Dashboard() {
                 />
               ) : (
                 <>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" data-testid="course-cards">
-                    {paginatedCourses.map((course) => {
-                      const progress = userProgress.find(p => p.courseId === course.id);
-                      const assessment = userAssessments.find(a => a.courseId === course.id);
-                      return (
-                        <CourseCard
-                          key={course.id}
-                          course={course}
-                          progress={progress}
-                          assessment={assessment}
-                          onStartCourse={handleStartCourse}
-                        />
-                      );
-                    })}
+                  <div className="mb-8" data-testid="course-table">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[250px]">과정명</TableHead>
+                          <TableHead>설명</TableHead>
+                          <TableHead className="w-[120px] text-center">유형</TableHead>
+                          <TableHead className="w-[100px] text-center">시간</TableHead>
+                          <TableHead className="w-[100px] text-center">진행률</TableHead>
+                          <TableHead className="w-[100px] text-center">상태</TableHead>
+                          <TableHead className="w-[120px] text-center">액션</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedCourses.map((course) => {
+                          const progress = userProgress.find(p => p.courseId === course.id);
+                          const assessment = userAssessments.find(a => a.courseId === course.id);
+                          const progressPercent = progress?.progress || 0;
+                          const isCompleted = progress?.completed || false;
+
+                          return (
+                            <TableRow key={course.id} className="hover:bg-muted/50">
+                              <TableCell className="font-medium">{course.title}</TableCell>
+                              <TableCell className="text-muted-foreground">{course.description}</TableCell>
+                              <TableCell className="text-center text-sm">
+                                {course.type === 'workplace-safety' ? '작업장 안전' :
+                                 course.type === 'hazard-prevention' ? '위험 예방' : 'TBM 활동'}
+                              </TableCell>
+                              <TableCell className="text-center">{course.duration}분</TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-sm font-medium">{progressPercent}%</span>
+                                  <Progress value={progressPercent} className="h-2 w-16" />
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  isCompleted ? 'bg-green-100 text-green-800' :
+                                  progressPercent > 0 ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {isCompleted ? '수료' : progressPercent > 0 ? '진행중' : '시작 전'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button onClick={() => handleStartCourse(course.id)} size="sm" className="w-full">
+                                  {isCompleted ? '복습하기' : progressPercent > 0 ? '이어하기' : '시작하기'}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
 
                   {/* Pagination */}
