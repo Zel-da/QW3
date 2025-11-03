@@ -56,13 +56,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/zip',
-        'application/x-zip-compressed'
+        'application/x-zip-compressed',
+        // 한글 파일 (.hwp, .hwpx)
+        'application/x-hwp',
+        'application/haansofthwp',
+        'application/vnd.hancom.hwp',
+        'application/vnd.hancom.hwpx',
+        // 기타 문서 형식
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        // octet-stream (확장자로 체크)
+        'application/octet-stream'
       ];
 
       const allowed = [...allowedImageTypes, ...allowedDocTypes];
 
       if (allowed.includes(file.mimetype)) {
-        cb(null, true);
+        // octet-stream의 경우 확장자로 추가 검증
+        if (file.mimetype === 'application/octet-stream') {
+          const ext = path.extname(file.originalname).toLowerCase();
+          const allowedExtensions = ['.hwp', '.hwpx', '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', '.pdf'];
+          if (allowedExtensions.includes(ext)) {
+            cb(null, true);
+          } else {
+            cb(new Error(`허용되지 않는 파일 확장자입니다. (${ext})`));
+          }
+        } else {
+          cb(null, true);
+        }
       } else {
         cb(new Error(`허용되지 않는 파일 형식입니다. (${file.mimetype})`));
       }
