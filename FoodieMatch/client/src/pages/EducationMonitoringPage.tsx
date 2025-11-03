@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Users as UsersIcon, BookOpen, TrendingUp, AlertCircle, Eye } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -124,6 +125,49 @@ export default function EducationMonitoringPage() {
       };
     });
   }, [data]);
+
+  // Calculate team statistics (라인별 통계)
+  const teamStatistics = React.useMemo(() => {
+    if (!data) return [];
+
+    // Group users by team
+    const teamMap = new Map<string, User[]>();
+    data.users.forEach(user => {
+      const teamName = user.team?.name || '팀 미지정';
+      if (!teamMap.has(teamName)) {
+        teamMap.set(teamName, []);
+      }
+      teamMap.get(teamName)!.push(user);
+    });
+
+    // Calculate statistics for each team
+    return Array.from(teamMap.entries()).map(([teamName, teamUsers]) => {
+      const teamUserIds = teamUsers.map(u => u.id);
+      const teamUserStats = userStatistics.filter(s => teamUserIds.includes(s.userId));
+
+      const totalMembers = teamUsers.length;
+      const totalCourses = data.courses.length;
+      const completedMembers = teamUserStats.filter(u => u.completedCourses === totalCourses && totalCourses > 0).length;
+      const inProgressMembers = teamUserStats.filter(u => u.inProgressCourses > 0 || (u.completedCourses > 0 && u.completedCourses < totalCourses)).length;
+      const notStartedMembers = teamUserStats.filter(u => u.completedCourses === 0 && u.inProgressCourses === 0).length;
+
+      const avgProgress = teamUserStats.length > 0
+        ? teamUserStats.reduce((sum, u) => sum + u.avgProgress, 0) / teamUserStats.length
+        : 0;
+
+      const completionRate = totalMembers > 0 ? Math.round((completedMembers / totalMembers) * 100) : 0;
+
+      return {
+        teamName,
+        totalMembers,
+        completedMembers,
+        inProgressMembers,
+        notStartedMembers,
+        avgProgress: Math.round(avgProgress),
+        completionRate,
+      };
+    }).sort((a, b) => b.completionRate - a.completionRate); // Sort by completion rate descending
+  }, [data, userStatistics]);
 
   // Overall statistics
   const overallStats = React.useMemo(() => {
@@ -325,6 +369,70 @@ export default function EducationMonitoringPage() {
                       <TableCell className="text-center">{stat.avgProgress}%</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={stat.completionRate >= 80 ? "default" : stat.completionRate >= 50 ? "secondary" : "outline"}>
+                          {stat.completionRate}%
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Team Statistics (라인별 수강 현황) */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>라인별 수강 현황</CardTitle>
+            <CardDescription>각 라인(팀)별 교육 진행 상황을 비교합니다.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {teamStatistics.length === 0 ? (
+              <EmptyState
+                icon={UsersIcon}
+                title="팀 정보가 없습니다"
+                description="팀을 추가하면 여기에 표시됩니다."
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>팀명</TableHead>
+                    <TableHead className="text-center">총 인원</TableHead>
+                    <TableHead className="text-center">완료</TableHead>
+                    <TableHead className="text-center">진행중</TableHead>
+                    <TableHead className="text-center">미시작</TableHead>
+                    <TableHead className="text-center">평균 진행률</TableHead>
+                    <TableHead className="text-center">완료율</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teamStatistics.map((stat) => (
+                    <TableRow key={stat.teamName}>
+                      <TableCell className="font-medium">{stat.teamName}</TableCell>
+                      <TableCell className="text-center">{stat.totalMembers}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-green-500">{stat.completedMembers}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-blue-500">{stat.inProgressMembers}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{stat.notStartedMembers}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center gap-2">
+                          <Progress value={stat.avgProgress} className="h-2 w-20" />
+                          <span className="text-sm font-medium">{stat.avgProgress}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          className={
+                            stat.completionRate >= 80 ? "bg-green-600" :
+                            stat.completionRate >= 50 ? "bg-yellow-500" : "bg-red-500"
+                          }
+                        >
                           {stat.completionRate}%
                         </Badge>
                       </TableCell>

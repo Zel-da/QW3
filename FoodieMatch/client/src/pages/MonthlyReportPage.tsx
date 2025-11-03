@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { DailyReport } from '@shared/schema';
+import type { DailyReport, User, Team, Course, UserProgress, UserAssessment } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 
 const fetchMonthlyReport = async (teamId: number | null, year: number, month: number) => {
@@ -24,6 +25,18 @@ const fetchMonthlyReport = async (teamId: number | null, year: number, month: nu
 const fetchTeams = async (site: Site) => {
   if (!site) return [];
   const { data } = await axios.get(`/api/teams?site=${site}`);
+  return data;
+};
+
+interface EducationOverviewData {
+  users: (User & { team?: Team })[];
+  courses: Course[];
+  allProgress: UserProgress[];
+  allAssessments: UserAssessment[];
+}
+
+const fetchEducationOverview = async (): Promise<EducationOverviewData> => {
+  const { data } = await axios.get('/api/admin/education-overview');
   return data;
 };
 
@@ -58,6 +71,40 @@ export default function MonthlyReportPage() {
     queryFn: () => fetchMonthlyReport(selectedTeam, date.year, date.month),
     enabled: !!selectedTeam,
   });
+
+  const { data: educationData } = useQuery<EducationOverviewData>({
+    queryKey: ['education-overview'],
+    queryFn: fetchEducationOverview,
+    enabled: !!(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'),
+  });
+
+  // Calculate team member education statistics
+  const teamEducationStats = React.useMemo(() => {
+    if (!educationData || !selectedTeam) return [];
+
+    const teamMembers = educationData.users.filter(u => u.teamId === selectedTeam);
+    const totalCourses = educationData.courses.length;
+
+    return teamMembers.map(member => {
+      const memberProgress = educationData.allProgress.filter(p => p.userId === member.id);
+      const completedCourses = memberProgress.filter(p => p.completed).length;
+      const inProgressCourses = memberProgress.filter(p => !p.completed && p.progress > 0).length;
+      const avgProgress = memberProgress.length > 0
+        ? Math.round(memberProgress.reduce((sum, p) => sum + p.progress, 0) / memberProgress.length)
+        : 0;
+
+      return {
+        userId: member.id,
+        userName: member.name || member.username,
+        totalCourses,
+        completedCourses,
+        inProgressCourses,
+        avgProgress,
+        status: completedCourses === totalCourses && totalCourses > 0 ? 'completed' :
+                inProgressCourses > 0 || completedCourses > 0 ? 'in-progress' : 'not-started'
+      };
+    });
+  }, [educationData, selectedTeam]);
 
   const handlePrint = () => {
       window.print();
@@ -157,6 +204,55 @@ export default function MonthlyReportPage() {
               <p className="text-xl">팀: {stripSiteSuffix(report.teamName)}</p>
               <p className="text-xl">기간: {report.year}년 {report.month}월</p>
             </div>
+
+            {/* Education Completion Status Section */}
+            {teamEducationStats.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>팀원 안전교육 이수 현황</CardTitle>
+                </CardHeader>
+                <CardContent className="p-2">
+                  <Table className="border-collapse border border-slate-400">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="border border-slate-300">이름</TableHead>
+                        <TableHead className="border border-slate-300 text-center">완료 과정</TableHead>
+                        <TableHead className="border border-slate-300 text-center">진행중 과정</TableHead>
+                        <TableHead className="border border-slate-300 text-center">평균 진행률</TableHead>
+                        <TableHead className="border border-slate-300 text-center">상태</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamEducationStats.map((stat) => (
+                        <TableRow key={stat.userId}>
+                          <TableCell className="border border-slate-300 font-medium">{stat.userName}</TableCell>
+                          <TableCell className="border border-slate-300 text-center">
+                            {stat.completedCourses} / {stat.totalCourses}
+                          </TableCell>
+                          <TableCell className="border border-slate-300 text-center">
+                            {stat.inProgressCourses}
+                          </TableCell>
+                          <TableCell className="border border-slate-300 text-center">
+                            {stat.avgProgress}%
+                          </TableCell>
+                          <TableCell className="border border-slate-300 text-center">
+                            <Badge
+                              className={
+                                stat.status === 'completed' ? 'bg-green-500' :
+                                stat.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'
+                              }
+                            >
+                              {stat.status === 'completed' ? '완료' :
+                               stat.status === 'in-progress' ? '진행중' : '미시작'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="p-2">
