@@ -40,6 +40,21 @@ const fetchEducationOverview = async (): Promise<EducationOverviewData> => {
   return data;
 };
 
+interface AttendanceOverviewData {
+  teams: Array<{
+    teamId: number;
+    teamName: string;
+    dailyStatuses: { [day: number]: 'not-submitted' | 'completed' | 'has-issues' };
+  }>;
+  daysInMonth: number;
+}
+
+const fetchAttendanceOverview = async (year: number, month: number, site: Site): Promise<AttendanceOverviewData | null> => {
+  if (!site) return null;
+  const { data } = await axios.get(`/api/reports/attendance-overview?year=${year}&month=${month}&site=${site}`);
+  return data;
+};
+
 export default function MonthlyReportPage() {
   const { user } = useAuth();
   const { site, setSite } = useSite();
@@ -76,6 +91,12 @@ export default function MonthlyReportPage() {
     queryKey: ['education-overview'],
     queryFn: fetchEducationOverview,
     enabled: !!(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'),
+  });
+
+  const { data: attendanceOverview } = useQuery<AttendanceOverviewData | null>({
+    queryKey: ['attendance-overview', date.year, date.month, site],
+    queryFn: () => fetchAttendanceOverview(date.year, date.month, site),
+    enabled: !!site,
   });
 
   // Calculate team member education statistics
@@ -194,6 +215,81 @@ export default function MonthlyReportPage() {
             </div>
           </CardHeader>
         </Card>
+
+        {/* 전체 팀 TBM 출석 현황 표 */}
+        {attendanceOverview && attendanceOverview.teams.length > 0 && (
+          <Card className="mt-8 no-print">
+            <CardHeader>
+              <CardTitle>전체 팀 TBM 출석 현황 ({date.year}년 {date.month}월)</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table className="border-collapse border border-slate-400">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="border border-slate-300 bg-slate-100 sticky left-0 z-10 min-w-[150px]">팀명</TableHead>
+                    {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => (
+                      <TableHead key={day} className="border border-slate-300 text-center w-8 p-1 bg-slate-100">
+                        {day}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attendanceOverview.teams.map(team => (
+                    <TableRow key={team.teamId}>
+                      <TableCell className="border border-slate-300 font-medium sticky left-0 bg-white z-10">
+                        {stripSiteSuffix(team.teamName)}
+                      </TableCell>
+                      {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
+                        const status = team.dailyStatuses[day];
+                        const bgColor =
+                          status === 'not-submitted' ? 'bg-red-200' :
+                          status === 'has-issues' ? 'bg-yellow-200' :
+                          'bg-white';
+                        const textColor =
+                          status === 'not-submitted' ? 'text-red-900' :
+                          status === 'has-issues' ? 'text-yellow-900' :
+                          'text-green-900';
+                        const symbol =
+                          status === 'not-submitted' ? '✗' :
+                          status === 'has-issues' ? '△' :
+                          '✓';
+
+                        return (
+                          <TableCell
+                            key={day}
+                            className={`border border-slate-300 text-center p-1 ${bgColor} ${textColor}`}
+                            title={
+                              status === 'not-submitted' ? '미작성' :
+                              status === 'has-issues' ? '세모/엑스 포함' :
+                              '작성완료'
+                            }
+                          >
+                            {symbol}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="mt-4 flex gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-white border border-slate-300 flex items-center justify-center text-green-900">✓</div>
+                  <span>작성완료</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
+                  <span>세모/엑스 포함</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
+                  <span>미작성</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isLoading && <p className="mt-8">보고서 데이터를 불러오는 중...</p>}
         {isError && <p className="mt-8 text-red-500">데이터를 불러오지 못했습니다.</p>}

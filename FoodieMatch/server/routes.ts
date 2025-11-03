@@ -1385,6 +1385,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to fetch monthly report" }); }
   });
 
+  // TBM 출석 현황 API (모든 팀 x 1~31일)
+  app.get("/api/reports/attendance-overview", requireAuth, async (req, res) => {
+    try {
+      const { year, month, site } = req.query;
+
+      if (!year || !month || !site) {
+        return res.status(400).json({ message: "year, month, and site are required" });
+      }
+
+      // 해당 현장의 모든 팀 가져오기
+      const teams = await prisma.team.findMany({
+        where: { site: site as string },
+        orderBy: { name: 'asc' }
+      });
+
+      const daysInMonth = new Date(parseInt(year as string), parseInt(month as string), 0).getDate();
+
+      // 각 팀별 출석 현황 계산
+      const attendanceData = await Promise.all(teams.map(async (team) => {
+        const dailyStatuses: { [day: number]: 'not-submitted' | 'completed' | 'has-issues' } = {};
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const reportDate = new Date(parseInt(year as string), parseInt(month as string) - 1, day);
+          const startOfDay = new Date(reportDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(reportDate);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          const report = await prisma.dailyReport.findFirst({
+            where: {
+              teamId: team.id,
+              reportDate: {
+                gte: startOfDay,
+                lt: endOfDay
+              }
+            },
+            include: { reportDetails: true }
+          });
+
+          if (!report) {
+            dailyStatuses[day] = 'not-submitted';
+          } else {
+            const hasIssues = report.reportDetails?.some(detail =>
+              detail.checkState === '△' || detail.checkState === 'X'
+            );
+            dailyStatuses[day] = hasIssues ? 'has-issues' : 'completed';
+          }
+        }
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          dailyStatuses
+        };
+      }));
+
+      res.json({ teams: attendanceData, daysInMonth });
+    } catch (error) {
+      console.error('Failed to fetch attendance overview:', error);
+      res.status(500).json({ message: "Failed to fetch attendance overview" });
+    }
+  });
+
   app.get("/api/reports/monthly-excel", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
