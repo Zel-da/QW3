@@ -337,14 +337,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 <div className="flex flex-col items-center space-y-2">
                   <Label htmlFor={`absent-${worker.id}`} className="text-xs">결근 사유</Label>
                   <Select
-                    value={absentUsers[worker.id] || ''}
-                    onValueChange={(value) => handleAbsentChange(worker.id, value)}
+                    value={absentUsers[worker.id] || 'PRESENT'}
+                    onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
                   >
                     <SelectTrigger className="w-full h-9 text-sm">
                       <SelectValue placeholder="출근" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">출근</SelectItem>
+                      <SelectItem value="PRESENT">출근</SelectItem>
                       <SelectItem value="연차">연차</SelectItem>
                       <SelectItem value="병가">병가</SelectItem>
                       <SelectItem value="훈련">훈련</SelectItem>

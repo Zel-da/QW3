@@ -333,7 +333,7 @@ export default function SafetyInspectionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {templates.length === 0 ? (
+              {!Array.isArray(templates) || templates.length === 0 ? (
                 <EmptyState
                   icon={FileText}
                   title="점검 템플릿이 없습니다"
@@ -341,7 +341,7 @@ export default function SafetyInspectionPage() {
                 />
               ) : (
                 <div className="space-y-4">
-                  {templates.slice(0, 15).map((template) => (
+                  {Array.isArray(templates) && templates.slice(0, 15).map((template) => (
                     <Card key={template.id} className="p-4">
                       <div className="flex items-start gap-4">
                         <div className="flex-1">
