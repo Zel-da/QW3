@@ -2189,6 +2189,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== SAFETY INSPECTION API ==========
+
+  // Get inspection templates for a team
+  app.get('/api/inspection/templates/:teamId', requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+
+      const templates = await prisma.inspectionTemplate.findMany({
+        where: { teamId: parseInt(teamId) },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching inspection templates:', error);
+      res.status(500).json({ message: 'Failed to fetch inspection templates' });
+    }
+  });
+
+  // Get safety inspection for a specific month
+  app.get('/api/inspection/:teamId/:year/:month', requireAuth, async (req, res) => {
+    try {
+      const { teamId, year, month } = req.params;
+
+      const inspection = await prisma.safetyInspection.findUnique({
+        where: {
+          teamId_year_month: {
+            teamId: parseInt(teamId),
+            year: parseInt(year),
+            month: parseInt(month)
+          }
+        },
+        include: {
+          inspectionItems: true
+        }
+      });
+
+      if (!inspection) {
+        return res.status(404).json({ message: 'Inspection not found' });
+      }
+
+      res.json(inspection);
+    } catch (error) {
+      console.error('Error fetching safety inspection:', error);
+      res.status(500).json({ message: 'Failed to fetch safety inspection' });
+    }
+  });
+
+  // Create or update safety inspection
+  app.post('/api/inspection', requireAuth, async (req, res) => {
+    try {
+      const { teamId, year, month, inspectionDate, items } = req.body;
+
+      if (!teamId || !year || !month || !inspectionDate || !items || items.length === 0) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      if (items.length > 15) {
+        return res.status(400).json({ message: '최대 15개의 기기만 점검 가능합니다.' });
+      }
+
+      // Check if inspection already exists
+      const existingInspection = await prisma.safetyInspection.findUnique({
+        where: {
+          teamId_year_month: {
+            teamId: parseInt(teamId),
+            year: parseInt(year),
+            month: parseInt(month)
+          }
+        }
+      });
+
+      if (existingInspection) {
+        return res.status(400).json({ message: '이미 해당 월의 점검 기록이 존재합니다.' });
+      }
+
+      // Create new inspection
+      const inspection = await prisma.safetyInspection.create({
+        data: {
+          teamId: parseInt(teamId),
+          year: parseInt(year),
+          month: parseInt(month),
+          inspectionDate: new Date(inspectionDate),
+          isCompleted: true,
+          completedAt: new Date(),
+          inspectionItems: {
+            create: items.map((item: any) => ({
+              equipmentName: item.equipmentName,
+              photoUrl: item.photoUrl,
+              remarks: item.remarks || null
+            }))
+          }
+        },
+        include: {
+          inspectionItems: true
+        }
+      });
+
+      res.json(inspection);
+    } catch (error) {
+      console.error('Error creating safety inspection:', error);
+      res.status(500).json({ message: 'Failed to create safety inspection' });
+    }
+  });
+
+  // Get all inspections for a team (for dashboard)
+  app.get('/api/inspection/team/:teamId', requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+
+      const inspections = await prisma.safetyInspection.findMany({
+        where: { teamId: parseInt(teamId) },
+        include: {
+          inspectionItems: true,
+          team: true
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ]
+      });
+
+      res.json(inspections);
+    } catch (error) {
+      console.error('Error fetching team inspections:', error);
+      res.status(500).json({ message: 'Failed to fetch team inspections' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

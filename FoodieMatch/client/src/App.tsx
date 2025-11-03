@@ -21,6 +21,7 @@ import EducationMonitoringPage from './pages/EducationMonitoringPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
 import UserProfilePage from './pages/UserProfilePage';
 import MyCertificatesPage from './pages/MyCertificatesPage';
+import SafetyInspectionPage from './pages/SafetyInspectionPage';
 
 import CoursePage from "@/pages/course";
 
@@ -98,6 +99,11 @@ function App() {
             </ProtectedRoute>
           </Route>
           <Route path="/monthly-report" component={MonthlyReportPage} />
+          <Route path="/safety-inspection">
+            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER]}>
+              <SafetyInspectionPage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/profile">
             <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <UserProfilePage />

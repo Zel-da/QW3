@@ -24,9 +24,14 @@ export function Header() {
         TBM
       </Link>
       {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM' || user?.role === 'TEAM_LEADER') && (
-        <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
-          월별 보고서
-        </Link>
+        <>
+          <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+            안전점검
+          </Link>
+          <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+            월별 보고서
+          </Link>
+        </>
       )}
       {user?.role === 'ADMIN' && (
         <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
