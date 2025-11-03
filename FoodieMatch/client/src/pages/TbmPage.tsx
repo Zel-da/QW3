@@ -5,7 +5,8 @@ import { Header } from "@/components/header";
 import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "../components/ui/button";
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Settings } from "lucide-react"
+import { Link } from "wouter";
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -85,9 +86,19 @@ export default function TbmPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
                 <CardTitle>TBM 일지</CardTitle>
-                {view === 'checklist' && (
-                    <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>목록 보기</Button>
-                )}
+                <div className="flex gap-2">
+                  {view === 'checklist' && (
+                      <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>목록 보기</Button>
+                  )}
+                  {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
+                    <Button variant="secondary" asChild>
+                      <Link href="/checklist-editor">
+                        <Settings className="w-4 h-4 mr-2" />
+                        TBM 편집
+                      </Link>
+                    </Button>
+                  )}
+                </div>
             </div>
             <div className="flex items-center space-x-4 mt-4">
               <Popover>

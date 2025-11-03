@@ -38,21 +38,6 @@ export function Header() {
             팀 관리
           </Link>
       )}
-      {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
-        <Link href="/checklist-editor" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-          TBM 편집
-        </Link>
-      )}
-      {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
-        <Link href="/education-management" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-          교육 관리
-        </Link>
-      )}
-      {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
-        <Link href="/education-monitoring" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-          교육 현황
-        </Link>
-      )}
     </>
   );
 

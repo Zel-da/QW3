@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award, Search } from "lucide-react";
+import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, Award, Search, Settings, BarChart3 } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
 import { Link, useLocation } from "wouter";
@@ -163,12 +163,30 @@ export default function Dashboard() {
           <h1 className="text-4xl font-bold text-foreground korean-text">
             안전 관리 교육 프로그램
           </h1>
-          <Link href="/my-certificates">
-            <Button variant="outline">
-              <Award className="w-4 h-4 mr-2" />
-              내 이수 현황
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
+              <>
+                <Link href="/education-management">
+                  <Button variant="secondary">
+                    <Settings className="w-4 h-4 mr-2" />
+                    교육 관리
+                  </Button>
+                </Link>
+                <Link href="/education-monitoring">
+                  <Button variant="secondary">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    교육 현황
+                  </Button>
+                </Link>
+              </>
+            )}
+            <Link href="/my-certificates">
+              <Button variant="outline">
+                <Award className="w-4 h-4 mr-2" />
+                내 이수 현황
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Progress Overview */}
