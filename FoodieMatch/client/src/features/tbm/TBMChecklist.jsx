@@ -133,9 +133,16 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     updateFormState(itemId, 'attachments', updatedAttachments);
   };
 
-  const handleAbsentChange = (userId, isAbsent) => {
-    setAbsentUsers(prev => ({ ...prev, [userId]: isAbsent }));
-    if (isAbsent) {
+  const handleAbsentChange = (userId, absenceType) => {
+    setAbsentUsers(prev => {
+      if (absenceType === '') {
+        const newState = { ...prev };
+        delete newState[userId];
+        return newState;
+      }
+      return { ...prev, [userId]: absenceType };
+    });
+    if (absenceType && absenceType !== '') {
       const newSignatures = { ...signatures };
       delete newSignatures[userId];
       setSignatures(newSignatures);
@@ -148,11 +155,48 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
+    // Validate mandatory photos and descriptions for △ or X items
+    const validationErrors = [];
+    checklist?.templateItems.forEach(item => {
+      const itemState = formState[item.id];
+      if (itemState?.checkState === '△' || itemState?.checkState === 'X') {
+        const hasPhotos = itemState.attachments && itemState.attachments.length > 0;
+        const hasDescription = itemState.description && itemState.description.trim().length > 0;
+
+        if (!hasPhotos) {
+          validationErrors.push(`"${item.description}" 항목: 사진 첨부 필수`);
+        }
+        if (!hasDescription) {
+          validationErrors.push(`"${item.description}" 항목: 비고 입력 필수`);
+        }
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      toast({
+        title: "필수 항목 미입력",
+        description: validationErrors.join('\n'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const absentSummary = Object.entries(absentUsers).reduce((acc, [userId, absenceType]) => {
+      const userName = teamUsers.find(u => u.id === userId)?.name || '알 수 없음';
+      if (!acc[absenceType]) acc[absenceType] = [];
+      acc[absenceType].push(userName);
+      return acc;
+    }, {});
+
+    const remarksText = Object.entries(absentSummary)
+      .map(([type, names]) => `${type}: ${names.join(', ')}`)
+      .join(' / ');
+
     const reportData = {
       teamId: selectedTeam,
       reportDate: date || new Date(),
       managerName: user?.name || 'N/A',
-      remarks: `연차자: ${Object.keys(absentUsers).filter(id => absentUsers[id]).length}명`,
+      remarks: remarksText || '결근자 없음',
       site: site,
       results: Object.entries(formState).map(([itemId, data]) => ({
         itemId: parseInt(itemId),
@@ -230,9 +274,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                         <div className="flex flex-col items-center justify-center gap-2 w-full">
                           <div className="w-full">
                             <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
-                              <div className="flex items-center justify-center gap-2 p-2 border rounded-md hover:bg-muted">
-                                <Camera className="h-5 w-5" />
-                                <span>사진 업로드</span>
+                              <div className="flex items-center justify-center gap-2 p-2 border-2 border-red-300 rounded-md hover:bg-muted bg-red-50">
+                                <Camera className="h-5 w-5 text-red-600" />
+                                <span className="font-medium">사진 업로드 <span className="text-red-600">*</span></span>
                               </div>
                             </Label>
                             <Input
@@ -266,12 +310,16 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                               </div>
                             )}
                           </div>
-                          <Textarea
-                            placeholder="내용 작성..."
-                            value={currentItemState.description || ''}
-                            onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
-                            className="mt-2 w-full"
-                          />
+                          <div className="w-full">
+                            <Label className="text-xs text-red-600 font-medium">비고 (필수 *)</Label>
+                            <Textarea
+                              placeholder="조치 내용을 상세히 작성해주세요..."
+                              value={currentItemState.description || ''}
+                              onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
+                              className="mt-1 w-full border-2 border-red-300"
+                              rows={3}
+                            />
+                          </div>
                         </div>
                       )}
                     </TableCell>
@@ -286,9 +334,23 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
               <div key={worker.id} className={`p-4 border rounded-lg text-center space-y-3 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
                 <p className="font-semibold">{worker.name}</p>
-                <div className="flex items-center justify-center space-x-2">
-                    <input type="checkbox" id={`absent-${worker.id}`} checked={!!absentUsers[worker.id]} onChange={(e) => handleAbsentChange(worker.id, e.target.checked)} />
-                    <Label htmlFor={`absent-${worker.id}`}>연차</Label>
+                <div className="flex flex-col items-center space-y-2">
+                  <Label htmlFor={`absent-${worker.id}`} className="text-xs">결근 사유</Label>
+                  <Select
+                    value={absentUsers[worker.id] || ''}
+                    onValueChange={(value) => handleAbsentChange(worker.id, value)}
+                  >
+                    <SelectTrigger className="w-full h-9 text-sm">
+                      <SelectValue placeholder="출근" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">출근</SelectItem>
+                      <SelectItem value="연차">연차</SelectItem>
+                      <SelectItem value="병가">병가</SelectItem>
+                      <SelectItem value="훈련">훈련</SelectItem>
+                      <SelectItem value="기타">기타</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {signatures[worker.id] ? (
                   <div className="flex flex-col items-center">
@@ -296,9 +358,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     <img src={signatures[worker.id]} alt={`${worker.name} signature`} className="w-full h-16 object-contain border rounded-md"/>
                   </div>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                    disabled={absentUsers[worker.id]}
+                    disabled={!!absentUsers[worker.id]}
                     className="w-full"
                   >
                     서명
