@@ -279,14 +279,14 @@ export default function Dashboard() {
             </div>
             <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-8">
               <TabsList className="mb-6">
-                <TabsTrigger value="all">전체 ({courses.length})</TabsTrigger>
-              <TabsTrigger value="in-progress">
+                <TabsTrigger value="all" className="text-lg font-semibold px-6 py-3">전체 ({courses.length})</TabsTrigger>
+              <TabsTrigger value="in-progress" className="text-lg font-semibold px-6 py-3">
                 진행중 ({courses.filter(c => {
                   const p = userProgress.find(up => up.courseId === c.id);
                   return !p?.completed;
                 }).length})
               </TabsTrigger>
-              <TabsTrigger value="completed">
+              <TabsTrigger value="completed" className="text-lg font-semibold px-6 py-3">
                 수료 ({courses.filter(c => {
                   const p = userProgress.find(up => up.courseId === c.id);
                   return p?.completed === true;

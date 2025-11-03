@@ -59,6 +59,8 @@ export default function EducationManagementPage() {
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [videoType, setVideoType] = useState<'youtube' | 'file' | 'audio'>('youtube');
   const [quizFile, setQuizFile] = useState<File | null>(null);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -141,11 +143,30 @@ export default function EducationManagementPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let youtubeEmbedUrl = videoUrl;
-    if (videoUrl.includes('watch?v=')) {
+
+    const courseData: any = {
+      title,
+      description,
+      type: videoType === 'audio' ? 'audio' : 'video',
+      duration,
+      icon: 'book-open',
+      color: 'blue',
+      videoType
+    };
+
+    if (videoType === 'youtube') {
+      let youtubeEmbedUrl = videoUrl;
+      if (videoUrl.includes('watch?v=')) {
         youtubeEmbedUrl = videoUrl.replace('watch?v=', 'embed/');
+      }
+      courseData.videoUrl = youtubeEmbedUrl;
+    } else if (videoType === 'file') {
+      courseData.videoUrl = videoUrl; // Already uploaded file URL
+    } else if (videoType === 'audio') {
+      courseData.audioUrl = audioUrl; // Already uploaded audio file URL
     }
-    courseMutation.mutate({ title, description, videoUrl: youtubeEmbedUrl, type: 'video', duration, icon: 'book-open', color: 'blue' });
+
+    courseMutation.mutate(courseData);
   };
 
   const handleDelete = (courseId: string) => {
@@ -178,10 +199,136 @@ export default function EducationManagementPage() {
                 <Label htmlFor="description">상세 설명</Label>
                 <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="교육 과정에 대한 간단한 설명" required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="videoUrl">유튜브 영상 URL</Label>
-                <Input id="videoUrl" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." required />
+
+              {/* Media Type Selection */}
+              <div className="space-y-3">
+                <Label>콘텐츠 유형</Label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="videoType"
+                      value="youtube"
+                      checked={videoType === 'youtube'}
+                      onChange={(e) => {
+                        setVideoType('youtube');
+                        setVideoUrl('');
+                        setAudioUrl('');
+                      }}
+                    />
+                    <span>YouTube 링크</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="videoType"
+                      value="file"
+                      checked={videoType === 'file'}
+                      onChange={(e) => {
+                        setVideoType('file');
+                        setVideoUrl('');
+                        setAudioUrl('');
+                      }}
+                    />
+                    <span>동영상 파일</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="videoType"
+                      value="audio"
+                      checked={videoType === 'audio'}
+                      onChange={(e) => {
+                        setVideoType('audio');
+                        setVideoUrl('');
+                        setAudioUrl('');
+                      }}
+                    />
+                    <span>오디오 파일</span>
+                  </label>
+                </div>
               </div>
+
+              {/* Conditional Input Fields */}
+              {videoType === 'youtube' && (
+                <div className="space-y-2">
+                  <Label htmlFor="videoUrl">YouTube 영상 URL</Label>
+                  <Input
+                    id="videoUrl"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    required
+                  />
+                </div>
+              )}
+
+              {videoType === 'file' && (
+                <div className="space-y-2">
+                  <Label htmlFor="videoFile">동영상 파일 업로드</Label>
+                  <Input
+                    id="videoFile"
+                    type="file"
+                    accept="video/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      const formData = new FormData();
+                      formData.append('files', file);
+
+                      try {
+                        const res = await fetch('/api/upload-multiple', {
+                          method: 'POST',
+                          body: formData
+                        });
+                        const data = await res.json();
+                        if (data.files && data.files.length > 0) {
+                          setVideoUrl(data.files[0].url);
+                          toast({ title: '동영상 업로드 완료' });
+                        }
+                      } catch (error) {
+                        toast({ title: '업로드 실패', variant: 'destructive' });
+                      }
+                    }}
+                  />
+                  {videoUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {videoUrl}</p>}
+                </div>
+              )}
+
+              {videoType === 'audio' && (
+                <div className="space-y-2">
+                  <Label htmlFor="audioFile">오디오 파일 업로드</Label>
+                  <Input
+                    id="audioFile"
+                    type="file"
+                    accept="audio/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      const formData = new FormData();
+                      formData.append('files', file);
+
+                      try {
+                        const res = await fetch('/api/upload-multiple', {
+                          method: 'POST',
+                          body: formData
+                        });
+                        const data = await res.json();
+                        if (data.files && data.files.length > 0) {
+                          setAudioUrl(data.files[0].url);
+                          toast({ title: '오디오 업로드 완료' });
+                        }
+                      } catch (error) {
+                        toast({ title: '업로드 실패', variant: 'destructive' });
+                      }
+                    }}
+                  />
+                  {audioUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {audioUrl}</p>}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="duration">교육 시간 (분)</Label>
                 <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} placeholder="예: 30" required />

@@ -124,12 +124,16 @@ export default function AssessmentPage() {
                   <div key={question.id}>
                     <p className="font-semibold mb-4">{index + 1}. {question.question}</p>
                     <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)}>
-                      {question.options.split(';').map((option, i) => (
-                        <div key={i} className="flex items-center space-x-2 mb-2">
-                          <RadioGroupItem value={String(i)} id={`q-${question.id}-o-${i}`} />
-                          <Label htmlFor={`q-${question.id}-o-${i}`} className="flex-1 cursor-pointer">{option}</Label>
-                        </div>
-                      ))}
+                      {question.options.split(';').map((option, i) => {
+                        // Remove quotes and trim whitespace
+                        const cleanedOption = option.trim().replace(/^["']|["']$/g, '');
+                        return (
+                          <div key={i} className="flex items-center space-x-2 mb-2">
+                            <RadioGroupItem value={String(i)} id={`q-${question.id}-o-${i}`} />
+                            <Label htmlFor={`q-${question.id}-o-${i}`} className="flex-1 cursor-pointer">{cleanedOption}</Label>
+                          </div>
+                        );
+                      })}
                     </RadioGroup>
                   </div>
                 ))}

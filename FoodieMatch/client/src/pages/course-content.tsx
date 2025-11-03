@@ -159,9 +159,14 @@ export default function CourseContentPage() {
     );
   }
 
-  const videoId = course.videoUrl ? getYouTubeId(course.videoUrl) : null;
+  const videoId = course.videoUrl && course.videoType === 'youtube' ? getYouTubeId(course.videoUrl) : null;
   const progressPercent = course.duration === 0 ? 100 : Math.min(Math.floor((timeSpent / (course.duration * 60)) * 100), 100);
   const isVideoComplete = progressPercent >= 100 || (userProgress?.progress || 0) >= 100;
+
+  // Determine media type
+  const hasAudio = course.audioUrl;
+  const hasVideo = course.videoUrl;
+  const hasYouTube = videoId !== null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,28 +206,55 @@ export default function CourseContentPage() {
               </CardContent>
             </Card>
 
-            {/* Video Player */}
+            {/* Media Player */}
             <Card data-testid="video-player">
               <CardContent className="p-6">
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
-                  {videoId ? (
-                    <iframe
-                      key={videoId}
-                      className="absolute inset-0 w-full h-full"
-                      src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-                      title="YouTube video player"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    ></iframe>
-                  ) : (
+                {/* Audio Player */}
+                {hasAudio && (
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold mb-3">오디오 교육</h3>
+                    <audio
+                      src={course.audioUrl || undefined}
+                      controls
+                      className="w-full"
+                      autoPlay={progressLoaded}
+                    />
+                  </div>
+                )}
+
+                {/* Video Player */}
+                {hasVideo && (
+                  <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
+                    {hasYouTube ? (
+                      <iframe
+                        key={videoId}
+                        className="absolute inset-0 w-full h-full"
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    ) : (
+                      <video
+                        src={course.videoUrl || undefined}
+                        controls
+                        className="absolute inset-0 w-full h-full"
+                        autoPlay={progressLoaded}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {!hasAudio && !hasVideo && (
+                  <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
                     <div className="absolute inset-0 flex items-center justify-center bg-black">
                       <div className="text-center text-white korean-text">
-                        <p>교육 영상이 없거나 주소가 올바르지 않습니다.</p>
+                        <p>교육 콘텐츠가 없거나 주소가 올바르지 않습니다.</p>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="flex gap-4">
                   <Button
