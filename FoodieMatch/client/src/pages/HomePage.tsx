@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Notice } from "@shared/schema";
 import { Link } from "wouter";
 import { useState, useEffect } from "react";
+import { FileText, BookOpen, BarChart3, ClipboardCheck } from "lucide-react";
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -68,6 +69,46 @@ export default function HomePage() {
                 <Link href="/register">회원가입</Link>
               </Button>
             </div>
+          </div>
+
+          {/* 4개 메뉴 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <Link href="/notices">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="p-6 text-center">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                  <CardTitle className="text-xl mb-2">공지사항</CardTitle>
+                  <CardDescription>최신 공지사항을 확인하세요</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/courses">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="p-6 text-center">
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 text-green-600" />
+                  <CardTitle className="text-xl mb-2">안전교육</CardTitle>
+                  <CardDescription>필수 안전교육을 수강하세요</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/monthly-report">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="p-6 text-center">
+                  <BarChart3 className="w-12 h-12 mx-auto mb-4 text-orange-600" />
+                  <CardTitle className="text-xl mb-2">월별 보고서</CardTitle>
+                  <CardDescription>TBM 월별 보고서 조회</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/safety-inspection">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="p-6 text-center">
+                  <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-purple-600" />
+                  <CardTitle className="text-xl mb-2">안전점검</CardTitle>
+                  <CardDescription>매월 4일 안전점검 기록</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
 
           {/* 공지사항 팝업 */}
@@ -132,6 +173,7 @@ export default function HomePage() {
                         <TableRow>
                           <TableHead className="w-[100px] text-base">번호</TableHead>
                           <TableHead className="text-base">제목</TableHead>
+                          <TableHead className="w-[120px] text-base">작성자</TableHead>
                           <TableHead className="w-[150px] text-base">작성일</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -144,6 +186,7 @@ export default function HomePage() {
                                 {notice.title}
                               </Link>
                             </TableCell>
+                            <TableCell className="text-base">{notice.author?.name || notice.author?.username || '관리자'}</TableCell>
                             <TableCell className="text-base">{new Date(notice.createdAt).toLocaleDateString()}</TableCell>
                           </TableRow>
                         ))}
@@ -231,7 +274,7 @@ export default function HomePage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="text-2xl md:text-3xl">공지사항</CardTitle>
-            {user?.role === 'ADMIN' && (
+            {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
               <Button asChild className="text-base h-12 min-w-[140px]">
                 <Link href="/notices/new">새 공지사항 작성</Link>
               </Button>
@@ -251,6 +294,7 @@ export default function HomePage() {
                       <TableRow>
                         <TableHead className="w-[100px] text-base">번호</TableHead>
                         <TableHead className="text-base">제목</TableHead>
+                        <TableHead className="w-[120px] text-base">작성자</TableHead>
                         <TableHead className="w-[150px] text-base">작성일</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -263,6 +307,7 @@ export default function HomePage() {
                               {notice.title}
                             </Link>
                           </TableCell>
+                          <TableCell className="text-base">{notice.author?.name || notice.author?.username || '관리자'}</TableCell>
                           <TableCell className="text-base">{new Date(notice.createdAt).toLocaleDateString()}</TableCell>
                         </TableRow>
                       ))}
