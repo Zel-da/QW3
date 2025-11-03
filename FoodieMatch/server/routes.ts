@@ -2189,6 +2189,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== EMAIL NOTIFICATION API ==========
+
+  // Send test email
+  app.post('/api/email/test', requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { to, subject, message } = req.body;
+
+      if (!to || !subject || !message) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      const { sendEmail } = await import('./emailService');
+      const result = await sendEmail({
+        to,
+        subject,
+        html: `<p>${message}</p>`
+      });
+
+      if (result.success) {
+        res.json({ message: '이메일이 발송되었습니다.', messageId: result.messageId });
+      } else {
+        res.status(500).json({ message: '이메일 발송 실패', error: result.error });
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      res.status(500).json({ message: 'Failed to send email' });
+    }
+  });
+
+  // Send education reminder emails
+  app.post('/api/email/education-reminder', requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { userIds } = req.body; // Array of user IDs
+
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: 'userIds array is required' });
+      }
+
+      const { sendEmail, getEducationReminderTemplate } = await import('./emailService');
+
+      // Fetch users
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true }
+      });
+
+      const results = [];
+      for (const user of users) {
+        if (!user.email) continue;
+
+        const html = getEducationReminderTemplate(
+          user.name || user.id,
+          '필수 안전교육',
+          '이번 달 말까지'
+        );
+
+        const result = await sendEmail({
+          to: user.email,
+          subject: '[안전보건팀] 안전교육 이수 알림',
+          html
+        });
+
+        results.push({ userId: user.id, email: user.email, success: result.success });
+      }
+
+      res.json({
+        message: `${results.filter(r => r.success).length}/${results.length} 이메일 발송 완료`,
+        results
+      });
+    } catch (error) {
+      console.error('Error sending education reminders:', error);
+      res.status(500).json({ message: 'Failed to send education reminders' });
+    }
+  });
+
   // ========== SAFETY INSPECTION API ==========
 
   // Get inspection templates for a team
