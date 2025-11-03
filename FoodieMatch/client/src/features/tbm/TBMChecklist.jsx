@@ -330,9 +330,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </Table>
 
           <h3 className="font-semibold text-xl mt-8">참석자 서명</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="flex gap-4 overflow-x-auto pb-4">
             {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
-              <div key={worker.id} className={`p-4 border rounded-lg text-center space-y-3 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
+              <div key={worker.id} className={`flex-shrink-0 w-[180px] p-4 border rounded-lg text-center space-y-3 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
                 <p className="font-semibold">{worker.name}</p>
                 <div className="flex flex-col items-center space-y-2">
                   <Label htmlFor={`absent-${worker.id}`} className="text-xs">결근 사유</Label>
@@ -346,8 +346,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     <SelectContent>
                       <SelectItem value="PRESENT">출근</SelectItem>
                       <SelectItem value="연차">연차</SelectItem>
-                      <SelectItem value="병가">병가</SelectItem>
-                      <SelectItem value="훈련">훈련</SelectItem>
+                      <SelectItem value="오전 반차">오전 반차</SelectItem>
+                      <SelectItem value="오후 반차">오후 반차</SelectItem>
+                      <SelectItem value="출장">출장</SelectItem>
+                      <SelectItem value="교육">교육</SelectItem>
                       <SelectItem value="기타">기타</SelectItem>
                     </SelectContent>
                   </Select>
@@ -360,10 +362,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 ) : (
                   <Button
                     onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                    disabled={!!absentUsers[worker.id]}
+                    disabled={absentUsers[worker.id] && absentUsers[worker.id] !== '오전 반차' && absentUsers[worker.id] !== '오후 반차'}
                     className="w-full"
                   >
-                    서명
+                    {(absentUsers[worker.id] === '오전 반차' || absentUsers[worker.id] === '오후 반차') ? '서명 필수' : '서명'}
                   </Button>
                 )}
               </div>
