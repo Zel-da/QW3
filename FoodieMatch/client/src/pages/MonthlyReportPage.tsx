@@ -282,6 +282,79 @@ export default function MonthlyReportPage() {
                 </Table>
               </CardContent>
             </Card>
+
+            {/* 세모/엑스 상세 리스트 */}
+            {report && report.dailyReports && report.dailyReports.length > 0 && (() => {
+              const problematicItems: any[] = [];
+
+              report.dailyReports.forEach((dailyReport: any) => {
+                if (dailyReport.reportDetails) {
+                  dailyReport.reportDetails.forEach((detail: any) => {
+                    if (detail.checkState === '△' || detail.checkState === 'X') {
+                      const templateItem = report.checklistTemplate?.templateItems.find((item: any) => item.id === detail.itemId);
+                      problematicItems.push({
+                        date: new Date(dailyReport.reportDate).toLocaleDateString('ko-KR'),
+                        category: templateItem?.category || '알 수 없음',
+                        description: templateItem?.description || '알 수 없음',
+                        checkState: detail.checkState,
+                        actionDescription: detail.actionDescription || '',
+                        attachments: detail.attachments || []
+                      });
+                    }
+                  });
+                }
+              });
+
+              if (problematicItems.length === 0) return null;
+
+              return (
+                <Card className="mt-8">
+                  <CardHeader>
+                    <CardTitle className="text-xl text-red-600">⚠️ 세모/엑스 상세 내역 ({problematicItems.length}건)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[120px]">날짜</TableHead>
+                          <TableHead className="w-[100px]">구분</TableHead>
+                          <TableHead>점검항목</TableHead>
+                          <TableHead className="w-[80px] text-center">결과</TableHead>
+                          <TableHead>조치 내용</TableHead>
+                          <TableHead className="w-[100px]">첨부</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {problematicItems.map((item, index) => (
+                          <TableRow key={index} className={item.checkState === 'X' ? 'bg-red-50' : 'bg-yellow-50'}>
+                            <TableCell>{item.date}</TableCell>
+                            <TableCell>{item.category}</TableCell>
+                            <TableCell>{item.description}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={item.checkState === 'X' ? 'destructive' : 'secondary'} className={item.checkState === '△' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}>
+                                {item.checkState}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-pre-wrap">{item.actionDescription}</TableCell>
+                            <TableCell>
+                              {item.attachments.length > 0 ? (
+                                <div className="flex gap-1">
+                                  {item.attachments.map((att: any, idx: number) => (
+                                    <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                      📎{idx + 1}
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
         )}
       </main>
