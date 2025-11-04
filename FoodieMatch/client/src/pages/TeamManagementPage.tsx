@@ -159,6 +159,14 @@ export default function TeamManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeamId] });
       setNewMemberName('');
       setNewMemberPosition('');
+    },
+    onError: (error: any) => {
+      console.error('팀원 추가 에러:', error);
+      toast({
+        title: '오류',
+        description: error.response?.data?.message || error.message || '팀원 추가에 실패했습니다.',
+        variant: 'destructive'
+      });
     }
   });
 

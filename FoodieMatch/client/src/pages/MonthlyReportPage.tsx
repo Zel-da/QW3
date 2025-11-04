@@ -99,33 +99,35 @@ export default function MonthlyReportPage() {
     enabled: !!site,
   });
 
-  // Calculate team member education statistics
-  const teamEducationStats = React.useMemo(() => {
-    if (!educationData || !selectedTeam) return [];
+  // Calculate team leader education statistics (팀장 1명만 표시)
+  const teamLeaderEducationStat = React.useMemo(() => {
+    if (!educationData || !selectedTeam || !teams) return null;
 
-    const teamMembers = educationData.users.filter(u => u.teamId === selectedTeam);
+    const currentTeam = teams.find((t: any) => t.id === selectedTeam);
+    if (!currentTeam || !currentTeam.leaderId) return null;
+
+    const leader = educationData.users.find(u => u.id === currentTeam.leaderId);
+    if (!leader) return null;
+
     const totalCourses = educationData.courses.length;
+    const memberProgress = educationData.allProgress.filter(p => p.userId === leader.id);
+    const completedCourses = memberProgress.filter(p => p.completed).length;
+    const inProgressCourses = memberProgress.filter(p => !p.completed && p.progress > 0).length;
+    const avgProgress = memberProgress.length > 0
+      ? Math.round(memberProgress.reduce((sum, p) => sum + p.progress, 0) / memberProgress.length)
+      : 0;
 
-    return teamMembers.map(member => {
-      const memberProgress = educationData.allProgress.filter(p => p.userId === member.id);
-      const completedCourses = memberProgress.filter(p => p.completed).length;
-      const inProgressCourses = memberProgress.filter(p => !p.completed && p.progress > 0).length;
-      const avgProgress = memberProgress.length > 0
-        ? Math.round(memberProgress.reduce((sum, p) => sum + p.progress, 0) / memberProgress.length)
-        : 0;
-
-      return {
-        userId: member.id,
-        userName: member.name || member.username,
-        totalCourses,
-        completedCourses,
-        inProgressCourses,
-        avgProgress,
-        status: completedCourses === totalCourses && totalCourses > 0 ? 'completed' :
-                inProgressCourses > 0 || completedCourses > 0 ? 'in-progress' : 'not-started'
-      };
-    });
-  }, [educationData, selectedTeam]);
+    return {
+      userId: leader.id,
+      userName: leader.name || leader.username,
+      totalCourses,
+      completedCourses,
+      inProgressCourses,
+      avgProgress,
+      status: completedCourses === totalCourses && totalCourses > 0 ? 'completed' :
+              inProgressCourses > 0 || completedCourses > 0 ? 'in-progress' : 'not-started'
+    };
+  }, [educationData, selectedTeam, teams]);
 
   const handlePrint = () => {
       window.print();
@@ -301,11 +303,11 @@ export default function MonthlyReportPage() {
               <p className="text-xl">기간: {report.year}년 {report.month}월</p>
             </div>
 
-            {/* Education Completion Status Section */}
-            {teamEducationStats.length > 0 && (
+            {/* Education Completion Status Section - 팀장만 표시 */}
+            {teamLeaderEducationStat && (
               <Card>
                 <CardHeader>
-                  <CardTitle>팀원 안전교육 이수 현황</CardTitle>
+                  <CardTitle>팀장 안전교육 이수 현황</CardTitle>
                 </CardHeader>
                 <CardContent className="p-2">
                   <Table className="border-collapse border border-slate-400">
@@ -319,31 +321,31 @@ export default function MonthlyReportPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {teamEducationStats.map((stat) => (
-                        <TableRow key={stat.userId}>
-                          <TableCell className="border border-slate-300 font-medium">{stat.userName}</TableCell>
-                          <TableCell className="border border-slate-300 text-center">
-                            {stat.completedCourses} / {stat.totalCourses}
-                          </TableCell>
-                          <TableCell className="border border-slate-300 text-center">
-                            {stat.inProgressCourses}
-                          </TableCell>
-                          <TableCell className="border border-slate-300 text-center">
-                            {stat.avgProgress}%
-                          </TableCell>
-                          <TableCell className="border border-slate-300 text-center">
-                            <Badge
-                              className={
-                                stat.status === 'completed' ? 'bg-green-500' :
-                                stat.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'
-                              }
-                            >
-                              {stat.status === 'completed' ? '완료' :
-                               stat.status === 'in-progress' ? '진행중' : '미시작'}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      <TableRow>
+                        <TableCell className="border border-slate-300 font-medium">
+                          {teamLeaderEducationStat.userName} (팀장)
+                        </TableCell>
+                        <TableCell className="border border-slate-300 text-center">
+                          {teamLeaderEducationStat.completedCourses} / {teamLeaderEducationStat.totalCourses}
+                        </TableCell>
+                        <TableCell className="border border-slate-300 text-center">
+                          {teamLeaderEducationStat.inProgressCourses}
+                        </TableCell>
+                        <TableCell className="border border-slate-300 text-center">
+                          {teamLeaderEducationStat.avgProgress}%
+                        </TableCell>
+                        <TableCell className="border border-slate-300 text-center">
+                          <Badge
+                            className={
+                              teamLeaderEducationStat.status === 'completed' ? 'bg-green-500' :
+                              teamLeaderEducationStat.status === 'in-progress' ? 'bg-blue-500' : 'bg-gray-400'
+                            }
+                          >
+                            {teamLeaderEducationStat.status === 'completed' ? '완료' :
+                             teamLeaderEducationStat.status === 'in-progress' ? '진행중' : '미시작'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -390,6 +392,8 @@ export default function MonthlyReportPage() {
                       const templateItem = report.checklistTemplate?.templateItems.find((item: any) => item.id === detail.itemId);
                       problematicItems.push({
                         date: new Date(dailyReport.reportDate).toLocaleDateString('ko-KR'),
+                        reportId: dailyReport.id,
+                        reportDate: dailyReport.reportDate,
                         category: templateItem?.category || '알 수 없음',
                         description: templateItem?.description || '알 수 없음',
                         checkState: detail.checkState,
@@ -423,7 +427,15 @@ export default function MonthlyReportPage() {
                       <TableBody>
                         {problematicItems.map((item, index) => (
                           <TableRow key={index} className={item.checkState === 'X' ? 'bg-red-50' : 'bg-yellow-50'}>
-                            <TableCell>{item.date}</TableCell>
+                            <TableCell>
+                              <a
+                                href="/tbm"
+                                className="text-blue-600 hover:underline cursor-pointer"
+                                title="TBM 페이지로 이동 (목록보기에서 해당 날짜 확인)"
+                              >
+                                {item.date}
+                              </a>
+                            </TableCell>
                             <TableCell>{item.category}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell className="text-center">

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import apiClient from './apiConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
@@ -8,6 +10,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../../components/ui/pagination';
 import { ArrowUpDown } from 'lucide-react';
+import { stripSiteSuffix } from '../../lib/utils';
 
 const ReportListView = ({ onSelectReport, onBack, site }) => {
     const [reports, setReports] = useState([]);
@@ -22,6 +25,24 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
     const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, team-asc, team-desc
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+
+    // 출석 현황 표용 year/month
+    const currentDate = new Date();
+    const [attendanceMonth, setAttendanceMonth] = useState({
+        year: currentDate.getFullYear(),
+        month: currentDate.getMonth() + 1
+    });
+
+    // 출석 현황 데이터 조회
+    const { data: attendanceOverview } = useQuery({
+        queryKey: ['attendance-overview', attendanceMonth.year, attendanceMonth.month, site],
+        queryFn: async () => {
+            if (!site) return null;
+            const { data } = await axios.get(`/api/reports/attendance-overview?year=${attendanceMonth.year}&month=${attendanceMonth.month}&site=${site}`);
+            return data;
+        },
+        enabled: !!site,
+    });
 
     useEffect(() => {
         setFilters(prev => ({ ...prev, site: site }));
@@ -148,6 +169,90 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                 <p>목록을 불러오는 중...</p>
             ) : (
                 <>
+                    {/* 전체 팀 TBM 출석 현황 표 */}
+                    {attendanceOverview && attendanceOverview.teams && attendanceOverview.teams.length > 0 && (
+                        <Card className="mb-8">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle>전체 팀 TBM 출석 현황 ({attendanceMonth.year}년 {attendanceMonth.month}월)</CardTitle>
+                                <Input
+                                    type="month"
+                                    value={`${attendanceMonth.year}-${String(attendanceMonth.month).padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                        const [year, month] = e.target.value.split('-');
+                                        setAttendanceMonth({ year: parseInt(year), month: parseInt(month) });
+                                    }}
+                                    className="w-[200px]"
+                                />
+                            </CardHeader>
+                            <CardContent className="overflow-x-auto">
+                                <Table className="border-collapse border border-slate-400">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="border border-slate-300 bg-slate-100 sticky left-0 z-10 min-w-[150px]">팀명</TableHead>
+                                            {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => (
+                                                <TableHead key={day} className="border border-slate-300 text-center w-8 p-1 bg-slate-100">
+                                                    {day}
+                                                </TableHead>
+                                            ))}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {attendanceOverview.teams.map(team => (
+                                            <TableRow key={team.teamId}>
+                                                <TableCell className="border border-slate-300 font-medium sticky left-0 bg-white z-10">
+                                                    {stripSiteSuffix(team.teamName)}
+                                                </TableCell>
+                                                {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
+                                                    const status = team.dailyStatuses[day];
+                                                    const bgColor =
+                                                        status === 'not-submitted' ? 'bg-red-200' :
+                                                        status === 'has-issues' ? 'bg-yellow-200' :
+                                                        'bg-white';
+                                                    const textColor =
+                                                        status === 'not-submitted' ? 'text-red-900' :
+                                                        status === 'has-issues' ? 'text-yellow-900' :
+                                                        'text-green-900';
+                                                    const symbol =
+                                                        status === 'not-submitted' ? '✗' :
+                                                        status === 'has-issues' ? '△' :
+                                                        '✓';
+
+                                                    return (
+                                                        <TableCell
+                                                            key={day}
+                                                            className={`border border-slate-300 text-center p-1 ${bgColor} ${textColor}`}
+                                                            title={
+                                                                status === 'not-submitted' ? '미작성' :
+                                                                status === 'has-issues' ? '세모/엑스 포함' :
+                                                                '작성완료'
+                                                            }
+                                                        >
+                                                            {symbol}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                <div className="mt-4 flex gap-6 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-white border border-slate-300 flex items-center justify-center text-green-900">✓</div>
+                                        <span>작성완료</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
+                                        <span>세모/엑스 포함</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
+                                        <span>미작성</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {sortedReports.length === 0 ? (
                         <div className="text-center text-muted-foreground py-10">
                             <p>선택한 기간에 해당하는 점검표가 없습니다.</p>
@@ -163,7 +268,6 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                 <TableHead>작성일</TableHead>
                                                 <TableHead>팀명</TableHead>
                                                 <TableHead>작성자</TableHead>
-                                                <TableHead>비고</TableHead>
                                                 <TableHead className="text-center w-[120px]">액션</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -174,7 +278,6 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     <TableCell>{new Date(report.reportDate).toLocaleDateString('ko-KR')}</TableCell>
                                                     <TableCell>{report.team?.name || '-'}</TableCell>
                                                     <TableCell>{report.managerName}</TableCell>
-                                                    <TableCell className="max-w-[200px] truncate">{report.remarks || '-'}</TableCell>
                                                     <TableCell className="text-center">
                                                         <Button
                                                             onClick={() => onSelectReport(report.id)}

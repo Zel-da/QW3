@@ -330,47 +330,57 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </Table>
 
           <h3 className="font-semibold text-xl mt-8">참석자 서명</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
-              <div key={worker.id} className={`flex-shrink-0 w-[180px] p-4 border rounded-lg text-center space-y-3 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
-                <p className="font-semibold">{worker.name}</p>
-                <div className="flex flex-col items-center space-y-2">
-                  <Label htmlFor={`absent-${worker.id}`} className="text-xs">결근 사유</Label>
-                  <Select
-                    value={absentUsers[worker.id] || 'PRESENT'}
-                    onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
-                  >
-                    <SelectTrigger className="w-full h-9 text-sm">
-                      <SelectValue placeholder="출근" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PRESENT">출근</SelectItem>
-                      <SelectItem value="연차">연차</SelectItem>
-                      <SelectItem value="오전 반차">오전 반차</SelectItem>
-                      <SelectItem value="오후 반차">오후 반차</SelectItem>
-                      <SelectItem value="출장">출장</SelectItem>
-                      <SelectItem value="교육">교육</SelectItem>
-                      <SelectItem value="기타">기타</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {signatures[worker.id] ? (
-                  <div className="flex flex-col items-center">
-                    <p className="text-sm text-green-600 mb-2">서명 완료</p>
-                    <img src={signatures[worker.id]} alt={`${worker.name} signature`} className="w-full h-16 object-contain border rounded-md"/>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                    disabled={absentUsers[worker.id] && absentUsers[worker.id] !== '오전 반차' && absentUsers[worker.id] !== '오후 반차'}
-                    className="w-full"
-                  >
-                    {(absentUsers[worker.id] === '오전 반차' || absentUsers[worker.id] === '오후 반차') ? '서명 필수' : '서명'}
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>이름</TableHead>
+                <TableHead>출근 상태</TableHead>
+                <TableHead>서명</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
+                <TableRow key={worker.id} className={absentUsers[worker.id] ? 'bg-gray-100' : ''}>
+                  <TableCell className="font-semibold">{worker.name}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={absentUsers[worker.id] || 'PRESENT'}
+                      onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="출근" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PRESENT">출근</SelectItem>
+                        <SelectItem value="연차">연차</SelectItem>
+                        <SelectItem value="오전 반차">오전 반차</SelectItem>
+                        <SelectItem value="오후 반차">오후 반차</SelectItem>
+                        <SelectItem value="출장">출장</SelectItem>
+                        <SelectItem value="교육">교육</SelectItem>
+                        <SelectItem value="기타">기타</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {signatures[worker.id] ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-green-600">✓ 서명 완료</span>
+                        <img src={signatures[worker.id]} alt={`${worker.name} signature`} className="h-12 w-24 object-contain border rounded"/>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
+                        disabled={absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id])}
+                        size="sm"
+                      >
+                        서명
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </>
       )}
 

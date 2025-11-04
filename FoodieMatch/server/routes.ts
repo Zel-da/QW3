@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const upload = multer({
     dest: uploadDir,
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB limit
+      fileSize: 100 * 1024 * 1024, // 100MB limit (비디오 파일 고려)
       files: 10 // Maximum 10 files
     },
     fileFilter: (req, file, cb) => {
@@ -68,14 +68,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // octet-stream (확장자로 체크)
         'application/octet-stream'
       ];
+      const allowedVideoTypes = [
+        'video/mp4',
+        'video/mpeg',
+        'video/webm',
+        'video/ogg',
+        'video/quicktime', // .mov
+        'video/x-msvideo', // .avi
+        'video/x-ms-wmv', // .wmv
+        'video/x-flv' // .flv
+      ];
 
-      const allowed = [...allowedImageTypes, ...allowedDocTypes];
+      const allowed = [...allowedImageTypes, ...allowedDocTypes, ...allowedVideoTypes];
 
       if (allowed.includes(file.mimetype)) {
         // octet-stream의 경우 확장자로 추가 검증
         if (file.mimetype === 'application/octet-stream') {
           const ext = path.extname(file.originalname).toLowerCase();
-          const allowedExtensions = ['.hwp', '.hwpx', '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', '.pdf'];
+          const allowedExtensions = ['.hwp', '.hwpx', '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', '.pdf', '.mp4', '.mov', '.avi'];
           if (allowedExtensions.includes(ext)) {
             cb(null, true);
           } else {
