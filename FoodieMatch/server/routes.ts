@@ -1474,7 +1474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
           include: {
             reportDetails: { include: { item: true } },
-            reportSignatures: { include: { user: true } },
+            reportSignatures: { include: { user: true, member: true } },
           },
           orderBy: { reportDate: 'asc' },
         }),
@@ -1708,7 +1708,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (signatures && signatures.length > 0) {
         await prisma.reportSignature.createMany({
           data: signatures.map(s => ({
-            reportId: newReport.id, userId: s.userId, signatureImage: s.signatureImage,
+            reportId: newReport.id,
+            userId: s.userId || null,
+            memberId: s.memberId || null,
+            signatureImage: s.signatureImage,
           })),
         });
       }
@@ -1717,7 +1720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           where: { id: newReport.id },
           include: {
             reportDetails: { include: { attachments: true } },
-            reportSignatures: true
+            reportSignatures: { include: { user: true, member: true } }
           }
       });
       res.status(201).json(fullReport);
@@ -1741,7 +1744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           team: true,
           reportDetails: { include: { item: true, author: true, attachments: true } },
-          reportSignatures: { include: { user: true } }
+          reportSignatures: { include: { user: true, member: true } }
         },
       });
       if (!report) return res.status(404).json({ message: "Report not found" });
@@ -1797,7 +1800,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await prisma.reportSignature.createMany({
           data: signatures.map(s => ({
             reportId: parseInt(reportId),
-            userId: s.userId,
+            userId: s.userId || null,
+            memberId: s.memberId || null,
             signatureImage: s.signatureImage
           })),
         });
@@ -1807,7 +1811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: { id: parseInt(reportId) },
         include: {
           reportDetails: { include: { attachments: true } },
-          reportSignatures: true
+          reportSignatures: { include: { user: true, member: true } }
         }
       });
 

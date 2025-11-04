@@ -64,7 +64,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
       const initialSignatures = {};
       reportForEdit.reportSignatures.forEach(sig => {
-        if (sig.signatureImage) initialSignatures[sig.userId] = sig.signatureImage;
+        if (sig.signatureImage) {
+          // userId나 memberId 중 하나를 키로 사용
+          const key = sig.userId || `member-${sig.memberId}`;
+          initialSignatures[key] = sig.signatureImage;
+        }
       });
       setSignatures(initialSignatures);
     } else {
@@ -80,11 +84,29 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setError(null);
       const templatePromise = axios.get(`/api/teams/${selectedTeam}/template`);
       const usersPromise = axios.get(`/api/teams/${selectedTeam}/users`);
+      const teamMembersPromise = axios.get(`/api/teams/${selectedTeam}/team-members`);
 
-      Promise.all([templatePromise, usersPromise])
-        .then(([templateResponse, usersResponse]) => {
+      Promise.all([templatePromise, usersPromise, teamMembersPromise])
+        .then(([templateResponse, usersResponse, teamMembersResponse]) => {
           setChecklist(templateResponse.data);
-          setTeamUsers(usersResponse.data);
+
+          // User 계정과 TeamMember를 합침
+          const users = usersResponse.data || [];
+          const teamMembers = teamMembersResponse.data || [];
+
+          // TeamMember를 User 형식으로 변환하여 합침
+          const combinedTeamUsers = [
+            ...users,
+            ...teamMembers.map(member => ({
+              id: `member-${member.id}`, // memberId와 userId 구분
+              name: member.name,
+              role: 'WORKER', // 기본 역할
+              isTeamMember: true, // TeamMember 표시
+              memberId: member.id // 원본 memberId 보관
+            }))
+          ];
+
+          setTeamUsers(combinedTeamUsers);
         })
         .catch(err => {
           console.error(`Error fetching data for team ${selectedTeam}:`, err);
@@ -205,10 +227,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         authorId: user.id,
         attachments: data.attachments || []
       })),
-      signatures: Object.entries(signatures).map(([userId, signatureImage]) => ({
-        userId,
-        signatureImage
-      })),
+      signatures: Object.entries(signatures).map(([userId, signatureImage]) => {
+        // userId가 'member-'로 시작하면 TeamMember
+        const isTeamMember = userId.startsWith('member-');
+        if (isTeamMember) {
+          const memberId = parseInt(userId.replace('member-', ''));
+          return {
+            memberId,
+            signatureImage
+          };
+        } else {
+          return {
+            userId,
+            signatureImage
+          };
+        }
+      }),
     };
 
     try {

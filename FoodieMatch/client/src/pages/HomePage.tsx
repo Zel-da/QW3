@@ -73,15 +73,16 @@ export default function HomePage() {
 
           {/* 4개 메뉴 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <Link href="/notices">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                <CardContent className="p-6 text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-                  <CardTitle className="text-xl mb-2">공지사항</CardTitle>
-                  <CardDescription>최신 공지사항을 확인하세요</CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
+            <Card
+              className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+              onClick={() => window.location.href = '/notices'}
+            >
+              <CardContent className="p-6 text-center">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                <CardTitle className="text-xl mb-2">공지사항</CardTitle>
+                <CardDescription>최신 공지사항을 확인하세요</CardDescription>
+              </CardContent>
+            </Card>
             <Link href="/courses">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardContent className="p-6 text-center">
