@@ -170,7 +170,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
             ) : (
                 <>
                     {/* 전체 팀 TBM 출석 현황 표 */}
-                    {attendanceOverview && attendanceOverview.teams && attendanceOverview.teams.length > 0 && (
+                    {site && (
                         <Card className="mb-8">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle>전체 팀 TBM 출석 현황 ({attendanceMonth.year}년 {attendanceMonth.month}월)</CardTitle>
@@ -185,19 +185,23 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                 />
                             </CardHeader>
                             <CardContent className="overflow-x-auto">
-                                <Table className="border-collapse border border-slate-400">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="border border-slate-300 bg-slate-100 sticky left-0 z-10 min-w-[150px]">팀명</TableHead>
-                                            {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => (
-                                                <TableHead key={day} className="border border-slate-300 text-center w-8 p-1 bg-slate-100">
-                                                    {day}
-                                                </TableHead>
-                                            ))}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {attendanceOverview.teams.map(team => (
+                                {!attendanceOverview || !attendanceOverview.teams || attendanceOverview.teams.length === 0 ? (
+                                    <p className="text-center text-muted-foreground py-8">출석 현황 데이터가 없습니다.</p>
+                                ) : (
+                                    <>
+                                        <Table className="border-collapse border border-slate-400">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="border border-slate-300 bg-slate-100 sticky left-0 z-10 min-w-[150px]">팀명</TableHead>
+                                                    {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => (
+                                                        <TableHead key={day} className="border border-slate-300 text-center w-8 p-1 bg-slate-100">
+                                                            {day}
+                                                        </TableHead>
+                                                    ))}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {attendanceOverview.teams.map(team => (
                                             <TableRow key={team.teamId}>
                                                 <TableCell className="border border-slate-300 font-medium sticky left-0 bg-white z-10">
                                                     {stripSiteSuffix(team.teamName)}
@@ -232,23 +236,25 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     );
                                                 })}
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <div className="mt-4 flex gap-6 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-white border border-slate-300 flex items-center justify-center text-green-900">✓</div>
-                                        <span>작성완료</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
-                                        <span>세모/엑스 포함</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
-                                        <span>미작성</span>
-                                    </div>
-                                </div>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                        <div className="mt-4 flex gap-6 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-white border border-slate-300 flex items-center justify-center text-green-900">✓</div>
+                                                <span>작성완료</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
+                                                <span>세모/엑스 포함</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
+                                                <span>미작성</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     )}

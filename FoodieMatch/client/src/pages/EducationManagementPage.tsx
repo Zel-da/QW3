@@ -60,6 +60,7 @@ export default function EducationManagementPage() {
   const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
+  const [documentUrl, setDocumentUrl] = useState('');
   const [videoType, setVideoType] = useState<'youtube' | 'file' | 'audio'>('youtube');
   const [quizFile, setQuizFile] = useState<File | null>(null);
 
@@ -164,6 +165,11 @@ export default function EducationManagementPage() {
       courseData.videoUrl = videoUrl; // Already uploaded file URL
     } else if (videoType === 'audio') {
       courseData.audioUrl = audioUrl; // Already uploaded audio file URL
+    }
+
+    // Add documentUrl if it exists
+    if (documentUrl) {
+      courseData.documentUrl = documentUrl;
     }
 
     courseMutation.mutate(courseData);
@@ -333,6 +339,40 @@ export default function EducationManagementPage() {
                 <Label htmlFor="duration">교육 시간 (분)</Label>
                 <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} placeholder="예: 30" required />
               </div>
+
+              {/* 문서 파일 업로드 */}
+              <div className="space-y-2">
+                <Label htmlFor="documentFile">교육 자료 문서 (선택사항)</Label>
+                <Input
+                  id="documentFile"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    const formData = new FormData();
+                    formData.append('files', file);
+
+                    try {
+                      const res = await fetch('/api/upload-multiple', {
+                        method: 'POST',
+                        body: formData
+                      });
+                      const data = await res.json();
+                      if (data.files && data.files.length > 0) {
+                        setDocumentUrl(data.files[0].url);
+                        toast({ title: '문서 업로드 완료' });
+                      }
+                    } catch (error) {
+                      toast({ title: '업로드 실패', variant: 'destructive' });
+                    }
+                  }}
+                />
+                {documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {documentUrl}</p>}
+                <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글</p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="quizFile">퀴즈 파일 (CSV)</Label>
                 <Input id="quizFile" type="file" accept=".csv" onChange={(e) => setQuizFile(e.target.files ? e.target.files[0] : null)} />

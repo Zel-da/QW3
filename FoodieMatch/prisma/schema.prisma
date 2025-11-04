@@ -252,7 +252,7 @@ model ReportDetail {
   authorId          String?
   actionDescription String?
   actionStatus      String?       @default("PENDING")
-  item              TemplateItem  @relation(fields: [itemId], references: [id], onDelete: NoAction)
+  item              TemplateItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
   report            DailyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   author            User?         @relation(fields: [authorId], references: [id])
   attachments       Attachment[]

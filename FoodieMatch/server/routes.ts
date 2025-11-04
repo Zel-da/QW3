@@ -527,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 추가
-  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
     try {
       const { teamId } = req.params;
       const { name, position } = req.body;
@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 정보 수정
-  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
     try {
       const { memberId } = req.params;
       const { name, position, isActive } = req.body;
@@ -579,7 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 삭제 (soft delete)
-  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
     try {
       const { memberId } = req.params;
 
