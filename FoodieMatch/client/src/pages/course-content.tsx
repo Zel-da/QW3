@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Header } from "@/components/header";
-import { PdfViewer } from "@/components/pdf-viewer";
-import { ArrowLeft, Play, Pause, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, Play, Pause, CheckCircle, Clock, Download } from "lucide-react";
 import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -300,12 +299,26 @@ export default function CourseContentPage() {
               </CardContent>
             </Card>
 
-            {/* PDF Document Viewer */}
+            {/* Document Download */}
             {course.documentUrl && (
-              <PdfViewer
-                documentUrl={course.documentUrl}
-                title={`${course.title} - 교육 자료`}
-              />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Download className="h-5 w-5" />
+                    교육 자료 다운로드
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline" className="w-full">
+                    <a href={course.documentUrl} download target="_blank" rel="noopener noreferrer">
+                      📎 교육 자료 다운로드
+                    </a>
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    클릭하여 교육 자료를 다운로드하세요
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
 
