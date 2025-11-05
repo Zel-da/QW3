@@ -6,7 +6,7 @@ import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "../components/ui/button";
 import { Calendar as CalendarIcon, Settings } from "lucide-react"
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -29,6 +29,7 @@ export default function TbmPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { site, setSite } = useSite();
   const { user } = useAuth();
+  const [location] = useLocation();
 
   useEffect(() => {
     if (user) {
@@ -37,6 +38,25 @@ export default function TbmPage() {
       }
     }
   }, [user, setSite]);
+
+  // URL 파라미터에서 reportId를 읽어서 자동으로 해당 리포트 로드
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get('reportId');
+
+    if (reportId) {
+      axios.get(`/api/reports/${reportId}`).then(res => {
+        const report = res.data;
+        setReportForEdit(report);
+        setDate(new Date(report.reportDate));
+        setView('checklist');
+        // URL에서 reportId 파라미터 제거
+        window.history.replaceState({}, '', '/tbm');
+      }).catch(err => {
+        console.error("Failed to load report from URL:", err);
+      });
+    }
+  }, []);
 
   const handleSelectReport = useCallback((reportId: number) => {
     setReportForEdit({ id: reportId }); 

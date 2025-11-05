@@ -12,6 +12,7 @@ import ExcelJS from "exceljs";
 import { tbmReportSchema } from "@shared/schema";
 import sharp from "sharp";
 import rateLimit from "express-rate-limit";
+import { sendEmail, verifyEmailConnection, getEducationReminderTemplate, getTBMReminderTemplate, getSafetyInspectionReminderTemplate } from "./emailService";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1191,7 +1192,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: Create notice
   app.post("/api/notices", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const { title, content, category, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
+      const { title, content, category, imageUrl, attachmentUrl, attachmentName, attachments, videoUrl, videoType } = req.body;
+      console.log('📥 Received notice data:', { title, videoUrl, videoType });
       const newNotice = await prisma.notice.create({
         data: {
           title,
@@ -1201,6 +1203,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           imageUrl,
           attachmentUrl,
           attachmentName,
+          videoUrl,
+          videoType,
           attachments: attachments ? {
             create: attachments.map((att: any) => ({
               url: att.url,
@@ -1223,7 +1227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: Update notice
   app.put("/api/notices/:noticeId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const { title, content, imageUrl, attachmentUrl, attachmentName, attachments } = req.body;
+      const { title, content, imageUrl, attachmentUrl, attachmentName, attachments, videoUrl, videoType } = req.body;
 
       // Delete existing attachments and create new ones
       await prisma.attachment.deleteMany({
@@ -1238,6 +1242,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           imageUrl,
           attachmentUrl,
           attachmentName,
+          videoUrl,
+          videoType,
           attachments: attachments ? {
             create: attachments.map((att: any) => ({
               url: att.url,
@@ -1414,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 각 팀별 출석 현황 계산
       const attendanceData = await Promise.all(teams.map(async (team) => {
-        const dailyStatuses: { [day: number]: 'not-submitted' | 'completed' | 'has-issues' } = {};
+        const dailyStatuses: { [day: number]: { status: 'not-submitted' | 'completed' | 'has-issues', reportId: number | null } } = {};
 
         for (let day = 1; day <= daysInMonth; day++) {
           const reportDate = new Date(parseInt(year as string), parseInt(month as string) - 1, day);
@@ -1435,12 +1441,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           if (!report) {
-            dailyStatuses[day] = 'not-submitted';
+            dailyStatuses[day] = { status: 'not-submitted', reportId: null };
           } else {
             const hasIssues = report.reportDetails?.some(detail =>
               detail.checkState === '△' || detail.checkState === 'X'
             );
-            dailyStatuses[day] = hasIssues ? 'has-issues' : 'completed';
+            dailyStatuses[day] = {
+              status: hasIssues ? 'has-issues' : 'completed',
+              reportId: report.id
+            };
           }
         }
 
@@ -1468,7 +1477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string), monthNum = parseInt(month as string);
       const startDate = new Date(yearNum, monthNum - 1, 1);
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
-      const [team, dailyReports, checklistTemplate, teamUsers] = await Promise.all([
+      const [team, dailyReports, checklistTemplate, teamUsers, teamMembers] = await Promise.all([
         prisma.team.findUnique({ where: { id: parseInt(teamId as string) } }),
         prisma.dailyReport.findMany({
           where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
@@ -1482,7 +1491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           where: { teamId: parseInt(teamId as string) },
           include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
         }),
-        prisma.user.findMany({ where: { teamId: parseInt(teamId as string) } })
+        prisma.user.findMany({ where: { teamId: parseInt(teamId as string) } }),
+        prisma.teamMember.findMany({ where: { teamId: parseInt(teamId as string), isActive: true } })
       ]);
 
       if (!team) return res.status(404).json({ message: "Team not found" });
@@ -1611,15 +1621,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sigDateColMap[day] = col;
       }
 
+      // User와 TeamMember를 모두 포함
       const userRowMap: Record<string, number> = {};
-      teamUsers.forEach((u, index) => {
-        const row = 2 + index;
-        userRowMap[u.id] = row;
-        sheet2.getRow(row).height = 30;
-        sheet2.getCell(row, 1).value = u.name;
-        sheet2.getCell(row, 1).font = font;
-        sheet2.getCell(row, 1).alignment = centerAlignment;
-        sheet2.getCell(row, 1).border = border;
+      const memberRowMap: Record<number, number> = {};
+      let currentRow = 2;
+
+      // 먼저 User(계정 있는 사용자) 추가
+      teamUsers.forEach((u) => {
+        userRowMap[u.id] = currentRow;
+        sheet2.getRow(currentRow).height = 30;
+        sheet2.getCell(currentRow, 1).value = u.name;
+        sheet2.getCell(currentRow, 1).font = font;
+        sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+        sheet2.getCell(currentRow, 1).border = border;
+        currentRow++;
+      });
+
+      // 그 다음 TeamMember(계정 없는 사용자) 추가
+      teamMembers.forEach((m) => {
+        memberRowMap[m.id] = currentRow;
+        sheet2.getRow(currentRow).height = 30;
+        sheet2.getCell(currentRow, 1).value = m.name;
+        sheet2.getCell(currentRow, 1).font = font;
+        sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+        sheet2.getCell(currentRow, 1).border = border;
+        currentRow++;
       });
 
       dailyReports.forEach(report => {
@@ -1628,8 +1654,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!col) return;
 
         report.reportSignatures.forEach(sig => {
-          if (!sig.userId) return; // TeamMember 서명은 스킵 (향후 구현)
-          const row = userRowMap[sig.userId];
+          let row: number | undefined;
+
+          // User 서명인지 TeamMember 서명인지 확인
+          if (sig.userId) {
+            row = userRowMap[sig.userId];
+          } else if (sig.memberId) {
+            row = memberRowMap[sig.memberId];
+          }
+
           if (row && sig.signatureImage) {
             try {
               const base64Data = sig.signatureImage.split('base64,').pop();
@@ -1645,7 +1678,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
-      for (let r = 2; r <= teamUsers.length + 1; r++) {
+      // User와 TeamMember를 모두 포함한 총 행 수
+      const totalRows = teamUsers.length + teamMembers.length;
+      for (let r = 2; r <= totalRows + 1; r++) {
           for (let c = 2; c <= lastDayOfMonth + 1; c++) {
               sheet2.getCell(r, c).border = border;
           }
@@ -2122,15 +2157,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create safe filename with timestamp and original name
+      // Create URL-safe filename with timestamp and sanitized original name
       const timestamp = Date.now();
-      const safeFileName = `${timestamp}_${originalName}`;
+      // Extract file extension
+      const ext = path.extname(originalName);
+      const nameWithoutExt = path.basename(originalName, ext);
+      // Sanitize filename: replace spaces and special characters
+      const sanitizedName = nameWithoutExt
+        .replace(/\s+/g, '_')  // Replace spaces with underscore
+        .replace(/[()[\]{}]/g, '')  // Remove brackets and parentheses
+        .replace(/[^a-zA-Z0-9가-힣_-]/g, '')  // Keep only alphanumeric, Korean, underscore, hyphen
+        .substring(0, 100);  // Limit length
+      const safeFileName = `${timestamp}_${sanitizedName}${ext}`;
       const newPath = path.join(uploadDir, safeFileName);
 
       fs.renameSync(finalPath, newPath);
 
       res.json({
-        url: `/uploads/${safeFileName}`,
+        url: `/uploads/${encodeURIComponent(safeFileName)}`,
         name: originalName,
         size: finalSize,
         mimeType: req.file.mimetype
@@ -2208,14 +2252,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const timestamp = Date.now();
           const random = Math.floor(Math.random() * 10000);
-          const safeFileName = `${timestamp}_${random}_${originalName}`;
+          // Extract file extension
+          const ext = path.extname(originalName);
+          const nameWithoutExt = path.basename(originalName, ext);
+          // Sanitize filename: replace spaces and special characters
+          const sanitizedName = nameWithoutExt
+            .replace(/\s+/g, '_')  // Replace spaces with underscore
+            .replace(/[()[\]{}]/g, '')  // Remove brackets and parentheses
+            .replace(/[^a-zA-Z0-9가-힣_-]/g, '')  // Keep only alphanumeric, Korean, underscore, hyphen
+            .substring(0, 100);  // Limit length
+          const safeFileName = `${timestamp}_${random}_${sanitizedName}${ext}`;
           const newPath = path.join(uploadDir, safeFileName);
 
           if (fs.existsSync(finalPath)) {
             fs.renameSync(finalPath, newPath);
 
             uploadedFiles.push({
-              url: `/uploads/${safeFileName}`,
+              url: `/uploads/${encodeURIComponent(safeFileName)}`,
               name: originalName,
               size: finalSize,
               mimeType: file.mimetype,
@@ -2488,6 +2541,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching team inspections:', error);
       res.status(500).json({ message: 'Failed to fetch team inspections' });
+    }
+  });
+
+  // ==================== Email Test APIs ====================
+
+  // Verify email configuration
+  app.get("/api/email/verify", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const isVerified = await verifyEmailConnection();
+      res.json({
+        success: isVerified,
+        message: isVerified ? '이메일 서비스 연결 성공' : '이메일 서비스 연결 실패',
+        config: {
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: process.env.SMTP_PORT || '587',
+          user: process.env.SMTP_USER || '설정되지 않음'
+        }
+      });
+    } catch (error) {
+      console.error('Email verification error:', error);
+      res.status(500).json({ success: false, message: '이메일 서비스 확인 중 오류 발생' });
+    }
+  });
+
+  // Send test email - Education reminder
+  app.post("/api/email/test/education", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { to, userName, courseName, dueDate } = req.body;
+
+      if (!to) {
+        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+      }
+
+      const html = getEducationReminderTemplate(
+        userName || '테스트 사용자',
+        courseName || '안전교육 샘플',
+        dueDate || '2024년 12월 31일'
+      );
+
+      const result = await sendEmail({
+        to,
+        subject: '[테스트] 안전교육 이수 알림',
+        html
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Test email send error:', error);
+      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+    }
+  });
+
+  // Send test email - TBM reminder
+  app.post("/api/email/test/tbm", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { to, managerName, teamName, date } = req.body;
+
+      if (!to) {
+        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+      }
+
+      const html = getTBMReminderTemplate(
+        managerName || '테스트 관리자',
+        teamName || '테스트 팀',
+        date || new Date().toLocaleDateString()
+      );
+
+      const result = await sendEmail({
+        to,
+        subject: '[테스트] TBM 일지 작성 알림',
+        html
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Test email send error:', error);
+      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+    }
+  });
+
+  // Send test email - Safety inspection reminder
+  app.post("/api/email/test/inspection", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { to, managerName, month } = req.body;
+
+      if (!to) {
+        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+      }
+
+      const html = getSafetyInspectionReminderTemplate(
+        managerName || '테스트 관리자',
+        month || `${new Date().getMonth() + 1}월`
+      );
+
+      const result = await sendEmail({
+        to,
+        subject: '[테스트] 월별 안전점검 알림',
+        html
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Test email send error:', error);
+      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+    }
+  });
+
+  // Send custom test email
+  app.post("/api/email/test/custom", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { to, subject, html } = req.body;
+
+      if (!to || !subject || !html) {
+        return res.status(400).json({ success: false, message: '수신자, 제목, 내용이 모두 필요합니다.' });
+      }
+
+      const result = await sendEmail({ to, subject, html });
+      res.json(result);
+    } catch (error) {
+      console.error('Custom email send error:', error);
+      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
     }
   });
 

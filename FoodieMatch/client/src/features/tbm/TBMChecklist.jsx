@@ -11,9 +11,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Terminal, Camera } from "lucide-react";
+import { Terminal, Camera, X } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
@@ -30,6 +31,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [error, setError] = useState(null);
   const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [signingUser, setSigningUser] = useState(null);
+  const [enlargedImage, setEnlargedImage] = useState(null);
+  const [remarks, setRemarks] = useState('');
+  const [remarksImages, setRemarksImages] = useState([]);
 
   useEffect(() => {
     if (site) {
@@ -71,10 +75,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         }
       });
       setSignatures(initialSignatures);
+
+      // remarks 초기화 (JSON 파싱)
+      if (reportForEdit.remarks) {
+        try {
+          const remarksData = JSON.parse(reportForEdit.remarks);
+          setRemarks(remarksData.text || '');
+          setRemarksImages(remarksData.images || []);
+        } catch {
+          // JSON이 아니면 그냥 텍스트로 처리
+          setRemarks(reportForEdit.remarks);
+          setRemarksImages([]);
+        }
+      }
     } else {
       setFormState({});
       setSignatures({});
       setAbsentUsers({});
+      setRemarks('');
+      setRemarksImages([]);
     }
   }, [reportForEdit]);
 
@@ -155,6 +174,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     updateFormState(itemId, 'attachments', updatedAttachments);
   };
 
+  const handleRemarksImageUpload = async (files) => {
+    const formData = new FormData();
+    Array.from(files).forEach(file => formData.append('files', file));
+
+    try {
+      const res = await axios.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const newImages = res.data.files.map(f => f.url);
+      setRemarksImages(prev => [...prev, ...newImages]);
+      toast({ title: `${files.length}개의 사진이 업로드되었습니다.` });
+    } catch (err) {
+      toast({ title: "사진 업로드 실패", description: err.response?.data?.message || err.message, variant: "destructive" });
+    }
+  };
+
+  const removeRemarksImage = (imageIndex) => {
+    setRemarksImages(prev => prev.filter((_, idx) => idx !== imageIndex));
+  };
+
   const handleAbsentChange = (userId, absenceType) => {
     setAbsentUsers(prev => {
       if (absenceType === '') {
@@ -177,17 +214,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
-    // Validate mandatory photos and descriptions for △ or X items
+    // Validate mandatory descriptions for △ or X items
     const validationErrors = [];
     checklist?.templateItems.forEach(item => {
       const itemState = formState[item.id];
       if (itemState?.checkState === '△' || itemState?.checkState === 'X') {
-        const hasPhotos = itemState.attachments && itemState.attachments.length > 0;
         const hasDescription = itemState.description && itemState.description.trim().length > 0;
 
-        if (!hasPhotos) {
-          validationErrors.push(`"${item.description}" 항목: 사진 첨부 필수`);
-        }
         if (!hasDescription) {
           validationErrors.push(`"${item.description}" 항목: 비고 입력 필수`);
         }
@@ -214,11 +247,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       .map(([type, names]) => `${type}: ${names.join(', ')}`)
       .join(' / ');
 
+    // remarks를 JSON 형식으로 저장 (텍스트, 이미지, 결근자 정보)
+    const remarksData = {
+      text: remarks || '',
+      images: remarksImages || [],
+      absenceInfo: remarksText || '결근자 없음'
+    };
+
     const reportData = {
       teamId: selectedTeam,
       reportDate: date || new Date(),
       managerName: user?.name || 'N/A',
-      remarks: remarksText || '결근자 없음',
+      remarks: JSON.stringify(remarksData),
       site: site,
       results: Object.entries(formState).map(([itemId, data]) => ({
         itemId: parseInt(itemId),
@@ -290,11 +330,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {checklist.templateItems.map(item => {
+              {checklist.templateItems.map((item, index, items) => {
                 const currentItemState = formState[item.id] || {};
+
+                // category별 rowspan 계산
+                const isFirstInCategory = index === 0 || items[index - 1].category !== item.category;
+                const categoryCount = isFirstInCategory
+                  ? items.filter(i => i.category === item.category).length
+                  : 0;
+
                 return (
                   <TableRow key={item.id}>
-                    <TableCell>{item.category}</TableCell>
+                    {isFirstInCategory && (
+                      <TableCell rowSpan={categoryCount} className="align-top font-medium bg-muted/30">
+                        {item.category}
+                      </TableCell>
+                    )}
                     <TableCell>{item.description}</TableCell>
                     <TableCell>
                       <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4">
@@ -327,7 +378,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                               <div className="grid grid-cols-2 gap-2 mt-3">
                                 {currentItemState.attachments.map((file, idx) => (
                                   <div key={idx} className="relative border rounded-lg p-2">
-                                    <img src={file.url} alt={file.name} className="w-full h-20 object-cover rounded" />
+                                    <img
+                                      src={file.url}
+                                      alt={file.name}
+                                      className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                      onClick={() => setEnlargedImage(file.url)}
+                                    />
                                     <p className="text-xs truncate mt-1">{file.name}</p>
                                     <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                                     <Button
@@ -362,6 +418,59 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               )}
             </TableBody>
           </Table>
+
+          {/* 참고 사항 섹션 */}
+          <h3 className="font-semibold text-xl mt-8 mb-4">참고 사항</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* 왼쪽: 참고 사항 텍스트 */}
+            <div className="space-y-2">
+              <Label htmlFor="remarks">참고 사항</Label>
+              <Textarea
+                id="remarks"
+                placeholder="참고 사항을 입력하세요..."
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                rows={6}
+                className="w-full"
+              />
+            </div>
+
+            {/* 오른쪽: 사진 업로드 */}
+            <div className="space-y-2">
+              <Label>사진 첨부</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <Input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={(e) => e.target.files && handleRemarksImageUpload(e.target.files)}
+                  className="mb-4"
+                />
+                {remarksImages.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mt-4">
+                    {remarksImages.map((imageUrl, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={imageUrl}
+                          alt={`참고 사항 ${idx + 1}`}
+                          className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setEnlargedImage(imageUrl)}
+                        />
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => removeRemarksImage(idx)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           <h3 className="font-semibold text-xl mt-8">참석자 서명</h3>
           <Table>
@@ -399,7 +508,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     {signatures[worker.id] ? (
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-green-600">✓ 서명 완료</span>
-                        <img src={signatures[worker.id]} alt={`${worker.name} signature`} className="h-12 w-24 object-contain border rounded"/>
+                        <img
+                          src={signatures[worker.id]}
+                          alt={`${worker.name} signature`}
+                          className="h-12 w-24 object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setEnlargedImage(signatures[worker.id])}
+                        />
                       </div>
                     ) : (
                       <Button
@@ -418,12 +532,33 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </>
       )}
 
-      <SignatureDialog 
+      <SignatureDialog
         isOpen={isSigDialogOpen}
         onClose={() => setIsSigDialogOpen(false)}
         onSave={(signatureData) => { if(signingUser) { setSignatures(prev => ({ ...prev, [signingUser.id]: signatureData })); } setSigningUser(null); }}
         userName={signingUser?.name || ''}
       />
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={!!enlargedImage} onOpenChange={(open) => !open && setEnlargedImage(null)}>
+        <DialogContent className="max-w-4xl w-full p-0">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+              onClick={() => setEnlargedImage(null)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            <img
+              src={enlargedImage}
+              alt="확대된 이미지"
+              className="w-full h-auto max-h-[80vh] object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-end mt-6">
         <Button onClick={handleSubmit} size="lg" disabled={!checklist}>제출하기</Button>

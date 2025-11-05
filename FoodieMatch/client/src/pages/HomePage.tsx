@@ -10,6 +10,37 @@ import { Link } from "wouter";
 import { useState, useEffect } from "react";
 import { FileText, BookOpen, BarChart3, ClipboardCheck } from "lucide-react";
 
+// YouTube URL을 embed URL로 변환
+function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return '';
+
+  // 이미 embed URL인 경우
+  if (url.includes('/embed/')) return url;
+
+  // 다양한 YouTube URL 형식 처리
+  let videoId = '';
+
+  // https://www.youtube.com/watch?v=VIDEO_ID
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) {
+    videoId = watchMatch[1];
+  }
+
+  // https://youtu.be/VIDEO_ID
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) {
+    videoId = shortMatch[1];
+  }
+
+  // https://www.youtube.com/embed/VIDEO_ID
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) {
+    videoId = embedMatch[1];
+  }
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+}
+
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
   const { data: notices = [], isLoading } = useQuery<Notice[]>({
@@ -129,6 +160,22 @@ export default function HomePage() {
                   <div className="text-base md:text-lg leading-relaxed whitespace-pre-wrap">
                     {latestNotice.content}
                   </div>
+                  {latestNotice.videoUrl && (
+                    <div className="mt-6">
+                      {latestNotice.videoType === 'youtube' ? (
+                        <div className="aspect-video">
+                          <iframe
+                            src={getYouTubeEmbedUrl(latestNotice.videoUrl)}
+                            className="w-full h-full rounded"
+                            allowFullScreen
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          />
+                        </div>
+                      ) : (
+                        <video src={latestNotice.videoUrl} controls className="w-full rounded max-h-[600px]" />
+                      )}
+                    </div>
+                  )}
                   {latestNotice.attachmentUrl && (
                     <div className="mt-4">
                       <Button asChild variant="outline" className="text-base">
@@ -245,6 +292,22 @@ export default function HomePage() {
                 <div className="text-base md:text-lg leading-relaxed whitespace-pre-wrap">
                   {latestNotice.content}
                 </div>
+                {latestNotice.videoUrl && (
+                  <div className="mt-6">
+                    {latestNotice.videoType === 'youtube' ? (
+                      <div className="aspect-video">
+                        <iframe
+                          src={getYouTubeEmbedUrl(latestNotice.videoUrl)}
+                          className="w-full h-full rounded"
+                          allowFullScreen
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        />
+                      </div>
+                    ) : (
+                      <video src={latestNotice.videoUrl} controls className="w-full rounded max-h-[600px]" />
+                    )}
+                  </div>
+                )}
                 {latestNotice.attachmentUrl && (
                   <div className="mt-4">
                     <Button asChild variant="outline" className="text-base">

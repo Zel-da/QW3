@@ -1,14 +1,22 @@
 import nodemailer from 'nodemailer';
 
 // Email configuration
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
 const emailConfig = {
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
+  port: smtpPort,
+  secure: smtpPort === 465, // true for 465 (SSL), false for other ports (TLS)
   auth: {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASSWORD || ''
-  }
+  },
+  tls: {
+    rejectUnauthorized: false, // 인증서 검증 완화 (회사 네트워크 환경)
+    minVersion: 'TLSv1' // 최소 TLS 버전
+  },
+  connectionTimeout: 30000, // 30초 타임아웃
+  greetingTimeout: 30000,
+  socketTimeout: 30000
 };
 
 // Create reusable transporter

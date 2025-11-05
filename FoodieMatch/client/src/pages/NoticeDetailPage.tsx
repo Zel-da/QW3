@@ -13,6 +13,37 @@ import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
+// YouTube URL을 embed URL로 변환
+function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return '';
+
+  // 이미 embed URL인 경우
+  if (url.includes('/embed/')) return url;
+
+  // 다양한 YouTube URL 형식 처리
+  let videoId = '';
+
+  // https://www.youtube.com/watch?v=VIDEO_ID
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) {
+    videoId = watchMatch[1];
+  }
+
+  // https://youtu.be/VIDEO_ID
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) {
+    videoId = shortMatch[1];
+  }
+
+  // https://www.youtube.com/embed/VIDEO_ID
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) {
+    videoId = embedMatch[1];
+  }
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+}
+
 const fetchNotice = async (noticeId: string) => {
   const res = await fetch(`/api/notices/${noticeId}`);
   if (!res.ok) throw new Error('Failed to fetch notice');
@@ -188,9 +219,10 @@ export default function NoticeDetailPage() {
                   {notice.videoType === 'youtube' ? (
                     <div className="aspect-video">
                       <iframe
-                        src={notice.videoUrl.replace('watch?v=', 'embed/')}
+                        src={getYouTubeEmbedUrl(notice.videoUrl)}
                         className="w-full h-full rounded"
                         allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       />
                     </div>
                   ) : (

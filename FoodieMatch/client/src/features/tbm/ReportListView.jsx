@@ -207,7 +207,28 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     {stripSiteSuffix(team.teamName)}
                                                 </TableCell>
                                                 {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
-                                                    const status = team.dailyStatuses[day];
+                                                    // 미래 날짜 체크
+                                                    const today = new Date();
+                                                    const cellDate = new Date(attendanceMonth.year, attendanceMonth.month - 1, day);
+                                                    const isFuture = cellDate > today;
+
+                                                    const statusData = team.dailyStatuses[day];
+                                                    const status = statusData?.status;
+                                                    const reportId = statusData?.reportId;
+
+                                                    // 미래 날짜는 빈칸으로 표시
+                                                    if (isFuture) {
+                                                        return (
+                                                            <TableCell
+                                                                key={day}
+                                                                className="border border-slate-300 text-center p-1 bg-gray-50 text-gray-400"
+                                                                title="미래 날짜"
+                                                            >
+                                                                -
+                                                            </TableCell>
+                                                        );
+                                                    }
+
                                                     const bgColor =
                                                         status === 'not-submitted' ? 'bg-red-200' :
                                                         status === 'has-issues' ? 'bg-yellow-200' :
@@ -221,17 +242,29 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                         status === 'has-issues' ? '△' :
                                                         '✓';
 
+                                                    const cellContent = status === 'has-issues' && reportId ? (
+                                                        <a
+                                                            href={`/tbm?reportId=${reportId}`}
+                                                            className="text-yellow-900 hover:underline cursor-pointer font-bold"
+                                                            title="해당 TBM 체크리스트로 이동"
+                                                        >
+                                                            {symbol}
+                                                        </a>
+                                                    ) : (
+                                                        symbol
+                                                    );
+
                                                     return (
                                                         <TableCell
                                                             key={day}
                                                             className={`border border-slate-300 text-center p-1 ${bgColor} ${textColor}`}
                                                             title={
                                                                 status === 'not-submitted' ? '미작성' :
-                                                                status === 'has-issues' ? '세모/엑스 포함' :
+                                                                status === 'has-issues' ? '상세 내역' :
                                                                 '작성완료'
                                                             }
                                                         >
-                                                            {symbol}
+                                                            {cellContent}
                                                         </TableCell>
                                                     );
                                                 })}

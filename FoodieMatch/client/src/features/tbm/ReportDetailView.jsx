@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Terminal, ArrowLeft, X } from "lucide-react";
 
 const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [enlargedImage, setEnlargedImage] = useState(null);
 
     useEffect(() => {
         if (reportId) {
@@ -72,11 +74,26 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
                                     <TableCell>{detail.checkState}</TableCell>
                                     <TableCell>
                                         {detail.actionDescription && <p className="text-sm text-muted-foreground mb-1">내용: {detail.actionDescription}</p>}
-                                        {detail.author?.name && <p className="text-xs text-muted-foreground">작성자: {detail.author.name}</p>}
-                                        {detail.photoUrl ? (
-                                            <a href={detail.photoUrl} target="_blank" rel="noopener noreferrer">
-                                                <img src={detail.photoUrl} alt="Attachment" className="w-24 h-24 object-cover rounded-md" />
-                                            </a>
+                                        {detail.author?.name && <p className="text-xs text-muted-foreground mb-2">작성자: {detail.author.name}</p>}
+                                        {detail.attachments && detail.attachments.length > 0 ? (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {detail.attachments.map((att, idx) => (
+                                                    <img
+                                                        key={idx}
+                                                        src={att.url}
+                                                        alt={att.name || 'Attachment'}
+                                                        className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                        onClick={() => setEnlargedImage(att.url)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : detail.photoUrl ? (
+                                            <img
+                                                src={detail.photoUrl}
+                                                alt="Attachment"
+                                                className="w-24 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => setEnlargedImage(detail.photoUrl)}
+                                            />
                                         ) : '-'}
                                     </TableCell>
                                 </TableRow>
@@ -86,15 +103,48 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
 
                     <h3 className="font-semibold text-lg mt-8 mb-4">서명</h3>
                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {report.reportSignatures.map(sig => (
-                            <div key={sig.id} className="p-4 border rounded-lg text-center bg-gray-100">
-                                <p className="font-semibold">{sig.user.name}</p>
-                                <p className="text-sm text-gray-500">{new Date(sig.signedAt).toLocaleTimeString()}</p>
-                            </div>
-                        ))}
+                        {report.reportSignatures.map(sig => {
+                            // sig.user 또는 sig.teamMember 중 하나를 사용
+                            const signerName = sig.user?.name || sig.teamMember?.name || '알 수 없음';
+                            return (
+                                <div key={sig.id} className="p-4 border rounded-lg text-center bg-gray-50">
+                                    <p className="font-semibold mb-2">{signerName}</p>
+                                    {sig.signatureImage && (
+                                        <img
+                                            src={sig.signatureImage}
+                                            alt={`${signerName} 서명`}
+                                            className="w-full h-20 object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity mb-2"
+                                            onClick={() => setEnlargedImage(sig.signatureImage)}
+                                        />
+                                    )}
+                                    <p className="text-xs text-gray-500">{new Date(sig.signedAt).toLocaleTimeString()}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Image Viewer Dialog */}
+            <Dialog open={!!enlargedImage} onOpenChange={(open) => !open && setEnlargedImage(null)}>
+                <DialogContent className="max-w-4xl w-full p-0">
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                            onClick={() => setEnlargedImage(null)}
+                        >
+                            <X className="h-6 w-6" />
+                        </Button>
+                        <img
+                            src={enlargedImage}
+                            alt="확대된 이미지"
+                            className="w-full h-auto max-h-[80vh] object-contain"
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

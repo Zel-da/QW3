@@ -44,7 +44,7 @@ interface AttendanceOverviewData {
   teams: Array<{
     teamId: number;
     teamName: string;
-    dailyStatuses: { [day: number]: 'not-submitted' | 'completed' | 'has-issues' };
+    dailyStatuses: { [day: number]: { status: 'not-submitted' | 'completed' | 'has-issues', reportId: number | null } };
   }>;
   daysInMonth: number;
 }
@@ -243,7 +243,28 @@ export default function MonthlyReportPage() {
                         {stripSiteSuffix(team.teamName)}
                       </TableCell>
                       {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
-                        const status = team.dailyStatuses[day];
+                        // 미래 날짜 체크
+                        const today = new Date();
+                        const cellDate = new Date(date.year, date.month - 1, day);
+                        const isFuture = cellDate > today;
+
+                        const statusData = team.dailyStatuses[day];
+                        const status = statusData?.status;
+                        const reportId = statusData?.reportId;
+
+                        // 미래 날짜는 빈칸으로 표시
+                        if (isFuture) {
+                          return (
+                            <TableCell
+                              key={day}
+                              className="border border-slate-300 text-center p-1 bg-gray-50 text-gray-400"
+                              title="미래 날짜"
+                            >
+                              -
+                            </TableCell>
+                          );
+                        }
+
                         const bgColor =
                           status === 'not-submitted' ? 'bg-red-200' :
                           status === 'has-issues' ? 'bg-yellow-200' :
@@ -257,17 +278,29 @@ export default function MonthlyReportPage() {
                           status === 'has-issues' ? '△' :
                           '✓';
 
+                        const cellContent = status === 'has-issues' && reportId ? (
+                          <a
+                            href={`/tbm?reportId=${reportId}`}
+                            className="text-yellow-900 hover:underline cursor-pointer font-bold"
+                            title="해당 TBM 체크리스트로 이동"
+                          >
+                            {symbol}
+                          </a>
+                        ) : (
+                          symbol
+                        );
+
                         return (
                           <TableCell
                             key={day}
                             className={`border border-slate-300 text-center p-1 ${bgColor} ${textColor}`}
                             title={
                               status === 'not-submitted' ? '미작성' :
-                              status === 'has-issues' ? '세모/엑스 포함' :
+                              status === 'has-issues' ? '상세 내역' :
                               '작성완료'
                             }
                           >
-                            {symbol}
+                            {cellContent}
                           </TableCell>
                         );
                       })}
@@ -282,7 +315,7 @@ export default function MonthlyReportPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
-                  <span>세모/엑스 포함</span>
+                  <span>상세 내역</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
@@ -410,7 +443,7 @@ export default function MonthlyReportPage() {
               return (
                 <Card className="mt-8">
                   <CardHeader>
-                    <CardTitle className="text-xl text-red-600">⚠️ 세모/엑스 상세 내역 ({problematicItems.length}건)</CardTitle>
+                    <CardTitle className="text-xl text-red-600">⚠️ 상세 내역 ({problematicItems.length}건)</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -429,9 +462,9 @@ export default function MonthlyReportPage() {
                           <TableRow key={index} className={item.checkState === 'X' ? 'bg-red-50' : 'bg-yellow-50'}>
                             <TableCell>
                               <a
-                                href="/tbm"
+                                href={`/tbm?reportId=${item.reportId}`}
                                 className="text-blue-600 hover:underline cursor-pointer"
-                                title="TBM 페이지로 이동 (목록보기에서 해당 날짜 확인)"
+                                title="해당 TBM 체크리스트로 이동"
                               >
                                 {item.date}
                               </a>

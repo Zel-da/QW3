@@ -9,6 +9,37 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 
+// YouTube URL을 embed URL로 변환
+function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return '';
+
+  // 이미 embed URL인 경우
+  if (url.includes('/embed/')) return url;
+
+  // 다양한 YouTube URL 형식 처리
+  let videoId = '';
+
+  // https://www.youtube.com/watch?v=VIDEO_ID
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) {
+    videoId = watchMatch[1];
+  }
+
+  // https://youtu.be/VIDEO_ID
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) {
+    videoId = shortMatch[1];
+  }
+
+  // https://www.youtube.com/embed/VIDEO_ID
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) {
+    videoId = embedMatch[1];
+  }
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+}
+
 export default function NoticeEditor() {
   const [match, params] = useRoute("/notices/edit/:id");
   const noticeId = params?.id;
@@ -127,6 +158,10 @@ export default function NoticeEditor() {
       ...formData,
       attachments: attachments.length > 0 ? attachments : undefined
     };
+
+    console.log('📤 Submitting notice data:', submitData);
+    console.log('📹 Video URL:', submitData.videoUrl);
+    console.log('📹 Video Type:', submitData.videoType);
 
     try {
       const response = await fetch(url, {
@@ -291,9 +326,10 @@ export default function NoticeEditor() {
                     {formData.videoType === 'youtube' ? (
                       <div className="aspect-video">
                         <iframe
-                          src={formData.videoUrl.replace('watch?v=', 'embed/')}
+                          src={getYouTubeEmbedUrl(formData.videoUrl)}
                           className="w-full h-full rounded"
                           allowFullScreen
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />
                       </div>
                     ) : (

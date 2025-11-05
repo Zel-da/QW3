@@ -330,16 +330,6 @@ export default function Dashboard() {
         )}
 
       </main>
-
-      {/* Footer */}
-      <footer className="bg-card border-t border-border mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-sm text-muted-foreground korean-text">
-            <p>&copy; 2024 안전관리 교육 프로그램. All rights reserved.</p>
-            <p className="mt-2">Safety Management Education Program</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

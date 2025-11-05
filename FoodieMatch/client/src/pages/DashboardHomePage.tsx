@@ -77,7 +77,7 @@ export default function DashboardHomePage() {
       icon: Bell,
       color: 'text-blue-500',
       bgColor: 'bg-blue-50 hover:bg-blue-100',
-      path: '/',
+      path: '/notices',
       stats: stats ? `새 공지 ${stats.notices.unread}건` : '공지사항 확인',
       showToAll: true,
     },
@@ -135,15 +135,6 @@ export default function DashboardHomePage() {
           <p className="text-lg text-muted-foreground">
             {user?.name || user?.username}님, 환영합니다
           </p>
-          {user?.role && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {user.role === 'ADMIN' && '관리자'}
-              {user.role === 'SAFETY_TEAM' && '안전보건팀'}
-              {user.role === 'TEAM_LEADER' && '팀장'}
-              {user.role === 'WORKER' && '현장직'}
-              {user.role === 'OFFICE_WORKER' && '사무직'}
-            </p>
-          )}
         </div>
 
         {/* 메뉴 카드 그리드 */}
