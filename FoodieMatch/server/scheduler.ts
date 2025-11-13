@@ -14,15 +14,40 @@ const prisma = new PrismaClient();
 // Store active cron jobs for management
 const activeCronJobs = new Map<string, cron.ScheduledTask>();
 
+// Track running status to prevent duplicate executions
+const runningJobs = new Set<string>();
+
+/**
+ * Wrapper function to prevent duplicate cron job executions
+ * @param jobName - Unique identifier for the job
+ * @param handler - The actual job handler function
+ */
+async function runWithDuplicateProtection(jobName: string, handler: () => Promise<void>) {
+  if (runningJobs.has(jobName)) {
+    console.log(`⚠️ ${jobName} is already running, skipping duplicate execution`);
+    return;
+  }
+
+  runningJobs.add(jobName);
+  try {
+    await handler();
+  } catch (error) {
+    console.error(`❌ Error in ${jobName}:`, error);
+  } finally {
+    runningJobs.delete(jobName);
+  }
+}
+
 /**
  * 매일 오전 7시: 교육 미이수자에게 알림 전송
  */
 export function scheduleEducationReminders() {
   // 매일 오전 7시에 실행
   cron.schedule('0 7 * * *', async () => {
-    console.log('📧 교육 미이수자 알림 전송 시작...');
+    await runWithDuplicateProtection('EducationReminders', async () => {
+      console.log('📧 교육 미이수자 알림 전송 시작...');
 
-    try {
+      try {
       const today = new Date();
       const sevenDaysLater = new Date(today);
       sevenDaysLater.setDate(today.getDate() + 7);
@@ -63,9 +88,10 @@ export function scheduleEducationReminders() {
 
         console.log(`✅ ${course.title} - ${incompleteUsers.length}명에게 알림 전송`);
       }
-    } catch (error) {
-      console.error('❌ 교육 알림 전송 실패:', error);
-    }
+      } catch (error) {
+        console.error('❌ 교육 알림 전송 실패:', error);
+      }
+    });
   });
 
   console.log('⏰ 교육 미이수자 알림 스케줄러 시작 (매일 오전 7시)');
@@ -448,8 +474,10 @@ export function stopSchedule(scheduleId: string) {
 export function scheduleConditionalEmailCheck() {
   // 매 시간마다 실행 (정각에)
   cron.schedule('0 * * * *', async () => {
-    console.log('⏰ 조건부 이메일 체크 시작...');
-    await executeAllConditions();
+    await runWithDuplicateProtection('ConditionalEmailCheck', async () => {
+      console.log('⏰ 조건부 이메일 체크 시작...');
+      await executeAllConditions();
+    });
   });
 
   console.log('⏰ 조건부 이메일 체크 스케줄러 시작 (매 시간 정각)');

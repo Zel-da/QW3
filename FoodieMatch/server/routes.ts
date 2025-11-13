@@ -1,5 +1,5 @@
 import express from "express";
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
@@ -102,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const requireAuth = (req: any, res: any, next: any) => {
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.user) {
       return res.status(401).json({ message: "인증이 필요합니다" });
     }
@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // RBAC Middleware: Require specific role(s)
   const requireRole = (...allowedRoles: string[]) => {
-    return (req: any, res: any, next: any) => {
+    return (req: Request, res: Response, next: NextFunction) => {
       if (!req.session.user) {
         return res.status(401).json({ message: "로그인이 필요합니다" });
       }
@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // RBAC Middleware: Require ownership or admin role
   const requireOwnership = (userIdParam: string = 'userId') => {
-    return (req: any, res: any, next: any) => {
+    return (req: Request, res: Response, next: NextFunction) => {
       if (!req.session.user) {
         return res.status(401).json({ message: "로그인이 필요합니다" });
       }
@@ -586,13 +586,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 추가
-  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
+  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { teamId } = req.params;
       const { name, position } = req.body;
 
       if (!name || name.trim().length === 0) {
         return res.status(400).json({ message: "팀원 이름은 필수입니다" });
+      }
+
+      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user.role === 'TEAM_LEADER') {
+        const team = await prisma.team.findUnique({
+          where: { id: parseInt(teamId) }
+        });
+
+        if (!team || team.leaderId !== req.session.user.id) {
+          return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
+        }
       }
 
       const teamMember = await prisma.teamMember.create({
@@ -612,13 +623,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 정보 수정
-  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
+  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { memberId } = req.params;
+      const { teamId, memberId } = req.params;
       const { name, position, isActive } = req.body;
 
       if (!name || name.trim().length === 0) {
         return res.status(400).json({ message: "팀원 이름은 필수입니다" });
+      }
+
+      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user.role === 'TEAM_LEADER') {
+        const team = await prisma.team.findUnique({
+          where: { id: parseInt(teamId) }
+        });
+
+        if (!team || team.leaderId !== req.session.user.id) {
+          return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
+        }
       }
 
       const teamMember = await prisma.teamMember.update({
@@ -638,9 +660,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 삭제 (soft delete)
-  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM', 'WORKER'), async (req, res) => {
+  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { memberId } = req.params;
+      const { teamId, memberId } = req.params;
+
+      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user.role === 'TEAM_LEADER') {
+        const team = await prisma.team.findUnique({
+          where: { id: parseInt(teamId) }
+        });
+
+        if (!team || team.leaderId !== req.session.user.id) {
+          return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
+        }
+      }
 
       await prisma.teamMember.update({
         where: { id: parseInt(memberId) },
@@ -4213,6 +4246,785 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== EMAIL NOTIFICATION API ==========
+
+  // ==================== Email Template Management ====================
+
+  // Get all email templates
+  app.get('/api/email/templates', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const templates = await prisma.emailTemplate.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching email templates:', error);
+      res.status(500).json({ message: 'Failed to fetch email templates' });
+    }
+  });
+
+  // Get single email template by ID
+  app.get('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!template) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      res.json(template);
+    } catch (error) {
+      console.error('Error fetching email template:', error);
+      res.status(500).json({ message: 'Failed to fetch email template' });
+    }
+  });
+
+  // Create new email template
+  app.post('/api/email/templates', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { type, name, subject, body, description } = req.body;
+
+      if (!type || !name || !subject || !body) {
+        return res.status(400).json({ message: 'Missing required fields: type, name, subject, body' });
+      }
+
+      const template = await prisma.emailTemplate.create({
+        data: {
+          type,
+          name,
+          subject,
+          body,
+          description: description || null
+        }
+      });
+
+      res.json(template);
+    } catch (error) {
+      console.error('Error creating email template:', error);
+      res.status(500).json({ message: 'Failed to create email template' });
+    }
+  });
+
+  // Update email template
+  app.put('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type, name, subject, body, description } = req.body;
+
+      const existingTemplate = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingTemplate) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      const template = await prisma.emailTemplate.update({
+        where: { id: parseInt(id) },
+        data: {
+          type: type !== undefined ? type : existingTemplate.type,
+          name: name !== undefined ? name : existingTemplate.name,
+          subject: subject !== undefined ? subject : existingTemplate.subject,
+          body: body !== undefined ? body : existingTemplate.body,
+          description: description !== undefined ? description : existingTemplate.description
+        }
+      });
+
+      res.json(template);
+    } catch (error) {
+      console.error('Error updating email template:', error);
+      res.status(500).json({ message: 'Failed to update email template' });
+    }
+  });
+
+  // Delete email template
+  app.delete('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingTemplate = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingTemplate) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      // Check if template is used by any conditions or schedules
+      const [conditionsCount, schedulesCount] = await Promise.all([
+        prisma.emailCondition.count({ where: { templateId: parseInt(id) } }),
+        prisma.emailSchedule.count({ where: { templateId: parseInt(id) } })
+      ]);
+
+      if (conditionsCount > 0 || schedulesCount > 0) {
+        return res.status(400).json({
+          message: `Cannot delete template: ${conditionsCount} condition(s) and ${schedulesCount} schedule(s) are using this template.`
+        });
+      }
+
+      await prisma.emailTemplate.delete({
+        where: { id: parseInt(id) }
+      });
+
+      res.json({ message: 'Template deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting email template:', error);
+      res.status(500).json({ message: 'Failed to delete email template' });
+    }
+  });
+
+  // ==================== Email Condition Management ====================
+
+  // Get all email conditions
+  app.get('/api/email/conditions', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const conditions = await prisma.emailCondition.findMany({
+        include: {
+          template: true,
+          specificUser: {
+            select: { id: true, name: true, email: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(conditions);
+    } catch (error) {
+      console.error('Error fetching email conditions:', error);
+      res.status(500).json({ message: 'Failed to fetch email conditions' });
+    }
+  });
+
+  // Get single email condition by ID
+  app.get('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const condition = await prisma.emailCondition.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          template: true,
+          specificUser: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      });
+
+      if (!condition) {
+        return res.status(404).json({ message: 'Condition not found' });
+      }
+
+      res.json(condition);
+    } catch (error) {
+      console.error('Error fetching email condition:', error);
+      res.status(500).json({ message: 'Failed to fetch email condition' });
+    }
+  });
+
+  // Create new email condition
+  app.post('/api/email/conditions', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { conditionType, templateId, parameters, recipientType, specificUserId, isActive } = req.body;
+
+      if (!conditionType || !templateId || !recipientType) {
+        return res.status(400).json({ message: 'Missing required fields: conditionType, templateId, recipientType' });
+      }
+
+      // Validate template exists
+      const template = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(templateId) }
+      });
+
+      if (!template) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      // If recipientType is SPECIFIC_USER, validate specificUserId
+      if (recipientType === 'SPECIFIC_USER' && !specificUserId) {
+        return res.status(400).json({ message: 'specificUserId is required when recipientType is SPECIFIC_USER' });
+      }
+
+      const condition = await prisma.emailCondition.create({
+        data: {
+          conditionType,
+          templateId: parseInt(templateId),
+          parameters: parameters || {},
+          recipientType,
+          specificUserId: specificUserId ? parseInt(specificUserId) : null,
+          isActive: isActive !== undefined ? isActive : true
+        },
+        include: {
+          template: true,
+          specificUser: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      });
+
+      res.json(condition);
+    } catch (error) {
+      console.error('Error creating email condition:', error);
+      res.status(500).json({ message: 'Failed to create email condition' });
+    }
+  });
+
+  // Update email condition
+  app.put('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { conditionType, templateId, parameters, recipientType, specificUserId, isActive } = req.body;
+
+      const existingCondition = await prisma.emailCondition.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingCondition) {
+        return res.status(404).json({ message: 'Condition not found' });
+      }
+
+      // If templateId is being updated, validate it exists
+      if (templateId !== undefined) {
+        const template = await prisma.emailTemplate.findUnique({
+          where: { id: parseInt(templateId) }
+        });
+
+        if (!template) {
+          return res.status(404).json({ message: 'Template not found' });
+        }
+      }
+
+      const condition = await prisma.emailCondition.update({
+        where: { id: parseInt(id) },
+        data: {
+          conditionType: conditionType !== undefined ? conditionType : existingCondition.conditionType,
+          templateId: templateId !== undefined ? parseInt(templateId) : existingCondition.templateId,
+          parameters: parameters !== undefined ? parameters : existingCondition.parameters,
+          recipientType: recipientType !== undefined ? recipientType : existingCondition.recipientType,
+          specificUserId: specificUserId !== undefined ? (specificUserId ? parseInt(specificUserId) : null) : existingCondition.specificUserId,
+          isActive: isActive !== undefined ? isActive : existingCondition.isActive
+        },
+        include: {
+          template: true,
+          specificUser: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      });
+
+      res.json(condition);
+    } catch (error) {
+      console.error('Error updating email condition:', error);
+      res.status(500).json({ message: 'Failed to update email condition' });
+    }
+  });
+
+  // Delete email condition
+  app.delete('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingCondition = await prisma.emailCondition.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingCondition) {
+        return res.status(404).json({ message: 'Condition not found' });
+      }
+
+      await prisma.emailCondition.delete({
+        where: { id: parseInt(id) }
+      });
+
+      res.json({ message: 'Condition deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting email condition:', error);
+      res.status(500).json({ message: 'Failed to delete email condition' });
+    }
+  });
+
+  // Test email condition (dry run - shows what would be sent without actually sending)
+  app.post('/api/email/conditions/:id/test', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { testCondition } = await import('./conditionExecutor');
+
+      const result = await testCondition(parseInt(id));
+      res.json(result);
+    } catch (error) {
+      console.error('Error testing email condition:', error);
+      res.status(500).json({ message: 'Failed to test email condition', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Execute email condition (actually send emails)
+  app.post('/api/email/conditions/:id/execute', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { executeSingleCondition } = await import('./conditionExecutor');
+
+      const result = await executeSingleCondition(parseInt(id));
+      res.json(result);
+    } catch (error) {
+      console.error('Error executing email condition:', error);
+      res.status(500).json({ message: 'Failed to execute email condition', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // ==================== Email Schedule Management ====================
+
+  // Get all email schedules
+  app.get('/api/email/schedules', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const schedules = await prisma.emailSchedule.findMany({
+        include: {
+          template: true,
+          condition: {
+            include: {
+              template: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(schedules);
+    } catch (error) {
+      console.error('Error fetching email schedules:', error);
+      res.status(500).json({ message: 'Failed to fetch email schedules' });
+    }
+  });
+
+  // Get single email schedule by ID
+  app.get('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const schedule = await prisma.emailSchedule.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          template: true,
+          condition: {
+            include: {
+              template: true
+            }
+          }
+        }
+      });
+
+      if (!schedule) {
+        return res.status(404).json({ message: 'Schedule not found' });
+      }
+
+      res.json(schedule);
+    } catch (error) {
+      console.error('Error fetching email schedule:', error);
+      res.status(500).json({ message: 'Failed to fetch email schedule' });
+    }
+  });
+
+  // Create new email schedule
+  app.post('/api/email/schedules', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { templateId, conditionId, cronExpression, isActive } = req.body;
+
+      if (!cronExpression) {
+        return res.status(400).json({ message: 'cronExpression is required' });
+      }
+
+      // Must have either templateId or conditionId, but not both
+      if ((!templateId && !conditionId) || (templateId && conditionId)) {
+        return res.status(400).json({ message: 'Must specify either templateId or conditionId, but not both' });
+      }
+
+      // Validate template or condition exists
+      if (templateId) {
+        const template = await prisma.emailTemplate.findUnique({
+          where: { id: parseInt(templateId) }
+        });
+        if (!template) {
+          return res.status(404).json({ message: 'Template not found' });
+        }
+      }
+
+      if (conditionId) {
+        const condition = await prisma.emailCondition.findUnique({
+          where: { id: parseInt(conditionId) }
+        });
+        if (!condition) {
+          return res.status(404).json({ message: 'Condition not found' });
+        }
+      }
+
+      const schedule = await prisma.emailSchedule.create({
+        data: {
+          templateId: templateId ? parseInt(templateId) : null,
+          conditionId: conditionId ? parseInt(conditionId) : null,
+          cronExpression,
+          isActive: isActive !== undefined ? isActive : true
+        },
+        include: {
+          template: true,
+          condition: {
+            include: {
+              template: true
+            }
+          }
+        }
+      });
+
+      // Reload scheduler to pick up the new schedule
+      try {
+        const { reloadSchedule } = await import('./scheduler');
+        await reloadSchedule(schedule.id);
+      } catch (scheduleError) {
+        console.error('Failed to activate new schedule:', scheduleError);
+        // Don't fail the request, just log the error
+      }
+
+      res.json(schedule);
+    } catch (error) {
+      console.error('Error creating email schedule:', error);
+      res.status(500).json({ message: 'Failed to create email schedule' });
+    }
+  });
+
+  // Update email schedule
+  app.put('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { templateId, conditionId, cronExpression, isActive } = req.body;
+
+      const existingSchedule = await prisma.emailSchedule.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingSchedule) {
+        return res.status(404).json({ message: 'Schedule not found' });
+      }
+
+      // Validate template or condition if being updated
+      if (templateId !== undefined) {
+        const template = await prisma.emailTemplate.findUnique({
+          where: { id: parseInt(templateId) }
+        });
+        if (!template) {
+          return res.status(404).json({ message: 'Template not found' });
+        }
+      }
+
+      if (conditionId !== undefined) {
+        const condition = await prisma.emailCondition.findUnique({
+          where: { id: parseInt(conditionId) }
+        });
+        if (!condition) {
+          return res.status(404).json({ message: 'Condition not found' });
+        }
+      }
+
+      const schedule = await prisma.emailSchedule.update({
+        where: { id: parseInt(id) },
+        data: {
+          templateId: templateId !== undefined ? (templateId ? parseInt(templateId) : null) : existingSchedule.templateId,
+          conditionId: conditionId !== undefined ? (conditionId ? parseInt(conditionId) : null) : existingSchedule.conditionId,
+          cronExpression: cronExpression !== undefined ? cronExpression : existingSchedule.cronExpression,
+          isActive: isActive !== undefined ? isActive : existingSchedule.isActive
+        },
+        include: {
+          template: true,
+          condition: {
+            include: {
+              template: true
+            }
+          }
+        }
+      });
+
+      // Reload scheduler to apply the changes
+      try {
+        const { reloadSchedule } = await import('./scheduler');
+        await reloadSchedule(schedule.id);
+      } catch (scheduleError) {
+        console.error('Failed to reload schedule:', scheduleError);
+        // Don't fail the request, just log the error
+      }
+
+      res.json(schedule);
+    } catch (error) {
+      console.error('Error updating email schedule:', error);
+      res.status(500).json({ message: 'Failed to update email schedule' });
+    }
+  });
+
+  // Delete email schedule
+  app.delete('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingSchedule = await prisma.emailSchedule.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!existingSchedule) {
+        return res.status(404).json({ message: 'Schedule not found' });
+      }
+
+      // Stop the scheduler for this schedule before deleting
+      try {
+        const { stopSchedule } = await import('./scheduler');
+        await stopSchedule(parseInt(id));
+      } catch (scheduleError) {
+        console.error('Failed to stop schedule:', scheduleError);
+        // Continue with deletion anyway
+      }
+
+      await prisma.emailSchedule.delete({
+        where: { id: parseInt(id) }
+      });
+
+      res.json({ message: 'Schedule deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting email schedule:', error);
+      res.status(500).json({ message: 'Failed to delete email schedule' });
+    }
+  });
+
+  // ==================== Email Send Logs ====================
+
+  // Get email send logs with pagination and filtering
+  app.get('/api/email/send-logs', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { page = '1', limit = '50', status, conditionId, scheduleId, startDate, endDate } = req.query;
+
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
+      const skip = (pageNum - 1) * limitNum;
+
+      const where: any = {};
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (conditionId) {
+        where.conditionId = parseInt(conditionId as string);
+      }
+
+      if (scheduleId) {
+        where.scheduleId = parseInt(scheduleId as string);
+      }
+
+      if (startDate || endDate) {
+        where.sentAt = {};
+        if (startDate) {
+          where.sentAt.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          where.sentAt.lte = new Date(endDate as string);
+        }
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.emailSendLog.findMany({
+          where,
+          include: {
+            condition: {
+              include: {
+                template: true
+              }
+            },
+            schedule: {
+              include: {
+                template: true,
+                condition: true
+              }
+            }
+          },
+          orderBy: { sentAt: 'desc' },
+          skip,
+          take: limitNum
+        }),
+        prisma.emailSendLog.count({ where })
+      ]);
+
+      res.json({
+        logs,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching email send logs:', error);
+      res.status(500).json({ message: 'Failed to fetch email send logs' });
+    }
+  });
+
+  // Get email send statistics
+  app.get('/api/email/send-logs/stats', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+
+      const where: any = {};
+
+      if (startDate || endDate) {
+        where.sentAt = {};
+        if (startDate) {
+          where.sentAt.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          where.sentAt.lte = new Date(endDate as string);
+        }
+      }
+
+      const [total, sent, failed, bounced, recentLogs] = await Promise.all([
+        prisma.emailSendLog.count({ where }),
+        prisma.emailSendLog.count({ where: { ...where, status: 'sent' } }),
+        prisma.emailSendLog.count({ where: { ...where, status: 'failed' } }),
+        prisma.emailSendLog.count({ where: { ...where, status: 'bounced' } }),
+        prisma.emailSendLog.findMany({
+          where,
+          include: {
+            condition: {
+              include: {
+                template: true
+              }
+            },
+            schedule: {
+              include: {
+                template: true
+              }
+            }
+          },
+          orderBy: { sentAt: 'desc' },
+          take: 10
+        })
+      ]);
+
+      res.json({
+        total,
+        sent,
+        failed,
+        bounced,
+        successRate: total > 0 ? ((sent / total) * 100).toFixed(2) : '0.00',
+        recentLogs
+      });
+    } catch (error) {
+      console.error('Error fetching email send statistics:', error);
+      res.status(500).json({ message: 'Failed to fetch email send statistics' });
+    }
+  });
+
+  // ==================== Email Utility APIs ====================
+
+  // Preview email template with variable substitution
+  app.post('/api/email/template-preview', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { templateId, variables } = req.body;
+
+      if (!templateId) {
+        return res.status(400).json({ message: 'templateId is required' });
+      }
+
+      const template = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(templateId) }
+      });
+
+      if (!template) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      // Replace variables in subject and body
+      let subject = template.subject;
+      let body = template.body;
+
+      if (variables && typeof variables === 'object') {
+        Object.entries(variables).forEach(([key, value]) => {
+          const regex = new RegExp(`{{${key}}}`, 'g');
+          subject = subject.replace(regex, String(value));
+          body = body.replace(regex, String(value));
+        });
+      }
+
+      res.json({
+        template: {
+          id: template.id,
+          type: template.type,
+          name: template.name
+        },
+        preview: {
+          subject,
+          body
+        },
+        originalVariables: template.body.match(/{{([^}]+)}}/g) || []
+      });
+    } catch (error) {
+      console.error('Error previewing email template:', error);
+      res.status(500).json({ message: 'Failed to preview email template' });
+    }
+  });
+
+  // Send test email using a template
+  app.post('/api/email/test-template', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { templateId, to, variables } = req.body;
+
+      if (!templateId || !to) {
+        return res.status(400).json({ message: 'templateId and to are required' });
+      }
+
+      const template = await prisma.emailTemplate.findUnique({
+        where: { id: parseInt(templateId) }
+      });
+
+      if (!template) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      // Replace variables in subject and body
+      let subject = template.subject;
+      let body = template.body;
+
+      if (variables && typeof variables === 'object') {
+        Object.entries(variables).forEach(([key, value]) => {
+          const regex = new RegExp(`{{${key}}}`, 'g');
+          subject = subject.replace(regex, String(value));
+          body = body.replace(regex, String(value));
+        });
+      }
+
+      // Add test prefix to subject
+      subject = `[TEST] ${subject}`;
+
+      const { sendEmail } = await import('./emailService');
+      const result = await sendEmail({
+        to,
+        subject,
+        html: body
+      });
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Test email sent successfully',
+          messageId: result.messageId,
+          sentTo: to,
+          template: {
+            id: template.id,
+            name: template.name
+          }
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send test email',
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Error sending test email with template:', error);
+      res.status(500).json({ message: 'Failed to send test email with template', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
 
   // Send test email
   app.post('/api/email/test', requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {

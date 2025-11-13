@@ -27,6 +27,9 @@ model User {
   reportDetails          ReportDetail[]
   requestedApprovals     ApprovalRequest[] @relation("ApprovalRequester") // 신규: 내가 요청한 결재
   approvalsToApprove     ApprovalRequest[] @relation("ApprovalApprover")  // 신규: 내가 승인할 결재
+  userProgress           UserProgress[]    // 사용자의 교육 진행 상황
+  userAssessments        UserAssessment[]  // 사용자의 평가 기록
+  certificates           Certificate[]     // 사용자의 수료증
 
   @@index([teamId])
   @@index([role])
@@ -103,6 +106,7 @@ model UserProgress {
   currentStep  Int      @default(1)
   timeSpent    Int      @default(0)
   lastAccessed DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -130,6 +134,7 @@ model UserAssessment {
   passed         Boolean
   attemptNumber  Int      @default(1)
   completedAt    DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -142,6 +147,7 @@ model Certificate {
   courseId       String
   certificateUrl String
   issuedAt       DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([userId])

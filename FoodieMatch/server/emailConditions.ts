@@ -125,6 +125,7 @@ export async function checkMonthlyReportCompleted(
 
 /**
  * EDUCATION_OVERDUE: 교육 기한이 N일 지난 사용자에게 알림
+ * 최적화: N+1 쿼리 문제 해결 (모든 진행상황을 한 번에 조회)
  */
 export async function checkEducationOverdue(
   parameters: Record<string, any>
@@ -138,11 +139,24 @@ export async function checkEducationOverdue(
       where: { isActive: true }
     });
 
-    // 모든 사용자 조회
+    // 활성 교육 과정이 없으면 조기 리턴
+    if (activeCourses.length === 0) {
+      return { shouldSend: false, recipients: [] };
+    }
+
+    // 모든 사용자와 진행상황을 한 번에 조회 (N+1 문제 해결)
     const users = await prisma.user.findMany({
       where: {
         email: { not: null },
         role: { not: 'ADMIN' } // 관리자는 제외
+      },
+      include: {
+        userProgress: {
+          where: {
+            completed: false,
+            courseId: { in: activeCourses.map(c => c.id) }
+          }
+        }
       }
     });
 
@@ -150,17 +164,9 @@ export async function checkEducationOverdue(
     for (const user of users) {
       if (!user.email) continue;
 
-      // 해당 사용자의 진행 상황 조회
-      const userProgressList = await prisma.userProgress.findMany({
-        where: {
-          userId: user.id,
-          completed: false
-        }
-      });
-
       for (const course of activeCourses) {
         // 해당 과정의 진행상황 확인
-        const progress = userProgressList.find(p => p.courseId === course.id);
+        const progress = user.userProgress.find(p => p.courseId === course.id);
 
         // 진행 중이지만 완료하지 않은 경우
         if (progress && !progress.completed) {
