@@ -100,8 +100,17 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // 에러 로깅 (스택 트레이스 포함)
+    logger.error('Express error handler:', {
+      status,
+      message,
+      stack: err.stack,
+      url: _req.url,
+      method: _req.method
+    });
+
     res.status(status).json({ message });
-    throw err;
+    // throw err 제거: 이미 응답을 보냈으므로 서버 크래시 방지
   });
 
   // importantly only setup vite in development and after

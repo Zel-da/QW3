@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Terminal, ArrowLeft, X } from "lucide-react";
 
-const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
+const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify }) => {
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -44,7 +44,9 @@ const ReportDetailView = ({ reportId, onBackToList, onModify }) => {
             <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={onBackToList}><ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기</Button>
                 <div className="flex gap-2">
-                    <Button onClick={() => onModify(report.id)}>이 점검표 수정하기</Button>
+                    <Button onClick={() => onModify(report.id)} disabled={isLoadingModify}>
+                        {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
+                    </Button>
                     <Button variant="destructive" onClick={handleDelete}>삭제</Button>
                 </div>
             </div>

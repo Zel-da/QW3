@@ -20,6 +20,7 @@ model User {
   team                   Team?             @relation("TeamMembers", fields: [teamId], references: [id])
   ledTeams               Team[]            @relation("TeamLeader")
   approverTeams          Team[]            @relation("TeamApprover")      // 신규: 내가 결재자인 팀들
+  teamMemberProfile      TeamMember?       @relation("TeamMemberUser")    // 신규: TeamMember 프로필 연결
   notices                Notice[]
   createdApprovals       MonthlyApproval[] @relation("Approver")
   signatures             ReportSignature[]
@@ -177,17 +178,20 @@ model Team {
 model TeamMember {
   id               Int               @id @default(autoincrement())
   teamId           Int
+  userId           String?           @unique // User 계정 연결 (선택적) - 교육 진행률 추적용
   name             String            // 팀원 이름
   position         String?           // 직책
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user             User?             @relation("TeamMemberUser", fields: [userId], references: [id], onDelete: SetNull)
   reportSignatures ReportSignature[]
   absenceRecords   AbsenceRecord[]
 
   @@index([teamId])
   @@index([teamId, isActive])
+  @@index([userId])
   @@map("TeamMembers")
 }
 

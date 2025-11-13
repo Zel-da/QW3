@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/context/AuthContext";
 import { stripSiteSuffix } from '@/lib/utils';
 import { SITES } from '@/lib/constants';
+import { useToast } from "@/hooks/use-toast";
 
 export default function TbmPage() {
   const [view, setView] = useState('checklist');
@@ -30,6 +31,8 @@ export default function TbmPage() {
   const { site, setSite } = useSite();
   const { user } = useAuth();
   const [location] = useLocation();
+  const { toast } = useToast();
+  const [isLoadingModify, setIsLoadingModify] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -54,9 +57,14 @@ export default function TbmPage() {
         window.history.replaceState({}, '', '/tbm');
       }).catch(err => {
         console.error("Failed to load report from URL:", err);
+        toast({
+          title: "리포트 로드 실패",
+          description: err.response?.data?.message || "리포트를 불러오는 중 오류가 발생했습니다.",
+          variant: "destructive"
+        });
       });
     }
-  }, []);
+  }, [toast]);
 
   const handleSelectReport = useCallback((reportId: number) => {
     setReportForEdit({ id: reportId }); 
@@ -64,6 +72,7 @@ export default function TbmPage() {
   }, []);
 
   const handleModifyReport = useCallback((reportId: number) => {
+    setIsLoadingModify(true);
     axios.get(`/api/reports/${reportId}`).then(res => {
       const report = res.data;
       setReportForEdit(report);
@@ -71,8 +80,15 @@ export default function TbmPage() {
       setView('checklist');
     }).catch(err => {
       console.error("Failed to fetch report for editing:", err);
+      toast({
+        title: "수정 불러오기 실패",
+        description: err.response?.data?.message || "리포트를 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+    }).finally(() => {
+      setIsLoadingModify(false);
     });
-  }, []);
+  }, [toast]);
 
   const handleBackToList = useCallback(() => {
     setReportForEdit(null);
@@ -91,7 +107,7 @@ export default function TbmPage() {
       case 'list':
         return <ReportListView onSelectReport={handleSelectReport} onBack={() => setView('checklist')} site={site} />;
       case 'detail':
-        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} />;
+        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} isLoadingModify={isLoadingModify} />;
       case 'checklist':
       default:
         return <TBMChecklist reportForEdit={reportForEdit} onFinishEditing={handleFinishEditing} date={date} site={site} />;

@@ -275,7 +275,9 @@ export default function MonthlyReportPage() {
     return filtered;
   }, [attendanceOverview?.teams, searchQuery, filterNoApproval, filterNoEducation, filterHasIssues]);
 
-  // Team education statistics
+  // 팀원별 교육 통계 (Team education statistics)
+  // TeamMember는 userId를 통해 User와 연결되며, User의 교육 진행률을 추적
+  // userId가 없는 TeamMember는 교육 통계에서 제외됨
   const teamEducationStats = useMemo(() => {
     if (!educationData || !selectedTeam || !teams || !teamMembers) return null;
 
@@ -287,9 +289,13 @@ export default function MonthlyReportPage() {
 
     const totalCourses = educationData.courses.length;
     const stats = teamMembers.map(member => {
-      const user = educationData.users.find(u => u.id === member.userId);
-      if (!user) return null;
+      // TeamMember.userId로 User 조회 (User 계정이 연결된 경우에만 교육 추적 가능)
+      if (!member.userId) return null; // userId가 없으면 교육 추적 불가
 
+      const user = educationData.users.find(u => u.id === member.userId);
+      if (!user) return null; // User를 찾지 못하면 교육 추적 불가
+
+      // 사용자의 모든 교육 진행률 조회
       const memberProgress = educationData.allProgress.filter(p => p.userId === user.id);
       const completedCourses = memberProgress.filter(p => p.completed).length;
       const inProgressCourses = memberProgress.filter(p => !p.completed && p.progress > 0).length;
@@ -308,7 +314,7 @@ export default function MonthlyReportPage() {
         status: completedCourses === totalCourses && totalCourses > 0 ? 'completed' :
                 inProgressCourses > 0 || completedCourses > 0 ? 'in-progress' : 'not-started'
       };
-    }).filter(Boolean);
+    }).filter(Boolean); // null 값 제거 (userId가 없거나 User를 찾지 못한 TeamMember)
 
     return stats;
   }, [educationData, selectedTeam, teams, teamMembers]);
@@ -728,12 +734,12 @@ export default function MonthlyReportPage() {
                 </Button>
                 <Button
                   onClick={handleApprovalRequest}
-                  disabled={!selectedTeam}
+                  disabled={!selectedTeam || approvalMutation.isPending}
                   variant="default"
                   size="sm"
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
-                  결재 요청
+                  {approvalMutation.isPending ? '결재 요청 중...' : '결재 요청'}
                 </Button>
               </div>
             </div>

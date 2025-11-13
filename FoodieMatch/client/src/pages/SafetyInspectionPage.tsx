@@ -58,6 +58,7 @@ export default function SafetyInspectionPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [uploadedItems, setUploadedItems] = useState<Record<string, { photoUrl: string; remarks: string }>>({});
+  const [uploadingEquipment, setUploadingEquipment] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -113,6 +114,7 @@ export default function SafetyInspectionPage() {
     }
 
     try {
+      setUploadingEquipment(equipmentName);
       const formData = new FormData();
       formData.append('files', file);
 
@@ -132,6 +134,8 @@ export default function SafetyInspectionPage() {
       toast({ title: "성공", description: "사진이 업로드되었습니다." });
     } catch (err) {
       toast({ title: "오류", description: "사진 업로드에 실패했습니다.", variant: "destructive" });
+    } finally {
+      setUploadingEquipment(null);
     }
   };
 
@@ -378,10 +382,22 @@ export default function SafetyInspectionPage() {
                             </div>
                           ) : (
                             <div>
-                              <Label htmlFor={`photo-${template.id}`} className="cursor-pointer">
+                              <Label
+                                htmlFor={`photo-${template.id}`}
+                                className={uploadingEquipment === template.equipmentName ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                              >
                                 <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-md hover:bg-muted">
-                                  <Camera className="h-5 w-5" />
-                                  <span>사진 업로드</span>
+                                  {uploadingEquipment === template.equipmentName ? (
+                                    <>
+                                      <Upload className="h-5 w-5 animate-pulse" />
+                                      <span>업로드 중...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Camera className="h-5 w-5" />
+                                      <span>사진 업로드</span>
+                                    </>
+                                  )}
                                 </div>
                               </Label>
                               <Input
@@ -389,6 +405,7 @@ export default function SafetyInspectionPage() {
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
+                                disabled={uploadingEquipment === template.equipmentName}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) handlePhotoUpload(template.equipmentName, file);

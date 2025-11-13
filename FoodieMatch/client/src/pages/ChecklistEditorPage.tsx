@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, PlusCircle, GripVertical } from 'lucide-react';
 import { stripSiteSuffix } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
   closestCenter,
@@ -95,6 +96,7 @@ function SortableItem({ item, index, onItemChange, onRemove }: SortableItemProps
 
 export default function ChecklistEditorPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [editingItems, setEditingItems] = useState<any[]>([]);
 
@@ -130,6 +132,17 @@ export default function ChecklistEditorPage() {
     mutationFn: updateTemplate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklistTemplate', selectedTeam] });
+      toast({
+        title: "저장 완료",
+        description: "체크리스트가 성공적으로 저장되었습니다."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "저장 실패",
+        description: error.response?.data?.message || error.message || "저장 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
     }
   });
 

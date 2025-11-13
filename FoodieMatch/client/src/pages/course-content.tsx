@@ -10,6 +10,12 @@ import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import {
+  PROGRESS_SAVE_INTERVAL,
+  SECONDS_PER_MINUTE,
+  PROGRESS_TIMER_INTERVAL,
+  MAX_PROGRESS_PERCENT,
+} from "@/config/constants";
 
 const getYouTubeId = (url: string): string | null => {
   if (!url) return null;
@@ -45,7 +51,9 @@ export default function CourseContentPage() {
 
   const [timeSpent, setTimeSpent] = useState(0);
   const [progressLoaded, setProgressLoaded] = useState(false);
+  const [isNavigatingToAssessment, setIsNavigatingToAssessment] = useState(false);
   const timeSpentRef = useRef(timeSpent); // Ref to hold the latest timeSpent
+  const isSavingRef = useRef(false); // 중복 저장 방지 플래그
 
   useEffect(() => {
     timeSpentRef.current = timeSpent;
@@ -78,33 +86,54 @@ export default function CourseContentPage() {
     },
   });
 
-  // Stable function to save progress
-  const saveProgress = useCallback(() => {
+  // Stable function to save progress (debounced with save flag)
+  const saveProgress = useCallback(async () => {
     if (!user?.id || !courseId || !course) return;
 
-    let currentProgress: number;
-
-    // If duration is 0, immediately set to 100%
-    if (course.duration === 0) {
-      currentProgress = 100;
-    } else {
-      currentProgress = Math.min(Math.floor((timeSpentRef.current / (course.duration * 60)) * 100), 100);
+    // 중복 저장 방지: 이미 저장 중이면 스킵
+    if (isSavingRef.current) {
+      return;
     }
 
-    // Call API directly without using mutation object
-    // Don't invalidate queries to prevent resetting timeSpent
-    apiRequest(
-      "PUT",
-      `/api/users/${user.id}/progress/${courseId}`,
-      {
-        progress: currentProgress,
-        timeSpent: timeSpentRef.current,
-        currentStep: currentProgress >= 100 ? 3 : 2,
+    isSavingRef.current = true;
+
+    try {
+      let currentProgress: number;
+
+      // If duration is 0, immediately set to 100%
+      if (course.duration === 0) {
+        currentProgress = MAX_PROGRESS_PERCENT;
+      } else {
+        currentProgress = Math.min(
+          Math.floor((timeSpentRef.current / (course.duration * SECONDS_PER_MINUTE)) * MAX_PROGRESS_PERCENT),
+          MAX_PROGRESS_PERCENT
+        );
       }
-    ).catch(err => {
+
+      // Call API directly without using mutation object
+      // Don't invalidate queries to prevent resetting timeSpent
+      await apiRequest(
+        "PUT",
+        `/api/users/${user.id}/progress/${courseId}`,
+        {
+          progress: currentProgress,
+          timeSpent: timeSpentRef.current,
+          currentStep: currentProgress >= MAX_PROGRESS_PERCENT ? 3 : 2,
+        }
+      );
+    } catch (err) {
       console.error('Failed to save progress:', err);
-    });
-  }, [course, courseId, user?.id]);
+      // 사용자에게 에러 알림
+      toast({
+        title: "진행률 저장 실패",
+        description: "네트워크 연결을 확인해주세요. 다시 시도합니다.",
+        variant: "destructive",
+      });
+      // 에러 발생 시 재시도 가능하도록 플래그 해제
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, [course, courseId, user?.id, toast]);
 
   useEffect(() => {
     if (!progressLoading) {
@@ -129,12 +158,12 @@ export default function CourseContentPage() {
 
     const interval = setInterval(() => {
       setTimeSpent(prevTime => prevTime + 1);
-    }, 1000);
+    }, PROGRESS_TIMER_INTERVAL);
 
-    // Save progress every 10 seconds
+    // Save progress every PROGRESS_SAVE_INTERVAL milliseconds
     const saveInterval = setInterval(() => {
       saveProgress();
-    }, 10000);
+    }, PROGRESS_SAVE_INTERVAL);
 
     return () => {
       clearInterval(interval);
@@ -151,6 +180,7 @@ export default function CourseContentPage() {
 
 
   const handleStartAssessment = () => {
+    setIsNavigatingToAssessment(true);
     setLocation(`/assessment/${courseId}`);
   };
 
@@ -260,16 +290,16 @@ export default function CourseContentPage() {
             )}
 
             {/* Multi-Media Attachments Display */}
-            {(course as any).attachments && (course as any).attachments.length > 0 && (
+            {course.attachments && course.attachments.length > 0 && (
               <>
                 {/* Display videos */}
-                {(course as any).attachments.filter((a: any) => a.type === 'video').length > 0 && (
+                {course.attachments.filter(a => a.type === 'video').length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-xl korean-text">동영상</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {(course as any).attachments.filter((a: any) => a.type === 'video').map((file: any, idx: number) => (
+                      {course.attachments.filter(a => a.type === 'video').map((file, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <video src={file.url} controls className="w-full rounded max-h-[600px]" />
                           <p className="text-sm mt-2 truncate korean-text">{file.name}</p>
@@ -281,13 +311,13 @@ export default function CourseContentPage() {
                 )}
 
                 {/* Display YouTube videos */}
-                {(course as any).attachments.filter((a: any) => a.type === 'youtube').length > 0 && (
+                {course.attachments.filter(a => a.type === 'youtube').length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-xl korean-text">YouTube 동영상</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {(course as any).attachments.filter((a: any) => a.type === 'youtube').map((file: any, idx: number) => (
+                      {course.attachments.filter(a => a.type === 'youtube').map((file, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <div className="aspect-video">
                             <iframe src={getYouTubeEmbedUrl(file.url)} className="w-full h-full rounded" allowFullScreen />
@@ -299,13 +329,13 @@ export default function CourseContentPage() {
                 )}
 
                 {/* Display audio */}
-                {(course as any).attachments.filter((a: any) => a.type === 'audio').length > 0 && (
+                {course.attachments.filter(a => a.type === 'audio').length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-xl korean-text">오디오</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {(course as any).attachments.filter((a: any) => a.type === 'audio').map((file: any, idx: number) => (
+                      {course.attachments.filter(a => a.type === 'audio').map((file, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <audio src={file.url} controls className="w-full" />
                           <p className="text-sm mt-2 truncate korean-text">{file.name}</p>
@@ -369,8 +399,9 @@ export default function CourseContentPage() {
                   <Button
                     onClick={handleStartAssessment}
                     className="w-full korean-text"
+                    disabled={isNavigatingToAssessment}
                   >
-                    평가 시작하기
+                    {isNavigatingToAssessment ? '평가 페이지로 이동 중...' : '평가 시작하기'}
                   </Button>
                   <p className="text-sm text-muted-foreground mt-2 korean-text">
                     교육 완료 후 평가를 진행하세요

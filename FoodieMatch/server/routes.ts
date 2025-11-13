@@ -257,7 +257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "로그아웃 실패" });
       }
-      res.clearCookie('connect.sid');
+      // server/index.ts에서 설정한 세션 쿠키 이름 사용
+      res.clearCookie('sessionId');
       res.json({ message: "로그아웃 성공" });
     });
   });
@@ -4383,9 +4384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conditions = await prisma.emailCondition.findMany({
         include: {
           template: true,
-          specificUser: {
-            select: { id: true, name: true, email: true }
-          }
+          sendLogs: true
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -4578,11 +4577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schedules = await prisma.emailSchedule.findMany({
         include: {
           template: true,
-          condition: {
-            include: {
-              template: true
-            }
-          }
+          sendLogs: true
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -4832,8 +4827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             schedule: {
               include: {
-                template: true,
-                condition: true
+                template: true
               }
             }
           },

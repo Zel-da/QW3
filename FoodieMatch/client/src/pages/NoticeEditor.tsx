@@ -66,6 +66,8 @@ export default function NoticeEditor() {
   const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (isEditing && noticeToEdit) {
@@ -103,6 +105,7 @@ export default function NoticeEditor() {
     files.forEach(file => uploadFormData.append('files', file));
 
     try {
+      setIsUploading(true);
       const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
@@ -118,6 +121,8 @@ export default function NoticeEditor() {
       setError(''); // Clear any previous errors
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -142,6 +147,7 @@ export default function NoticeEditor() {
     uploadFormData.append('files', file);
 
     try {
+      setUploadingIndex(index);
       const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Upload failed');
@@ -156,6 +162,8 @@ export default function NoticeEditor() {
       setError('');
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setUploadingIndex(null);
     }
   };
 

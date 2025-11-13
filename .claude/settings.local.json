@@ -12,7 +12,8 @@
       "Bash(netstat:*)",
       "Bash(test:*)",
       "Bash(npm run db:push:*)",
-      "Bash(npm run db:generate:*)"
+      "Bash(npm run db:generate:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
