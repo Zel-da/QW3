@@ -110,7 +110,7 @@ export default function TbmPage() {
                   {view === 'checklist' && (
                       <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>목록 보기</Button>
                   )}
-                  {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
+                  {user?.role === 'ADMIN' && (
                     <Button variant="secondary" asChild>
                       <Link href="/checklist-editor">
                         <Settings className="w-4 h-4 mr-2" />

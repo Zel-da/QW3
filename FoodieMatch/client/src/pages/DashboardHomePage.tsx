@@ -11,9 +11,25 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
-  Calendar
+  Calendar,
+  ChevronRight,
+  Clock
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { Badge } from '@/components/ui/badge';
+
+// 시간 경과 표시 함수
+function getTimeAgo(timestamp: string): string {
+  const now = new Date();
+  const past = new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return '방금 전';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}일 전`;
+  return past.toLocaleDateString('ko-KR');
+}
 
 interface DashboardStats {
   notices: {
@@ -35,16 +51,49 @@ interface DashboardStats {
   };
 }
 
+interface Notice {
+  id: string;
+  title: string;
+  createdAt: string;
+  category: string;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'education' | 'tbm' | 'notice';
+  title: string;
+  description: string;
+  timestamp: string;
+  relatedId: string;
+}
+
+interface RecentActivityDisplay extends RecentActivity {
+  icon: typeof GraduationCap;
+  iconColor: string;
+}
+
 const fetchDashboardStats = async (): Promise<DashboardStats> => {
   const res = await fetch('/api/dashboard/stats');
   if (!res.ok) {
-    // 임시로 더미 데이터 반환
-    return {
-      notices: { total: 0, unread: 0 },
-      education: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0 },
-      tbm: { thisMonthSubmitted: 0, thisMonthTotal: 0 },
-      inspection: { thisMonthCompleted: false, dueDate: '' }
-    };
+    throw new Error('Failed to fetch dashboard stats');
+  }
+  return res.json();
+};
+
+const fetchRecentNotices = async (): Promise<Notice[]> => {
+  const res = await fetch('/api/notices?limit=5');
+  if (!res.ok) {
+    return [];
+  }
+  const data = await res.json();
+  // API가 pagination 형식 { data: [], pagination: {} } 또는 배열을 반환할 수 있음
+  return Array.isArray(data) ? data : (data.data || data.notices || []);
+};
+
+const fetchRecentActivities = async (): Promise<RecentActivity[]> => {
+  const res = await fetch('/api/dashboard/recent-activities');
+  if (!res.ok) {
+    throw new Error('Failed to fetch recent activities');
   }
   return res.json();
 };
@@ -57,6 +106,48 @@ export default function DashboardHomePage() {
     queryKey: ['dashboard-stats'],
     queryFn: fetchDashboardStats,
     enabled: !!user,
+  });
+
+  const { data: recentNotices } = useQuery<Notice[]>({
+    queryKey: ['recent-notices'],
+    queryFn: fetchRecentNotices,
+    enabled: !!user,
+  });
+
+  const { data: recentActivities } = useQuery<RecentActivity[]>({
+    queryKey: ['recent-activities'],
+    queryFn: fetchRecentActivities,
+    enabled: !!user,
+  });
+
+  // API에서 받은 활동에 아이콘과 색상 추가
+  const sortedActivities: RecentActivityDisplay[] = (recentActivities || []).map(activity => {
+    let icon: typeof GraduationCap;
+    let iconColor: string;
+
+    switch (activity.type) {
+      case 'notice':
+        icon = Bell;
+        iconColor = 'text-blue-500';
+        break;
+      case 'education':
+        icon = GraduationCap;
+        iconColor = 'text-green-500';
+        break;
+      case 'tbm':
+        icon = ClipboardCheck;
+        iconColor = 'text-orange-500';
+        break;
+      default:
+        icon = Bell;
+        iconColor = 'text-gray-500';
+    }
+
+    return {
+      ...activity,
+      icon,
+      iconColor
+    };
   });
 
   if (authLoading || isLoading) {
@@ -117,7 +208,7 @@ export default function DashboardHomePage() {
           ? '✅ 이번 달 점검 완료'
           : `⚠️ 점검 필요 (${stats.inspection.dueDate})`
         : '점검 시작하기',
-      showToAll: user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM' || user?.role === 'TEAM_LEADER',
+      showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER',
     },
   ];
 
@@ -169,6 +260,46 @@ export default function DashboardHomePage() {
             );
           })}
         </div>
+
+        {/* 최신 공지사항 */}
+        {recentNotices && recentNotices.length > 0 && (
+          <div className="mt-12 max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">최신 공지사항</h2>
+              <button
+                onClick={() => navigate('/notices')}
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+              >
+                전체보기
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                {recentNotices.map((notice, index) => (
+                  <div
+                    key={notice.id}
+                    className={`flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors ${
+                      index !== recentNotices.length - 1 ? 'border-b' : ''
+                    }`}
+                    onClick={() => navigate(`/notices/${notice.id}`)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <Bell className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium block truncate">{notice.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {notice.category} • {new Date(notice.createdAt).toLocaleDateString('ko-KR')}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* 하단 빠른 통계 */}
         {stats && (
@@ -226,7 +357,7 @@ export default function DashboardHomePage() {
               )}
 
               {/* 안전점검 상태 */}
-              {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM' || user?.role === 'TEAM_LEADER') && (
+              {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -262,6 +393,41 @@ export default function DashboardHomePage() {
                 </Card>
               )}
             </div>
+          </div>
+        )}
+
+        {/* 최근 활동 타임라인 */}
+        {sortedActivities.length > 0 && (
+          <div className="mt-12 max-w-6xl mx-auto">
+            <h2 className="text-2xl font-bold mb-6">최근 활동</h2>
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {sortedActivities.map((activity, index) => {
+                    const Icon = activity.icon;
+                    const timeAgo = getTimeAgo(activity.timestamp);
+
+                    return (
+                      <div key={activity.id} className="flex items-start gap-4">
+                        <div className={`p-2 rounded-full bg-muted ${activity.iconColor}`}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-semibold">{activity.title}</h3>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {timeAgo}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{activity.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 

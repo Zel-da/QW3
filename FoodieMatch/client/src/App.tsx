@@ -22,6 +22,10 @@ import MonthlyReportPage from './pages/MonthlyReportPage';
 import UserProfilePage from './pages/UserProfilePage';
 import MyCertificatesPage from './pages/MyCertificatesPage';
 import SafetyInspectionPage from './pages/SafetyInspectionPage';
+import ApprovalPage from './pages/ApprovalPage';
+import ApprovalHistoryPage from './pages/ApprovalHistoryPage';
+import InspectionTemplateEditorPage from './pages/InspectionTemplateEditorPage';
+import EmailSettingsPage from './pages/EmailSettingsPage';
 
 import CoursePage from "@/pages/course";
 
@@ -43,22 +47,22 @@ function App() {
           <Route path="/register" component={RegisterPage} />
           <Route path="/courses" component={Dashboard} />
           <Route path="/courses/:id">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <CoursePage />
             </ProtectedRoute>
           </Route>
           <Route path="/courses/:id/content">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <CourseContent />
             </ProtectedRoute>
           </Route>
           <Route path="/assessment/:courseId">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <AssessmentPage />
             </ProtectedRoute>
           </Route>
           <Route path="/tbm">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER]}>
               <TbmPage />
             </ProtectedRoute>
           </Route>
@@ -84,33 +88,45 @@ function App() {
             </ProtectedRoute>
           </Route>
           <Route path="/checklist-editor">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM]}>
+            <ProtectedRoute roles={[Role.ADMIN]}>
               <ChecklistEditorPage />
             </ProtectedRoute>
           </Route>
           <Route path="/education-management">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM]}>
+            <ProtectedRoute roles={[Role.ADMIN]}>
               <EducationManagementPage />
             </ProtectedRoute>
           </Route>
           <Route path="/education-monitoring">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM]}>
+            <ProtectedRoute roles={[Role.ADMIN]}>
               <EducationMonitoringPage />
             </ProtectedRoute>
           </Route>
           <Route path="/monthly-report" component={MonthlyReportPage} />
+          <Route path="/approval/:approvalId" component={ApprovalPage} />
+          <Route path="/approval-history" component={ApprovalHistoryPage} />
           <Route path="/safety-inspection">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER]}>
               <SafetyInspectionPage />
             </ProtectedRoute>
           </Route>
+          <Route path="/inspection-template-editor">
+            <ProtectedRoute roles={[Role.ADMIN]}>
+              <InspectionTemplateEditorPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/email-settings">
+            <ProtectedRoute roles={[Role.ADMIN]}>
+              <EmailSettingsPage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/profile">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <UserProfilePage />
             </ProtectedRoute>
           </Route>
           <Route path="/my-certificates">
-            <ProtectedRoute roles={[Role.ADMIN, Role.SAFETY_TEAM, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
               <MyCertificatesPage />
             </ProtectedRoute>
           </Route>

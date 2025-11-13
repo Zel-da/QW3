@@ -12,6 +12,13 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { ArrowUpDown } from 'lucide-react';
 import { stripSiteSuffix } from '../../lib/utils';
 
+// Helper function to check if a date is a weekend
+function isWeekend(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+}
+
 const ReportListView = ({ onSelectReport, onBack, site }) => {
     const [reports, setReports] = useState([]);
     const [teams, setTeams] = useState([]);
@@ -207,10 +214,27 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     {stripSiteSuffix(team.teamName)}
                                                 </TableCell>
                                                 {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
+                                                    // 주말 체크
+                                                    const isWeekendDay = isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+
                                                     // 미래 날짜 체크
                                                     const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
                                                     const cellDate = new Date(attendanceMonth.year, attendanceMonth.month - 1, day);
                                                     const isFuture = cellDate > today;
+
+                                                    // 주말은 파란색 배경으로 표시
+                                                    if (isWeekendDay) {
+                                                        return (
+                                                            <TableCell
+                                                                key={day}
+                                                                className="border border-slate-300 text-center p-1 bg-blue-100 text-blue-600"
+                                                                title="주말"
+                                                            >
+                                                                -
+                                                            </TableCell>
+                                                        );
+                                                    }
 
                                                     const statusData = team.dailyStatuses[day];
                                                     const status = statusData?.status;
@@ -272,7 +296,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                 ))}
                                             </TableBody>
                                         </Table>
-                                        <div className="mt-4 flex gap-6 text-sm">
+                                        <div className="mt-4 flex flex-wrap gap-6 text-sm">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-6 h-6 bg-white border border-slate-300 flex items-center justify-center text-green-900">✓</div>
                                                 <span>작성완료</span>
@@ -284,6 +308,10 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
                                                 <span>미작성</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 bg-blue-100 border border-slate-300 flex items-center justify-center text-blue-600">-</div>
+                                                <span>주말</span>
                                             </div>
                                         </div>
                                     </>

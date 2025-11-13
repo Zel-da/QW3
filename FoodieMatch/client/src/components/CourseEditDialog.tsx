@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Plus, X, Video, Music, Youtube } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { Course, Assessment } from '@shared/schema';
 
 interface CourseEditDialogProps {
@@ -42,13 +44,32 @@ const updateAssessments = async ({ courseId, questions }: { courseId: string; qu
     return res.json();
 };
 
+// YouTube URL을 embed URL로 변환
+function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return '';
+  if (url.includes('/embed/')) return url;
+
+  let videoId = '';
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) videoId = watchMatch[1];
+
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) videoId = shortMatch[1];
+
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) videoId = embedMatch[1];
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+}
+
 export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState<Partial<Course>>({});
   const [quizFile, setQuizFile] = useState<File | null>(null);
   const [videoType, setVideoType] = useState<'youtube' | 'file' | 'audio'>('youtube');
+  const [attachments, setAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
 
   // Fetch existing assessments for the course
   const { data: existingAssessments = [] } = useQuery<Assessment[]>({
@@ -70,15 +91,74 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
         videoType: course.videoType,
       });
       setVideoType((course.videoType as 'youtube' | 'file' | 'audio') || 'youtube');
+
+      // Load existing attachments
+      if ((course as any).attachments && Array.isArray((course as any).attachments)) {
+        setAttachments((course as any).attachments.map((att: any) => ({
+          url: att.url,
+          name: att.name,
+          type: att.type || 'video',
+          size: att.size || 0
+        })));
+      } else {
+        setAttachments([]);
+      }
     } else {
         setFormData({});
         setQuizFile(null);
         setVideoType('youtube');
+        setAttachments([]);
     }
   }, [course]);
 
   const courseUpdateMutation = useMutation({ mutationFn: updateCourse });
   const assessmentUpdateMutation = useMutation({ mutationFn: updateAssessments });
+
+  // 미디어 항목 추가
+  const addMediaItem = (type: 'video' | 'youtube' | 'audio') => {
+    const newItem = {
+      url: '',
+      name: type === 'youtube' ? 'YouTube 링크' : type === 'video' ? '동영상 파일' : '오디오 파일',
+      type,
+      size: 0
+    };
+    setAttachments(prev => [...prev, newItem]);
+  };
+
+  // 미디어 파일 업로드
+  const handleMediaUpload = async (index: number, file: File) => {
+    const uploadFormData = new FormData();
+    uploadFormData.append('files', file);
+
+    try {
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Upload failed');
+
+      if (data.files.length > 0) {
+        setAttachments(prev => prev.map((item, i) =>
+          i === index
+            ? { ...item, url: data.files[0].url, name: file.name, size: file.size }
+            : item
+        ));
+        toast({ title: '업로드 완료' });
+      }
+    } catch (err) {
+      toast({ title: '업로드 실패', variant: 'destructive' });
+    }
+  };
+
+  // YouTube URL 업데이트
+  const updateMediaUrl = (index: number, url: string) => {
+    setAttachments(prev => prev.map((item, i) =>
+      i === index ? { ...item, url, name: url } : item
+    ));
+  };
+
+  // 첨부 파일 삭제
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +167,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
     const courseData = {
         ...formData,
         duration: Number(formData.duration) || 0,
-        videoType: videoType,
+        attachments: attachments.length > 0 ? attachments : undefined,
     };
 
     courseUpdateMutation.mutate(courseData as Partial<Course> & { id: string }, {
@@ -155,117 +235,6 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
             <Input id="description" value={formData.description || ''} onChange={handleChange} />
           </div>
 
-          {/* Media Type Selection */}
-          <div className="space-y-3">
-            <Label>콘텐츠 유형</Label>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="videoType"
-                  value="youtube"
-                  checked={videoType === 'youtube'}
-                  onChange={() => setVideoType('youtube')}
-                />
-                <span>YouTube 링크</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="videoType"
-                  value="file"
-                  checked={videoType === 'file'}
-                  onChange={() => setVideoType('file')}
-                />
-                <span>동영상 파일</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="videoType"
-                  value="audio"
-                  checked={videoType === 'audio'}
-                  onChange={() => setVideoType('audio')}
-                />
-                <span>오디오 파일</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Conditional Input Fields */}
-          {videoType === 'youtube' && (
-            <div className="space-y-2">
-              <Label htmlFor="videoUrl">YouTube 영상 URL</Label>
-              <Input id="videoUrl" value={formData.videoUrl || ''} onChange={handleChange} placeholder="https://www.youtube.com/watch?v=..." />
-            </div>
-          )}
-
-          {videoType === 'file' && (
-            <div className="space-y-2">
-              <Label htmlFor="videoFile">동영상 파일 업로드</Label>
-              <Input
-                id="videoFile"
-                type="file"
-                accept="video/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  const formDataUpload = new FormData();
-                  formDataUpload.append('files', file);
-
-                  try {
-                    const res = await fetch('/api/upload-multiple', {
-                      method: 'POST',
-                      body: formDataUpload
-                    });
-                    const data = await res.json();
-                    if (data.files && data.files.length > 0) {
-                      setFormData(prev => ({ ...prev, videoUrl: data.files[0].url }));
-                      toast({ title: '동영상 업로드 완료' });
-                    }
-                  } catch (error) {
-                    toast({ title: '업로드 실패', variant: 'destructive' });
-                  }
-                }}
-              />
-              {formData.videoUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {formData.videoUrl}</p>}
-            </div>
-          )}
-
-          {videoType === 'audio' && (
-            <div className="space-y-2">
-              <Label htmlFor="audioFile">오디오 파일 업로드</Label>
-              <Input
-                id="audioFile"
-                type="file"
-                accept="audio/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  const formDataUpload = new FormData();
-                  formDataUpload.append('files', file);
-
-                  try {
-                    const res = await fetch('/api/upload-multiple', {
-                      method: 'POST',
-                      body: formDataUpload
-                    });
-                    const data = await res.json();
-                    if (data.files && data.files.length > 0) {
-                      setFormData(prev => ({ ...prev, audioUrl: data.files[0].url }));
-                      toast({ title: '오디오 업로드 완료' });
-                    }
-                  } catch (error) {
-                    toast({ title: '업로드 실패', variant: 'destructive' });
-                  }
-                }}
-              />
-              {formData.audioUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {formData.audioUrl}</p>}
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="documentFile">교육 자료 문서 (선택사항)</Label>
             <Input
@@ -296,6 +265,102 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
             />
             {formData.documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {formData.documentUrl}</p>}
             <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글</p>
+          </div>
+
+          {/* Multi-Media Attachments Section */}
+          <div className="space-y-3 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">다중 동영상/오디오 첨부 (선택사항)</Label>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('youtube')}>
+                  <Plus className="h-4 w-4 mr-1" /> YouTube
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('video')}>
+                  <Plus className="h-4 w-4 mr-1" /> 동영상
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('audio')}>
+                  <Plus className="h-4 w-4 mr-1" /> 오디오
+                </Button>
+              </div>
+            </div>
+
+            {/* Display media items */}
+            {attachments.filter(f => ['video', 'youtube', 'audio'].includes(f.type)).length > 0 && (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {attachments.map((item, idx) => {
+                  if (!['video', 'youtube', 'audio'].includes(item.type)) return null;
+
+                  return (
+                    <div key={idx} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {item.type === 'youtube' && <Youtube className="h-5 w-5 text-red-500" />}
+                          {item.type === 'video' && <Video className="h-5 w-5 text-blue-500" />}
+                          {item.type === 'audio' && <Music className="h-5 w-5 text-purple-500" />}
+                          <Badge variant="outline">
+                            {item.type === 'youtube' ? 'YouTube' : item.type === 'video' ? '동영상' : '오디오'}
+                          </Badge>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeAttachment(idx)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {item.type === 'youtube' ? (
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="YouTube URL 입력 (예: https://www.youtube.com/watch?v=...)"
+                            value={item.url}
+                            onChange={(e) => updateMediaUrl(idx, e.target.value)}
+                          />
+                          {item.url && (
+                            <div className="aspect-video">
+                              <iframe
+                                src={getYouTubeEmbedUrl(item.url)}
+                                className="w-full h-full rounded"
+                                allowFullScreen
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Input
+                            type="file"
+                            accept={item.type === 'video' ? 'video/*' : 'audio/*'}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleMediaUpload(idx, file);
+                            }}
+                          />
+                          {item.url && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <span>✓ 업로드 완료:</span>
+                                <span className="truncate">{item.name}</span>
+                                {item.size > 0 && <span>({(item.size / 1024 / 1024).toFixed(2)} MB)</span>}
+                              </div>
+                              {item.type === 'video' && (
+                                <video src={item.url} controls className="w-full rounded max-h-60" />
+                              )}
+                              {item.type === 'audio' && (
+                                <audio src={item.url} controls className="w-full" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

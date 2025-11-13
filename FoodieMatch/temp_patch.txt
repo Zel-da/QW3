@@ -1,0 +1,24 @@
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -2028,12 +2028,18 @@ export function registerRoutes(app: Express, db: any = null, sessionStore: any
+           });
+ 
+           if (!report) {
+-            dailyStatuses[day] = { status: 'not-submitted', reportId: null };
++            dailyStatuses[day] = { status: 'not-submitted', reportId: null, hasManagerSignature: false };
+           } else {
+             const hasIssues = report.reportDetails?.some(detail =>
+               detail.checkState === '△' || detail.checkState === 'X'
+             );
++            // 관리자(팀장/현장관리자) 서명 확인
++            const hasManagerSignature = report.reportSignatures?.some(sig =>
++              sig.user && (sig.user.role === 'TEAM_LEADER' || sig.user.role === 'SITE_MANAGER')
++            ) || false;
++
+             dailyStatuses[day] = {
+               status: hasIssues ? 'has-issues' : 'completed',
+-              reportId: report.id
++              reportId: report.id,
++              hasManagerSignature
+             };
+           }

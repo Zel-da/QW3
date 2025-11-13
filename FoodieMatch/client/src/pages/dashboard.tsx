@@ -135,7 +135,7 @@ export default function Dashboard() {
             안전 관리 교육 프로그램
           </h1>
           <div className="flex gap-2">
-            {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
+            {user?.role === 'ADMIN' && (
               <>
                 <Link href="/education-management">
                   <Button variant="secondary">
@@ -165,11 +165,11 @@ export default function Dashboard() {
           <EmptyState
             icon={BookOpen}
             title="등록된 교육 과정이 없습니다"
-            description={user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'
+            description={user?.role === 'ADMIN'
               ? "교육 과정을 추가하여 안전교육을 시작하세요."
               : "관리자가 교육 과정을 추가할 때까지 기다려주세요."}
             action={
-              user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM'
+              user?.role === 'ADMIN'
                 ? {
                     label: "교육 과정 추가하기",
                     onClick: () => setLocation("/education-management")

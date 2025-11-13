@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, PlusCircle, GripVertical } from 'lucide-react';
+import { stripSiteSuffix } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -115,10 +116,11 @@ export default function ChecklistEditorPage() {
 
   useEffect(() => {
     if (template) {
-      // Ensure each item has an id for drag-and-drop
+      // Ensure each item has an id and displayOrder for drag-and-drop
       const itemsWithIds = (template.templateItems || []).map((item: any, idx: number) => ({
         ...item,
         id: item.id || `temp-${idx}`,
+        displayOrder: item.displayOrder !== undefined && item.displayOrder !== null ? item.displayOrder : idx,
       }));
       setEditingItems(itemsWithIds);
     }
@@ -170,12 +172,8 @@ export default function ChecklistEditorPage() {
 
   const handleSave = () => {
     if (template) {
-      // Update displayOrder before saving
-      const itemsToSave = editingItems.map((item, index) => ({
-        ...item,
-        displayOrder: index,
-      }));
-      mutation.mutate({ templateId: template.id, items: itemsToSave });
+      // displayOrder는 드래그할 때만 업데이트되므로, editingItems의 현재 값을 그대로 사용
+      mutation.mutate({ templateId: template.id, items: editingItems });
     }
   };
 
@@ -191,8 +189,29 @@ export default function ChecklistEditorPage() {
                 <SelectTrigger className="w-[250px]">
                   <SelectValue placeholder="수정할 팀을 선택하세요" />
                 </SelectTrigger>
-                <SelectContent>
-                  {teams.map((team: any) => <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>)}
+                <SelectContent className="max-h-[300px] overflow-y-auto">
+                  {(() => {
+                    // 팀을 사이트별로 그룹화
+                    const teamsBySite = teams.reduce((acc: Record<string, any[]>, team: any) => {
+                      const site = team.site || '기타';
+                      if (!acc[site]) acc[site] = [];
+                      acc[site].push(team);
+                      return acc;
+                    }, {});
+
+                    return Object.entries(teamsBySite).map(([site, siteTeams]) => (
+                      <React.Fragment key={site}>
+                        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                          {site}
+                        </div>
+                        {siteTeams.map((team: any) => (
+                          <SelectItem key={team.id} value={String(team.id)} className="pl-6">
+                            {stripSiteSuffix(team.name)}
+                          </SelectItem>
+                        ))}
+                      </React.Fragment>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
               {template && <Button onClick={handleSave} disabled={mutation.isPending}>{mutation.isPending ? '저장 중...' : '저장'}</Button>}

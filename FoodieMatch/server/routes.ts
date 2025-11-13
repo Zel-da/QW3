@@ -13,6 +13,7 @@ import { tbmReportSchema } from "@shared/schema";
 import sharp from "sharp";
 import rateLimit from "express-rate-limit";
 import { sendEmail, verifyEmailConnection, getEducationReminderTemplate, getTBMReminderTemplate, getSafetyInspectionReminderTemplate } from "./emailService";
+import { getApprovalRequestTemplate, getApprovalApprovedTemplate, getApprovalRejectedTemplate } from "./approvalEmailTemplates";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -451,14 +452,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { site } = req.query;
       const whereClause = site ? { site: site as string } : {};
-      const teams = await prisma.team.findMany({ where: whereClause, orderBy: { name: 'asc' } });
+      const teams = await prisma.team.findMany({
+        where: whereClause,
+        orderBy: { name: 'asc' },
+        include: {
+          leader: true,
+          approver: true
+        }
+      });
       res.json(teams);
     } catch (error) { res.status(500).json({ message: "Failed to fetch teams" }); }
   });
 
   app.get("/api/teams/:teamId", requireAuth, async (req, res) => {
     try {
-      const team = await prisma.team.findUnique({ where: { id: parseInt(req.params.teamId) }, include: { members: true } });
+      const team = await prisma.team.findUnique({
+        where: { id: parseInt(req.params.teamId) },
+        include: {
+          members: true,
+          leader: true,
+          approver: true
+        }
+      });
       if (!team) return res.status(404).json({ message: "Team not found" });
       res.json(team);
     } catch (error) { res.status(500).json({ message: "Failed to fetch team" }); }
@@ -509,6 +524,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedTeam = await prisma.team.update({ where: { id: parseInt(req.params.teamId) }, data: { leaderId: userId } });
       res.json(updatedTeam);
     } catch (error) { res.status(500).json({ message: "Failed to set team leader" }); }
+  });
+
+  // 팀 결재자 설정 API
+  app.put("/api/teams/:teamId/approver", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      // userId가 null이 아닌 경우 역할 검증
+      if (userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, role: true, name: true, username: true }
+        });
+
+        if (!user) {
+          return res.status(404).json({
+            message: "선택한 사용자를 찾을 수 없습니다."
+          });
+        }
+
+        // 결재자는 ADMIN 또는 TEAM_LEADER 역할만 가능
+        if (user.role !== 'ADMIN' && user.role !== 'TEAM_LEADER') {
+          return res.status(403).json({
+            message: "결재자는 관리자(ADMIN) 또는 팀장(TEAM_LEADER) 역할을 가진 사용자만 지정할 수 있습니다.",
+            userRole: user.role
+          });
+        }
+      }
+
+      const updatedTeam = await prisma.team.update({
+        where: { id: parseInt(req.params.teamId) },
+        data: { approverId: userId },
+        include: {
+          leader: true,
+          approver: true
+        }
+      });
+
+      res.json(updatedTeam);
+    } catch (error) {
+      console.error("Failed to set team approver:", error);
+      res.status(500).json({ message: "Failed to set team approver" });
+    }
   });
 
   // TEAM MEMBER MANAGEMENT (User 계정 없는 팀원 관리)
@@ -846,7 +904,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // APPROVAL SYSTEM (결재 시스템: 팀관리자 → 임원)
-  // 결재 요청 생성
+
+  // 월별보고서 결재 요청 생성 (MonthlyApproval + ApprovalRequest 자동 생성)
+  app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req, res) => {
+    try {
+      const { teamId, year, month } = req.body;
+      const requesterId = req.session.user!.id;
+
+      console.log(`[Monthly Approval Request] teamId: ${teamId}, year: ${year}, month: ${month}, requester: ${requesterId}`);
+
+      // 1. Team의 approverId 조회
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        include: { approver: true }
+      });
+
+      if (!team) {
+        return res.status(404).json({ message: "팀을 찾을 수 없습니다" });
+      }
+
+      if (!team.approverId) {
+        return res.status(400).json({
+          message: "결재자가 설정되지 않았습니다. 팀 관리에서 결재자를 먼저 설정해주세요."
+        });
+      }
+
+      // 2. MonthlyApproval 찾거나 생성
+      let monthlyApproval = await prisma.monthlyApproval.findUnique({
+        where: {
+          teamId_year_month: {
+            teamId,
+            year,
+            month
+          }
+        },
+        include: {
+          approvalRequest: true
+        }
+      });
+
+      if (!monthlyApproval) {
+        console.log(`[Monthly Approval Request] Creating MonthlyApproval for ${team.name}`);
+        monthlyApproval = await prisma.monthlyApproval.create({
+          data: {
+            teamId,
+            year,
+            month,
+            status: 'DRAFT',
+            approverId: team.approverId
+          },
+          include: {
+            approvalRequest: true
+          }
+        });
+      }
+
+      // 3. 이미 결재 요청이 있는지 확인
+      if (monthlyApproval.approvalRequest) {
+        return res.status(400).json({
+          message: "이미 결재 요청이 존재합니다",
+          approval: monthlyApproval.approvalRequest
+        });
+      }
+
+      // 4. ApprovalRequest 생성
+      const approvalRequest = await prisma.approvalRequest.create({
+        data: {
+          reportId: monthlyApproval.id,
+          requesterId,
+          approverId: team.approverId,
+          status: 'PENDING'
+        },
+        include: {
+          requester: true,
+          approver: true,
+          monthlyReport: {
+            include: {
+              team: true
+            }
+          }
+        }
+      });
+
+      console.log(`[Monthly Approval Request] Created approval request: ${approvalRequest.id}`);
+
+      // 결재 요청 이메일 발송
+      if (approvalRequest.approver?.email) {
+        try {
+          const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
+          const approvalUrl = `${baseUrl}/approval/${approvalRequest.id}`;
+
+          const emailTemplate = getApprovalRequestTemplate(
+            approvalRequest.approver.name || approvalRequest.approver.username,
+            approvalRequest.requester.name || approvalRequest.requester.username,
+            approvalRequest.monthlyReport.team.name,
+            approvalRequest.monthlyReport.year,
+            approvalRequest.monthlyReport.month,
+            approvalUrl
+          );
+
+          await sendEmail({
+            to: approvalRequest.approver.email,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+          });
+
+          console.log(`[Monthly Approval Request] Email sent to ${approvalRequest.approver.email}`);
+        } catch (emailError) {
+          console.error(`[Monthly Approval Request] Email sending failed:`, emailError);
+          // 이메일 실패해도 결재 요청은 성공으로 처리
+        }
+      } else {
+        console.warn(`[Monthly Approval Request] Approver has no email address`);
+      }
+
+      res.status(201).json(approvalRequest);
+    } catch (error) {
+      console.error("[Monthly Approval Request] ERROR:", error);
+      res.status(500).json({ message: "결재 요청 생성에 실패했습니다" });
+    }
+  });
+
+  // 결재 요청 생성 (기존 엔드포인트 - ApprovalPage에서 사용)
   app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req, res) => {
     try {
       const { reportId, approverId } = req.body;
@@ -939,9 +1118,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           requester: true,
           approver: true,
-          monthlyReport: true
+          monthlyReport: {
+            include: {
+              team: true
+            }
+          }
         }
       });
+
+      // 승인 알림 이메일 발송
+      if (updated.requester?.email) {
+        try {
+          const emailTemplate = getApprovalApprovedTemplate(
+            updated.requester.name || updated.requester.username,
+            updated.approver.name || updated.approver.username,
+            updated.monthlyReport.team.name,
+            updated.monthlyReport.year,
+            updated.monthlyReport.month,
+            updated.approvedAt ? new Date(updated.approvedAt).toLocaleString('ko-KR') : ''
+          );
+
+          await sendEmail({
+            to: updated.requester.email,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+          });
+
+          console.log(`[Approval] Approval notification email sent to ${updated.requester.email}`);
+        } catch (emailError) {
+          console.error(`[Approval] Email sending failed:`, emailError);
+          // 이메일 실패해도 승인은 성공으로 처리
+        }
+      }
 
       res.json(updated);
     } catch (error) {
@@ -983,9 +1191,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           requester: true,
           approver: true,
-          monthlyReport: true
+          monthlyReport: {
+            include: { team: true }
+          }
         }
       });
+
+      // 요청자에게 반려 알림 이메일 발송
+      if (updated.requester?.email) {
+        try {
+          const emailTemplate = getApprovalRejectedTemplate(
+            updated.requester.name || updated.requester.username,
+            updated.approver.name || updated.approver.username,
+            updated.monthlyReport.team.name,
+            updated.monthlyReport.year,
+            updated.monthlyReport.month,
+            updated.rejectionReason || '사유 없음'
+          );
+
+          await sendEmail({
+            to: updated.requester.email,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+          });
+
+          console.log(`[Approval] Rejection notification email sent to ${updated.requester.email}`);
+        } catch (emailError) {
+          console.error(`[Approval] Email sending failed:`, emailError);
+          // 이메일 실패해도 반려는 성공으로 처리
+        }
+      }
 
       res.json(updated);
     } catch (error) {
@@ -1004,7 +1239,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           requester: true,
           approver: true,
-          monthlyReport: true
+          monthlyReport: {
+            include: {
+              team: true
+            }
+          }
         }
       });
 
@@ -1016,6 +1255,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch approval:", error);
       res.status(500).json({ message: "결재 정보를 불러오는데 실패했습니다" });
+    }
+  });
+
+  // 내가 요청한 결재 목록
+  app.get("/api/approvals/sent/list", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
+      const { status } = req.query;
+
+      const whereClause: any = { requesterId: userId };
+      if (status && status !== 'ALL') {
+        whereClause.status = status;
+      }
+
+      const approvals = await prisma.approvalRequest.findMany({
+        where: whereClause,
+        include: {
+          approver: true,
+          monthlyReport: {
+            include: {
+              team: true
+            }
+          }
+        },
+        orderBy: {
+          requestedAt: 'desc'
+        }
+      });
+
+      res.json(approvals);
+    } catch (error) {
+      console.error("Failed to fetch sent approvals:", error);
+      res.status(500).json({ message: "결재 요청 목록을 불러오는데 실패했습니다" });
+    }
+  });
+
+  // 내가 받은 결재 목록
+  app.get("/api/approvals/received/list", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
+      const { status } = req.query;
+
+      const whereClause: any = { approverId: userId };
+      if (status && status !== 'ALL') {
+        whereClause.status = status;
+      }
+
+      const approvals = await prisma.approvalRequest.findMany({
+        where: whereClause,
+        include: {
+          requester: true,
+          monthlyReport: {
+            include: {
+              team: true
+            }
+          }
+        },
+        orderBy: {
+          requestedAt: 'desc'
+        }
+      });
+
+      res.json(approvals);
+    } catch (error) {
+      console.error("Failed to fetch received approvals:", error);
+      res.status(500).json({ message: "받은 결재 목록을 불러오는데 실패했습니다" });
     }
   });
 
@@ -1381,24 +1686,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/monthly", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
+      const teamIdNum = parseInt(teamId as string);
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+
       const reports = await prisma.dailyReport.findMany({
         where: {
-          teamId: parseInt(teamId as string),
+          teamId: teamIdNum,
           reportDate: {
-            gte: new Date(parseInt(year as string), parseInt(month as string) - 1, 1),
-            lt: new Date(parseInt(year as string), parseInt(month as string), 1),
+            gte: new Date(yearNum, monthNum - 1, 1),
+            lt: new Date(yearNum, monthNum, 1),
           },
         },
         include: { reportDetails: true },
         orderBy: { reportDate: 'asc' },
       });
-      const team = await prisma.team.findUnique({ where: { id: parseInt(teamId as string) } });
+
+      const team = await prisma.team.findUnique({
+        where: { id: teamIdNum },
+        include: { approver: true }
+      });
+
       const checklistTemplate = await prisma.checklistTemplate.findFirst({
-        where: { teamId: parseInt(teamId as string) },
+        where: { teamId: teamIdNum },
         include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
       });
-      res.json({ dailyReports: reports, teamName: team?.name, year: year, month: month, checklistTemplate: checklistTemplate });
-    } catch (error) { res.status(500).json({ message: "Failed to fetch monthly report" }); }
+
+      // MonthlyApproval과 ApprovalRequest 조회
+      const monthlyApproval = await prisma.monthlyApproval.findUnique({
+        where: {
+          teamId_year_month: {
+            teamId: teamIdNum,
+            year: yearNum,
+            month: monthNum
+          }
+        },
+        include: {
+          approvalRequest: {
+            include: {
+              requester: true,
+              approver: true
+            }
+          },
+          team: true,
+          approver: true
+        }
+      });
+
+      res.json({
+        dailyReports: reports,
+        teamName: team?.name,
+        year: year,
+        month: month,
+        checklistTemplate: checklistTemplate,
+        monthlyApproval: monthlyApproval,
+        approver: team?.approver
+      });
+    } catch (error) {
+      console.error("Failed to fetch monthly report:", error);
+      res.status(500).json({ message: "Failed to fetch monthly report" });
+    }
   });
 
   // TBM 출석 현황 API (모든 팀 x 1~31일)
@@ -1453,10 +1800,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        // 결재 상태 확인
+        const monthlyApproval = await prisma.monthlyApproval.findUnique({
+          where: {
+            teamId_year_month: {
+              teamId: team.id,
+              year: parseInt(year as string),
+              month: parseInt(month as string)
+            }
+          },
+          include: {
+            approvalRequest: true
+          }
+        });
+
+        const hasApproval = monthlyApproval?.approvalRequest?.status === 'APPROVED';
+
+        // 안전교육 완료 여부 확인 (팀장 기준)
+        let educationCompleted = false;
+        if (team.leaderId) {
+          const allCourses = await prisma.course.findMany({ where: { isActive: true } });
+          const completedProgress = await prisma.userProgress.count({
+            where: {
+              userId: team.leaderId,
+              completed: true
+            }
+          });
+          educationCompleted = completedProgress >= allCourses.length && allCourses.length > 0;
+        }
+
         return {
           teamId: team.id,
           teamName: team.name,
-          dailyStatuses
+          dailyStatuses,
+          hasApproval,
+          educationCompleted
         };
       }));
 
@@ -1477,10 +1855,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string), monthNum = parseInt(month as string);
       const startDate = new Date(yearNum, monthNum - 1, 1);
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
-      const [team, dailyReports, checklistTemplate, teamUsers, teamMembers] = await Promise.all([
-        prisma.team.findUnique({ where: { id: parseInt(teamId as string) } }),
+      const teamIdNum = parseInt(teamId as string);
+
+      const [team, dailyReports, checklistTemplate, teamUsers, teamMembers, monthlyApproval] = await Promise.all([
+        prisma.team.findUnique({
+          where: { id: teamIdNum },
+          include: { approver: true }
+        }),
         prisma.dailyReport.findMany({
-          where: { teamId: parseInt(teamId as string), reportDate: { gte: startDate, lte: endDate } },
+          where: { teamId: teamIdNum, reportDate: { gte: startDate, lte: endDate } },
           include: {
             reportDetails: { include: { item: true } },
             reportSignatures: { include: { user: true, member: true } },
@@ -1488,11 +1871,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderBy: { reportDate: 'asc' },
         }),
         prisma.checklistTemplate.findFirst({
-          where: { teamId: parseInt(teamId as string) },
+          where: { teamId: teamIdNum },
           include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
         }),
-        prisma.user.findMany({ where: { teamId: parseInt(teamId as string) } }),
-        prisma.teamMember.findMany({ where: { teamId: parseInt(teamId as string), isActive: true } })
+        prisma.user.findMany({ where: { teamId: teamIdNum } }),
+        prisma.teamMember.findMany({ where: { teamId: teamIdNum, isActive: true } }),
+        prisma.monthlyApproval.findUnique({
+          where: {
+            teamId_year_month: {
+              teamId: teamIdNum,
+              year: yearNum,
+              month: monthNum
+            }
+          },
+          include: {
+            approvalRequests: {
+              where: { status: 'APPROVED' },
+              include: {
+                requester: true,
+                approver: true
+              },
+              orderBy: { approvedAt: 'desc' },
+              take: 1
+            }
+          }
+        })
       ]);
 
       if (!team) return res.status(404).json({ message: "Team not found" });
@@ -1514,6 +1917,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sheet1.mergeCells('Q1:S4'); sheet1.mergeCells('T1:Z2'); sheet1.getCell('T1').value = '관리감독자';
       sheet1.mergeCells('AA1:AG2'); sheet1.getCell('AA1').value = '승인/확인';
       sheet1.mergeCells('T3:Z4'); sheet1.mergeCells('AA3:AG4');
+
+      // 서명 이미지 추가 (승인된 경우)
+      if (monthlyApproval?.approvalRequests?.[0]?.status === 'APPROVED') {
+        const approvalRequest = monthlyApproval.approvalRequests[0];
+        const approverName = approvalRequest.approver?.name || approvalRequest.approver?.username || '';
+        const approvedDate = approvalRequest.approvedAt
+          ? new Date(approvalRequest.approvedAt).toLocaleDateString('ko-KR')
+          : '';
+
+        // 관리감독자 이름과 날짜 (T3:Z4 영역)
+        sheet1.getCell('T3').value = `${approverName}\n${approvedDate}`;
+        sheet1.getCell('T3').alignment = centerAlignment;
+
+        // 승인/확인 서명 이미지 추가 (AA3:AG4 영역)
+        if (approvalRequest.approverSignature) {
+          try {
+            // base64 문자열에서 데이터 URL 프리픽스 제거
+            const base64Data = approvalRequest.approverSignature.replace(/^data:image\/\w+;base64,/, '');
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+
+            const imageId = workbook.addImage({
+              buffer: imageBuffer,
+              extension: 'png',
+            });
+
+            sheet1.addImage(imageId, {
+              tl: { col: 26, row: 2 }, // AA3 (col 26 = AA, row 2 = 3행)
+              br: { col: 33, row: 4 }, // AG4 (col 33 = AG, row 4 = 5행)
+              editAs: 'oneCell'
+            });
+          } catch (imgError) {
+            console.error('[Excel] Failed to add signature image:', imgError);
+            // 서명 이미지 추가 실패 시 텍스트로 대체
+            sheet1.getCell('AA3').value = '(서명)';
+            sheet1.getCell('AA3').alignment = centerAlignment;
+          }
+        }
+      }
+
       sheet1.getRow(5).height = 21;
       sheet1.mergeCells('A5:B5'); sheet1.getCell('A5').value = `부서명: ${team.name}`;
       sheet1.mergeCells('C5:S5'); sheet1.getCell('C5').value = '※ 범례 : ○ 양호, △ 관찰, X 불량';
@@ -1697,6 +2139,1281 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 사용 가능한 TBM 사진 일자 조회 API (안전교육 엑셀용)
+  app.get("/api/reports/available-dates", requireAuth, async (req, res) => {
+    try {
+      const { site, year, month } = req.query;
+
+      // 파라미터 검증
+      if (!site || !year || !month) {
+        return res.status(400).json({ message: "site, year, and month are required." });
+      }
+
+      if (site !== '아산' && site !== '화성') {
+        return res.status(400).json({ message: "site must be either '아산' or '화성'." });
+      }
+
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+
+      if (isNaN(yearNum) || isNaN(monthNum)) {
+        return res.status(400).json({ message: "year and month must be valid numbers." });
+      }
+
+      if (yearNum < 2000 || yearNum > 2100) {
+        return res.status(400).json({ message: "year must be between 2000 and 2100." });
+      }
+
+      if (monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ message: "month must be between 1 and 12." });
+      }
+
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
+      console.log(`📅 사용 가능한 일자 조회: ${site} ${year}년 ${month}월`);
+
+      // 사진이 있는 TBM 보고서의 일자 조회
+      const reportsWithPhotos = await prisma.dailyReport.findMany({
+        where: {
+          team: { site: site as string },
+          reportDate: { gte: startDate, lte: endDate },
+          reportDetails: {
+            some: {
+              attachments: {
+                some: {
+                  type: 'image'
+                }
+              }
+            }
+          }
+        },
+        select: {
+          reportDate: true
+        },
+        orderBy: { reportDate: 'asc' }
+      });
+
+      // 날짜에서 일(day)만 추출하고 중복 제거
+      const dates = [...new Set(reportsWithPhotos.map(r => r.reportDate.getDate()))].sort((a, b) => a - b);
+
+      console.log(`  ✅ 사진이 있는 일자: ${dates.join(', ')}일 (총 ${dates.length}일)`);
+
+      res.json({ dates });
+    } catch (error) {
+      console.error('Failed to fetch available dates:', error);
+      res.status(500).json({ message: "Failed to fetch available dates" });
+    }
+  });
+
+  // 종합 엑셀 생성 API (사이트별 모든 팀의 월별보고서를 하나의 엑셀로)
+  app.get("/api/reports/comprehensive-excel", requireAuth, async (req, res) => {
+    try {
+      const { site, year, month } = req.query;
+
+      // 파라미터 검증
+      if (!site || !year || !month) {
+        return res.status(400).json({ message: "site, year, and month are required." });
+      }
+
+      // site 값 검증 (아산 또는 화성만 허용)
+      if (site !== '아산' && site !== '화성') {
+        return res.status(400).json({ message: "site must be either '아산' or '화성'." });
+      }
+
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+
+      // 연도/월 유효성 검증
+      if (isNaN(yearNum) || isNaN(monthNum)) {
+        return res.status(400).json({ message: "year and month must be valid numbers." });
+      }
+
+      if (yearNum < 2000 || yearNum > 2100) {
+        return res.status(400).json({ message: "year must be between 2000 and 2100." });
+      }
+
+      if (monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ message: "month must be between 1 and 12." });
+      }
+
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+      const lastDayOfMonth = new Date(yearNum, monthNum, 0).getDate();
+
+      console.log(`🗂️ 종합 엑셀 생성: ${site} 사이트 ${year}년 ${month}월`);
+
+      // 사이트별 팀 목록 조회
+      const teams = await prisma.team.findMany({
+        where: { site: site as string },
+        orderBy: { name: 'asc' }
+      });
+
+      if (teams.length === 0) {
+        return res.status(404).json({ message: `${site} 사이트에 팀이 없습니다.` });
+      }
+
+      console.log(`팀 총 ${teams.length}개 발견`);
+
+      const workbook = new ExcelJS.Workbook();
+      const font = { name: '맑은 고딕', size: 11 };
+      const boldFont = { ...font, bold: true };
+      const titleFont = { name: '맑은 고딕', size: 20, bold: true };
+      const border = {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      };
+      const centerAlignment = {
+        vertical: 'middle' as const,
+        horizontal: 'center' as const,
+        wrapText: true
+      };
+
+      // 각 팀별로 2개 시트 생성
+      for (const team of teams) {
+        console.log(`\n🔄 팀 처리 중: ${team.name}`);
+
+        try {
+          // 팀 데이터 조회
+          const [dailyReports, checklistTemplate, teamUsers, teamMembers, monthlyApproval] = await Promise.all([
+            prisma.dailyReport.findMany({
+              where: {
+                teamId: team.id,
+                reportDate: { gte: startDate, lte: endDate }
+              },
+              include: {
+                reportDetails: { include: { item: true } },
+                reportSignatures: { include: { user: true, member: true } }
+              },
+              orderBy: { reportDate: 'asc' }
+            }),
+            prisma.checklistTemplate.findFirst({
+              where: { teamId: team.id },
+              include: {
+                templateItems: { orderBy: { displayOrder: 'asc' } }
+              }
+            }),
+            prisma.user.findMany({ where: { teamId: team.id } }),
+            prisma.teamMember.findMany({
+              where: { teamId: team.id, isActive: true }
+            }),
+            prisma.monthlyApproval.findFirst({
+              where: {
+                teamId: team.id,
+                year: yearNum,
+                month: monthNum
+              },
+              include: {
+                approvalRequest: { include: { approver: true } }
+              }
+            })
+          ]);
+
+          if (!checklistTemplate) {
+            console.log(`  ⚠️  ${team.name}: 체크리스트 템플릿 없음, 건너뜁니다`);
+            continue;
+          }
+
+          console.log(`  - 일일 보고서: ${dailyReports.length}개`);
+          console.log(`  - 체크리스트 항목: ${checklistTemplate.templateItems.length}개`);
+
+          // ===== SHEET 1: TBM 활동일지 =====
+          // Excel 시트 이름에서 금지 문자 제거: * ? : \ / [ ]
+          const sanitizedName1 = team.name.replace(/[*?:\\/\[\]]/g, '-');
+          const sheetName1 = `${sanitizedName1}_TBM활동일지`.substring(0, 31); // Excel 시트 이름 최대 31자
+          const sheet1 = workbook.addWorksheet(sheetName1);
+
+          // 컬럼 너비 설정
+          sheet1.getColumn(1).width = 15;
+          sheet1.getColumn(2).width = 59;
+          for (let i = 3; i <= 33; i++) {
+            sheet1.getColumn(i).width = 4;
+          }
+
+          // 제목 행
+          sheet1.mergeCells('A1:P4');
+          sheet1.getCell('A1').value = `${year}년 ${month}월 TBM 실시 및 안전점검 활동 일지`;
+          sheet1.getCell('A1').font = titleFont;
+          sheet1.getCell('A1').alignment = centerAlignment;
+
+          sheet1.mergeCells('Q1:S4');
+          sheet1.getCell('Q1').value = '결재란';
+          sheet1.getCell('Q1').font = boldFont;
+          sheet1.getCell('Q1').alignment = centerAlignment;
+
+          sheet1.mergeCells('T1:Z2');
+          sheet1.getCell('T1').value = '관리감독자';
+          sheet1.getCell('T1').font = boldFont;
+          sheet1.getCell('T1').alignment = centerAlignment;
+
+          sheet1.mergeCells('AA1:AG2');
+          sheet1.getCell('AA1').value = '승인/확인';
+          sheet1.getCell('AA1').font = boldFont;
+          sheet1.getCell('AA1').alignment = centerAlignment;
+
+          sheet1.mergeCells('T3:Z4');
+          sheet1.mergeCells('AA3:AG4');
+
+          // 임원 서명 추가
+          if (monthlyApproval?.approvalRequest) {
+            const approverName = monthlyApproval.approvalRequest.approver?.name;
+            const executiveSignature = monthlyApproval.approvalRequest.executiveSignature;
+
+            if (approverName) {
+              sheet1.getCell('T3').value = approverName;
+              sheet1.getCell('T3').font = font;
+              sheet1.getCell('T3').alignment = centerAlignment;
+            }
+
+            if (executiveSignature) {
+              try {
+                const base64Data = executiveSignature.includes('base64,')
+                  ? executiveSignature.split('base64,')[1]
+                  : executiveSignature;
+
+                const imageId = workbook.addImage({
+                  base64: base64Data,
+                  extension: 'png'
+                });
+
+                sheet1.addImage(imageId, {
+                  tl: { col: 26, row: 2 }, // AA3
+                  ext: { width: 150, height: 50 }
+                });
+              } catch (err) {
+                console.error(`  ⚠️  서명 이미지 삽입 실패:`, err);
+              }
+            }
+          }
+
+          // 헤더 행
+          sheet1.getRow(5).height = 21;
+          sheet1.mergeCells('A5:B5');
+          sheet1.getCell('A5').value = '부서명';
+          sheet1.getCell('A5').font = boldFont;
+          sheet1.getCell('A5').alignment = centerAlignment;
+
+          sheet1.mergeCells('C5:AG5');
+          sheet1.getCell('C5').value = team.name;
+          sheet1.getCell('C5').font = font;
+          sheet1.getCell('C5').alignment = centerAlignment;
+
+          sheet1.getRow(6).height = 21;
+          sheet1.getCell('A6').value = '카테고리';
+          sheet1.getCell('A6').font = boldFont;
+          sheet1.getCell('A6').alignment = centerAlignment;
+
+          sheet1.getCell('B6').value = '점검항목';
+          sheet1.getCell('B6').font = boldFont;
+          sheet1.getCell('B6').alignment = centerAlignment;
+
+          sheet1.mergeCells('C6:AG6');
+          sheet1.getCell('C6').value = '날짜';
+          sheet1.getCell('C6').font = boldFont;
+          sheet1.getCell('C6').alignment = centerAlignment;
+
+          // 날짜 헤더
+          const dateColMap: Record<string, number> = {};
+          let colIndex = 3; // C열부터 시작
+          for (let day = 1; day <= lastDayOfMonth; day++) {
+            const col = colIndex++;
+            if (col <= 33) { // AG열까지
+              sheet1.getCell(7, col).value = day;
+              sheet1.getCell(7, col).font = boldFont;
+              sheet1.getCell(7, col).alignment = centerAlignment;
+              dateColMap[day.toString()] = col;
+            }
+          }
+
+          // 체크리스트 항목별 데이터 매핑
+          const detailsMap = new Map<string, string>();
+          const remarksMap = new Map<string, string>();
+
+          dailyReports.forEach(report => {
+            const day = new Date(report.reportDate).getDate();
+            report.reportDetails.forEach(detail => {
+              if (detail.itemId) {
+                const key = `${detail.itemId}-${day}`;
+                detailsMap.set(key, detail.checkState || '');
+                if (detail.actionDescription) {
+                  remarksMap.set(key, detail.actionDescription);
+                }
+              }
+            });
+          });
+
+          // 체크리스트 항목 출력
+          let currentRow1 = 8;
+          const remarksData: any[] = [];
+
+          if (checklistTemplate.templateItems.length > 0) {
+            // 카테고리별로 그룹화
+            const groupedItems = checklistTemplate.templateItems.reduce((acc, item) => {
+              if (!acc[item.category]) {
+                acc[item.category] = [];
+              }
+              acc[item.category].push(item);
+              return acc;
+            }, {} as Record<string, any[]>);
+
+            // 각 카테고리별로 출력
+            Object.entries(groupedItems).forEach(([category, items]) => {
+              const categoryStartRow = currentRow1;
+
+              items.forEach(item => {
+                sheet1.getCell(currentRow1, 2).value = item.description;
+                sheet1.getCell(currentRow1, 2).font = font;
+                sheet1.getCell(currentRow1, 2).alignment = { vertical: 'middle' as const, horizontal: 'left' as const };
+
+                // 각 날짜별 상태 표시
+                for (let day = 1; day <= lastDayOfMonth; day++) {
+                  const col = dateColMap[day.toString()];
+                  if (col) {
+                    const key = `${item.id}-${day}`;
+                    if (detailsMap.has(key)) {
+                      const status = detailsMap.get(key);
+                      sheet1.getCell(currentRow1, col).value = status;
+                      sheet1.getCell(currentRow1, col).font = font;
+                      sheet1.getCell(currentRow1, col).alignment = centerAlignment;
+
+                      // X 또는 △인 경우 문제점 기록
+                      if (status === 'X' || status === '△') {
+                        const reportForDay = dailyReports.find(
+                          r => new Date(r.reportDate).getDate() === day
+                        );
+                        if (reportForDay) {
+                          remarksData.push({
+                            date: new Date(reportForDay.reportDate).toLocaleDateString(),
+                            problem: item.description,
+                            prediction: remarksMap.get(key) || ''
+                          });
+                        }
+                      }
+                    }
+                  }
+                }
+
+                currentRow1++;
+              });
+
+              // 카테고리 셀 병합
+              sheet1.mergeCells(`A${categoryStartRow}:A${currentRow1 - 1}`);
+              sheet1.getCell(categoryStartRow, 1).value = category;
+              sheet1.getCell(categoryStartRow, 1).font = boldFont;
+              sheet1.getCell(categoryStartRow, 1).alignment = centerAlignment;
+            });
+          }
+
+          // 하단 문제점 테이블
+          const footerStartRow = currentRow1;
+          sheet1.getRow(footerStartRow).height = 21;
+          sheet1.getCell(footerStartRow, 1).value = '날짜';
+          sheet1.getCell(footerStartRow, 1).font = boldFont;
+          sheet1.getCell(footerStartRow, 1).alignment = centerAlignment;
+
+          sheet1.getCell(footerStartRow, 2).value = '문제점';
+          sheet1.getCell(footerStartRow, 2).font = boldFont;
+          sheet1.getCell(footerStartRow, 2).alignment = centerAlignment;
+
+          sheet1.mergeCells(`C${footerStartRow}:L${footerStartRow}`);
+          sheet1.getCell(footerStartRow, 3).value = '위험예측 사항';
+          sheet1.getCell(footerStartRow, 3).font = boldFont;
+          sheet1.getCell(footerStartRow, 3).alignment = centerAlignment;
+
+          sheet1.mergeCells(`M${footerStartRow}:V${footerStartRow}`);
+          sheet1.getCell(footerStartRow, 13).value = '조치사항';
+          sheet1.getCell(footerStartRow, 13).font = boldFont;
+          sheet1.getCell(footerStartRow, 13).alignment = centerAlignment;
+
+          sheet1.mergeCells(`W${footerStartRow}:Z${footerStartRow}`);
+          sheet1.getCell(footerStartRow, 23).value = '확인';
+          sheet1.getCell(footerStartRow, 23).font = boldFont;
+          sheet1.getCell(footerStartRow, 23).alignment = centerAlignment;
+
+          sheet1.mergeCells(`AA${footerStartRow}:AG${footerStartRow}`);
+
+          let footerCurrentRow = footerStartRow + 1;
+          remarksData.forEach(remark => {
+            sheet1.getRow(footerCurrentRow).height = 21;
+            sheet1.getCell(footerCurrentRow, 1).value = remark.date;
+            sheet1.getCell(footerCurrentRow, 1).font = font;
+            sheet1.getCell(footerCurrentRow, 1).alignment = centerAlignment;
+
+            sheet1.getCell(footerCurrentRow, 2).value = remark.problem;
+            sheet1.getCell(footerCurrentRow, 2).font = font;
+            sheet1.getCell(footerCurrentRow, 2).alignment = centerAlignment;
+
+            sheet1.mergeCells(`C${footerCurrentRow}:L${footerCurrentRow}`);
+            sheet1.getCell(footerCurrentRow, 3).value = remark.prediction;
+            sheet1.getCell(footerCurrentRow, 3).font = font;
+            sheet1.getCell(footerCurrentRow, 3).alignment = { vertical: 'middle' as const, horizontal: 'left' as const };
+
+            sheet1.mergeCells(`M${footerCurrentRow}:V${footerCurrentRow}`);
+            sheet1.mergeCells(`W${footerCurrentRow}:Z${footerCurrentRow}`);
+            sheet1.mergeCells(`AA${footerCurrentRow}:AG${footerCurrentRow}`);
+            footerCurrentRow++;
+          });
+
+          // 모든 셀에 테두리 적용
+          for (let r = 1; r < footerCurrentRow; r++) {
+            for (let c = 1; c <= 33; c++) {
+              sheet1.getCell(r, c).border = border;
+              if (!sheet1.getCell(r, c).alignment) {
+                sheet1.getCell(r, c).alignment = centerAlignment;
+              }
+              if (!sheet1.getCell(r, c).font) {
+                sheet1.getCell(r, c).font = font;
+              }
+            }
+          }
+
+          // ===== SHEET 2: 서명 =====
+          const sanitizedName2 = team.name.replace(/[*?:\\/\[\]]/g, '-');
+          const sheetName2 = `${sanitizedName2}_서명`.substring(0, 31);
+          const sheet2 = workbook.addWorksheet(sheetName2);
+
+          sheet2.getColumn(1).width = 20;
+          sheet2.getCell('A1').value = '이름';
+          sheet2.getCell('A1').font = boldFont;
+          sheet2.getCell('A1').alignment = centerAlignment;
+          sheet2.getCell('A1').border = border;
+
+          const sigDateColMap: Record<number, number> = {};
+          for (let day = 1; day <= lastDayOfMonth; day++) {
+            const col = 1 + day;
+            sheet2.getColumn(col).width = 7.5;
+            sheet2.getCell(1, col).value = day;
+            sheet2.getCell(1, col).font = boldFont;
+            sheet2.getCell(1, col).alignment = centerAlignment;
+            sheet2.getCell(1, col).border = border;
+            sigDateColMap[day] = col;
+          }
+
+          // User와 TeamMember를 모두 포함
+          const userRowMap: Record<string, number> = {};
+          const memberRowMap: Record<number, number> = {};
+          let currentRow = 2;
+
+          // 먼저 User(계정 있는 사용자) 추가
+          teamUsers.forEach((u) => {
+            userRowMap[u.id] = currentRow;
+            sheet2.getRow(currentRow).height = 30;
+            sheet2.getCell(currentRow, 1).value = u.name;
+            sheet2.getCell(currentRow, 1).font = font;
+            sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+            sheet2.getCell(currentRow, 1).border = border;
+            currentRow++;
+          });
+
+          // 그 다음 TeamMember(계정 없는 사용자) 추가
+          teamMembers.forEach((m) => {
+            memberRowMap[m.id] = currentRow;
+            sheet2.getRow(currentRow).height = 30;
+            sheet2.getCell(currentRow, 1).value = m.name;
+            sheet2.getCell(currentRow, 1).font = font;
+            sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+            sheet2.getCell(currentRow, 1).border = border;
+            currentRow++;
+          });
+
+          // 서명 이미지 삽입
+          dailyReports.forEach(report => {
+            const day = new Date(report.reportDate).getDate();
+            const col = sigDateColMap[day];
+            if (!col) return;
+
+            report.reportSignatures.forEach(sig => {
+              let row: number | undefined;
+
+              // User 서명인지 TeamMember 서명인지 확인
+              if (sig.userId) {
+                row = userRowMap[sig.userId];
+              } else if (sig.memberId) {
+                row = memberRowMap[sig.memberId];
+              }
+
+              if (row && sig.signatureImage) {
+                try {
+                  const base64Data = sig.signatureImage.split('base64,').pop();
+                  if (!base64Data) return;
+
+                  const imageId = workbook.addImage({ base64: base64Data, extension: 'png' });
+                  sheet2.addImage(imageId, {
+                    tl: { col: col - 0.5, row: row - 0.5 },
+                    ext: { width: 50, height: 25 }
+                  });
+                } catch (e) {
+                  console.error("Error adding signature image:", e);
+                }
+              }
+            });
+          });
+
+          // User와 TeamMember를 모두 포함한 총 행 수
+          const totalRows = teamUsers.length + teamMembers.length;
+          for (let r = 2; r <= totalRows + 1; r++) {
+            for (let c = 2; c <= lastDayOfMonth + 1; c++) {
+              sheet2.getCell(r, c).border = border;
+            }
+          }
+
+          console.log(`  ✅ 팀 ${team.name} 완료`);
+        } catch (error) {
+          console.error(`  ❌ 팀 ${team.name} 처리 실패:`, error);
+          // 한 팀 실패해도 계속 진행
+          continue;
+        }
+      }
+
+      console.log('\n📦 엑셀 파일 생성 중...');
+
+      // Finalize and send
+      const filename = `${site}_종합보고서_${year}_${month}.xlsx`;
+      const encodedFilename = encodeURIComponent(filename);
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+      await workbook.xlsx.write(res);
+      res.end();
+
+      console.log('✅ 종합 엑셀 생성 완료');
+    } catch (error) {
+      console.error('❌ 종합 엑셀 생성 실패:', error);
+      res.status(500).json({ message: "Failed to generate comprehensive Excel report" });
+    }
+  });
+
+  // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
+  app.get("/api/reports/safety-education-excel", requireAuth, async (req, res) => {
+    try {
+      const { site, year, month, date } = req.query;
+
+      // 파라미터 검증
+      if (!site || !year || !month || !date) {
+        return res.status(400).json({ message: "site, year, month, and date are required." });
+      }
+
+      if (site !== '아산' && site !== '화성') {
+        return res.status(400).json({ message: "site must be either '아산' or '화성'." });
+      }
+
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+      const dateNum = parseInt(date as string);
+
+      if (isNaN(yearNum) || isNaN(monthNum) || isNaN(dateNum)) {
+        return res.status(400).json({ message: "year, month, and date must be valid numbers." });
+      }
+
+      if (yearNum < 2000 || yearNum > 2100) {
+        return res.status(400).json({ message: "year must be between 2000 and 2100." });
+      }
+
+      if (monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ message: "month must be between 1 and 12." });
+      }
+
+      if (dateNum < 1 || dateNum > 31) {
+        return res.status(400).json({ message: "date must be between 1 and 31." });
+      }
+
+      console.log(`\n🎓 안전교육 엑셀 생성 시작: ${site} ${year}년 ${month}월 ${date}일`);
+
+      // 날짜 범위 설정
+      const selectedDate = new Date(yearNum, monthNum - 1, dateNum, 0, 0, 0);
+      const selectedDateEnd = new Date(yearNum, monthNum - 1, dateNum, 23, 59, 59, 999);
+      const monthStart = new Date(yearNum, monthNum - 1, 1);
+      const monthEnd = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
+      // 사이트별 모든 팀 조회
+      const teams = await prisma.team.findMany({
+        where: { site: site as string },
+        orderBy: { name: 'asc' }
+      });
+
+      if (teams.length === 0) {
+        return res.status(404).json({ message: `${site} 사이트에 팀이 없습니다.` });
+      }
+
+      console.log(`📋 팀 총 ${teams.length}개 발견`);
+
+      // 선택한 일자의 TBM 보고서 조회 (사진 포함)
+      const reports = await prisma.dailyReport.findMany({
+        where: {
+          teamId: { in: teams.map(t => t.id) },
+          reportDate: { gte: selectedDate, lte: selectedDateEnd }
+        },
+        include: {
+          team: true,
+          reportDetails: {
+            include: {
+              attachments: {
+                where: { type: 'image' },
+                orderBy: { createdAt: 'asc' }
+              }
+            }
+          },
+          reportSignatures: {
+            include: { user: true, member: true }
+          }
+        }
+      });
+
+      console.log(`📸 선택 일자(${date}일)의 TBM 보고서: ${reports.length}개`);
+
+      // 전체 활성 팀원 수 집계 (교육 대상자수)
+      const totalMembers = await prisma.teamMember.count({
+        where: {
+          teamId: { in: teams.map(t => t.id) },
+          isActive: true
+        }
+      });
+
+      // 선택 일자에 서명한 팀원 수 집계 (교육 실시자수)
+      const signedMembers = reports.reduce((sum, r) => sum + r.reportSignatures.length, 0);
+
+      console.log(`👥 교육 대상자: ${totalMembers}명, 실시자: ${signedMembers}명, 미실시: ${totalMembers - signedMembers}명`);
+
+      // ExcelJS 워크북 생성
+      const workbook = new ExcelJS.Workbook();
+      const font = { name: '맑은 고딕', size: 11 };
+      const boldFont = { ...font, bold: true };
+      const titleFont = { name: '맑은 고딕', size: 20, bold: true };
+      const border = {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      };
+      const centerAlignment = {
+        vertical: 'middle' as const,
+        horizontal: 'center' as const,
+        wrapText: true
+      };
+
+      // ===== 시트 1: 갑지 (안전보건 교육일지) =====
+      console.log('\n📄 시트 1: 갑지 생성...');
+      const coverSheet = workbook.addWorksheet('안전보건_교육일지');
+
+      // 열 너비 설정
+      coverSheet.getColumn(1).width = 15;
+      for (let i = 2; i <= 10; i++) {
+        coverSheet.getColumn(i).width = 10;
+      }
+
+      let currentRow = 1;
+
+      // 제목 및 결재란 (1~4행)
+      coverSheet.mergeCells('A1:G4');
+      coverSheet.getCell('A1').value = '안전보건 교육일지';
+      coverSheet.getCell('A1').font = titleFont;
+      coverSheet.getCell('A1').alignment = centerAlignment;
+      coverSheet.getCell('A1').border = border;
+
+      // 결재란 상단
+      coverSheet.mergeCells('H1:I2');
+      coverSheet.getCell('H1').value = '담당';
+      coverSheet.getCell('H1').font = boldFont;
+      coverSheet.getCell('H1').alignment = centerAlignment;
+      coverSheet.getCell('H1').border = border;
+
+      coverSheet.mergeCells('J1:J4');
+      coverSheet.getCell('J1').value = '결\n재';
+      coverSheet.getCell('J1').font = boldFont;
+      coverSheet.getCell('J1').alignment = centerAlignment;
+      coverSheet.getCell('J1').border = border;
+
+      coverSheet.mergeCells('K1:L2');
+      coverSheet.getCell('K1').value = '검토';
+      coverSheet.getCell('K1').font = boldFont;
+      coverSheet.getCell('K1').alignment = centerAlignment;
+      coverSheet.getCell('K1').border = border;
+
+      coverSheet.mergeCells('M1:N2');
+      coverSheet.getCell('M1').value = '승인';
+      coverSheet.getCell('M1').font = boldFont;
+      coverSheet.getCell('M1').alignment = centerAlignment;
+      coverSheet.getCell('M1').border = border;
+
+      // 결재란 하단 (서명 공간)
+      coverSheet.mergeCells('H3:I4');
+      coverSheet.getCell('H3').value = '';
+      coverSheet.getCell('H3').border = border;
+
+      coverSheet.mergeCells('K3:L4');
+      coverSheet.getCell('K3').value = '';
+      coverSheet.getCell('K3').border = border;
+
+      coverSheet.mergeCells('M3:N4');
+      coverSheet.getCell('M3').value = '';
+      coverSheet.getCell('M3').border = border;
+
+      currentRow = 5;
+
+      // 교육의 구분
+      coverSheet.mergeCells(`A${currentRow}:B${currentRow + 2}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교육의\n구  분';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`C${currentRow}`).value = '1. 신규채용시 교육(8시간이상)    2. 작업내용 변경시 교육(2시간 이상)';
+      coverSheet.getCell(`C${currentRow}`).font = font;
+      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`C${currentRow}`).border = border;
+
+      currentRow++;
+      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`C${currentRow}`).value = '3. 특별안전보건교 교육(16시간)    4. 정기안전교육(월2시간 이상)';
+      coverSheet.getCell(`C${currentRow}`).font = font;
+      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`C${currentRow}`).border = border;
+
+      currentRow++;
+      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`C${currentRow}`).value = '5. 관리감독자 교육(16시간/분기)    6. 기 타 (                ) 교육';
+      coverSheet.getCell(`C${currentRow}`).font = font;
+      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`C${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육시간
+      coverSheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교육시간';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`C${currentRow}`).value = `[${monthNum}/1~${monthNum}/${new Date(yearNum, monthNum, 0).getDate()}]년 30분 TBM현장교육`;
+      coverSheet.getCell(`C${currentRow}`).font = font;
+      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      coverSheet.getCell(`C${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육인원 헤더
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 3}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교육인원';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      // 교육인원 테이블 헤더
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '구분';
+      coverSheet.getCell(`B${currentRow}`).font = boldFont;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = '계';
+      coverSheet.getCell(`D${currentRow}`).font = boldFont;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = '남';
+      coverSheet.getCell(`F${currentRow}`).font = boldFont;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = '여';
+      coverSheet.getCell(`H${currentRow}`).font = boldFont;
+      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`J${currentRow}`).value = '교육 및 실시사유';
+      coverSheet.getCell(`J${currentRow}`).font = boldFont;
+      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`J${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육 대상자수
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '교육 대상자수';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = totalMembers;
+      coverSheet.getCell(`D${currentRow}`).font = font;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = totalMembers - 2; // 임시 남자 수
+      coverSheet.getCell(`F${currentRow}`).font = font;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = 2; // 임시 여자 수
+      coverSheet.getCell(`H${currentRow}`).font = font;
+      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`J${currentRow}`).value = '';
+      coverSheet.getCell(`J${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육 실시자수
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '교육 실시자수';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = signedMembers;
+      coverSheet.getCell(`D${currentRow}`).font = font;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = signedMembers - 2; // 임시
+      coverSheet.getCell(`F${currentRow}`).font = font;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = 2; // 임시
+      coverSheet.getCell(`H${currentRow}`).font = font;
+      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`J${currentRow}`).value = '-';
+      coverSheet.getCell(`J${currentRow}`).font = font;
+      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`J${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육 미 실시자수
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '교육 미 실시자수';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      const notAttended = totalMembers - signedMembers;
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = notAttended > 0 ? notAttended : '-';
+      coverSheet.getCell(`D${currentRow}`).font = font;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = '-';
+      coverSheet.getCell(`F${currentRow}`).font = font;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = '-';
+      coverSheet.getCell(`H${currentRow}`).font = font;
+      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`J${currentRow}`).value = '-';
+      coverSheet.getCell(`J${currentRow}`).font = font;
+      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`J${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육과목
+      coverSheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교육과목';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`C${currentRow}`).value = 'TBM 교육실시';
+      coverSheet.getCell(`C${currentRow}`).font = font;
+      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      coverSheet.getCell(`C${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 교육 내용
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 6}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교 육\n\n내 용';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      const educationContents = [
+        '- 건강상태확인 및 보호구 확인',
+        '- 비상대피로/AED위치 확인',
+        '- 위험예지훈련',
+        '- 아차사고 공유',
+        '- One Point 지적확인',
+        '- Touch and Call',
+        '- 사고사례 전파'
+      ];
+
+      for (const content of educationContents) {
+        coverSheet.mergeCells(`B${currentRow}:N${currentRow}`);
+        coverSheet.getCell(`B${currentRow}`).value = content;
+        coverSheet.getCell(`B${currentRow}`).font = font;
+        coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+        coverSheet.getCell(`B${currentRow}`).border = border;
+        currentRow++;
+      }
+
+      // 교육실시자 및 장소
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 1}`);
+      coverSheet.getCell(`A${currentRow}`).value = '교육실시자 및\n장소';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '성명';
+      coverSheet.getCell(`B${currentRow}`).font = boldFont;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = '직책';
+      coverSheet.getCell(`D${currentRow}`).font = boldFont;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = '교육실시장소';
+      coverSheet.getCell(`F${currentRow}`).font = boldFont;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = '비고';
+      coverSheet.getCell(`H${currentRow}`).font = boldFont;
+      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      currentRow++;
+
+      coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '관리감독자';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
+      coverSheet.getCell(`D${currentRow}`).value = '-';
+      coverSheet.getCell(`D${currentRow}`).font = font;
+      coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`D${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`F${currentRow}`).value = '곽 현장';
+      coverSheet.getCell(`F${currentRow}`).font = font;
+      coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`F${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`H${currentRow}:N${currentRow}`);
+      coverSheet.getCell(`H${currentRow}`).value = '';
+      coverSheet.getCell(`H${currentRow}`).border = border;
+
+      currentRow++;
+
+      // 특기 사항
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 1}`);
+      coverSheet.getCell(`A${currentRow}`).value = '특 기\n사 항';
+      coverSheet.getCell(`A${currentRow}`).font = boldFont;
+      coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`A${currentRow}`).border = border;
+
+      coverSheet.mergeCells(`B${currentRow}:N${currentRow + 1}`);
+      coverSheet.getCell(`B${currentRow}`).value = '-';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`B${currentRow}`).border = border;
+
+      console.log('  ✅ 갑지 생성 완료');
+
+      // ===== 시트 2: 팀별 사진 (3열 레이아웃) =====
+      console.log('\n📷 시트 2: 팀별 사진 생성...');
+      const photoSheet = workbook.addWorksheet('팀별_TBM_사진');
+
+      // 열 너비 설정 (사진 크기에 맞춤)
+      for (let i = 1; i <= 30; i++) {
+        photoSheet.getColumn(i).width = 4;
+      }
+
+      let photoRow = 1;
+
+      // 팀을 3개씩 묶어서 처리
+      for (let i = 0; i < teams.length; i += 3) {
+        const teamNameRow = photoRow;
+        const teamPhotoRow = photoRow + 1;
+
+        // 3개 팀 처리 (또는 남은 팀 수만큼)
+        for (let j = 0; j < 3 && i + j < teams.length; j++) {
+          const team = teams[i + j];
+          const report = reports.find(r => r.teamId === team.id);
+          const colStart = j * 10 + 1; // 1, 11, 21
+          const colEnd = colStart + 9;  // 10, 20, 30
+
+          // 팀명 셀 (병합)
+          photoSheet.mergeCells(teamNameRow, colStart, teamNameRow, colEnd);
+          const teamNameCell = photoSheet.getCell(teamNameRow, colStart);
+          teamNameCell.value = team.name;
+          teamNameCell.font = { ...boldFont, size: 14 };
+          teamNameCell.alignment = centerAlignment;
+          teamNameCell.border = border;
+          photoSheet.getRow(teamNameRow).height = 30;
+
+          // 사진 삽입
+          const photoCell = photoSheet.getCell(teamPhotoRow, colStart);
+          photoCell.border = border;
+          photoSheet.mergeCells(teamPhotoRow, colStart, teamPhotoRow + 20, colEnd); // 사진 공간 (높이 20행)
+
+          if (report?.reportDetails) {
+            // 첫 번째 사진 찾기
+            let firstPhoto = null;
+            for (const detail of report.reportDetails) {
+              if (detail.attachments && detail.attachments.length > 0) {
+                firstPhoto = detail.attachments[0];
+                break;
+              }
+            }
+
+            if (firstPhoto) {
+              try {
+                // 파일 경로에서 실제 파일명 추출
+                const photoPath = path.join(__dirname, firstPhoto.url);
+                console.log(`    📸 팀 ${team.name} 사진 삽입: ${photoPath}`);
+
+                // 파일 읽기
+                const imageBuffer = fs.readFileSync(photoPath);
+
+                // 확장자 추출
+                const ext = firstPhoto.url.split('.').pop()?.toLowerCase() || 'jpg';
+                const validExt = ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpg';
+
+                // ExcelJS에 이미지 추가
+                const imageId = workbook.addImage({
+                  buffer: imageBuffer,
+                  extension: validExt as 'jpg' | 'jpeg' | 'png' | 'gif'
+                });
+
+                // 이미지 삽입 (사진 셀의 위치와 크기)
+                photoSheet.addImage(imageId, {
+                  tl: { col: colStart - 1, row: teamPhotoRow - 1 },
+                  ext: { width: 280, height: 210 }
+                });
+              } catch (error) {
+                console.error(`    ❌ 사진 삽입 실패 (${team.name}):`, error);
+                photoCell.value = '사진 로드 실패';
+                photoCell.alignment = centerAlignment;
+                photoCell.font = font;
+              }
+            } else {
+              // 사진 없음
+              photoCell.value = '사진 없음';
+              photoCell.alignment = centerAlignment;
+              photoCell.font = { ...font, color: { argb: '808080' } };
+            }
+          } else {
+            // 보고서 없음
+            photoCell.value = `${date}일 보고서 없음`;
+            photoCell.alignment = centerAlignment;
+            photoCell.font = { ...font, color: { argb: '808080' } };
+          }
+        }
+
+        // 다음 팀 그룹으로 (팀명 1행 + 사진 21행 + 여백 1행 = 23행)
+        photoRow += 23;
+      }
+
+      console.log(`  ✅ 팀별 사진 생성 완료 (총 ${teams.length}개 팀)`);
+
+      // ===== 시트 3~: 각 팀 서명 시트 =====
+      console.log('\n✍️  시트 3~: 서명 시트 생성...');
+
+      const lastDayOfMonth = new Date(yearNum, monthNum, 0).getDate();
+
+      for (const team of teams) {
+        try {
+          console.log(`  🔄 팀 ${team.name} 서명 시트 생성 중...`);
+
+          // 해당 팀의 User와 TeamMember 조회
+          const [teamUsers, teamMembers, monthlyReports] = await Promise.all([
+            prisma.user.findMany({ where: { teamId: team.id } }),
+            prisma.teamMember.findMany({ where: { teamId: team.id, isActive: true } }),
+            prisma.dailyReport.findMany({
+              where: {
+                teamId: team.id,
+                reportDate: { gte: monthStart, lte: monthEnd }
+              },
+              include: {
+                reportSignatures: {
+                  include: { user: true, member: true }
+                }
+              },
+              orderBy: { reportDate: 'asc' }
+            })
+          ]);
+
+          // 서명 시트 생성
+          const sanitizedName = team.name.replace(/[*?:\\/\[\]]/g, '-');
+          const sheetName = `${sanitizedName}_서명`.substring(0, 31);
+          const signatureSheet = workbook.addWorksheet(sheetName);
+
+          // 첫 열: 이름
+          signatureSheet.getColumn(1).width = 20;
+          signatureSheet.getCell('A1').value = '이름';
+          signatureSheet.getCell('A1').font = boldFont;
+          signatureSheet.getCell('A1').alignment = centerAlignment;
+          signatureSheet.getCell('A1').border = border;
+
+          // 나머지 열: 1일~31일
+          const sigDateColMap: Record<number, number> = {};
+          for (let day = 1; day <= lastDayOfMonth; day++) {
+            const col = 1 + day;
+            signatureSheet.getColumn(col).width = 7.5;
+            signatureSheet.getCell(1, col).value = day;
+            signatureSheet.getCell(1, col).font = boldFont;
+            signatureSheet.getCell(1, col).alignment = centerAlignment;
+            signatureSheet.getCell(1, col).border = border;
+            sigDateColMap[day] = col;
+          }
+
+          // User와 TeamMember 이름 행 추가
+          const userRowMap: Record<string, number> = {};
+          const memberRowMap: Record<number, number> = {};
+          let currentRow = 2;
+
+          // User (계정 있는 사용자)
+          teamUsers.forEach((u) => {
+            userRowMap[u.id] = currentRow;
+            signatureSheet.getRow(currentRow).height = 30;
+            signatureSheet.getCell(currentRow, 1).value = u.name;
+            signatureSheet.getCell(currentRow, 1).font = font;
+            signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
+            signatureSheet.getCell(currentRow, 1).border = border;
+            currentRow++;
+          });
+
+          // TeamMember (계정 없는 사용자)
+          teamMembers.forEach((m) => {
+            memberRowMap[m.id] = currentRow;
+            signatureSheet.getRow(currentRow).height = 30;
+            signatureSheet.getCell(currentRow, 1).value = m.name;
+            signatureSheet.getCell(currentRow, 1).font = font;
+            signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
+            signatureSheet.getCell(currentRow, 1).border = border;
+            currentRow++;
+          });
+
+          // 서명 이미지 삽입
+          monthlyReports.forEach(report => {
+            const day = new Date(report.reportDate).getDate();
+            const col = sigDateColMap[day];
+            if (!col) return;
+
+            report.reportSignatures.forEach(sig => {
+              let row: number | undefined;
+
+              // User 서명인지 TeamMember 서명인지 확인
+              if (sig.userId) {
+                row = userRowMap[sig.userId];
+              } else if (sig.memberId) {
+                row = memberRowMap[sig.memberId];
+              }
+
+              if (row && sig.signatureImage) {
+                try {
+                  const base64Data = sig.signatureImage.split('base64,').pop();
+                  if (!base64Data) return;
+
+                  const imageId = workbook.addImage({ base64: base64Data, extension: 'png' });
+                  signatureSheet.addImage(imageId, {
+                    tl: { col: col - 0.5, row: row - 0.5 },
+                    ext: { width: 50, height: 25 }
+                  });
+                } catch (e) {
+                  console.error(`    ⚠️  서명 이미지 삽입 실패 (${team.name}):`, e);
+                }
+              }
+            });
+          });
+
+          // 모든 셀에 테두리 적용
+          const totalRows = teamUsers.length + teamMembers.length;
+          for (let r = 2; r <= totalRows + 1; r++) {
+            for (let c = 2; c <= lastDayOfMonth + 1; c++) {
+              signatureSheet.getCell(r, c).border = border;
+            }
+          }
+
+          console.log(`    ✅ 팀 ${team.name} 서명 시트 완료`);
+        } catch (error) {
+          console.error(`    ❌ 팀 ${team.name} 서명 시트 생성 실패:`, error);
+          // 한 팀 실패해도 계속 진행
+          continue;
+        }
+      }
+
+      console.log(`\n  ✅ 서명 시트 생성 완료 (총 ${teams.length}개 팀)`);
+
+      // 파일 전송
+      const filename = `${site}_안전교육_${year}년${month}월${date}일.xlsx`;
+      const encodedFilename = encodeURIComponent(filename);
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+      await workbook.xlsx.write(res);
+      res.end();
+
+      console.log('✅ 안전교육 엑셀 생성 완료');
+    } catch (error) {
+      console.error('❌ 안전교육 엑셀 생성 실패:', error);
+      res.status(500).json({ message: "Failed to generate safety education Excel report" });
+    }
+  });
+
+  app.get("/api/reports/:reportId", requireAuth, async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+
+      // reportId 유효성 검증
+      if (isNaN(reportId)) {
+        return res.status(400).json({ message: "Invalid report ID. Must be a number." });
+      }
+
+      const report = await prisma.dailyReport.findUnique({
+        where: { id: reportId },
+        include: {
+          team: true,
+          reportDetails: { include: { item: true, author: true, attachments: true } },
+          reportSignatures: { include: { user: true, member: true } }
+        },
+      });
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      res.json(report);
+    } catch (error) {
+      console.error('Failed to fetch report:', error);
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
   app.post("/api/reports", requireAuth, async (req, res) => {
     try {
       const reportData = tbmReportSchema.parse(req.body);
@@ -1769,24 +3486,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create report",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-    }
-  });
-
-  app.get("/api/reports/:reportId", requireAuth, async (req, res) => {
-    try {
-      const report = await prisma.dailyReport.findUnique({
-        where: { id: parseInt(req.params.reportId) },
-        include: {
-          team: true,
-          reportDetails: { include: { item: true, author: true, attachments: true } },
-          reportSignatures: { include: { user: true, member: true } }
-        },
-      });
-      if (!report) return res.status(404).json({ message: "Report not found" });
-      res.json(report);
-    } catch (error) {
-      console.error('Failed to fetch report:', error);
-      res.status(500).json({ message: "Failed to fetch report" });
     }
   });
 
@@ -1868,7 +3567,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EDUCATION & COURSE MANAGEMENT
   app.get("/api/courses", async (req, res) => {
     try {
-      const courses = await prisma.course.findMany({ orderBy: { title: 'asc' } });
+      const courses = await prisma.course.findMany({
+        orderBy: { title: 'asc' },
+        include: { attachments: true }
+      });
       res.json(courses);
     } catch (error) { res.status(500).json({ message: "Failed to fetch courses" }); }
   });
@@ -1876,14 +3578,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: Create course
   app.post("/api/courses", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const newCourse = await prisma.course.create({ data: req.body });
-      res.status(201).json(newCourse);
-    } catch (error) { res.status(500).json({ message: "Failed to create course" }); }
+      const { attachments, ...rawCourseData } = req.body;
+
+      // 필수 필드 검증
+      if (!rawCourseData.title || !rawCourseData.description) {
+        return res.status(400).json({
+          message: "필수 필드가 누락되었습니다",
+          missing: {
+            title: !rawCourseData.title,
+            description: !rawCourseData.description
+          }
+        });
+      }
+
+      // undefined 필드 제거 (Prisma는 undefined를 처리하지 못함)
+      const courseData = Object.fromEntries(
+        Object.entries(rawCourseData).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      );
+
+      console.log("[Course Create] Received data:", JSON.stringify({
+        courseData,
+        attachmentsCount: attachments?.length || 0
+      }));
+
+      // Course 먼저 생성
+      let newCourse;
+      try {
+        newCourse = await prisma.course.create({ data: courseData });
+        console.log("[Course Create] Course created successfully:", newCourse.id);
+      } catch (courseError: any) {
+        console.error("[Course Create] Course creation failed:", courseError);
+
+        // Prisma 에러 코드 체크
+        if (courseError.code === 'P2002') {
+          return res.status(409).json({
+            message: "중복된 과정이 존재합니다",
+            field: courseError.meta?.target
+          });
+        }
+
+        throw new Error(`Course 생성 실패: ${courseError.message}`);
+      }
+
+      // Attachments 별도 생성
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        try {
+          const validAttachments = attachments.filter(att => att.url); // URL이 있는 항목만
+
+          if (validAttachments.length > 0) {
+            console.log(`[Course Create] Creating ${validAttachments.length} attachments...`);
+
+            // 각 attachment 검증
+            for (let i = 0; i < validAttachments.length; i++) {
+              const att = validAttachments[i];
+              if (!att.url) {
+                console.warn(`[Course Create] Attachment ${i} missing URL, skipping`);
+                continue;
+              }
+              if (!att.name) {
+                console.warn(`[Course Create] Attachment ${i} missing name, using URL as name`);
+                att.name = att.url;
+              }
+            }
+
+            await prisma.attachment.createMany({
+              data: validAttachments.map((att: any) => ({
+                url: att.url,
+                name: att.name || att.url,
+                type: att.type || 'file',
+                size: att.size || 0,
+                mimeType: att.mimeType || 'application/octet-stream',
+                courseId: newCourse.id
+              }))
+            });
+            console.log(`[Course Create] ${validAttachments.length} attachments created`);
+          } else {
+            console.log(`[Course Create] No valid attachments (filtered from ${attachments.length})`);
+          }
+        } catch (attachmentError: any) {
+          console.error("[Course Create] Attachment creation failed:", attachmentError);
+          // Attachment 실패해도 Course는 생성되었으므로 경고만 반환
+          console.warn("[Course Create] Course created but attachments failed");
+        }
+      }
+
+      // 생성된 Course와 Attachments 함께 반환
+      const courseWithAttachments = await prisma.course.findUnique({
+        where: { id: newCourse.id },
+        include: { attachments: true }
+      });
+
+      console.log("[Course Create] Complete");
+      res.status(201).json(courseWithAttachments);
+    } catch (error) {
+      console.error("[Course Create] ERROR:", error);
+      console.error("[Course Create] Request body:", JSON.stringify(req.body, null, 2));
+
+      if (error instanceof Error) {
+        console.error("[Course Create] Error message:", error.message);
+        console.error("[Course Create] Error stack:", error.stack);
+
+        return res.status(500).json({
+          message: "교육 과정 생성에 실패했습니다",
+          error: error.message,
+          details: "서버 로그를 확인해주세요"
+        });
+      }
+
+      res.status(500).json({
+        message: "교육 과정 생성에 실패했습니다",
+        error: String(error)
+      });
+    }
   });
 
   app.get("/api/courses/:courseId", async (req, res) => {
     try {
-      const course = await prisma.course.findUnique({ where: { id: req.params.courseId } });
+      const course = await prisma.course.findUnique({
+        where: { id: req.params.courseId },
+        include: { attachments: true }
+      });
       if (!course) return res.status(404).json({ message: "Course not found" });
       res.json(course);
     } catch (error) { res.status(500).json({ message: "Failed to fetch course" }); }
@@ -1892,9 +3706,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: Update course
   app.put("/api/courses/:courseId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const updatedCourse = await prisma.course.update({ where: { id: req.params.courseId }, data: req.body });
-      res.json(updatedCourse);
-    } catch (error) { res.status(500).json({ message: "Failed to update course" }); }
+      const { attachments, ...rawCourseData } = req.body;
+
+      // undefined 필드 제거 (Prisma는 undefined를 처리하지 못함)
+      const courseData = Object.fromEntries(
+        Object.entries(rawCourseData).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      );
+
+      console.log(`[Course Update] Updating course ${req.params.courseId}:`, JSON.stringify({
+        courseData,
+        attachmentsCount: attachments?.length || 0
+      }));
+
+      const updatedCourse = await prisma.course.update({
+        where: { id: req.params.courseId },
+        data: courseData
+      });
+      console.log(`[Course Update] Course ${req.params.courseId} updated successfully`);
+
+      // Attachments 처리 (있으면 기존 것 삭제 후 새로 생성)
+      if (attachments && Array.isArray(attachments)) {
+        // 기존 attachments 삭제
+        await prisma.attachment.deleteMany({
+          where: { courseId: req.params.courseId }
+        });
+
+        // 새 attachments 생성
+        const validAttachments = attachments.filter(att => att.url);
+        if (validAttachments.length > 0) {
+          await prisma.attachment.createMany({
+            data: validAttachments.map((att: any) => ({
+              url: att.url,
+              name: att.name,
+              type: att.type || 'file',
+              size: att.size || 0,
+              mimeType: att.mimeType || 'application/octet-stream',
+              courseId: req.params.courseId
+            }))
+          });
+          console.log(`[Course Update] ${validAttachments.length} attachments updated`);
+        }
+      }
+
+      // 업데이트된 Course와 Attachments 함께 반환
+      const courseWithAttachments = await prisma.course.findUnique({
+        where: { id: req.params.courseId },
+        include: { attachments: true }
+      });
+
+      res.json(courseWithAttachments);
+    } catch (error) {
+      console.error(`[Course Update] ERROR updating course ${req.params.courseId}:`, error);
+      console.error("[Course Update] Request body:", JSON.stringify(req.body, null, 2));
+      if (error instanceof Error) {
+        console.error("[Course Update] Error message:", error.message);
+        console.error("[Course Update] Error stack:", error.stack);
+      }
+      res.status(500).json({
+        message: "Failed to update course",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   });
 
   // Admin-only: Delete course

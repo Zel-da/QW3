@@ -59,6 +59,53 @@ const deleteTeamMember = async ({ teamId, memberId }: { teamId: number; memberId
   await fetch(`/api/teams/${teamId}/team-members/${memberId}`, { method: 'DELETE' });
 };
 
+const createTeam = async ({ name, site }: { name: string; site: string }) => {
+  const res = await fetch('/api/teams', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, site }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to create team');
+  }
+  return res.json();
+};
+
+const createTeamsBulk = async ({ site, teamNames }: { site: string; teamNames: string[] }) => {
+  const res = await fetch('/api/teams/bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ site, teamNames }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to create teams in bulk');
+  }
+  return res.json();
+};
+
+const updateTeam = async ({ teamId, name, site }: { teamId: number; name?: string; site?: string }) => {
+  const res = await fetch(`/api/teams/${teamId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, site }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to update team');
+  }
+  return res.json();
+};
+
+const deleteTeam = async (teamId: number) => {
+  const res = await fetch(`/api/teams/${teamId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to delete team');
+  }
+};
+
 const addUserToTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
   const res = await fetch(`/api/teams/${teamId}/members`, {
     method: 'POST',
@@ -83,6 +130,16 @@ const setTeamLeader = async ({ teamId, userId }: { teamId: number; userId: strin
   return res.json();
 };
 
+const setTeamApprover = async ({ teamId, userId }: { teamId: number; userId: string | null }) => {
+  const res = await fetch(`/api/teams/${teamId}/approver`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) throw new Error('Failed to set team approver');
+  return res.json();
+};
+
 export default function TeamManagementPage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -94,6 +151,19 @@ export default function TeamManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPosition, setNewMemberPosition] = useState('');
+
+  // Team CRUD states
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamSite, setNewTeamSite] = useState<string>('아산');
+  const [bulkTeamsText, setBulkTeamsText] = useState('');
+  const [bulkTeamsSite, setBulkTeamsSite] = useState<string>('화성');
+  const [isEditingTeam, setIsEditingTeam] = useState(false);
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editTeamSite, setEditTeamSite] = useState('');
+
+  // Team selection filter
+  const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('아산');
+
   const ITEMS_PER_PAGE = 10;
 
   // Set initial team selection
@@ -114,12 +184,15 @@ export default function TeamManagementPage() {
     queryKey: ['teamData', selectedTeamId],
     queryFn: () => fetchTeamData(selectedTeamId!),
     enabled: !!selectedTeamId,
+    staleTime: 0, // 항상 최신 팀 데이터 가져오기
   });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['allUsers'],
     queryFn: fetchAllUsers,
     enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER',
+    staleTime: 0, // 항상 최신 데이터 가져오기
+    refetchOnMount: true, // 마운트 시 항상 refetch
   });
 
   const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery<any[]>({
@@ -153,6 +226,13 @@ export default function TeamManagementPage() {
     }
   });
 
+  const approverMutation = useMutation({ mutationFn: setTeamApprover,
+    onSuccess: () => {
+      toast({ title: '성공', description: '결재자가 지정되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+    }
+  });
+
   const addMemberMutation = useMutation({ mutationFn: addTeamMember,
     onSuccess: () => {
       toast({ title: '성공', description: '팀원이 추가되었습니다.' });
@@ -177,6 +257,69 @@ export default function TeamManagementPage() {
     }
   });
 
+  // Team CRUD mutations
+  const createTeamMutation = useMutation({ mutationFn: createTeam,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀이 생성되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      setNewTeamName('');
+      setNewTeamSite('아산');
+    },
+    onError: (error: any) => {
+      toast({
+        title: '오류',
+        description: error.message || '팀 생성에 실패했습니다.',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  const createTeamsBulkMutation = useMutation({ mutationFn: createTeamsBulk,
+    onSuccess: (data) => {
+      toast({ title: '성공', description: data.message || '팀들이 생성되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      setBulkTeamsText('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: '오류',
+        description: error.message || '팀 대량 생성에 실패했습니다.',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  const updateTeamMutation = useMutation({ mutationFn: updateTeam,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀 정보가 수정되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+      setIsEditingTeam(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: '오류',
+        description: error.message || '팀 정보 수정에 실패했습니다.',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  const deleteTeamMutation = useMutation({ mutationFn: deleteTeam,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀이 삭제되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      setSelectedTeamId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: '오류',
+        description: error.message || '팀 삭제에 실패했습니다.',
+        variant: 'destructive'
+      });
+    }
+  });
+
   // Handlers
   const handleAddUser = () => {
     if (selectedUser && selectedTeamId) {
@@ -196,6 +339,12 @@ export default function TeamManagementPage() {
     }
   };
 
+  const handleSetApprover = (userId: string | null) => {
+    if (selectedTeamId) {
+      approverMutation.mutate({ teamId: selectedTeamId, userId });
+    }
+  };
+
   const handleAddMember = () => {
     if (newMemberName.trim() && selectedTeamId) {
       addMemberMutation.mutate({ teamId: selectedTeamId, name: newMemberName.trim(), position: newMemberPosition.trim() || undefined });
@@ -205,6 +354,56 @@ export default function TeamManagementPage() {
   const handleDeleteMember = (memberId: string) => {
     if (selectedTeamId) {
       deleteMemberMutation.mutate({ teamId: selectedTeamId, memberId });
+    }
+  };
+
+  // Team CRUD handlers
+  const handleCreateTeam = () => {
+    if (newTeamName.trim() && newTeamSite) {
+      createTeamMutation.mutate({ name: newTeamName.trim(), site: newTeamSite });
+    }
+  };
+
+  const handleBulkCreate = () => {
+    const teamNames = bulkTeamsText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    if (teamNames.length > 0 && bulkTeamsSite) {
+      createTeamsBulkMutation.mutate({ site: bulkTeamsSite, teamNames });
+    }
+  };
+
+  const handleStartEditTeam = () => {
+    if (teamData) {
+      setEditTeamName(teamData.name);
+      setEditTeamSite(teamData.site || '아산');
+      setIsEditingTeam(true);
+    }
+  };
+
+  const handleSaveTeamEdit = () => {
+    if (selectedTeamId && (editTeamName.trim() || editTeamSite)) {
+      updateTeamMutation.mutate({
+        teamId: selectedTeamId,
+        name: editTeamName.trim() || undefined,
+        site: editTeamSite || undefined
+      });
+    }
+  };
+
+  const handleCancelTeamEdit = () => {
+    setIsEditingTeam(false);
+    setEditTeamName('');
+    setEditTeamSite('');
+  };
+
+  const handleDeleteTeam = () => {
+    if (selectedTeamId && teamData) {
+      if (confirm(`정말 "${teamData.name}" 팀을 삭제하시겠습니까?\n팀에 사용자가 없어야 삭제 가능합니다.`)) {
+        deleteTeamMutation.mutate(selectedTeamId);
+      }
     }
   };
 
@@ -236,28 +435,268 @@ export default function TeamManagementPage() {
     <div>
       <Header />
       <main className="container mx-auto p-4 lg:p-8">
+        {/* 관리자 전용: 팀 생성 */}
+        {currentUser?.role === 'ADMIN' && (
+          <div className="grid gap-8 md:grid-cols-2 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>팀 생성</CardTitle>
+                <CardDescription>새로운 팀을 생성합니다.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="newTeamName">팀명</Label>
+                  <Input
+                    id="newTeamName"
+                    placeholder="예: 아산 조립 전기라인"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newTeamSite">사업장</Label>
+                  <Select value={newTeamSite} onValueChange={setNewTeamSite}>
+                    <SelectTrigger id="newTeamSite">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="아산">아산</SelectItem>
+                      <SelectItem value="화성">화성</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleCreateTeam}
+                  disabled={!newTeamName.trim() || createTeamMutation.isPending}
+                  className="w-full"
+                >
+                  {createTeamMutation.isPending ? '생성 중...' : '팀 생성'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>팀 대량 생성</CardTitle>
+                <CardDescription>여러 팀을 한번에 생성합니다 (한 줄에 하나씩)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="bulkTeamsSite">사업장</Label>
+                  <Select value={bulkTeamsSite} onValueChange={setBulkTeamsSite}>
+                    <SelectTrigger id="bulkTeamsSite">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="아산">아산</SelectItem>
+                      <SelectItem value="화성">화성</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="bulkTeamsText">팀명 목록</Label>
+                  <textarea
+                    id="bulkTeamsText"
+                    className="w-full min-h-[150px] p-2 border rounded-md"
+                    placeholder="화성 조립라인&#10;화성 가공라인&#10;화성 품질팀&#10;..."
+                    value={bulkTeamsText}
+                    onChange={(e) => setBulkTeamsText(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {bulkTeamsText.split('\n').filter(l => l.trim()).length}개 팀
+                  </p>
+                </div>
+                <Button
+                  onClick={handleBulkCreate}
+                  disabled={!bulkTeamsText.trim() || createTeamsBulkMutation.isPending}
+                  className="w-full"
+                >
+                  {createTeamsBulkMutation.isPending ? '생성 중...' : '대량 생성'}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>팀 관리</CardTitle>
+            <CardTitle>팀 선택 및 관리</CardTitle>
             <CardDescription>관리할 팀을 선택하세요.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {currentUser?.role === 'ADMIN' ? (
-              <Select onValueChange={(val) => setSelectedTeamId(Number(val))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="팀을 선택하세요..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map(team => (
-                    <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                {/* 사이트 필터 */}
+                <div>
+                  <Label>사업장 선택</Label>
+                  <Select value={selectedSiteFilter} onValueChange={setSelectedSiteFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="아산">아산</SelectItem>
+                      <SelectItem value="화성">화성</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 팀 선택 */}
+                <div>
+                  <Label>팀 선택</Label>
+                  <Select onValueChange={(val) => setSelectedTeamId(Number(val))} value={selectedTeamId ? String(selectedTeamId) : undefined}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="팀을 선택하세요..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto">
+                      {teams
+                        .filter(team => team.site === selectedSiteFilter)
+                        .map(team => (
+                          <SelectItem key={team.id} value={String(team.id)}>
+                            {team.name.replace(/^(아산|화성)\s*/, '')}
+                          </SelectItem>
+                        ))}
+                      {teams.filter(team => team.site === selectedSiteFilter).length === 0 && (
+                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          {selectedSiteFilter} 사업장에 팀이 없습니다.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedTeamId && teamData && (
+                  <div className="flex gap-2 pt-2">
+                    {isEditingTeam ? (
+                      <>
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            placeholder="팀명"
+                            value={editTeamName}
+                            onChange={(e) => setEditTeamName(e.target.value)}
+                          />
+                          <Select value={editTeamSite} onValueChange={setEditTeamSite}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="아산">아산</SelectItem>
+                              <SelectItem value="화성">화성</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={handleSaveTeamEdit}
+                            disabled={updateTeamMutation.isPending}
+                            size="sm"
+                          >
+                            저장
+                          </Button>
+                          <Button
+                            onClick={handleCancelTeamEdit}
+                            variant="outline"
+                            size="sm"
+                          >
+                            취소
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handleStartEditTeam}
+                          variant="outline"
+                          size="sm"
+                        >
+                          수정
+                        </Button>
+                        <Button
+                          onClick={handleDeleteTeam}
+                          variant="destructive"
+                          size="sm"
+                          disabled={deleteTeamMutation.isPending}
+                        >
+                          삭제
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             ) : (
-              <p>{teamData?.name || '당신의 팀'}</p>
+              <p className="text-lg font-semibold">{teamData?.name || '당신의 팀'}</p>
             )}
           </CardContent>
         </Card>
+
+        {/* 결재자 설정 (관리자 전용) */}
+        {currentUser?.role === 'ADMIN' && selectedTeamId && teamData && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>월별보고서 결재자 설정</CardTitle>
+              <CardDescription>
+                {teamData.approver
+                  ? `현재 결재자: ${teamData.approver.name} (${teamData.approver.username})`
+                  : '결재자가 설정되지 않았습니다.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>결재자 선택</Label>
+                <Select
+                  onValueChange={(value) => handleSetApprover(value === 'none' ? null : value)}
+                  value={teamData.approverId || 'none'}
+                  disabled={usersLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={usersLoading ? "사용자 목록 로딩 중..." : "결재자를 선택하세요..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">결재자 없음</SelectItem>
+                    {usersLoading ? (
+                      <SelectItem value="loading" disabled>
+                        사용자 목록을 불러오는 중...
+                      </SelectItem>
+                    ) : allUsers.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        등록된 사용자가 없습니다
+                      </SelectItem>
+                    ) : (
+                      (() => {
+                        // 결재자는 ADMIN 또는 TEAM_LEADER 역할만 가능
+                        const eligibleApprovers = allUsers.filter(user =>
+                          user.role === 'ADMIN' || user.role === 'TEAM_LEADER'
+                        );
+
+                        if (eligibleApprovers.length === 0) {
+                          return (
+                            <SelectItem value="no-approvers" disabled>
+                              결재 가능한 사용자가 없습니다 (ADMIN 또는 TEAM_LEADER 역할 필요)
+                            </SelectItem>
+                          );
+                        }
+
+                        return eligibleApprovers.map(user => {
+                          let roleLabel = '사용자';
+                          if (user.role === 'ADMIN') roleLabel = '관리자';
+                          else if (user.role === 'TEAM_LEADER') roleLabel = '팀장';
+                          else if (user.role === 'WORKER') roleLabel = '작업자';
+                          else if (user.role === 'OFFICE_WORKER') roleLabel = '사무직';
+
+                          return (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name} ({user.username}) - {roleLabel}
+                            </SelectItem>
+                          );
+                        });
+                      })()
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {selectedTeamId && (
           <div className="grid gap-8 md:grid-cols-2">

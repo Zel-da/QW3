@@ -19,6 +19,7 @@ model User {
   createdAt              DateTime          @default(now())
   team                   Team?             @relation("TeamMembers", fields: [teamId], references: [id])
   ledTeams               Team[]            @relation("TeamLeader")
+  approverTeams          Team[]            @relation("TeamApprover")      // 신규: 내가 결재자인 팀들
   notices                Notice[]
   createdApprovals       MonthlyApproval[] @relation("Approver")
   signatures             ReportSignature[]
@@ -90,6 +91,7 @@ model Course {
   certificates    Certificate[]
   userAssessments UserAssessment[]
   userProgress    UserProgress[]
+  attachments     Attachment[]     // 여러 미디어 파일 지원
 }
 
 model UserProgress {
@@ -151,7 +153,9 @@ model Team {
   name                String
   site                String?
   leaderId            String?
+  approverId          String?               // 신규: 월별보고서 결재자
   leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  approver            User?                 @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   members             User[]                @relation("TeamMembers")
   teamMembers         TeamMember[]          // 신규: User 계정 없는 팀원들
   checklistTemplates  ChecklistTemplate[]
@@ -301,17 +305,18 @@ model MonthlyApproval {
 
 // 신규 모델: 결재 요청 및 승인
 model ApprovalRequest {
-  id              String          @id @default(uuid())
-  reportId        String          @unique
-  requesterId     String          // 요청자 (팀관리자)
-  approverId      String          // 승인자 (임원)
-  status          String          @default("PENDING") // PENDING, APPROVED, REJECTED
-  requestedAt     DateTime        @default(now())
-  approvedAt      DateTime?
-  rejectionReason String?         // 반려 사유
-  monthlyReport   MonthlyApproval @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  requester       User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
-  approver        User            @relation("ApprovalApprover", fields: [approverId], references: [id])
+  id                 String          @id @default(uuid())
+  reportId           String          @unique
+  requesterId        String          // 요청자 (팀관리자)
+  approverId         String          // 승인자 (임원)
+  status             String          @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedAt        DateTime        @default(now())
+  approvedAt         DateTime?
+  rejectionReason    String?         // 반려 사유
+  executiveSignature String?         // 임원 서명 이미지 (base64)
+  monthlyReport      MonthlyApproval @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  requester          User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
+  approver           User            @relation("ApprovalApprover", fields: [approverId], references: [id])
 
   @@index([requesterId])
   @@index([approverId])
@@ -324,7 +329,7 @@ model Attachment {
   id             String        @id @default(uuid())
   url            String
   name           String
-  type           String        @default("file") // 'image' | 'file'
+  type           String        @default("file") // 'image' | 'file' | 'video' | 'youtube' | 'audio'
   size           Int           @default(0)
   mimeType       String        @default("application/octet-stream")
   createdAt      DateTime      @default(now())
@@ -334,10 +339,13 @@ model Attachment {
   comment        Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
   reportDetailId Int?
   reportDetail   ReportDetail? @relation(fields: [reportDetailId], references: [id], onDelete: Cascade)
+  courseId       String?
+  course         Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([noticeId])
   @@index([commentId])
   @@index([reportDetailId])
+  @@index([courseId])
 }
 
 // ========== 안전점검 시스템 ==========
@@ -390,4 +398,92 @@ model InspectionItem {
 
   @@index([inspectionId])
   @@map("InspectionItems")
+}
+
+// ========== 이메일 템플릿 및 스케줄 시스템 ==========
+
+// 이메일 템플릿
+model EmailTemplate {
+  id          String          @id @default(uuid())
+  name        String          // 템플릿 이름
+  type        String          // EDUCATION_REMINDER, TBM_REMINDER, SAFETY_INSPECTION_REMINDER, etc.
+  subject     String          // 이메일 제목 (변수 포함 가능)
+  htmlContent String          @db.Text // HTML 본문 (변수 포함 가능: {{variableName}})
+  variables   String          @db.Text // JSON 배열: 사용 가능한 변수 목록
+  description String?         // 템플릿 설명
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  schedules   EmailSchedule[]
+  conditions  EmailCondition[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("EmailTemplates")
+}
+
+// 이메일 스케줄 (cron 기반 자동 발송)
+model EmailSchedule {
+  id           String        @id @default(uuid())
+  name         String        // 스케줄 이름
+  templateId   String        // 사용할 템플릿
+  cronExpression String      // cron 표현식 (예: "0 7 * * *")
+  description  String?       // 스케줄 설명
+  isEnabled    Boolean       @default(true)
+  lastRun      DateTime?     // 마지막 실행 시간
+  nextRun      DateTime?     // 다음 실행 시간
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  template     EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sendLogs     EmailSendLog[]
+
+  @@index([templateId])
+  @@index([isEnabled])
+  @@index([nextRun])
+  @@map("EmailSchedules")
+}
+
+// 이메일 조건 정의 (상태 기반 자동 발송)
+model EmailCondition {
+  id              String   @id @default(uuid())
+  name            String   // "TBM 3일 미작성 알림"
+  conditionType   String   // "TBM_NOT_SUBMITTED_DAYS", "MONTHLY_REPORT_COMPLETED", etc.
+  parameters      String   @db.Text // JSON: {"days": 3, "targetRole": "TEAM_LEADER"}
+  templateId      String   // 어떤 이메일 템플릿을 사용할지
+  recipientType   String   // "TEAM_LEADER", "EXECUTIVE", "SPECIFIC_USER", "AFFECTED_USER", "CUSTOM"
+  recipientConfig String?  @db.Text // JSON: 커스텀 수신자 로직 (예: 특정 사용자 ID 목록)
+  isEnabled       Boolean  @default(true)
+  description     String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  template        EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sendLogs        EmailSendLog[]
+
+  @@index([conditionType])
+  @@index([isEnabled])
+  @@index([templateId])
+  @@map("EmailConditions")
+}
+
+// 이메일 발송 이력 (중복 발송 방지 및 추적)
+model EmailSendLog {
+  id             String   @id @default(uuid())
+  conditionId    String?  // EmailCondition에서 발송된 경우
+  scheduleId     String?  // EmailSchedule에서 발송된 경우
+  templateType   String   // 템플릿 타입
+  recipientId    String   // 수신자 User ID
+  recipientEmail String   // 수신자 이메일
+  sentAt         DateTime @default(now())
+  status         String   @default("sent") // "sent", "failed", "bounced"
+  errorMessage   String?  @db.Text
+  condition      EmailCondition? @relation(fields: [conditionId], references: [id], onDelete: SetNull)
+  schedule       EmailSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  @@index([conditionId])
+  @@index([scheduleId])
+  @@index([recipientId])
+  @@index([recipientEmail])
+  @@index([sentAt])
+  @@index([status])
+  @@map("EmailSendLogs")
 }

@@ -50,7 +50,6 @@ export type Site = typeof SITES[number];
 // 권한 한글 레이블
 export const ROLE_LABELS = {
   ADMIN: '총관리자',
-  SAFETY_TEAM: '안전보건팀',
   TEAM_LEADER: '팀장',
   WORKER: '현장관리자',
   OFFICE_WORKER: '임원',

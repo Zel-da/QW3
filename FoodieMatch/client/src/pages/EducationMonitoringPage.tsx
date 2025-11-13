@@ -15,6 +15,8 @@ import type { User, Team, Course, UserProgress, UserAssessment } from '@shared/s
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
+import { SiteSelector } from '@/components/SiteSelector';
+import { useSite } from '@/hooks/use-site';
 
 interface EducationOverviewData {
   users: (User & { team?: Team })[];
@@ -47,9 +49,9 @@ export default function EducationMonitoringPage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { site: selectedSite } = useSite();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in-progress' | 'not-started'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,7 +62,7 @@ export default function EducationMonitoringPage() {
   const { data, isLoading } = useQuery<EducationOverviewData>({
     queryKey: ['education-overview'],
     queryFn: fetchEducationOverview,
-    enabled: !!currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'SAFETY_TEAM'),
+    enabled: !!currentUser && currentUser.role === 'ADMIN',
   });
 
   // Calculate user statistics
@@ -207,7 +209,7 @@ export default function EducationMonitoringPage() {
     }
 
     // Site filter
-    if (selectedSite !== 'all') {
+    if (selectedSite !== '전체') {
       filtered = filtered.filter(u => u.site === selectedSite);
     }
 
@@ -261,7 +263,7 @@ export default function EducationMonitoringPage() {
     );
   }
 
-  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'SAFETY_TEAM')) {
+  if (!currentUser || currentUser.role !== 'ADMIN') {
     return (
       <div>
         <Header />
@@ -269,7 +271,7 @@ export default function EducationMonitoringPage() {
           <EmptyState
             icon={AlertCircle}
             title="접근 권한이 없습니다"
-            description="이 페이지는 관리자 및 안전팀만 접근할 수 있습니다."
+            description="이 페이지는 관리자만 접근할 수 있습니다."
           />
         </main>
       </div>
@@ -452,8 +454,8 @@ export default function EducationMonitoringPage() {
           </CardHeader>
           <CardContent>
             {/* Filters */}
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="mb-6 flex flex-wrap items-center gap-4">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="이름 또는 팀으로 검색..."
@@ -462,22 +464,12 @@ export default function EducationMonitoringPage() {
                   className="pl-9"
                 />
               </div>
-              {currentUser.role === 'ADMIN' && sites.length > 0 && (
-                <Select value={selectedSite} onValueChange={setSelectedSite}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="현장 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">전체 현장</SelectItem>
-                    {sites.map(site => (
-                      <SelectItem key={site} value={site!}>{site}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {currentUser.role === 'ADMIN' && (
+                <SiteSelector />
               )}
               {teams.length > 0 && (
                 <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="팀 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -489,7 +481,7 @@ export default function EducationMonitoringPage() {
                 </Select>
               )}
               <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="상태 선택" />
                 </SelectTrigger>
                 <SelectContent>
@@ -506,7 +498,7 @@ export default function EducationMonitoringPage() {
               <EmptyState
                 icon={UsersIcon}
                 title="사용자가 없습니다"
-                description={searchTerm || selectedSite !== 'all' || selectedTeam !== 'all' || statusFilter !== 'all'
+                description={searchTerm || selectedSite !== '전체' || selectedTeam !== 'all' || statusFilter !== 'all'
                   ? "검색 조건에 맞는 사용자가 없습니다."
                   : "등록된 사용자가 없습니다."}
               />

@@ -261,7 +261,7 @@ export default function NoticeDetailPage() {
 
                   {/* Display file attachments */}
                   {(notice as any).attachments.filter((a: any) => a.type === 'attachment').length > 0 && (
-                    <div>
+                    <div className="mb-6">
                       <h4 className="text-xl font-medium mb-3">파일</h4>
                       <div className="space-y-3">
                         {(notice as any).attachments.filter((a: any) => a.type === 'attachment').map((file: any, idx: number) => (
@@ -278,6 +278,60 @@ export default function NoticeDetailPage() {
                                 다운로드
                               </a>
                             </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display videos */}
+                  {(notice as any).attachments.filter((a: any) => a.type === 'video').length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-xl font-medium mb-3">동영상</h4>
+                      <div className="space-y-4">
+                        {(notice as any).attachments.filter((a: any) => a.type === 'video').map((file: any, idx: number) => (
+                          <div key={idx} className="border rounded-lg p-4">
+                            <video src={file.url} controls className="w-full rounded max-h-[600px]" />
+                            <p className="text-sm mt-2 truncate">{file.name}</p>
+                            {file.size > 0 && <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display YouTube videos */}
+                  {(notice as any).attachments.filter((a: any) => a.type === 'youtube').length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-xl font-medium mb-3">YouTube 동영상</h4>
+                      <div className="space-y-4">
+                        {(notice as any).attachments.filter((a: any) => a.type === 'youtube').map((file: any, idx: number) => (
+                          <div key={idx} className="border rounded-lg p-4">
+                            <div className="aspect-video">
+                              <iframe
+                                src={getYouTubeEmbedUrl(file.url)}
+                                className="w-full h-full rounded"
+                                allowFullScreen
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              />
+                            </div>
+                            <p className="text-sm mt-2 text-muted-foreground">YouTube: {file.name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display audio */}
+                  {(notice as any).attachments.filter((a: any) => a.type === 'audio').length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-xl font-medium mb-3">오디오</h4>
+                      <div className="space-y-4">
+                        {(notice as any).attachments.filter((a: any) => a.type === 'audio').map((file: any, idx: number) => (
+                          <div key={idx} className="border rounded-lg p-4">
+                            <audio src={file.url} controls className="w-full" />
+                            <p className="text-sm mt-2 truncate">{file.name}</p>
+                            {file.size > 0 && <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
                           </div>
                         ))}
                       </div>

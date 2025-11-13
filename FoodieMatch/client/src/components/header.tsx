@@ -23,7 +23,7 @@ export function Header() {
       <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
         TBM
       </Link>
-      {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM' || user?.role === 'TEAM_LEADER') && (
+      {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
         <>
           <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
             안전점검
@@ -34,9 +34,14 @@ export function Header() {
         </>
       )}
       {user?.role === 'ADMIN' && (
-        <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-          사용자 관리
-        </Link>
+        <>
+          <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+            사용자 관리
+          </Link>
+          <Link href="/email-settings" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+            이메일 설정
+          </Link>
+        </>
       )}
       {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
           <Link href="/team-management" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">

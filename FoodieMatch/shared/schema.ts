@@ -3,7 +3,6 @@ import { z } from 'zod';
 // Enum for User Roles, matching prisma/schema.prisma
 export enum Role {
   ADMIN = 'ADMIN',
-  SAFETY_TEAM = 'SAFETY_TEAM',
   TEAM_LEADER = 'TEAM_LEADER',
   WORKER = 'WORKER',
   OFFICE_WORKER = 'OFFICE_WORKER',
@@ -60,6 +59,13 @@ export interface Course {
   color: string;
   icon: string;
   isActive: boolean;
+  attachments?: Array<{         // 신규: 다중 미디어 첨부 파일
+    url: string;
+    name: string;
+    type: string;               // 'video' | 'youtube' | 'audio'
+    size: number;
+    mimeType?: string;
+  }>;
 }
 
 export interface UserProgress {
@@ -114,6 +120,9 @@ export interface Team {
   name: string;
   site?: string | null;
   leaderId?: string | null;
+  approverId?: string | null;           // 월별보고서 결재자 ID
+  leader?: User | null;                  // 팀장
+  approver?: User | null;                // 월별보고서 결재자
   members?: User[];
   teamMembers?: TeamMember[];            // 신규: User 계정 없는 팀원들
   inspectionTemplates?: InspectionTemplate[];  // 신규
@@ -226,14 +235,34 @@ export interface InspectionItem {
   uploadedAt: Date;
 }
 
-// 결재 요청
+// 월별 보고서 결재 (MonthlyApproval)
+export interface MonthlyApproval {
+  id: string;
+  teamId: number;
+  year: number;
+  month: number;
+  status: string;  // 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'
+  pdfUrl?: string | null;
+  approverId?: string | null;
+  submittedAt?: Date | null;
+  approvedAt?: Date | null;
+  team?: Team;
+  approver?: User | null;
+  approvalRequest?: ApprovalRequest | null;
+}
+
+// 결재 요청 (ApprovalRequest)
 export interface ApprovalRequest {
   id: string;
-  reportId: string;
+  reportId: string;              // MonthlyApproval ID
   requesterId: string;
   approverId: string;
-  status: string;  // 'PENDING', 'APPROVED', 'REJECTED'
+  status: string;                // 'PENDING', 'APPROVED', 'REJECTED'
   requestedAt: Date;
   approvedAt?: Date | null;
   rejectionReason?: string | null;
+  executiveSignature?: string | null;  // 서명 이미지 (base64)
+  monthlyReport?: MonthlyApproval;     // 관련 월별 보고서
+  requester?: User;                    // 요청자 정보
+  approver?: User;                     // 승인자 정보
 }

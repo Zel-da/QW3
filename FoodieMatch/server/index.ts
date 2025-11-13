@@ -6,6 +6,8 @@ import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
+import { verifyEmailConnection } from "./emailService";
+import { startAllSchedulers } from "./scheduler";
 
 const app = express();
 app.use(express.json());
@@ -115,11 +117,30 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  // Initialize email service
+  await verifyEmailConnection();
+
+  // Start email schedulers (only in production or if explicitly enabled)
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_EMAIL_SCHEDULERS === 'true') {
+    await startAllSchedulers();
+  } else {
+    log('⏸️  Email schedulers disabled (set ENABLE_EMAIL_SCHEDULERS=true to enable in development)');
+  }
+
   const port = parseInt(process.env.PORT || '5000', 10);
+
   server.listen({
     port,
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error(`❌ Server error:`, err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${port} is already in use. Please stop the conflicting process and try again.`);
+      process.exit(1);
+    }
   });
 })();

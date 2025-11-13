@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search } from 'lucide-react';
+import { Search, Plus, X, Video, Music, FileText, Youtube } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { Course } from '@shared/schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -63,6 +63,15 @@ export default function EducationManagementPage() {
   const [documentUrl, setDocumentUrl] = useState('');
   const [videoType, setVideoType] = useState<'youtube' | 'file' | 'audio'>('youtube');
   const [quizFile, setQuizFile] = useState<File | null>(null);
+
+  // 여러 미디어 파일 지원
+  const [mediaItems, setMediaItems] = useState<Array<{
+    id: string;
+    type: 'youtube' | 'video' | 'audio' | 'document';
+    url: string;
+    name: string;
+    size?: number;
+  }>>([]);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -142,6 +151,56 @@ export default function EducationManagementPage() {
       }
   });
 
+  // 미디어 항목 추가
+  const addMediaItem = (type: 'youtube' | 'video' | 'audio' | 'document') => {
+    const newItem = {
+      id: `media-${Date.now()}`,
+      type,
+      url: '',
+      name: '',
+      size: 0
+    };
+    setMediaItems([...mediaItems, newItem]);
+  };
+
+  // 미디어 항목 삭제
+  const removeMediaItem = (id: string) => {
+    setMediaItems(mediaItems.filter(item => item.id !== id));
+  };
+
+  // 미디어 파일 업로드
+  const handleMediaFileUpload = async (itemId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('files', file);
+
+    try {
+      const res = await fetch('/api/upload-multiple', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.files && data.files.length > 0) {
+        setMediaItems(mediaItems.map(item =>
+          item.id === itemId
+            ? { ...item, url: data.files[0].url, name: file.name, size: file.size }
+            : item
+        ));
+        toast({ title: '파일 업로드 완료' });
+      }
+    } catch (error) {
+      toast({ title: '업로드 실패', variant: 'destructive' });
+    }
+  };
+
+  // YouTube URL 업데이트
+  const updateMediaItemUrl = (itemId: string, url: string) => {
+    setMediaItems(mediaItems.map(item =>
+      item.id === itemId
+        ? { ...item, url, name: url }
+        : item
+    ));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -170,6 +229,21 @@ export default function EducationManagementPage() {
     // Add documentUrl if it exists
     if (documentUrl) {
       courseData.documentUrl = documentUrl;
+    }
+
+    // 여러 미디어 항목 추가
+    if (mediaItems.length > 0) {
+      courseData.attachments = mediaItems
+        .filter(item => item.url) // URL이 있는 항목만
+        .map(item => ({
+          url: item.url,
+          name: item.name || item.url,
+          type: item.type,
+          size: item.size || 0,
+          mimeType: item.type === 'youtube' ? 'video/youtube' :
+                    item.type === 'video' ? 'video/mp4' :
+                    item.type === 'audio' ? 'audio/mpeg' : 'application/octet-stream'
+        }));
     }
 
     courseMutation.mutate(courseData);
@@ -205,135 +279,6 @@ export default function EducationManagementPage() {
                 <Label htmlFor="description">상세 설명</Label>
                 <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="교육 과정에 대한 간단한 설명" required />
               </div>
-
-              {/* Media Type Selection */}
-              <div className="space-y-3">
-                <Label>콘텐츠 유형</Label>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="videoType"
-                      value="youtube"
-                      checked={videoType === 'youtube'}
-                      onChange={(e) => {
-                        setVideoType('youtube');
-                        setVideoUrl('');
-                        setAudioUrl('');
-                      }}
-                    />
-                    <span>YouTube 링크</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="videoType"
-                      value="file"
-                      checked={videoType === 'file'}
-                      onChange={(e) => {
-                        setVideoType('file');
-                        setVideoUrl('');
-                        setAudioUrl('');
-                      }}
-                    />
-                    <span>동영상 파일</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="videoType"
-                      value="audio"
-                      checked={videoType === 'audio'}
-                      onChange={(e) => {
-                        setVideoType('audio');
-                        setVideoUrl('');
-                        setAudioUrl('');
-                      }}
-                    />
-                    <span>오디오 파일</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Conditional Input Fields */}
-              {videoType === 'youtube' && (
-                <div className="space-y-2">
-                  <Label htmlFor="videoUrl">YouTube 영상 URL</Label>
-                  <Input
-                    id="videoUrl"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    required
-                  />
-                </div>
-              )}
-
-              {videoType === 'file' && (
-                <div className="space-y-2">
-                  <Label htmlFor="videoFile">동영상 파일 업로드</Label>
-                  <Input
-                    id="videoFile"
-                    type="file"
-                    accept="video/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-
-                      const formData = new FormData();
-                      formData.append('files', file);
-
-                      try {
-                        const res = await fetch('/api/upload-multiple', {
-                          method: 'POST',
-                          body: formData
-                        });
-                        const data = await res.json();
-                        if (data.files && data.files.length > 0) {
-                          setVideoUrl(data.files[0].url);
-                          toast({ title: '동영상 업로드 완료' });
-                        }
-                      } catch (error) {
-                        toast({ title: '업로드 실패', variant: 'destructive' });
-                      }
-                    }}
-                  />
-                  {videoUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {videoUrl}</p>}
-                </div>
-              )}
-
-              {videoType === 'audio' && (
-                <div className="space-y-2">
-                  <Label htmlFor="audioFile">오디오 파일 업로드</Label>
-                  <Input
-                    id="audioFile"
-                    type="file"
-                    accept="audio/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-
-                      const formData = new FormData();
-                      formData.append('files', file);
-
-                      try {
-                        const res = await fetch('/api/upload-multiple', {
-                          method: 'POST',
-                          body: formData
-                        });
-                        const data = await res.json();
-                        if (data.files && data.files.length > 0) {
-                          setAudioUrl(data.files[0].url);
-                          toast({ title: '오디오 업로드 완료' });
-                        }
-                      } catch (error) {
-                        toast({ title: '업로드 실패', variant: 'destructive' });
-                      }
-                    }}
-                  />
-                  {audioUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {audioUrl}</p>}
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="duration">교육 시간 (분)</Label>
@@ -371,6 +316,97 @@ export default function EducationManagementPage() {
                 />
                 {documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {documentUrl}</p>}
                 <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글</p>
+              </div>
+
+              {/* 미디어 콘텐츠 */}
+              <div className="space-y-3 border-t pt-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">교육 미디어 콘텐츠 (YouTube, 동영상, 음성, 문서)</Label>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('youtube')}>
+                      <Plus className="h-4 w-4 mr-1" /> YouTube
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('video')}>
+                      <Plus className="h-4 w-4 mr-1" /> 동영상
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('audio')}>
+                      <Plus className="h-4 w-4 mr-1" /> 오디오
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('document')}>
+                      <Plus className="h-4 w-4 mr-1" /> 문서
+                    </Button>
+                  </div>
+                </div>
+
+                {mediaItems.length > 0 && (
+                  <div className="space-y-3">
+                    {mediaItems.map((item, index) => (
+                      <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {item.type === 'youtube' && <Youtube className="h-5 w-5 text-red-500" />}
+                            {item.type === 'video' && <Video className="h-5 w-5 text-blue-500" />}
+                            {item.type === 'audio' && <Music className="h-5 w-5 text-purple-500" />}
+                            {item.type === 'document' && <FileText className="h-5 w-5 text-green-500" />}
+                            <span className="font-medium">
+                              {item.type === 'youtube' ? 'YouTube 링크' :
+                               item.type === 'video' ? '동영상 파일' :
+                               item.type === 'audio' ? '오디오 파일' : '문서 파일'}
+                            </span>
+                            <span className="text-sm text-muted-foreground">#{index + 1}</span>
+                          </div>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => removeMediaItem(item.id)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {item.type === 'youtube' ? (
+                          <div className="space-y-2">
+                            <Input
+                              placeholder="YouTube URL 입력 (예: https://www.youtube.com/watch?v=...)"
+                              value={item.url}
+                              onChange={(e) => updateMediaItemUrl(item.id, e.target.value)}
+                            />
+                            {item.url && (
+                              <div className="aspect-video">
+                                <iframe
+                                  src={item.url.includes('embed') ? item.url : item.url.replace('watch?v=', 'embed/')}
+                                  className="w-full h-full rounded"
+                                  allowFullScreen
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Input
+                              type="file"
+                              accept={
+                                item.type === 'video' ? 'video/*' :
+                                item.type === 'audio' ? 'audio/*' :
+                                '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx'
+                              }
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleMediaFileUpload(item.id, file);
+                              }}
+                            />
+                            {item.url && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <span>✓ 업로드 완료:</span>
+                                <span className="truncate">{item.name}</span>
+                                {item.size && <span>({(item.size / 1024 / 1024).toFixed(2)} MB)</span>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  + 버튼을 클릭하여 여러 개의 미디어 파일을 추가할 수 있습니다.
+                </p>
               </div>
 
               <div className="space-y-2">

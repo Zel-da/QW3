@@ -214,11 +214,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
-    // Validate mandatory descriptions for △ or X items
+    // Validate that all items have been checked
     const validationErrors = [];
     checklist?.templateItems.forEach(item => {
       const itemState = formState[item.id];
-      if (itemState?.checkState === '△' || itemState?.checkState === 'X') {
+
+      // 모든 항목에 대해 checkState 필수 확인
+      if (!itemState || !itemState.checkState || itemState.checkState.trim() === '') {
+        validationErrors.push(`"${item.description}" 항목: 점검 결과 선택 필수`);
+        return;
+      }
+
+      // △ or X items require description
+      if (itemState.checkState === '△' || itemState.checkState === 'X') {
         const hasDescription = itemState.description && itemState.description.trim().length > 0;
 
         if (!hasDescription) {
@@ -286,6 +294,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     };
 
     try {
+      console.log('TBM 제출 시작:', {
+        reportForEdit: !!reportForEdit,
+        teamId: selectedTeam,
+        reportDate: date,
+        resultsCount: reportData.results.length,
+        signaturesCount: reportData.signatures.length
+      });
+
       if (reportForEdit) {
         await axios.put(`/api/reports/${reportForEdit.id}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
@@ -296,9 +312,32 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
       onFinishEditing();
     } catch (err) {
-      setError('제출 중 오류가 발생했습니다.');
+      console.error('TBM 제출 오류:', err);
+      console.error('오류 상세:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+
+      const errorMessage = err.response?.data?.message || err.message || '제출 중 오류가 발생했습니다.';
+
+      toast({
+        title: "제출 실패",
+        description: errorMessage,
+        variant: "destructive"
+      });
+
+      setError(errorMessage);
     }
   };
+
+  // 팀을 사이트별로 그룹화
+  const teamsBySite = teams.reduce((acc, team) => {
+    const site = team.site || '기타';
+    if (!acc[site]) acc[site] = [];
+    acc[site].push(team);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -306,8 +345,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="팀을 선택하세요" />
         </SelectTrigger>
-        <SelectContent>
-          {teams.map(team => <SelectItem key={team.id} value={team.id}>{stripSiteSuffix(team.name)}</SelectItem>)}
+        <SelectContent className="max-h-[300px] overflow-y-auto">
+          {Object.entries(teamsBySite).map(([site, siteTeams]) => (
+            <React.Fragment key={site}>
+              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                {site}
+              </div>
+              {siteTeams.map(team => (
+                <SelectItem key={team.id} value={team.id} className="pl-6">
+                  {stripSiteSuffix(team.name)}
+                </SelectItem>
+              ))}
+            </React.Fragment>
+          ))}
         </SelectContent>
       </Select>
 
@@ -330,19 +380,34 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {checklist.templateItems.map((item, index, items) => {
+              {checklist.templateItems
+                .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                .map((item, index, items) => {
                 const currentItemState = formState[item.id] || {};
 
-                // category별 rowspan 계산
-                const isFirstInCategory = index === 0 || items[index - 1].category !== item.category;
-                const categoryCount = isFirstInCategory
-                  ? items.filter(i => i.category === item.category).length
-                  : 0;
+                // 이전 항목과 같은 카테고리인지 확인
+                const prevItem = index > 0 ? items[index - 1] : null;
+                const showCategory = !prevItem || prevItem.category !== item.category;
+
+                // 같은 카테고리의 항목 수 계산 (rowSpan용)
+                let rowSpan = 1;
+                if (showCategory) {
+                  for (let i = index + 1; i < items.length; i++) {
+                    if (items[i].category === item.category) {
+                      rowSpan++;
+                    } else {
+                      break;
+                    }
+                  }
+                }
 
                 return (
                   <TableRow key={item.id}>
-                    {isFirstInCategory && (
-                      <TableCell rowSpan={categoryCount} className="align-top font-medium bg-muted/30">
+                    {showCategory && (
+                      <TableCell
+                        className="align-top font-medium bg-muted/30 border-r"
+                        rowSpan={rowSpan}
+                      >
                         {item.category}
                       </TableCell>
                     )}
@@ -419,15 +484,15 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             </TableBody>
           </Table>
 
-          {/* 참고 사항 섹션 */}
-          <h3 className="font-semibold text-xl mt-8 mb-4">참고 사항</h3>
+          {/* 특이사항 섹션 */}
+          <h3 className="font-semibold text-xl mt-8 mb-4">특이사항</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* 왼쪽: 참고 사항 텍스트 */}
+            {/* 왼쪽: 특이사항 텍스트 */}
             <div className="space-y-2">
-              <Label htmlFor="remarks">참고 사항</Label>
+              <Label htmlFor="remarks">특이사항</Label>
               <Textarea
                 id="remarks"
-                placeholder="참고 사항을 입력하세요..."
+                placeholder="특이사항을 입력하세요..."
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
@@ -437,7 +502,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
             {/* 오른쪽: 사진 업로드 */}
             <div className="space-y-2">
-              <Label>사진 첨부</Label>
+              <Label>TBM 사진</Label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                 <Input
                   type="file"
@@ -452,7 +517,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       <div key={idx} className="relative">
                         <img
                           src={imageUrl}
-                          alt={`참고 사항 ${idx + 1}`}
+                          alt={`특이사항 ${idx + 1}`}
                           className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => setEnlargedImage(imageUrl)}
                         />

@@ -91,6 +91,7 @@ export default function AdminPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '사용자 역할이 변경되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] }); // TeamManagementPage 캐시도 갱신
     }
   });
 
@@ -99,6 +100,7 @@ export default function AdminPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '사용자의 소속 현장이 변경되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] }); // TeamManagementPage 캐시도 갱신
     }
   });
 

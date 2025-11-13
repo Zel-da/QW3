@@ -7,8 +7,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Notice } from "@shared/schema";
 import { Link } from "wouter";
-import { useState, useEffect } from "react";
-import { FileText, BookOpen, BarChart3, ClipboardCheck } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { FileText, BookOpen, BarChart3, ClipboardCheck, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -48,7 +51,28 @@ export default function HomePage() {
   });
 
   const [showNoticePopup, setShowNoticePopup] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const latestNotice = notices[0];
+
+  // 사용 가능한 카테고리 목록 추출
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(notices.map(n => n.category))).filter(Boolean);
+    return uniqueCategories.sort();
+  }, [notices]);
+
+  // 검색어와 카테고리로 공지사항 필터링
+  const filteredNotices = useMemo(() => {
+    return notices.filter(notice => {
+      const matchesSearch =
+        notice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        notice.content.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = categoryFilter === 'ALL' || notice.category === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [notices, searchTerm, categoryFilter]);
 
   useEffect(() => {
     if (!latestNotice) return;
@@ -205,13 +229,39 @@ export default function HomePage() {
 
           <Card className="mt-8">
             <CardHeader>
-              <CardTitle className="text-2xl md:text-3xl">공지사항</CardTitle>
+              <CardTitle className="text-2xl md:text-3xl mb-4">공지사항</CardTitle>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="제목 또는 내용으로 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {categories.length > 0 && (
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder="카테고리 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">전체 카테고리</SelectItem>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <p className="text-lg">공지사항을 불러오는 중...</p>
-              ) : notices.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8 text-lg">공지사항이 없습니다.</p>
+              ) : filteredNotices.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-lg">
+                  {searchTerm ? '검색 결과가 없습니다.' : '공지사항이 없습니다.'}
+                </p>
               ) : (
                 <>
                   {/* 데스크톱 테이블 뷰 */}
@@ -219,16 +269,22 @@ export default function HomePage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[100px] text-base">번호</TableHead>
+                          <TableHead className="w-[80px] text-base">번호</TableHead>
+                          <TableHead className="w-[100px] text-base">카테고리</TableHead>
                           <TableHead className="text-base">제목</TableHead>
                           <TableHead className="w-[120px] text-base">작성자</TableHead>
-                          <TableHead className="w-[150px] text-base">작성일</TableHead>
+                          <TableHead className="w-[130px] text-base">작성일</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {notices.map((notice, index) => (
+                        {filteredNotices.map((notice, index) => (
                           <TableRow key={notice.id}>
-                            <TableCell className="text-base">{notices.length - index}</TableCell>
+                            <TableCell className="text-base">{filteredNotices.length - index}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {notice.category || '일반'}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="font-medium text-base">
                               <Link href={`/notices/${notice.id}`} className="hover:underline">
                                 {notice.title}
@@ -244,13 +300,18 @@ export default function HomePage() {
                   
                   {/* 모바일 카드 뷰 */}
                   <div className="md:hidden space-y-3">
-                    {notices.map((notice, index) => (
+                    {filteredNotices.map((notice, index) => (
                       <Link key={notice.id} href={`/notices/${notice.id}`}>
                         <Card className="hover:bg-accent transition-colors cursor-pointer">
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
-                                <div className="text-sm text-muted-foreground mb-1">#{notices.length - index}</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-sm text-muted-foreground">#{filteredNotices.length - index}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {notice.category || '일반'}
+                                  </Badge>
+                                </div>
                                 <h3 className="text-lg font-semibold leading-tight mb-2">{notice.title}</h3>
                                 <div className="text-sm text-muted-foreground">
                                   {new Date(notice.createdAt).toLocaleDateString()}
@@ -338,7 +399,7 @@ export default function HomePage() {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="text-2xl md:text-3xl">공지사항</CardTitle>
-            {(user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') && (
+            {user?.role === 'ADMIN' && (
               <Button asChild className="text-base h-12 min-w-[140px]">
                 <Link href="/notices/new">새 공지사항 작성</Link>
               </Button>

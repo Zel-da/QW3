@@ -8,6 +8,8 @@ import { Notice } from "@shared/schema";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
+import { Plus, X, Video, Music, Youtube } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -121,6 +123,47 @@ export default function NoticeEditor() {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 비디오/오디오 항목 추가
+  const addMediaItem = (type: 'video' | 'youtube' | 'audio') => {
+    const newItem = {
+      url: '',
+      name: type === 'youtube' ? 'YouTube 링크' : type === 'video' ? '동영상 파일' : '오디오 파일',
+      type,
+      size: 0
+    };
+    setAttachments(prev => [...prev, newItem]);
+  };
+
+  // 미디어 파일 업로드
+  const handleMediaUpload = async (index: number, file: File) => {
+    const uploadFormData = new FormData();
+    uploadFormData.append('files', file);
+
+    try {
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Upload failed');
+
+      if (data.files.length > 0) {
+        setAttachments(prev => prev.map((item, i) =>
+          i === index
+            ? { ...item, url: data.files[0].url, name: file.name, size: file.size }
+            : item
+        ));
+      }
+      setError('');
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  // YouTube URL 업데이트
+  const updateMediaUrl = (index: number, url: string) => {
+    setAttachments(prev => prev.map((item, i) =>
+      i === index ? { ...item, url, name: url } : item
+    ));
   };
 
   const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,76 +319,102 @@ export default function NoticeEditor() {
                 </div>
               </div>
 
-              {/* Video Upload / YouTube Link */}
-              <div className="space-y-3">
-                <Label htmlFor="videoType" className="text-base md:text-lg">동영상 첨부</Label>
-                <div className="flex gap-4 mb-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="videoType"
-                      value="file"
-                      checked={formData.videoType === 'file'}
-                      onChange={(e) => setFormData({ ...formData, videoType: 'file', videoUrl: '' })}
-                    />
-                    <span>파일 업로드</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="videoType"
-                      value="youtube"
-                      checked={formData.videoType === 'youtube'}
-                      onChange={(e) => setFormData({ ...formData, videoType: 'youtube', videoUrl: '' })}
-                    />
-                    <span>YouTube URL</span>
-                  </label>
-                </div>
-
-                {formData.videoType === 'file' ? (
-                  <Input
-                    type="file"
-                    onChange={handleVideoFileChange}
-                    className="text-base h-12"
-                    accept="video/*"
-                  />
-                ) : (
-                  <Input
-                    type="url"
-                    name="videoUrl"
-                    placeholder="YouTube URL 입력 (예: https://www.youtube.com/watch?v=...)"
-                    value={formData.videoUrl}
-                    onChange={handleChange}
-                    className="text-base h-12"
-                  />
-                )}
-
-                {formData.videoUrl && (
-                  <div className="mt-3 p-4 border rounded-lg">
-                    <p className="text-sm font-medium mb-2">동영상 미리보기:</p>
-                    {formData.videoType === 'youtube' ? (
-                      <div className="aspect-video">
-                        <iframe
-                          src={getYouTubeEmbedUrl(formData.videoUrl)}
-                          className="w-full h-full rounded"
-                          allowFullScreen
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        />
-                      </div>
-                    ) : (
-                      <video src={formData.videoUrl} controls className="w-full rounded max-h-96" />
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData({ ...formData, videoUrl: '' })}
-                      className="mt-2"
-                    >
-                      동영상 제거
+              {/* Video/Audio Upload / YouTube Link */}
+              <div className="space-y-3 border-t pt-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base md:text-lg font-semibold">동영상/오디오 첨부 (선택사항)</Label>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('youtube')}>
+                      <Plus className="h-4 w-4 mr-1" /> YouTube
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('video')}>
+                      <Plus className="h-4 w-4 mr-1" /> 동영상
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => addMediaItem('audio')}>
+                      <Plus className="h-4 w-4 mr-1" /> 오디오
                     </Button>
                   </div>
+                </div>
+
+                {/* Display media items */}
+                {attachments.filter(f => ['video', 'youtube', 'audio'].includes(f.type)).length > 0 && (
+                  <div className="space-y-3">
+                    {attachments.map((item, idx) => {
+                      if (!['video', 'youtube', 'audio'].includes(item.type)) return null;
+
+                      return (
+                        <div key={idx} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {item.type === 'youtube' && <Youtube className="h-5 w-5 text-red-500" />}
+                              {item.type === 'video' && <Video className="h-5 w-5 text-blue-500" />}
+                              {item.type === 'audio' && <Music className="h-5 w-5 text-purple-500" />}
+                              <Badge variant="outline">
+                                {item.type === 'youtube' ? 'YouTube' : item.type === 'video' ? '동영상' : '오디오'}
+                              </Badge>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeAttachment(attachments.indexOf(item))}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {item.type === 'youtube' ? (
+                            <div className="space-y-2">
+                              <Input
+                                placeholder="YouTube URL 입력 (예: https://www.youtube.com/watch?v=...)"
+                                value={item.url}
+                                onChange={(e) => updateMediaUrl(attachments.indexOf(item), e.target.value)}
+                              />
+                              {item.url && (
+                                <div className="aspect-video">
+                                  <iframe
+                                    src={getYouTubeEmbedUrl(item.url)}
+                                    className="w-full h-full rounded"
+                                    allowFullScreen
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Input
+                                type="file"
+                                accept={item.type === 'video' ? 'video/*' : 'audio/*'}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleMediaUpload(attachments.indexOf(item), file);
+                                }}
+                              />
+                              {item.url && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <span>✓ 업로드 완료:</span>
+                                    <span className="truncate">{item.name}</span>
+                                    {item.size && <span>({(item.size / 1024 / 1024).toFixed(2)} MB)</span>}
+                                  </div>
+                                  {item.type === 'video' ? (
+                                    <video src={item.url} controls className="w-full rounded max-h-96" />
+                                  ) : (
+                                    <audio src={item.url} controls className="w-full" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
+                <p className="text-sm text-muted-foreground">
+                  + 버튼을 클릭하여 여러 개의 동영상/오디오를 추가할 수 있습니다.
+                </p>
               </div>
 
               {error && <p className="text-base text-destructive">{error}</p>}

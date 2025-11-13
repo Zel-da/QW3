@@ -47,7 +47,8 @@ export default function LoginPage() {
 
       // Handle redirect after login
       const searchParams = new URLSearchParams(window.location.search);
-      const redirectTo = searchParams.get('redirect') || '/';
+      const redirect = searchParams.get('redirect');
+      const redirectTo = redirect ? decodeURIComponent(redirect) : '/';
       setLocation(redirectTo);
 
     } catch (err) {

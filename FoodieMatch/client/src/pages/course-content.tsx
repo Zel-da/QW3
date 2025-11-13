@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Header } from "@/components/header";
-import { ArrowLeft, Play, Pause, CheckCircle, Clock, Download } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,24 @@ const getYouTubeId = (url: string): string | null => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+// YouTube URL을 embed URL로 변환
+const getYouTubeEmbedUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.includes('/embed/')) return url;
+
+  let videoId = '';
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) videoId = watchMatch[1];
+
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) videoId = shortMatch[1];
+
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) videoId = embedMatch[1];
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+};
+
 export default function CourseContentPage() {
   const { id: courseId } = useParams();
   const [, setLocation] = useLocation();
@@ -25,7 +43,6 @@ export default function CourseContentPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const [isPlaying, setIsPlaying] = useState(false);
   const [timeSpent, setTimeSpent] = useState(0);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const timeSpentRef = useRef(timeSpent); // Ref to hold the latest timeSpent
@@ -100,38 +117,30 @@ export default function CourseContentPage() {
   }, [userProgress, progressLoading]);
 
   useEffect(() => {
-    // Only start auto-play after progress is loaded
-    if (course?.videoUrl && progressLoaded) {
-      setIsPlaying(true);
-    }
-
     // If duration is 0, save 100% progress immediately
     if (course && course.duration === 0 && progressLoaded) {
       saveProgress();
     }
   }, [course, saveProgress, progressLoaded]);
 
-  // Timer effect - update time and save progress periodically
+  // Timer effect - update time and save progress periodically (always running)
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    let saveInterval: NodeJS.Timeout;
+    if (!progressLoaded) return; // Wait until progress is loaded
 
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setTimeSpent(prevTime => prevTime + 1);
-      }, 1000);
+    const interval = setInterval(() => {
+      setTimeSpent(prevTime => prevTime + 1);
+    }, 1000);
 
-      // Save progress every 10 seconds
-      saveInterval = setInterval(() => {
-        saveProgress();
-      }, 10000);
-    }
+    // Save progress every 10 seconds
+    const saveInterval = setInterval(() => {
+      saveProgress();
+    }, 10000);
 
     return () => {
-      if (interval) clearInterval(interval);
-      if (saveInterval) clearInterval(saveInterval);
+      clearInterval(interval);
+      clearInterval(saveInterval);
     };
-  }, [isPlaying, saveProgress]);
+  }, [progressLoaded, saveProgress]);
 
   // Save progress on unmount
   useEffect(() => {
@@ -166,6 +175,7 @@ export default function CourseContentPage() {
   const hasAudio = course.audioUrl;
   const hasVideo = course.videoUrl;
   const hasYouTube = videoId !== null;
+  const hasAttachments = course.attachments && course.attachments.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,7 +192,6 @@ export default function CourseContentPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Course Header */}
             <Card data-testid="course-header">
@@ -205,9 +214,10 @@ export default function CourseContentPage() {
               </CardContent>
             </Card>
 
-            {/* Media Player */}
-            <Card data-testid="video-player">
-              <CardContent className="p-6">
+            {/* Media Player - Only show if there's audio or video */}
+            {(hasAudio || hasVideo) && (
+              <Card data-testid="video-player">
+                <CardContent className="p-6">
                 {/* Audio Player */}
                 {hasAudio && (
                   <div className="mb-4">
@@ -245,59 +255,67 @@ export default function CourseContentPage() {
                   </div>
                 )}
 
-                {!hasAudio && !hasVideo && (
-                  <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
-                    <div className="absolute inset-0 flex items-center justify-center bg-black">
-                      <div className="text-center text-white korean-text">
-                        <p>교육 콘텐츠가 없거나 주소가 올바르지 않습니다.</p>
-                      </div>
-                    </div>
-                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Multi-Media Attachments Display */}
+            {(course as any).attachments && (course as any).attachments.length > 0 && (
+              <>
+                {/* Display videos */}
+                {(course as any).attachments.filter((a: any) => a.type === 'video').length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl korean-text">동영상</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {(course as any).attachments.filter((a: any) => a.type === 'video').map((file: any, idx: number) => (
+                        <div key={idx} className="border rounded-lg p-4">
+                          <video src={file.url} controls className="w-full rounded max-h-[600px]" />
+                          <p className="text-sm mt-2 truncate korean-text">{file.name}</p>
+                          {file.size > 0 && <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
                 )}
 
-                <div className="flex gap-4">
-                  <Button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="korean-text"
-                    data-testid="button-play-pause"
-                  >
-                    {isPlaying ? (
-                      <>
-                        <Pause className="w-4 h-4 mr-2" />
-                        일시정지
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        재생
-                      </>
-                    )}
-                  </Button>
+                {/* Display YouTube videos */}
+                {(course as any).attachments.filter((a: any) => a.type === 'youtube').length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl korean-text">YouTube 동영상</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {(course as any).attachments.filter((a: any) => a.type === 'youtube').map((file: any, idx: number) => (
+                        <div key={idx} className="border rounded-lg p-4">
+                          <div className="aspect-video">
+                            <iframe src={getYouTubeEmbedUrl(file.url)} className="w-full h-full rounded" allowFullScreen />
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
-                  {(timeSpent > 0 || isVideoComplete) && (
-                    <Button
-                      onClick={() => {
-                        setTimeSpent(0);
-                        setIsPlaying(true);
-                        // Reset progress in database
-                        if (user?.id && courseId) {
-                          apiRequest("PUT", `/api/users/${user.id}/progress/${courseId}`, {
-                            progress: 0,
-                            timeSpent: 0,
-                            currentStep: 1,
-                          });
-                        }
-                      }}
-                      variant="outline"
-                      className="korean-text"
-                      data-testid="button-replay"
-                    >
-                      처음부터 다시보기
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                {/* Display audio */}
+                {(course as any).attachments.filter((a: any) => a.type === 'audio').length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl korean-text">오디오</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {(course as any).attachments.filter((a: any) => a.type === 'audio').map((file: any, idx: number) => (
+                        <div key={idx} className="border rounded-lg p-4">
+                          <audio src={file.url} controls className="w-full" />
+                          <p className="text-sm mt-2 truncate korean-text">{file.name}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
 
             {/* Document Download */}
             {course.documentUrl && (
@@ -324,78 +342,42 @@ export default function CourseContentPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Progress Summary */}
-            <Card data-testid="progress-summary">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg korean-text">학습 진행 상황</CardTitle>
+                <CardTitle className="korean-text">학습 진행 상황</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {userProgress && userProgress.progress > 0 && userProgress.progress < 100 && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 korean-text">
-                      이전 진행률: {userProgress.progress}%
-                      <br />
-                      <span className="text-xs">이어서 학습이 진행됩니다</span>
-                    </p>
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm korean-text">완료율</span>
+                    <span className="text-sm font-medium">{progressPercent}%</span>
                   </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm korean-text">영상 시청</span>
-                  <span className="text-sm font-medium" data-testid="video-completion-status">
-                    {isVideoComplete ? "완료" : "진행 중"}
-                  </span>
+                  <Progress value={progressPercent} />
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm korean-text">소요 시간</span>
-                  <span className="text-sm font-medium" data-testid="time-spent">
-                    {Math.floor(timeSpent / 60)}분 {timeSpent % 60}초
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm korean-text">다음 단계</span>
-                  <span className="text-sm font-medium korean-text" data-testid="next-step">
-                    {isVideoComplete ? "평가 응시" : "영상 시청"}
-                  </span>
+                <div className="text-sm text-muted-foreground korean-text">
+                  {progressPercent >= 100 ? '교육을 완료했습니다!' : '교육을 계속 진행하세요'}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Next Steps */}
-            <Card data-testid="next-steps">
-              <CardHeader>
-                <CardTitle className="text-lg korean-text">다음 단계</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!isVideoComplete ? (
-                  <div className="text-center py-4">
-                    <Clock className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground korean-text">
-                      교육 영상을 모두 시청한 후<br />
-                      평가를 진행할 수 있습니다.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-600" />
-                    <p className="text-sm text-muted-foreground mb-4 korean-text">
-                      {userProgress?.completed ? '모든 과정을 이수했습니다.' : '교육 영상 시청이 완료되었습니다!'}
-                      <br />
-                      {userProgress?.completed ? '평가를 다시 보거나 영상을 복습할 수 있습니다.' : '이제 평가를 진행하세요.'}
-                    </p>
-                    <Button
-                      onClick={handleStartAssessment}
-                      className="w-full korean-text"
-                      data-testid="button-start-assessment"
-                    >
-                      {userProgress?.completed ? '평가 다시 응시하기' : '평가 시작하기'}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {isVideoComplete && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="korean-text">다음 단계</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    onClick={handleStartAssessment}
+                    className="w-full korean-text"
+                  >
+                    평가 시작하기
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-2 korean-text">
+                    교육 완료 후 평가를 진행하세요
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>
