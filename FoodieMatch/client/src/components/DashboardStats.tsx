@@ -85,7 +85,7 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-6 mb-8">
-      <h2 className="text-2xl font-bold text-center">{currentMonth}월 현황</h2>
+      <h2 className="text-2xl font-bold text-center mt-8">{currentMonth}월 현황</h2>
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* 공지사항 카드 */}
