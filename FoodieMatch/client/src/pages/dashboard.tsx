@@ -16,6 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { NoticePopup } from "@/components/notice-popup";
 import { EmptyState } from "@/components/EmptyState";
+import { DashboardStats } from "@/components/DashboardStats";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -153,6 +154,9 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Dashboard Statistics */}
+        <DashboardStats />
 
         {/* Course Filtering and Display */}
         {courses.length === 0 ? (
