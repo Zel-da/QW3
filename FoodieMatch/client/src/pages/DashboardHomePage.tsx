@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { DashboardStats as DashboardStatsCharts } from '@/components/DashboardStats';
 import type { Notice } from '@shared/schema';
 
 // 시간 경과 표시 함수
@@ -726,6 +727,9 @@ export default function DashboardHomePage() {
             </div>
           </div>
         )}
+
+        {/* Dashboard Statistics Charts */}
+        <DashboardStatsCharts />
 
         {/* 최근 활동 타임라인 */}
         {sortedActivities.length > 0 && (
