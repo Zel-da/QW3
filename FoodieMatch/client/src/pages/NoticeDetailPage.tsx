@@ -11,8 +11,11 @@ import { ArrowLeft, X } from "lucide-react";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useUndoToast } from "@/hooks/useUndoToast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileDropzone } from "@/components/FileDropzone";
+import { NoticeDetailSkeleton } from "@/components/skeletons/NoticeListSkeleton";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -78,6 +81,21 @@ export default function NoticeDetailPage() {
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
 
+  // 댓글 작성 자동 임시저장
+  const autoSaveKey = `comment_draft_${noticeId}`;
+  const { clearSaved } = useAutoSave({
+    key: autoSaveKey,
+    data: { newComment, commentAttachments },
+    enabled: !!noticeId,
+    onRestore: (restored) => {
+      if (restored.newComment) setNewComment(restored.newComment);
+      if (restored.commentAttachments) setCommentAttachments(restored.commentAttachments);
+    },
+  });
+
+  // Undo 토스트 기능
+  const { showUndoToast } = useUndoToast();
+
   const { data: notice, isLoading, error } = useQuery<Notice>({
     queryKey: ['notice', noticeId],
     queryFn: () => fetchNotice(noticeId!),
@@ -92,11 +110,50 @@ export default function NoticeDetailPage() {
 
   const commentMutation = useMutation({
     mutationFn: postComment,
+    onMutate: async (newCommentData) => {
+      // 진행 중인 refetch 취소
+      await queryClient.cancelQueries({ queryKey: ['comments', noticeId] });
+
+      // 이전 데이터 스냅샷
+      const previousComments = queryClient.getQueryData<CommentType[]>(['comments', noticeId]);
+
+      // 낙관적 업데이트: 임시 댓글 추가
+      const optimisticComment: CommentType = {
+        id: `temp-${Date.now()}`,
+        content: newCommentData.content,
+        createdAt: new Date(),
+        author: user!,
+        imageUrl: newCommentData.imageUrl,
+        attachments: newCommentData.attachments || [],
+        noticeId: noticeId!,
+        authorId: user!.id,
+      } as any;
+
+      queryClient.setQueryData<CommentType[]>(
+        ['comments', noticeId],
+        (old) => [...(old || []), optimisticComment]
+      );
+
+      return { previousComments };
+    },
+    onError: (err, newComment, context) => {
+      // 롤백
+      if (context?.previousComments) {
+        queryClient.setQueryData(['comments', noticeId], context.previousComments);
+      }
+      toast({
+        title: '오류',
+        description: '댓글 작성에 실패했습니다.',
+        variant: 'destructive',
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', noticeId] });
       setNewComment('');
       setCommentImage(null);
       setCommentAttachments([]);
+      // 댓글 작성 성공 시 임시저장 데이터 삭제
+      clearSaved();
     }
   });
 
@@ -194,20 +251,37 @@ export default function NoticeDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!noticeId || !window.confirm("정말로 이 공지사항을 삭제하시겠습니까?")) {
-      return;
-    }
-    try {
-      const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error('삭제에 실패했습니다.');
+    if (!noticeId) return;
+
+    let isUndone = false;
+    let deletionTimerId: NodeJS.Timeout;
+
+    // Undo 토스트 표시
+    showUndoToast({
+      message: '공지사항을 삭제합니다...',
+      onUndo: () => {
+        isUndone = true;
+        clearTimeout(deletionTimerId);
+        toast({ title: '취소됨', description: '삭제가 취소되었습니다.' });
+      },
+      duration: 5000,
+    });
+
+    // 5초 후 실제 삭제
+    deletionTimerId = setTimeout(async () => {
+      if (isUndone) return;
+
+      try {
+        const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('삭제에 실패했습니다.');
+
+        toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
+        await queryClient.invalidateQueries({ queryKey: ['notices'] });
+        window.location.href = '/';
+      } catch (err) {
+        toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
       }
-      toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
-      await queryClient.invalidateQueries({ queryKey: ['notices'] });
-      window.location.href = '/';
-    } catch (err) {
-      toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
-    }
+    }, 5000);
   };
 
   return (
@@ -232,9 +306,9 @@ export default function NoticeDetailPage() {
             </div>
           )}
         </div>
-        {isLoading && <p className="text-center text-lg">공지사항을 불러오는 중...</p>}
+        {isLoading && <NoticeDetailSkeleton />}
         {error && <p className="text-center text-destructive text-lg">오류: {error.message}</p>}
-        {notice && (
+        {!isLoading && notice && (
           <Card className="shadow-lg">
             <CardHeader className="p-6 md:p-8">
               <CardTitle className="text-4xl md:text-5xl leading-tight font-bold">{sanitizeText(notice.title)}</CardTitle>
