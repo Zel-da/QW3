@@ -11,6 +11,7 @@ import { useRoute, Link } from "wouter";
 import { Plus, X, Video, Music, Youtube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FileDropzone } from "@/components/FileDropzone";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -93,6 +94,18 @@ export default function NoticeEditor() {
       }
     }
   }, [isEditing, noticeToEdit]);
+
+  // 자동 임시저장 기능
+  const autoSaveKey = isEditing ? `notice_draft_${noticeId}` : 'notice_draft_new';
+  const { clearSaved } = useAutoSave({
+    key: autoSaveKey,
+    data: { formData, attachments },
+    enabled: !isEditing, // 새 글 작성 시에만 자동저장 (수정 시에는 비활성화)
+    onRestore: (restored) => {
+      if (restored.formData) setFormData(restored.formData);
+      if (restored.attachments) setAttachments(restored.attachments);
+    },
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -257,6 +270,9 @@ export default function NoticeEditor() {
       if (isEditing) {
         queryClient.invalidateQueries({ queryKey: [`/api/notices/${noticeId}`] });
       }
+
+      // 저장 성공 시 임시저장 데이터 삭제
+      clearSaved();
 
       setSuccess('성공적으로 저장되었습니다!');
       setTimeout(() => {
