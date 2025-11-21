@@ -220,7 +220,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>교육 과정 수정</DialogTitle>
           <DialogDescription>선택한 교육 과정의 정보를 수정합니다.</DialogDescription>

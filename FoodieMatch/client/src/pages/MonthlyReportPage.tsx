@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import axios from 'axios';
 
 import { Header } from '@/components/header';
@@ -15,9 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
-import { stripSiteSuffix } from '@/lib/utils';
+import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Filter, Search, FileDown, Printer, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen } from 'lucide-react';
+import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 
@@ -25,7 +26,7 @@ import { SITES } from '@/lib/constants';
 
 const fetchMonthlyReport = async (teamId: number | null, year: number, month: number) => {
   if (!teamId) return null;
-  const { data } = await axios.get(`/api/reports/monthly?teamId=${teamId}&year=${year}&month=${month}`);
+  const { data } = await axios.get(`/api/tbm/monthly?teamId=${teamId}&year=${year}&month=${month}`);
   return data;
 };
 
@@ -67,7 +68,7 @@ interface AttendanceOverviewData {
 
 const fetchAttendanceOverview = async (year: number, month: number, site: Site): Promise<AttendanceOverviewData | null> => {
   if (!site) return null;
-  const { data } = await axios.get(`/api/reports/attendance-overview?year=${year}&month=${month}&site=${site}`);
+  const { data } = await axios.get(`/api/tbm/attendance-overview?year=${year}&month=${month}&site=${site}`);
   return data;
 };
 
@@ -142,6 +143,7 @@ export default function MonthlyReportPage() {
   const { site, setSite } = useSite();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // ==================== State Management ====================
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
@@ -150,6 +152,8 @@ export default function MonthlyReportPage() {
     month: new Date().getMonth() + 1
   });
   const [activeTab, setActiveTab] = useState<'attendance' | 'statistics' | 'comprehensive'>('attendance');
+
+  const reportDetailRef = useRef<HTMLDivElement>(null);
 
   // Filter states
   const [filterNoApproval, setFilterNoApproval] = useState(false);
@@ -189,6 +193,16 @@ export default function MonthlyReportPage() {
     setSelectedTeam(null);
   }, [site]);
 
+  // 팀장의 경우 해당 팀 자동 선택
+  useEffect(() => {
+    if (user?.role === 'TEAM_LEADER' && user.teamId && teams && teams.length > 0) {
+      const userTeam = teams.find(t => t.id === user.teamId);
+      if (userTeam) {
+        setSelectedTeam(user.teamId);
+      }
+    }
+  }, [user, teams]);
+
   const { data: report, isLoading: reportLoading, isError: reportError } = useQuery({
     queryKey: ['monthlyReport', selectedTeam, date.year, date.month],
     queryFn: () => fetchMonthlyReport(selectedTeam, date.year, date.month),
@@ -220,12 +234,17 @@ export default function MonthlyReportPage() {
     onSuccess: () => {
       toast({
         title: '결재 요청 완료',
-        description: '결재 요청이 성공적으로 제출되었습니다.'
+        description: '결재 요청이 성공적으로 제출되었습니다. 결재자에게 알림이 발송되었습니다.'
       });
       queryClient.invalidateQueries({ queryKey: ['attendance-overview'] });
       setShowApprovalDialog(false);
       setExecutiveName('');
       setExecutiveSignature('');
+
+      // 1.5초 후 승인 이력 페이지로 이동
+      setTimeout(() => {
+        setLocation('/approval-history');
+      }, 1500);
     },
     onError: (error: any) => {
       toast({
@@ -445,10 +464,6 @@ export default function MonthlyReportPage() {
 
   // ==================== Event Handlers ====================
 
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
-
   const handleExcelDownload = useCallback(async () => {
     if (!selectedTeam) {
       toast({
@@ -465,7 +480,7 @@ export default function MonthlyReportPage() {
     });
 
     try {
-      const response = await axios.get(`/api/reports/monthly-excel`, {
+      const response = await axios.get(`/api/tbm/monthly-excel`, {
         params: {
           teamId: selectedTeam,
           year: date.year,
@@ -523,7 +538,7 @@ export default function MonthlyReportPage() {
     });
 
     try {
-      const response = await axios.get(`/api/reports/comprehensive-excel`, {
+      const response = await axios.get(`/api/tbm/comprehensive-excel`, {
         params: {
           year: downloadYear,
           month: downloadMonth,
@@ -592,7 +607,7 @@ export default function MonthlyReportPage() {
     });
 
     try {
-      const response = await axios.get(`/api/reports/safety-education-excel`, {
+      const response = await axios.get(`/api/tbm/safety-education-excel`, {
         params: {
           site,
           year: downloadYear,
@@ -642,6 +657,34 @@ export default function MonthlyReportPage() {
       return;
     }
 
+    // 검증: 보고서 존재 여부 확인
+    if (!report || !report.dailyReports || report.dailyReports.length === 0) {
+      toast({
+        title: "보고서 없음",
+        description: "제출된 TBM 보고서가 없습니다. 먼저 TBM 일지를 작성해주세요.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // 검증: 교육 완료 여부 확인
+    if (teamLeaderEducationStat && teamLeaderEducationStat.status !== 'completed') {
+      toast({
+        title: "교육 미완료",
+        description: `팀장의 안전교육이 완료되지 않았습니다. (${teamLeaderEducationStat.completedCourses}/${teamLeaderEducationStat.totalCourses}) 모든 교육을 완료한 후 결재 요청하세요.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // 경고: 문제 항목이 있는 경우
+    if (problematicItems.length > 0) {
+      const confirmMessage = `${problematicItems.length}개의 이슈(△/X)가 있습니다.\n\n그래도 결재 요청하시겠습니까?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    }
+
     console.log('[결재 요청] mutation 실행 중...', {
       teamId: selectedTeam,
       year: date.year,
@@ -654,7 +697,7 @@ export default function MonthlyReportPage() {
       year: date.year,
       month: date.month,
     });
-  }, [selectedTeam, date, approvalMutation, toast]);
+  }, [selectedTeam, date, approvalMutation, toast, report, teamLeaderEducationStat, problematicItems]);
 
   const handleClearFilters = useCallback(() => {
     setFilterNoApproval(false);
@@ -676,7 +719,6 @@ export default function MonthlyReportPage() {
               <BookOpen className="h-5 w-5" />
               월별 TBM 보고서
             </CardTitle>
-            <CardDescription>팀별 월간 출석 현황 및 통계를 확인하고 관리합니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -689,7 +731,7 @@ export default function MonthlyReportPage() {
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="현장 선택" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                         {SITES.map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
@@ -715,15 +757,6 @@ export default function MonthlyReportPage() {
               {/* Action Buttons Row */}
               <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  onClick={handlePrint}
-                  disabled={!report}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  인쇄
-                </Button>
-                <Button
                   onClick={handleExcelDownload}
                   disabled={!report}
                   variant="outline"
@@ -734,7 +767,14 @@ export default function MonthlyReportPage() {
                 </Button>
                 <Button
                   onClick={handleApprovalRequest}
-                  disabled={!selectedTeam || approvalMutation.isPending}
+                  disabled={
+                    !selectedTeam ||
+                    approvalMutation.isPending ||
+                    !report ||
+                    !report.dailyReports ||
+                    report.dailyReports.length === 0 ||
+                    (teamLeaderEducationStat && teamLeaderEducationStat.status !== 'completed')
+                  }
                   variant="default"
                   size="sm"
                 >
@@ -960,7 +1000,12 @@ export default function MonthlyReportPage() {
                             className={`border border-slate-300 font-medium sticky left-0 z-10 cursor-pointer hover:bg-blue-50 transition-colors ${
                               selectedTeam === team.teamId ? 'bg-blue-100' : 'bg-white'
                             }`}
-                            onClick={() => setSelectedTeam(team.teamId)}
+                            onClick={() => {
+                              setSelectedTeam(team.teamId);
+                              setTimeout(() => {
+                                reportDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }, 100);
+                            }}
                             title="클릭하여 팀 선택"
                           >
                             {stripSiteSuffix(team.teamName)}
@@ -1019,7 +1064,7 @@ export default function MonthlyReportPage() {
                               <a
                                 href={`/tbm?reportId=${reportId}`}
                                 className="text-yellow-900 hover:underline cursor-pointer font-bold"
-                                title="해당 TBM 체크리스트로 이동"
+                                title="해당 TBM 일지로 이동"
                               >
                                 {symbol}
                               </a>
@@ -1083,7 +1128,7 @@ export default function MonthlyReportPage() {
 
             {/* Team Detail Report Section - shown when team is selected */}
             {report && selectedTeam && (
-              <div className="space-y-4 mt-6">
+              <div ref={reportDetailRef} className="space-y-4 mt-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-2xl">TBM 월별 점검 보고서</CardTitle>
@@ -1221,7 +1266,7 @@ export default function MonthlyReportPage() {
                                 <a
                                   href={`/tbm?reportId=${item.reportId}`}
                                   className="text-blue-600 hover:underline cursor-pointer"
-                                  title="해당 TBM 체크리스트로 이동"
+                                  title="해당 TBM 일지로 이동"
                                 >
                                   {item.date}
                                 </a>
@@ -1722,7 +1767,7 @@ export default function MonthlyReportPage() {
                                 <a
                                   href={`/tbm?reportId=${item.reportId}`}
                                   className="text-blue-600 hover:underline cursor-pointer"
-                                  title="해당 TBM 체크리스트로 이동"
+                                  title="해당 TBM 일지로 이동"
                                 >
                                   {item.date}
                                 </a>
@@ -1790,8 +1835,8 @@ export default function MonthlyReportPage() {
                   <SelectTrigger id="download-year">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                    {getInspectionYearRange().map(year => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}년
                       </SelectItem>
@@ -1808,7 +1853,7 @@ export default function MonthlyReportPage() {
                   <SelectTrigger id="download-month">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
                       <SelectItem key={month} value={month.toString()}>
                         {month}월
@@ -1848,8 +1893,8 @@ export default function MonthlyReportPage() {
                   <SelectTrigger id="edu-download-year">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                    {getInspectionYearRange().map(year => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}년
                       </SelectItem>
@@ -1866,7 +1911,7 @@ export default function MonthlyReportPage() {
                   <SelectTrigger id="edu-download-month">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
                       <SelectItem key={month} value={month.toString()}>
                         {month}월
@@ -1884,7 +1929,7 @@ export default function MonthlyReportPage() {
                   <SelectTrigger id="edu-download-day">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                     {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
                       <SelectItem key={day} value={day.toString()}>
                         {day}일

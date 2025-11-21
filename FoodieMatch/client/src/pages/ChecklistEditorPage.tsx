@@ -6,9 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, PlusCircle, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, GripVertical, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { stripSiteSuffix } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useSite, Site } from "@/hooks/use-site";
+import { SITES } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 import {
   DndContext,
   closestCenter,
@@ -97,6 +101,8 @@ function SortableItem({ item, index, onItemChange, onRemove }: SortableItemProps
 export default function ChecklistEditorPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { site, setSite } = useSite();
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [editingItems, setEditingItems] = useState<any[]>([]);
 
@@ -106,6 +112,17 @@ export default function ChecklistEditorPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  useEffect(() => {
+    if (user) {
+      if (user.role !== 'ADMIN' && user.site) {
+        setSite(user.site as Site);
+      } else if (user.role === 'ADMIN' && !site) {
+        // ADMIN 사용자는 기본값 '아산'으로 설정
+        setSite('아산');
+      }
+    }
+  }, [user, setSite, site]);
 
   const { data: teams = [] } = useQuery({ queryKey: ['teams'], queryFn: fetchTeams });
 
@@ -184,10 +201,36 @@ export default function ChecklistEditorPage() {
   };
 
   const handleSave = () => {
-    if (template) {
-      // displayOrder는 드래그할 때만 업데이트되므로, editingItems의 현재 값을 그대로 사용
-      mutation.mutate({ templateId: template.id, items: editingItems });
+    if (!template) return;
+
+    // 검증: 빈 필드 확인
+    const emptyFields = editingItems.filter(
+      item => !item.category.trim() || !item.description.trim()
+    );
+
+    if (emptyFields.length > 0) {
+      toast({
+        title: '빈 항목 발견',
+        description: `${emptyFields.length}개의 항목에 구분 또는 점검항목이 입력되지 않았습니다.`,
+        variant: 'destructive',
+      });
+      return;
     }
+
+    // 검증: 중복 점검항목 확인
+    const descriptions = editingItems.map(item => item.description.trim().toLowerCase());
+    const duplicates = descriptions.filter((desc, idx) => descriptions.indexOf(desc) !== idx);
+
+    if (duplicates.length > 0) {
+      const uniqueDuplicates = [...new Set(duplicates)];
+      const confirmMessage = `중복된 점검항목이 있습니다:\n${uniqueDuplicates.slice(0, 3).join(', ')}${uniqueDuplicates.length > 3 ? ` 외 ${uniqueDuplicates.length - 3}개` : ''}\n\n그래도 저장하시겠습니까?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    }
+
+    // displayOrder는 드래그할 때만 업데이트되므로, editingItems의 현재 값을 그대로 사용
+    mutation.mutate({ templateId: template.id, items: editingItems });
   };
 
   return (
@@ -196,38 +239,48 @@ export default function ChecklistEditorPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">TBM 편집</CardTitle>
-            <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <CardTitle className="text-2xl">TBM 편집</CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin-dashboard">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  관리자 대시보드로
+                </Link>
+              </Button>
+            </div>
+            <div className="flex items-center gap-4">
+              <Select value={site || ''} onValueChange={(value: Site) => setSite(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="현장 선택" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                  {SITES.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select onValueChange={setSelectedTeam} value={selectedTeam || ''}>
                 <SelectTrigger className="w-[250px]">
                   <SelectValue placeholder="수정할 팀을 선택하세요" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {(() => {
-                    // 팀을 사이트별로 그룹화
-                    const teamsBySite = teams.reduce((acc: Record<string, any[]>, team: any) => {
-                      const site = team.site || '기타';
-                      if (!acc[site]) acc[site] = [];
-                      acc[site].push(team);
-                      return acc;
-                    }, {});
-
-                    return Object.entries(teamsBySite).map(([site, siteTeams]) => (
-                      <React.Fragment key={site}>
-                        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                          {site}
-                        </div>
-                        {siteTeams.map((team: any) => (
-                          <SelectItem key={team.id} value={String(team.id)} className="pl-6">
-                            {stripSiteSuffix(team.name)}
-                          </SelectItem>
-                        ))}
-                      </React.Fragment>
-                    ));
-                  })()}
+                <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                  {teams
+                    .filter((team: any) => team.site === site)
+                    .map((team: any) => (
+                      <SelectItem key={team.id} value={String(team.id)}>
+                        {stripSiteSuffix(team.name)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              {template && <Button onClick={handleSave} disabled={mutation.isPending}>{mutation.isPending ? '저장 중...' : '저장'}</Button>}
+              {template && (
+                <Button
+                  onClick={handleSave}
+                  disabled={mutation.isPending || editingItems.length === 0}
+                >
+                  {mutation.isPending ? '저장 중...' : '저장'}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>

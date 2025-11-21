@@ -23,10 +23,14 @@ import MonthlyReportPage from './pages/MonthlyReportPage';
 import UserProfilePage from './pages/UserProfilePage';
 import MyCertificatesPage from './pages/MyCertificatesPage';
 import SafetyInspectionPage from './pages/SafetyInspectionPage';
+import InspectionGalleryPage from './pages/InspectionGalleryPage';
 import ApprovalPage from './pages/ApprovalPage';
 import ApprovalHistoryPage from './pages/ApprovalHistoryPage';
 import InspectionTemplateEditorPage from './pages/InspectionTemplateEditorPage';
 import EmailSettingsPage from './pages/EmailSettingsPage';
+import TeamEquipmentPage from './pages/TeamEquipmentPage';
+import InspectionSchedulePage from './pages/InspectionSchedulePage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 import CoursePage from "@/pages/course";
 
@@ -49,22 +53,22 @@ function App() {
           <Route path="/register" component={RegisterPage} />
           <Route path="/courses" component={Dashboard} />
           <Route path="/courses/:id">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
               <CoursePage />
             </ProtectedRoute>
           </Route>
           <Route path="/courses/:id/content">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
               <CourseContent />
             </ProtectedRoute>
           </Route>
           <Route path="/assessment/:courseId">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
               <AssessmentPage />
             </ProtectedRoute>
           </Route>
           <Route path="/tbm">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER]}>
               <TbmPage />
             </ProtectedRoute>
           </Route>
@@ -112,6 +116,26 @@ function App() {
               <SafetyInspectionPage />
             </ProtectedRoute>
           </Route>
+          <Route path="/inspection-gallery">
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
+              <InspectionGalleryPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin-dashboard">
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER]}>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/team-equipment">
+            <ProtectedRoute roles={[Role.ADMIN]}>
+              <TeamEquipmentPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/inspection-schedule">
+            <ProtectedRoute roles={[Role.ADMIN]}>
+              <InspectionSchedulePage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/inspection-template-editor">
             <ProtectedRoute roles={[Role.ADMIN]}>
               <InspectionTemplateEditorPage />
@@ -123,12 +147,12 @@ function App() {
             </ProtectedRoute>
           </Route>
           <Route path="/profile">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
               <UserProfilePage />
             </ProtectedRoute>
           </Route>
           <Route path="/my-certificates">
-            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.WORKER, Role.OFFICE_WORKER]}>
+            <ProtectedRoute roles={[Role.ADMIN, Role.TEAM_LEADER, Role.SITE_MANAGER, Role.APPROVER]}>
               <MyCertificatesPage />
             </ProtectedRoute>
           </Route>

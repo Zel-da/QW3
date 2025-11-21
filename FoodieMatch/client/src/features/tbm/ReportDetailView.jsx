@@ -16,7 +16,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify })
     useEffect(() => {
         if (reportId) {
             setLoading(true);
-            apiClient.get(`/api/reports/${reportId}`)
+            apiClient.get(`/api/tbm/${reportId}`)
                 .then(response => setReport(response.data))
                 .catch(err => setError('상세 정보를 불러오는 데 실패했습니다.'))
                 .finally(() => setLoading(false));
@@ -26,7 +26,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify })
     const handleDelete = async () => {
         if (window.confirm('정말로 이 점검표를 삭제하시겠습니까?')) {
             try {
-                await apiClient.delete(`/api/reports/${reportId}`);
+                await apiClient.delete(`/api/tbm/${reportId}`);
                 alert('삭제되었습니다.');
                 onBackToList(); // Go back to the list view
             } catch (err) {

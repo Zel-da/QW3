@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Mail, Plus, Edit, Trash2, Eye, Send, Clock, Power, Play, TestTube, FileText, BarChart3, Download } from 'lucide-react';
+import { Mail, Plus, Edit, Trash2, Eye, Send, Clock, Power, Play, TestTube, FileText, BarChart3, Download, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import {
   EMAIL_CONDITION_TYPES,
@@ -454,7 +455,15 @@ export default function EmailSettingsPage() {
       <Header />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">이메일 설정</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">이메일 설정</h1>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin-dashboard">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                관리자 대시보드로
+              </Link>
+            </Button>
+          </div>
           <p className="text-gray-600">이메일 템플릿, 스케줄 및 조건부 발송을 관리합니다.</p>
         </div>
 
@@ -505,7 +514,7 @@ export default function EmailSettingsPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="템플릿 타입 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {TEMPLATE_TYPES.map((type) => (
                               <SelectItem key={type.value} value={type.value}>
                                 {type.label}
@@ -689,7 +698,7 @@ export default function EmailSettingsPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="템플릿 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {templates?.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.name}
@@ -849,7 +858,7 @@ export default function EmailSettingsPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="조건 타입 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {Object.entries(EMAIL_CONDITION_TYPES).map(([key, def]) => (
                               <SelectItem key={key} value={key}>
                                 [{CONDITION_CATEGORY_LABELS[def.category]}] {def.name}
@@ -885,7 +894,7 @@ export default function EmailSettingsPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="템플릿 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {templates?.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.name}
@@ -904,7 +913,7 @@ export default function EmailSettingsPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="수신자 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {Object.entries(RECIPIENT_TYPE_LABELS).map(([key, label]) => (
                               <SelectItem key={key} value={key}>
                                 {label}
@@ -1177,7 +1186,7 @@ export default function EmailSettingsPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="템플릿 선택" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                         {templates?.map((template) => (
                           <SelectItem key={template.id} value={template.id}>
                             {template.name}

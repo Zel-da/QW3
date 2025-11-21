@@ -14,12 +14,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Terminal, Camera, X } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useLocation } from 'wouter';
+import { CheckCircle2 } from 'lucide-react';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [checklist, setChecklist] = useState(null);
@@ -34,6 +37,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [enlargedImage, setEnlargedImage] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [remarksImages, setRemarksImages] = useState([]);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   useEffect(() => {
     if (site) {
@@ -119,7 +123,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             ...teamMembers.map(member => ({
               id: `member-${member.id}`, // memberId와 userId 구분
               name: member.name,
-              role: 'WORKER', // 기본 역할
+              role: 'SITE_MANAGER', // 기본 역할
               isTeamMember: true, // TeamMember 표시
               memberId: member.id // 원본 memberId 보관
             }))
@@ -232,8 +236,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         if (!hasDescription) {
           validationErrors.push(`"${item.description}" 항목: 비고 입력 필수`);
         }
+
+        // △ or X items require photo attachment
+        const hasPhotos = itemState.attachments && itemState.attachments.length > 0;
+        if (!hasPhotos) {
+          validationErrors.push(`"${item.description}" 항목: 사진 업로드 필수 (이슈 항목)`);
+        }
       }
     });
+
+    // Validate that at least one person has signed
+    const signatureCount = Object.keys(signatures).length;
+    if (signatureCount === 0) {
+      validationErrors.push('최소 1명 이상의 서명이 필요합니다.');
+    }
 
     if (validationErrors.length > 0) {
       toast({
@@ -303,14 +319,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       });
 
       if (reportForEdit) {
-        await axios.put(`/api/reports/${reportForEdit.id}`, reportData);
+        await axios.put(`/api/tbm/${reportForEdit.id}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
       } else {
         await axios.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
       }
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
-      onFinishEditing();
+      setShowSuccessDialog(true);
     } catch (err) {
       console.error('TBM 제출 오류:', err);
       console.error('오류 상세:', {
@@ -547,7 +563,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'OFFICE_WORKER').map(worker => (
+              {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'APPROVER').map(worker => (
                 <TableRow key={worker.id} className={absentUsers[worker.id] ? 'bg-gray-100' : ''}>
                   <TableCell className="font-semibold">{worker.name}</TableCell>
                   <TableCell>
@@ -626,8 +642,48 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       </Dialog>
 
       <div className="flex justify-end mt-6">
-        <Button onClick={handleSubmit} size="lg" disabled={!checklist}>제출하기</Button>
+        <Button
+          onClick={handleSubmit}
+          size="lg"
+          disabled={!checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
+        >
+          제출하기
+        </Button>
       </div>
+
+      {/* 제출 성공 다이얼로그 */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              제출 완료
+            </DialogTitle>
+            <DialogDescription>
+              TBM 일지가 성공적으로 제출되었습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSuccessDialog(false);
+                onFinishEditing();
+              }}
+            >
+              확인
+            </Button>
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false);
+                navigate('/monthly-report');
+              }}
+            >
+              월별 보고서 보기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -149,7 +149,7 @@ export default function DashboardWithTBM() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold mb-2 korean-text">TBM 체크리스트 시스템</h3>
+                <h3 className="font-semibold mb-2 korean-text">TBM 일지 시스템</h3>
                 <p className="text-sm text-muted-foreground korean-text">
                   작업 전 안전회의(TBM) 점검표를 작성하고 관리하는 시스템입니다.
                   매일 작업 시작 전 안전 사항을 점검하고 기록할 수 있습니다.

@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Users as UsersIcon } from 'lucide-react';
+import { Search, Users as UsersIcon, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -346,8 +347,30 @@ export default function TeamManagementPage() {
   };
 
   const handleAddMember = () => {
-    if (newMemberName.trim() && selectedTeamId) {
-      addMemberMutation.mutate({ teamId: selectedTeamId, name: newMemberName.trim(), position: newMemberPosition.trim() || undefined });
+    const trimmedName = newMemberName.trim();
+
+    // 검증: 이름이 비어있는지 확인
+    if (!trimmedName) {
+      toast({
+        title: '이름 입력 필수',
+        description: '팀원 이름을 입력해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 검증: 이름 최소 길이 확인
+    if (trimmedName.length < 2) {
+      toast({
+        title: '이름 입력 오류',
+        description: '이름은 최소 2자 이상이어야 합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (selectedTeamId) {
+      addMemberMutation.mutate({ teamId: selectedTeamId, name: trimmedName, position: newMemberPosition.trim() || undefined });
     }
   };
 
@@ -359,9 +382,44 @@ export default function TeamManagementPage() {
 
   // Team CRUD handlers
   const handleCreateTeam = () => {
-    if (newTeamName.trim() && newTeamSite) {
-      createTeamMutation.mutate({ name: newTeamName.trim(), site: newTeamSite });
+    const trimmedName = newTeamName.trim();
+
+    // 검증: 팀명이 비어있는지 확인
+    if (!trimmedName) {
+      toast({
+        title: '팀명 입력 필수',
+        description: '팀명을 입력해주세요.',
+        variant: 'destructive',
+      });
+      return;
     }
+
+    // 검증: 사이트가 선택되었는지 확인
+    if (!newTeamSite) {
+      toast({
+        title: '사이트 선택 필수',
+        description: '사이트를 선택해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 검증: 중복 팀명 확인 (같은 사이트 내에서)
+    const isDuplicate = teams.some(
+      team => team.name.toLowerCase() === trimmedName.toLowerCase() &&
+              team.site === newTeamSite
+    );
+
+    if (isDuplicate) {
+      toast({
+        title: '중복된 팀명',
+        description: `"${trimmedName}"는 이미 ${newTeamSite}에 존재하는 팀명입니다.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createTeamMutation.mutate({ name: trimmedName, site: newTeamSite });
   };
 
   const handleBulkCreate = () => {
@@ -435,6 +493,20 @@ export default function TeamManagementPage() {
     <div>
       <Header />
       <main className="container mx-auto p-4 lg:p-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold">팀 관리</h1>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin-dashboard">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                관리자 대시보드로
+              </Link>
+            </Button>
+          </div>
+          <p className="text-muted-foreground">팀을 생성하고 팀원을 관리합니다.</p>
+        </div>
+
         {/* 관리자 전용: 팀 생성 */}
         {currentUser?.role === 'ADMIN' && (
           <div className="grid gap-8 md:grid-cols-2 mb-8">
@@ -459,7 +531,7 @@ export default function TeamManagementPage() {
                     <SelectTrigger id="newTeamSite">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                       <SelectItem value="아산">아산</SelectItem>
                       <SelectItem value="화성">화성</SelectItem>
                     </SelectContent>
@@ -467,7 +539,7 @@ export default function TeamManagementPage() {
                 </div>
                 <Button
                   onClick={handleCreateTeam}
-                  disabled={!newTeamName.trim() || createTeamMutation.isPending}
+                  disabled={!newTeamName.trim() || !newTeamSite || createTeamMutation.isPending}
                   className="w-full"
                 >
                   {createTeamMutation.isPending ? '생성 중...' : '팀 생성'}
@@ -487,7 +559,7 @@ export default function TeamManagementPage() {
                     <SelectTrigger id="bulkTeamsSite">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                       <SelectItem value="아산">아산</SelectItem>
                       <SelectItem value="화성">화성</SelectItem>
                     </SelectContent>
@@ -533,7 +605,7 @@ export default function TeamManagementPage() {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                       <SelectItem value="아산">아산</SelectItem>
                       <SelectItem value="화성">화성</SelectItem>
                     </SelectContent>
@@ -547,7 +619,7 @@ export default function TeamManagementPage() {
                     <SelectTrigger>
                       <SelectValue placeholder="팀을 선택하세요..." />
                     </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                       {teams
                         .filter(team => team.site === selectedSiteFilter)
                         .map(team => (
@@ -578,7 +650,7 @@ export default function TeamManagementPage() {
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                               <SelectItem value="아산">아산</SelectItem>
                               <SelectItem value="화성">화성</SelectItem>
                             </SelectContent>
@@ -651,7 +723,7 @@ export default function TeamManagementPage() {
                   <SelectTrigger>
                     <SelectValue placeholder={usersLoading ? "사용자 목록 로딩 중..." : "결재자를 선택하세요..."} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                     <SelectItem value="none">결재자 없음</SelectItem>
                     {usersLoading ? (
                       <SelectItem value="loading" disabled>
@@ -680,8 +752,8 @@ export default function TeamManagementPage() {
                           let roleLabel = '사용자';
                           if (user.role === 'ADMIN') roleLabel = '관리자';
                           else if (user.role === 'TEAM_LEADER') roleLabel = '팀장';
-                          else if (user.role === 'WORKER') roleLabel = '작업자';
-                          else if (user.role === 'OFFICE_WORKER') roleLabel = '사무직';
+                          else if (user.role === 'SITE_MANAGER') roleLabel = '현장관리자';
+                          else if (user.role === 'APPROVER') roleLabel = '임원';
 
                           return (
                             <SelectItem key={user.id} value={user.id}>
@@ -810,7 +882,7 @@ export default function TeamManagementPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="사용자를 선택하세요..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                         {unassignedUsers.map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name} ({user.username})
@@ -903,7 +975,7 @@ export default function TeamManagementPage() {
                     </div>
                     <Button
                       onClick={handleAddMember}
-                      disabled={!newMemberName.trim() || addMemberMutation.isPending}
+                      disabled={newMemberName.trim().length < 2 || addMemberMutation.isPending}
                       className="w-full"
                     >
                       {addMemberMutation.isPending ? '추가 중...' : '팀원 추가'}

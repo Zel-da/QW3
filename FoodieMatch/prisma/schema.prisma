@@ -13,7 +13,7 @@ model User {
   name                   String?
   email                  String?           @unique
   password               String?
-  role                   String            @default("WORKER")
+  role                   String            @default("SITE_MANAGER")
   site                   String?
   teamId                 Int?
   createdAt              DateTime          @default(now())
@@ -31,11 +31,13 @@ model User {
   userProgress           UserProgress[]    // 사용자의 교육 진행 상황
   userAssessments        UserAssessment[]  // 사용자의 평가 기록
   certificates           Certificate[]     // 사용자의 수료증
+  noticeReads            NoticeRead[]      // 사용자가 읽은 공지사항
 
   @@index([teamId])
   @@index([role])
   @@index([site])
   @@index([role, site])
+  @@map("User")
 }
 
 model Notice {
@@ -56,11 +58,27 @@ model Notice {
   author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments       Comment[]
   attachments    Attachment[]
+  noticeReads    NoticeRead[] // 이 공지를 읽은 사용자들
 
   @@index([authorId])
   @@index([createdAt])
   @@index([category])
   @@index([category, createdAt])
+}
+
+model NoticeRead {
+  id        String   @id @default(uuid())
+  noticeId  String
+  userId    String
+  readAt    DateTime @default(now())
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, userId])
+  @@index([userId])
+  @@index([noticeId])
+  @@index([readAt])
+  @@map("NoticeReads")
 }
 
 model Comment {
@@ -91,6 +109,8 @@ model Course {
   color           String           @default("blue")
   icon            String
   isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
   assessments     Assessment[]
   certificates    Certificate[]
   userAssessments UserAssessment[]
@@ -155,12 +175,28 @@ model Certificate {
   @@index([courseId])
 }
 
+// 공장 (아산공장, 화성공장)
+model Factory {
+  id                    Int                             @id @default(autoincrement())
+  name                  String                          // "아산공장", "화성공장"
+  code                  String                          @unique // "ASAN", "HWASEONG"
+  createdAt             DateTime                        @default(now())
+  teams                 Team[]
+  scheduleTemplates     InspectionScheduleTemplate[]
+  monthlyInspectionDays MonthlyInspectionDay[]
+
+  @@index([code])
+  @@map("Factories")
+}
+
 model Team {
   id                  Int                   @id @default(autoincrement())
   name                String
   site                String?
+  factoryId           Int?                  // 신규: 공장 ID
   leaderId            String?
   approverId          String?               // 신규: 월별보고서 결재자
+  factory             Factory?              @relation(fields: [factoryId], references: [id], onDelete: SetNull)
   leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   approver            User?                 @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   members             User[]                @relation("TeamMembers")
@@ -170,11 +206,17 @@ model Team {
   monthlyApprovals    MonthlyApproval[]
   inspectionTemplates InspectionTemplate[]  // 신규: 안전점검 템플릿
   safetyInspections   SafetyInspection[]    // 신규: 안전점검 기록
+  teamEquipments      TeamEquipment[]       // 신규: 라인별 보유 장비
 
+  @@index([factoryId])
   @@map("Teams")
 }
 
-// 신규 모델: 팀원 (User 계정 없이 팀장이 직접 관리)
+/// 팀원 명단 (TeamMember)
+/// User 계정 없이도 팀장이 직접 관리할 수 있는 팀원 목록입니다.
+/// User.members (Team.members): User 계정이 있는 팀원 (로그인 가능)
+/// TeamMember: User 계정 없이 팀장이 추가한 팀원 (로그인 불가, 명단만)
+/// userId가 있으면 User와 연결되어 교육 진행률 추적이 가능합니다.
 model TeamMember {
   id               Int               @id @default(autoincrement())
   teamId           Int
@@ -195,6 +237,21 @@ model TeamMember {
   @@map("TeamMembers")
 }
 
+// 신규 모델: 라인별 보유 장비
+model TeamEquipment {
+  id            Int      @id @default(autoincrement())
+  teamId        Int
+  equipmentName String   // "지게차", "크레인", "전단기" 등
+  quantity      Int      // 보유 개수
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, equipmentName])
+  @@index([teamId])
+  @@map("TeamEquipments")
+}
+
 // 신규 모델: 부재 사유 기록
 model AbsenceRecord {
   id          Int         @id @default(autoincrement())
@@ -211,6 +268,9 @@ model AbsenceRecord {
   @@map("AbsenceRecords")
 }
 
+/// TBM (Tool Box Meeting) 일지 템플릿
+/// 팀별 일일 TBM 체크리스트 항목을 정의합니다.
+/// 매일 작업 전 안전회의에서 사용되는 점검표 양식입니다.
 model ChecklistTemplate {
   id            Int            @id @default(autoincrement())
   name          String
@@ -236,6 +296,10 @@ model TemplateItem {
   @@map("TemplateItems")
 }
 
+/// TBM 일일 보고서 (DailyReport)
+/// 매일 작업 전 안전회의(TBM) 체크리스트 작성 기록입니다.
+/// ChecklistTemplate의 항목을 기반으로 일일 점검 결과를 저장합니다.
+/// 월별 보고서는 이 DailyReport들을 집계하여 생성됩니다.
 model DailyReport {
   id               Int               @id @default(autoincrement())
   teamId           Int
@@ -360,19 +424,57 @@ model Attachment {
 
 // ========== 안전점검 시스템 ==========
 
-// 안전점검 템플릿 (라인별 점검할 기기 목록)
+/// 안전점검 템플릿 (InspectionTemplate)
+/// 팀별, 월별로 매월 4일에 점검할 장비 목록을 정의합니다.
+/// TBM 일지(DailyReport)와는 다르게, 월 1회 실시하는 정기 안전점검용입니다.
+/// 실제 점검 기록은 SafetyInspection 모델에 저장됩니다.
 model InspectionTemplate {
   id           Int     @id @default(autoincrement())
   teamId       Int
+  month        Int     @default(1)  // 1-12 (월별 구분)
   equipmentName String  // 점검할 기기명 (예: 지게차, 크레인 등)
   displayOrder Int     @default(0)
   isRequired   Boolean @default(true)
   createdAt    DateTime @default(now())
   team         Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@index([teamId])
-  @@index([teamId, displayOrder])
+  @@unique([teamId, month, equipmentName])
+  @@index([teamId, month])
+  @@index([teamId, month, displayOrder])
   @@map("InspectionTemplates")
+}
+
+// 신규: 월별 점검 일정 마스터 (공장별 월별 점검 항목)
+model InspectionScheduleTemplate {
+  id            Int      @id @default(autoincrement())
+  factoryId     Int      // 아산공장 or 화성공장
+  month         Int      // 1-12
+  equipmentName String   // "지게차 점검", "크레인 점검" 등
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  factory       Factory  @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+
+  @@unique([factoryId, month, equipmentName])
+  @@index([factoryId, month])
+  @@index([factoryId])
+  @@map("InspectionScheduleTemplates")
+}
+
+// 신규: 월별 점검일 관리 (공장별 월별로 하나의 점검일)
+model MonthlyInspectionDay {
+  id            Int      @id @default(autoincrement())
+  factoryId     Int
+  month         Int      // 1-12
+  inspectionDay Int      // 점검일 (1-31)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  factory       Factory  @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+
+  @@unique([factoryId, month])
+  @@index([factoryId])
+  @@index([factoryId, month])
+  @@map("MonthlyInspectionDays")
 }
 
 // 안전점검 메인 (월별 점검 기록)
@@ -398,14 +500,17 @@ model SafetyInspection {
 
 // 안전점검 항목 (개별 기기 사진)
 model InspectionItem {
-  id            String           @id @default(uuid())
-  inspectionId  String
-  equipmentName String           // 기기명
-  photoUrl      String           // 사진 URL
-  remarks       String?          // 비고
-  uploadedAt    DateTime         @default(now())
-  inspection    SafetyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  inspectionId       String
+  equipmentName      String           // 기기명
+  requiredPhotoCount Int              // 필요한 사진 개수 (해당 라인의 장비 개수)
+  photos             Json             // JSON array of photo URLs
+  remarks            String?          // 비고
+  isCompleted        Boolean          @default(false) // 필요한 사진을 모두 업로드했는지
+  uploadedAt         DateTime         @default(now())
+  inspection         SafetyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
 
+  @@unique([inspectionId, equipmentName])
   @@index([inspectionId])
   @@map("InspectionItems")
 }
@@ -496,4 +601,16 @@ model EmailSendLog {
   @@index([sentAt])
   @@index([status])
   @@map("EmailSendLogs")
+}
+
+// ========== 세션 스토어 ==========
+
+// Express 세션 저장 테이블 (connect-pg-simple)
+model UserSession {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], name: "IDX_session_expire")
+  @@map("user_sessions")
 }

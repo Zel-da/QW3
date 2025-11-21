@@ -31,22 +31,10 @@ export function Header() {
           <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
             월별 보고서
           </Link>
-        </>
-      )}
-      {user?.role === 'ADMIN' && (
-        <>
-          <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-            사용자 관리
-          </Link>
-          <Link href="/email-settings" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-            이메일 설정
+          <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+            관리
           </Link>
         </>
-      )}
-      {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
-          <Link href="/team-management" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
-            팀 관리
-          </Link>
       )}
     </>
   );

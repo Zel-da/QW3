@@ -4,45 +4,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Notice } from "@shared/schema";
 import { Link } from "wouter";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { FileText, BookOpen, BarChart3, ClipboardCheck, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-
-// YouTube URL을 embed URL로 변환
-function getYouTubeEmbedUrl(url: string): string {
-  if (!url) return '';
-
-  // 이미 embed URL인 경우
-  if (url.includes('/embed/')) return url;
-
-  // 다양한 YouTube URL 형식 처리
-  let videoId = '';
-
-  // https://www.youtube.com/watch?v=VIDEO_ID
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) {
-    videoId = watchMatch[1];
-  }
-
-  // https://youtu.be/VIDEO_ID
-  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-  if (shortMatch) {
-    videoId = shortMatch[1];
-  }
-
-  // https://www.youtube.com/embed/VIDEO_ID
-  const embedMatch = url.match(/\/embed\/([^?]+)/);
-  if (embedMatch) {
-    videoId = embedMatch[1];
-  }
-
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
-}
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -50,10 +19,8 @@ export default function HomePage() {
     queryKey: ["/api/notices"],
   });
 
-  const [showNoticePopup, setShowNoticePopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const latestNotice = notices[0];
 
   // 사용 가능한 카테고리 목록 추출
   const categories = useMemo(() => {
@@ -74,32 +41,6 @@ export default function HomePage() {
     });
   }, [notices, searchTerm, categoryFilter]);
 
-  useEffect(() => {
-    if (!latestNotice) return;
-
-    const popupKey = `notice-popup-${latestNotice.id}`;
-    const hideUntil = localStorage.getItem(popupKey);
-
-    if (hideUntil) {
-      const hideDate = new Date(hideUntil);
-      if (hideDate > new Date()) {
-        return;
-      }
-    }
-
-    setShowNoticePopup(true);
-  }, [latestNotice]);
-
-  const handleClosePopup = (hideForToday = false) => {
-    if (hideForToday && latestNotice) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      localStorage.setItem(`notice-popup-${latestNotice.id}`, tomorrow.toISOString());
-    }
-    setShowNoticePopup(false);
-  };
-
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -115,7 +56,7 @@ export default function HomePage() {
         <main className="container mx-auto p-4 lg:p-6">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">안전관리 통합 플랫폼</h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8">안전교육과 TBM 체크리스트를 통합 관리하는 플랫폼입니다.</p>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8">안전교육과 TBM 일지를 통합 관리하는 플랫폼입니다.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="text-lg h-14 min-w-[120px]">
                 <Link href="/login">로그인</Link>
@@ -166,66 +107,6 @@ export default function HomePage() {
               </Card>
             </Link>
           </div>
-
-          {/* 공지사항 팝업 */}
-          {latestNotice && (
-            <Dialog open={showNoticePopup} onOpenChange={(open) => !open && handleClosePopup()}>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl md:text-3xl leading-tight pr-8">{latestNotice.title}</DialogTitle>
-                  <DialogDescription className="text-base md:text-lg pt-2">
-                    {new Date(latestNotice.createdAt).toLocaleDateString()}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  {latestNotice.imageUrl && (
-                    <img src={latestNotice.imageUrl} alt={latestNotice.title} className="w-full rounded-md mb-4" />
-                  )}
-                  <div className="text-base md:text-lg leading-relaxed whitespace-pre-wrap">
-                    {latestNotice.content}
-                  </div>
-                  {latestNotice.videoUrl && (
-                    <div className="mt-6">
-                      {latestNotice.videoType === 'youtube' ? (
-                        <div className="aspect-video">
-                          <iframe
-                            src={getYouTubeEmbedUrl(latestNotice.videoUrl)}
-                            className="w-full h-full rounded"
-                            allowFullScreen
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          />
-                        </div>
-                      ) : (
-                        <video src={latestNotice.videoUrl} controls className="w-full rounded max-h-[600px]" />
-                      )}
-                    </div>
-                  )}
-                  {latestNotice.attachmentUrl && (
-                    <div className="mt-4">
-                      <Button asChild variant="outline" className="text-base">
-                        <a href={latestNotice.attachmentUrl} download={latestNotice.attachmentName || true}>
-                          📎 첨부파일 다운로드: {latestNotice.attachmentName}
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <DialogFooter className="flex-col sm:flex-row gap-2">
-                  <Button variant="outline" onClick={() => handleClosePopup(true)} className="text-base h-11 w-full sm:w-auto">
-                    오늘 하루 보지 않기
-                  </Button>
-                  <Button asChild className="text-base h-11 w-full sm:w-auto">
-                    <Link href={`/notices/${latestNotice.id}`} onClick={() => setShowNoticePopup(false)}>
-                      자세히 보기
-                    </Link>
-                  </Button>
-                  <Button onClick={() => handleClosePopup()} className="text-base h-11 w-full sm:w-auto">
-                    닫기
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
 
           <Card className="mt-8">
             <CardHeader>
@@ -336,66 +217,6 @@ export default function HomePage() {
     <div>
       <Header />
       <main className="container mx-auto p-4 lg:p-6">
-        {/* 공지사항 팝업 */}
-        {latestNotice && (
-          <Dialog open={showNoticePopup} onOpenChange={(open) => !open && handleClosePopup()}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-2xl md:text-3xl leading-tight pr-8">{latestNotice.title}</DialogTitle>
-                <DialogDescription className="text-base md:text-lg pt-2">
-                  {new Date(latestNotice.createdAt).toLocaleDateString()}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                {latestNotice.imageUrl && (
-                  <img src={latestNotice.imageUrl} alt={latestNotice.title} className="w-full rounded-md mb-4" />
-                )}
-                <div className="text-base md:text-lg leading-relaxed whitespace-pre-wrap">
-                  {latestNotice.content}
-                </div>
-                {latestNotice.videoUrl && (
-                  <div className="mt-6">
-                    {latestNotice.videoType === 'youtube' ? (
-                      <div className="aspect-video">
-                        <iframe
-                          src={getYouTubeEmbedUrl(latestNotice.videoUrl)}
-                          className="w-full h-full rounded"
-                          allowFullScreen
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        />
-                      </div>
-                    ) : (
-                      <video src={latestNotice.videoUrl} controls className="w-full rounded max-h-[600px]" />
-                    )}
-                  </div>
-                )}
-                {latestNotice.attachmentUrl && (
-                  <div className="mt-4">
-                    <Button asChild variant="outline" className="text-base">
-                      <a href={latestNotice.attachmentUrl} download={latestNotice.attachmentName || true}>
-                        📎 첨부파일 다운로드: {latestNotice.attachmentName}
-                      </a>
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button variant="outline" onClick={() => handleClosePopup(true)} className="text-base h-11 w-full sm:w-auto">
-                  오늘 하루 보지 않기
-                </Button>
-                <Button asChild className="text-base h-11 w-full sm:w-auto">
-                  <Link href={`/notices/${latestNotice.id}`} onClick={() => setShowNoticePopup(false)}>
-                    자세히 보기
-                  </Link>
-                </Button>
-                <Button onClick={() => handleClosePopup()} className="text-base h-11 w-full sm:w-auto">
-                  닫기
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="text-2xl md:text-3xl">공지사항</CardTitle>
@@ -427,8 +248,14 @@ export default function HomePage() {
                       {notices.map((notice, index) => (
                         <TableRow key={notice.id}>
                           <TableCell className="text-base">{notices.length - index}</TableCell>
-                          <TableCell className="font-medium text-base">
-                            <Link href={`/notices/${notice.id}`} className="hover:underline">
+                          <TableCell className={cn(
+                            "text-base",
+                            !notice.isRead && "font-bold"
+                          )}>
+                            <Link href={`/notices/${notice.id}`} className="hover:underline flex items-center gap-2">
+                              {!notice.isRead && (
+                                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                              )}
                               {notice.title}
                             </Link>
                           </TableCell>
@@ -448,8 +275,16 @@ export default function HomePage() {
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
-                              <div className="text-sm text-muted-foreground mb-1">#{notices.length - index}</div>
-                              <h3 className="text-lg font-semibold leading-tight mb-2">{notice.title}</h3>
+                              <div className="flex items-center gap-2 mb-1">
+                                {!notice.isRead && (
+                                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                                )}
+                                <span className="text-sm text-muted-foreground">#{notices.length - index}</span>
+                              </div>
+                              <h3 className={cn(
+                                "text-lg leading-tight mb-2",
+                                !notice.isRead ? "font-bold" : "font-semibold"
+                              )}>{notice.title}</h3>
                               <div className="text-sm text-muted-foreground">
                                 {new Date(notice.createdAt).toLocaleDateString()}
                               </div>

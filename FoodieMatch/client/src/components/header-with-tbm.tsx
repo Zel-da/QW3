@@ -47,7 +47,7 @@ export function HeaderWithTBM() {
               data-testid="nav-tbm"
             >
               <ClipboardCheck className="w-4 h-4 mr-2" />
-              TBM 체크리스트
+              TBM 일지
             </Button>
             
             <a 

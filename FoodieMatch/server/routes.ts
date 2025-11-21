@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File upload limiter: 20 uploads per hour
   const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // 20 uploads per hour
+    max: 100, // 100 uploads per hour (increased for multiple photo uploads)
     message: { message: "파일 업로드 횟수가 제한을 초과했습니다. 1시간 후에 다시 시도해주세요." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
         data: {
-          username, name, email, password: hashedPassword, role: 'WORKER',
+          username, name, email, password: hashedPassword, role: 'SITE_MANAGER',
           teamId: teamId ? parseInt(teamId, 10) : null,
           site: site || null,
         },
@@ -335,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { username, email } = req.body;
-      const user = await prisma.user.create({ data: { username, email, name: username, role: 'WORKER' } });
+      const user = await prisma.user.create({ data: { username, email, name: username, role: 'SITE_MANAGER' } });
       res.status(201).json(user);
     } catch (error) { res.status(500).json({ message: "Failed to create user" }); }
   });
@@ -882,13 +882,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 팀별 안전점검 템플릿 조회
-  app.get("/api/teams/:teamId/inspection-template", requireAuth, async (req, res) => {
+  // 팀별, 월별 안전점검 템플릿 조회
+  app.get("/api/teams/:teamId/inspection-template/:month", requireAuth, async (req, res) => {
     try {
-      const { teamId } = req.params;
+      const { teamId, month } = req.params;
 
       const templates = await prisma.inspectionTemplate.findMany({
-        where: { teamId: parseInt(teamId) },
+        where: {
+          teamId: parseInt(teamId),
+          month: parseInt(month)
+        },
         orderBy: { displayOrder: 'asc' }
       });
 
@@ -899,25 +902,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 팀별 안전점검 템플릿 수정
-  app.put("/api/teams/:teamId/inspection-template", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  // 팀별, 월별 안전점검 템플릿 수정
+  app.put("/api/teams/:teamId/inspection-template/:month", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { teamId } = req.params;
+      const { teamId, month } = req.params;
       const { equipmentList } = req.body; // Array of { equipmentName, displayOrder, isRequired }
 
       if (!Array.isArray(equipmentList)) {
         return res.status(400).json({ message: "equipmentList는 배열이어야 합니다" });
       }
 
-      // 기존 템플릿 삭제
+      const parsedTeamId = parseInt(teamId);
+      const parsedMonth = parseInt(month);
+
+      // 해당 월의 기존 템플릿 삭제
       await prisma.inspectionTemplate.deleteMany({
-        where: { teamId: parseInt(teamId) }
+        where: {
+          teamId: parsedTeamId,
+          month: parsedMonth
+        }
       });
 
       // 새 템플릿 생성
       const templates = await prisma.inspectionTemplate.createMany({
         data: equipmentList.map((item: any) => ({
-          teamId: parseInt(teamId),
+          teamId: parsedTeamId,
+          month: parsedMonth,
           equipmentName: item.equipmentName,
           displayOrder: item.displayOrder || 0,
           isRequired: item.isRequired !== false
@@ -926,7 +936,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 생성된 템플릿 반환
       const created = await prisma.inspectionTemplate.findMany({
-        where: { teamId: parseInt(teamId) },
+        where: {
+          teamId: parsedTeamId,
+          month: parsedMonth
+        },
         orderBy: { displayOrder: 'asc' }
       });
 
@@ -1364,32 +1377,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.user!.id;
       const userTeamId = req.session.user!.teamId;
 
-      // 공지사항 통계
-      const totalNotices = await prisma.notice.count();
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const unreadNotices = await prisma.notice.count({
+      // 공지사항 통계 - 30일 이내 + 사용자가 안읽은 개수
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentNotices = await prisma.notice.findMany({
         where: {
-          createdAt: { gte: oneWeekAgo }
-        }
+          createdAt: { gte: thirtyDaysAgo },
+          isActive: true
+        },
+        select: { id: true }
       });
 
-      // 교육 통계
-      const totalCourses = await prisma.course.count({
-        where: { isActive: true }
+      const readNoticeIds = await prisma.noticeRead.findMany({
+        where: {
+          userId,
+          noticeId: { in: recentNotices.map(n => n.id) }
+        },
+        select: { noticeId: true }
       });
-      const userProgress = await prisma.userProgress.findMany({
-        where: { userId }
-      });
-      const completedCourses = userProgress.filter(p => p.completed).length;
-      const inProgressCourses = userProgress.filter(p => !p.completed && p.progress > 0).length;
 
-      // TBM 통계
+      const readIds = new Set(readNoticeIds.map(r => r.noticeId));
+      const unreadNotices = recentNotices.filter(n => !readIds.has(n.id)).length;
+
+      // 교육 통계 - 이번 달 생성된 과정만
       const now = new Date();
       const thisYear = now.getFullYear();
       const thisMonth = now.getMonth() + 1;
-      const daysInMonth = new Date(thisYear, thisMonth, 0).getDate();
+      const startOfMonth = new Date(thisYear, thisMonth - 1, 1);
+      const endOfMonth = new Date(thisYear, thisMonth, 1);
 
+      const thisMonthCourses = await prisma.course.findMany({
+        where: {
+          isActive: true,
+          createdAt: {
+            gte: startOfMonth,
+            lt: endOfMonth
+          }
+        },
+        select: { id: true }
+      });
+
+      const thisMonthProgress = await prisma.userProgress.findMany({
+        where: {
+          userId,
+          courseId: { in: thisMonthCourses.map(c => c.id) }
+        }
+      });
+
+      const completedThisMonth = thisMonthProgress.filter(p => p.completed).length;
+      const totalThisMonth = thisMonthCourses.length;
+      const inProgressCourses = thisMonthProgress.filter(p => !p.completed && p.progress > 0).length;
+
+      // TBM 통계
+      const daysInMonth = new Date(thisYear, thisMonth, 0).getDate();
       let thisMonthSubmitted = 0;
       let thisMonthTotal = daysInMonth;
 
@@ -1398,8 +1439,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           where: {
             teamId: userTeamId,
             reportDate: {
-              gte: new Date(thisYear, thisMonth - 1, 1),
-              lt: new Date(thisYear, thisMonth, 1)
+              gte: startOfMonth,
+              lt: endOfMonth
             }
           }
         });
@@ -1425,12 +1466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         notices: {
-          total: totalNotices,
+          total: recentNotices.length,
           unread: unreadNotices
         },
         education: {
-          totalCourses,
-          completedCourses,
+          totalCourses: totalThisMonth,
+          completedCourses: completedThisMonth,
           inProgressCourses
         },
         tbm: {
@@ -1452,10 +1493,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notices", async (req, res) => {
     try {
       const { latest, page, limit, category } = req.query;
+      const userId = (req.session.user as any)?.id;
 
       // Latest single notice
       if (latest === 'true') {
-        const notice = await prisma.notice.findFirst({ orderBy: { createdAt: 'desc' } });
+        const notice = await prisma.notice.findFirst({
+          orderBy: { createdAt: 'desc' },
+          include: {
+            attachments: true,
+            author: {
+              select: {
+                name: true,
+                username: true
+              }
+            }
+          }
+        });
         return res.json(notice);
       }
 
@@ -1486,12 +1539,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           include: {
             author: {
               select: { id: true, name: true, role: true }
-            }
+            },
+            attachments: true
           }
         });
 
+        // Add isRead status if user is logged in
+        let noticesWithReadStatus = notices;
+        if (userId) {
+          const noticeIds = notices.map(n => n.id);
+          const readRecords = await prisma.noticeRead.findMany({
+            where: {
+              userId,
+              noticeId: { in: noticeIds }
+            },
+            select: { noticeId: true }
+          });
+          const readIds = new Set(readRecords.map(r => r.noticeId));
+
+          noticesWithReadStatus = notices.map(notice => ({
+            ...notice,
+            isRead: readIds.has(notice.id)
+          }));
+        }
+
         res.json({
-          data: notices,
+          data: noticesWithReadStatus,
           pagination: {
             page: pageNum,
             limit: limitNum,
@@ -1503,9 +1576,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Legacy format: return array directly (backward compatibility)
         const notices = await prisma.notice.findMany({
           where,
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
+          include: {
+            author: {
+              select: { id: true, name: true, username: true }
+            },
+            attachments: true
+          }
         });
-        res.json(notices);
+
+        // Add isRead status if user is logged in
+        let noticesWithReadStatus = notices;
+        if (userId) {
+          const noticeIds = notices.map(n => n.id);
+          const readRecords = await prisma.noticeRead.findMany({
+            where: {
+              userId,
+              noticeId: { in: noticeIds }
+            },
+            select: { noticeId: true }
+          });
+          const readIds = new Set(readRecords.map(r => r.noticeId));
+
+          noticesWithReadStatus = notices.map(notice => ({
+            ...notice,
+            isRead: readIds.has(notice.id)
+          }));
+        }
+
+        res.json(noticesWithReadStatus);
       }
     } catch (error) {
       console.error('Failed to fetch notices:', error);
@@ -1525,6 +1624,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to fetch notice:', error);
       res.status(500).json({ message: "Failed to fetch notice" });
+    }
+  });
+
+  // Mark notice as read
+  app.post("/api/notices/:noticeId/mark-read", requireAuth, async (req, res) => {
+    try {
+      const { noticeId } = req.params;
+      const userId = req.session.user!.id;
+
+      // Upsert: create if not exists, do nothing if exists
+      await prisma.noticeRead.upsert({
+        where: {
+          noticeId_userId: {
+            noticeId,
+            userId
+          }
+        },
+        update: {}, // Already read, do nothing
+        create: {
+          noticeId,
+          userId
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to mark notice as read:', error);
+      res.status(500).json({ message: "Failed to mark notice as read" });
     }
   });
 
@@ -1717,7 +1844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports/monthly", requireAuth, async (req, res) => {
+  app.get("/api/tbm/monthly", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
       const teamIdNum = parseInt(teamId as string);
@@ -1783,7 +1910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TBM 출석 현황 API (모든 팀 x 1~31일)
-  app.get("/api/reports/attendance-overview", requireAuth, async (req, res) => {
+  app.get("/api/tbm/attendance-overview", requireAuth, async (req, res) => {
     try {
       const { year, month, site } = req.query;
 
@@ -1879,7 +2006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports/monthly-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/monthly-excel", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
       const currentUser = req.session.user;
@@ -2174,7 +2301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 사용 가능한 TBM 사진 일자 조회 API (안전교육 엑셀용)
-  app.get("/api/reports/available-dates", requireAuth, async (req, res) => {
+  app.get("/api/tbm/available-dates", requireAuth, async (req, res) => {
     try {
       const { site, year, month } = req.query;
 
@@ -2241,7 +2368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 종합 엑셀 생성 API (사이트별 모든 팀의 월별보고서를 하나의 엑셀로)
-  app.get("/api/reports/comprehensive-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/comprehensive-excel", requireAuth, async (req, res) => {
     try {
       const { site, year, month } = req.query;
 
@@ -2720,7 +2847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
-  app.get("/api/reports/safety-education-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/safety-education-excel", requireAuth, async (req, res) => {
     try {
       const { site, year, month, date } = req.query;
 
@@ -3423,7 +3550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports/:reportId", requireAuth, async (req, res) => {
+  app.get("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
 
@@ -3523,7 +3650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/reports/:reportId", requireAuth, async (req, res) => {
+  app.put("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const reportData = tbmReportSchema.partial().parse(req.body);
@@ -3590,7 +3717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/reports/:reportId", requireAuth, async (req, res) => {
+  app.delete("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       await prisma.dailyReport.delete({ where: { id: parseInt(reportId) } });
@@ -5144,7 +5271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update safety inspection
   app.post('/api/inspection', requireAuth, async (req, res) => {
     try {
-      const { teamId, year, month, inspectionDate, items } = req.body;
+      const { teamId, year, month, inspectionDate, items, isCompleted } = req.body;
 
       if (!teamId || !year || !month || !inspectionDate || !items || items.length === 0) {
         return res.status(400).json({ message: 'Missing required fields' });
@@ -5162,39 +5289,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
             year: parseInt(year),
             month: parseInt(month)
           }
-        }
-      });
-
-      if (existingInspection) {
-        return res.status(400).json({ message: '이미 해당 월의 점검 기록이 존재합니다.' });
-      }
-
-      // Create new inspection
-      const inspection = await prisma.safetyInspection.create({
-        data: {
-          teamId: parseInt(teamId),
-          year: parseInt(year),
-          month: parseInt(month),
-          inspectionDate: new Date(inspectionDate),
-          isCompleted: true,
-          completedAt: new Date(),
-          inspectionItems: {
-            create: items.map((item: any) => ({
-              equipmentName: item.equipmentName,
-              photoUrl: item.photoUrl,
-              remarks: item.remarks || null
-            }))
-          }
         },
         include: {
           inspectionItems: true
         }
       });
 
+      let inspection;
+
+      if (existingInspection) {
+        // Update existing inspection
+        // First, delete old items
+        await prisma.inspectionItem.deleteMany({
+          where: {
+            inspectionId: existingInspection.id
+          }
+        });
+
+        // Then update with new data
+        inspection = await prisma.safetyInspection.update({
+          where: { id: existingInspection.id },
+          data: {
+            inspectionDate: new Date(inspectionDate),
+            isCompleted: isCompleted ?? true,
+            completedAt: isCompleted ? new Date() : null,
+            inspectionItems: {
+              create: items.map((item: any) => ({
+                equipmentName: item.equipmentName,
+                requiredPhotoCount: item.requiredPhotoCount || 0,
+                photos: Array.isArray(item.photos) ? item.photos : (item.photos ? JSON.parse(item.photos) : []),
+                remarks: item.remarks || null,
+                isCompleted: item.isCompleted ?? false
+              }))
+            }
+          },
+          include: {
+            inspectionItems: true
+          }
+        });
+      } else {
+        // Create new inspection
+        inspection = await prisma.safetyInspection.create({
+          data: {
+            teamId: parseInt(teamId),
+            year: parseInt(year),
+            month: parseInt(month),
+            inspectionDate: new Date(inspectionDate),
+            isCompleted: isCompleted ?? true,
+            completedAt: isCompleted ? new Date() : null,
+            inspectionItems: {
+              create: items.map((item: any) => ({
+                equipmentName: item.equipmentName,
+                requiredPhotoCount: item.requiredPhotoCount || 0,
+                photos: Array.isArray(item.photos) ? item.photos : (item.photos ? JSON.parse(item.photos) : []),
+                remarks: item.remarks || null,
+                isCompleted: item.isCompleted ?? false
+              }))
+            }
+          },
+          include: {
+            inspectionItems: true
+          }
+        });
+      }
+
       res.json(inspection);
     } catch (error) {
-      console.error('Error creating safety inspection:', error);
-      res.status(500).json({ message: 'Failed to create safety inspection' });
+      console.error('Error creating/updating safety inspection:', error);
+      res.status(500).json({ message: 'Failed to create/update safety inspection' });
     }
   });
 
@@ -5219,6 +5381,524 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching team inspections:', error);
       res.status(500).json({ message: 'Failed to fetch team inspections' });
+    }
+  });
+
+  // Get all inspections for gallery view (with filters)
+  app.get('/api/inspection/gallery', requireAuth, async (req, res) => {
+    try {
+      const { site, year, month, teamId } = req.query;
+
+      // Build filter conditions
+      const where: any = {};
+
+      if (teamId) {
+        where.teamId = parseInt(teamId as string);
+      } else if (site) {
+        where.team = {
+          site: site as string
+        };
+      }
+
+      if (year) {
+        where.year = parseInt(year as string);
+      }
+
+      if (month) {
+        where.month = parseInt(month as string);
+      }
+
+      const inspections = await prisma.safetyInspection.findMany({
+        where,
+        include: {
+          inspectionItems: true,
+          team: {
+            include: {
+              factory: true,
+              leader: {
+                select: {
+                  name: true,
+                  username: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' },
+          { inspectionDate: 'desc' }
+        ]
+      });
+
+      res.json(inspections);
+    } catch (error) {
+      console.error('Error fetching inspections for gallery:', error);
+      res.status(500).json({ message: 'Failed to fetch inspections for gallery' });
+    }
+  });
+
+  // ========== FACTORY API ==========
+
+  // Get all factories
+  app.get('/api/factories', requireAuth, async (req, res) => {
+    try {
+      const factories = await prisma.factory.findMany({
+        include: {
+          _count: {
+            select: { teams: true }
+          }
+        }
+      });
+      res.json(factories);
+    } catch (error) {
+      console.error('Error fetching factories:', error);
+      res.status(500).json({ message: 'Failed to fetch factories' });
+    }
+  });
+
+  // Get teams by factory
+  app.get('/api/factories/:id/teams', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const teams = await prisma.team.findMany({
+        where: { factoryId: parseInt(id) },
+        orderBy: { name: 'asc' }
+      });
+      res.json(teams);
+    } catch (error) {
+      console.error('Error fetching factory teams:', error);
+      res.status(500).json({ message: 'Failed to fetch factory teams' });
+    }
+  });
+
+  // ========== TEAM EQUIPMENT API ==========
+
+  // Get team equipments
+  app.get('/api/teams/:teamId/equipments', requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const equipments = await prisma.teamEquipment.findMany({
+        where: { teamId: parseInt(teamId) },
+        orderBy: { equipmentName: 'asc' }
+      });
+      res.json(equipments);
+    } catch (error) {
+      console.error('Error fetching team equipments:', error);
+      res.status(500).json({ message: 'Failed to fetch team equipments' });
+    }
+  });
+
+  // Update team equipments (batch)
+  app.put('/api/teams/:teamId/equipments', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const { equipments } = req.body; // [{ equipmentName, quantity }]
+
+      if (!Array.isArray(equipments)) {
+        return res.status(400).json({ message: 'equipments must be an array' });
+      }
+
+      // Delete existing and create new (simple approach)
+      await prisma.teamEquipment.deleteMany({
+        where: { teamId: parseInt(teamId) }
+      });
+
+      const created = await prisma.teamEquipment.createMany({
+        data: equipments.map((eq: any) => ({
+          teamId: parseInt(teamId),
+          equipmentName: eq.equipmentName,
+          quantity: eq.quantity
+        }))
+      });
+
+      res.json({ message: 'Team equipments updated', count: created.count });
+    } catch (error) {
+      console.error('Error updating team equipments:', error);
+      res.status(500).json({ message: 'Failed to update team equipments' });
+    }
+  });
+
+  // Add single equipment
+  app.post('/api/teams/:teamId/equipments', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const { equipmentName, quantity } = req.body;
+
+      const equipment = await prisma.teamEquipment.create({
+        data: {
+          teamId: parseInt(teamId),
+          equipmentName,
+          quantity
+        }
+      });
+
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error adding team equipment:', error);
+      res.status(500).json({ message: 'Failed to add team equipment' });
+    }
+  });
+
+  // Delete equipment
+  app.delete('/api/teams/:teamId/equipments/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await prisma.teamEquipment.delete({
+        where: { id: parseInt(id) }
+      });
+
+      res.json({ message: 'Equipment deleted' });
+    } catch (error) {
+      console.error('Error deleting team equipment:', error);
+      res.status(500).json({ message: 'Failed to delete team equipment' });
+    }
+  });
+
+  // ========== INSPECTION SCHEDULE TEMPLATE API ==========
+
+  // Get inspection schedule for a factory and month
+  app.get('/api/inspection-schedules/:factoryCode/:month', requireAuth, async (req, res) => {
+    try {
+      const { factoryCode, month } = req.params;
+
+      const factory = await prisma.factory.findUnique({
+        where: { code: factoryCode }
+      });
+
+      if (!factory) {
+        return res.status(404).json({ message: 'Factory not found' });
+      }
+
+      const schedules = await prisma.inspectionScheduleTemplate.findMany({
+        where: {
+          factoryId: factory.id,
+          month: parseInt(month)
+        },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      res.json(schedules);
+    } catch (error) {
+      console.error('Error fetching inspection schedule:', error);
+      res.status(500).json({ message: 'Failed to fetch inspection schedule' });
+    }
+  });
+
+  // Update inspection schedule (batch)
+  app.put('/api/inspection-schedules/:factoryCode/:month', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { factoryCode, month } = req.params;
+      const { schedules } = req.body; // [{ equipmentName, displayOrder }]
+
+      const factory = await prisma.factory.findUnique({
+        where: { code: factoryCode }
+      });
+
+      if (!factory) {
+        return res.status(404).json({ message: 'Factory not found' });
+      }
+
+      // Delete existing and create new
+      await prisma.inspectionScheduleTemplate.deleteMany({
+        where: {
+          factoryId: factory.id,
+          month: parseInt(month)
+        }
+      });
+
+      const created = await prisma.inspectionScheduleTemplate.createMany({
+        data: schedules.map((schedule: any) => ({
+          factoryId: factory.id,
+          month: parseInt(month),
+          equipmentName: schedule.equipmentName,
+          displayOrder: schedule.displayOrder
+        }))
+      });
+
+      res.json({ message: 'Inspection schedule updated', count: created.count });
+    } catch (error) {
+      console.error('Error updating inspection schedule:', error);
+      res.status(500).json({ message: 'Failed to update inspection schedule' });
+    }
+  });
+
+  // ========== MONTHLY INSPECTION DAY API ==========
+
+  // Get monthly inspection day for a factory/month
+  app.get('/api/monthly-inspection-days/:factoryCode/:month', requireAuth, async (req, res) => {
+    try {
+      const { factoryCode, month } = req.params;
+
+      const factory = await prisma.factory.findUnique({
+        where: { code: factoryCode }
+      });
+
+      if (!factory) {
+        return res.status(404).json({ message: 'Factory not found' });
+      }
+
+      const monthlyDay = await prisma.monthlyInspectionDay.findUnique({
+        where: {
+          factoryId_month: {
+            factoryId: factory.id,
+            month: parseInt(month)
+          }
+        }
+      });
+
+      if (!monthlyDay) {
+        return res.status(404).json({ message: 'Monthly inspection day not found' });
+      }
+
+      res.json(monthlyDay);
+    } catch (error) {
+      console.error('Error fetching monthly inspection day:', error);
+      res.status(500).json({ message: 'Failed to fetch monthly inspection day' });
+    }
+  });
+
+  // Update monthly inspection day
+  app.put('/api/monthly-inspection-days/:factoryCode/:month', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { factoryCode, month } = req.params;
+      const { inspectionDay } = req.body; // day number (1-31)
+
+      const factory = await prisma.factory.findUnique({
+        where: { code: factoryCode }
+      });
+
+      if (!factory) {
+        return res.status(404).json({ message: 'Factory not found' });
+      }
+
+      const updated = await prisma.monthlyInspectionDay.upsert({
+        where: {
+          factoryId_month: {
+            factoryId: factory.id,
+            month: parseInt(month)
+          }
+        },
+        update: {
+          inspectionDay: parseInt(inspectionDay)
+        },
+        create: {
+          factoryId: factory.id,
+          month: parseInt(month),
+          inspectionDay: parseInt(inspectionDay)
+        }
+      });
+
+      res.json({ message: 'Monthly inspection day updated', data: updated });
+    } catch (error) {
+      console.error('Error updating monthly inspection day:', error);
+      res.status(500).json({ message: 'Failed to update monthly inspection day' });
+    }
+  });
+
+  // ========== INSPECTION REQUIRED ITEMS API ==========
+
+  // Get required inspection items for a team, year, month
+  app.get('/api/inspections/:teamId/:year/:month/required-items', requireAuth, async (req, res) => {
+    try {
+      const { teamId, year, month } = req.params;
+
+      // Get team with factory
+      const team = await prisma.team.findUnique({
+        where: { id: parseInt(teamId) },
+        include: { factory: true }
+      });
+
+      if (!team || !team.factory) {
+        return res.status(404).json({ message: 'Team or factory not found' });
+      }
+
+      // Get team equipments
+      const teamEquipments = await prisma.teamEquipment.findMany({
+        where: { teamId: parseInt(teamId) }
+      });
+
+      // Get month schedule template
+      const scheduleTemplates = await prisma.inspectionScheduleTemplate.findMany({
+        where: {
+          factoryId: team.factory.id,
+          month: parseInt(month)
+        },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      // Get monthly inspection day
+      const monthlyInspectionDay = await prisma.monthlyInspectionDay.findUnique({
+        where: {
+          factoryId_month: {
+            factoryId: team.factory.id,
+            month: parseInt(month)
+          }
+        }
+      });
+
+      const inspectionDay = monthlyInspectionDay?.inspectionDay || 1;
+
+      // Match schedule items with team equipments
+      const requiredItems = [];
+
+      for (const template of scheduleTemplates) {
+        // Extract base equipment name from template
+        // "지게차 점검" -> "지게차"
+        const baseName = template.equipmentName.replace(/ 점검$/, '').trim();
+
+        // Find matching equipment in team
+        const matchingEquipment = teamEquipments.find(eq => {
+          const eqBaseName = eq.equipmentName.replace(/,/g, ',').trim();
+          return eqBaseName.includes(baseName) || baseName.includes(eqBaseName);
+        });
+
+        if (matchingEquipment) {
+          requiredItems.push({
+            equipmentName: template.equipmentName,
+            requiredPhotoCount: matchingEquipment.quantity,
+            inspectionDay: inspectionDay,
+            displayOrder: template.displayOrder
+          });
+        }
+      }
+
+      res.json({
+        teamId: parseInt(teamId),
+        year: parseInt(year),
+        month: parseInt(month),
+        inspectionDate: `${year}-${month.toString().padStart(2, '0')}-${inspectionDay.toString().padStart(2, '0')}`,
+        items: requiredItems
+      });
+    } catch (error) {
+      console.error('Error fetching required inspection items:', error);
+      res.status(500).json({ message: 'Failed to fetch required inspection items' });
+    }
+  });
+
+  // Get comprehensive inspection overview for a factory/month
+  app.get('/api/inspections/overview/:factoryId/:year/:month', requireAuth, async (req, res) => {
+    try {
+      const { factoryId, year, month } = req.params;
+
+      // Get all teams in the factory
+      const teams = await prisma.team.findMany({
+        where: { factoryId: parseInt(factoryId) },
+        orderBy: { name: 'asc' },
+        include: {
+          teamEquipments: true,
+        }
+      });
+
+      // Get month schedule template for this factory
+      const scheduleTemplates = await prisma.inspectionScheduleTemplate.findMany({
+        where: {
+          factoryId: parseInt(factoryId),
+          month: parseInt(month)
+        },
+        orderBy: { displayOrder: 'asc' }
+      });
+
+      // Extract all equipment types from the schedule
+      const equipmentTypes = scheduleTemplates.map(t => t.equipmentName);
+
+      // Get all safety inspections for all teams this month
+      const inspections = await prisma.safetyInspection.findMany({
+        where: {
+          teamId: { in: teams.map(t => t.id) },
+          year: parseInt(year),
+          month: parseInt(month)
+        },
+        include: {
+          inspectionItems: true
+        }
+      });
+
+      // Build matrix data
+      const matrix = teams.map(team => {
+        const inspection = inspections.find(i => i.teamId === team.id);
+
+        const equipmentStatus: Record<string, {
+          quantity: number;
+          completed: boolean;
+          hasEquipment: boolean;
+          uploadedPhotoCount?: number;
+          requiredPhotoCount?: number;
+        }> = {};
+
+        for (const equipmentType of equipmentTypes) {
+          // Extract base name from template
+          const baseName = equipmentType.replace(/ 점검$/, '').trim();
+
+          // Find matching equipment in team
+          const teamEquipment = team.teamEquipments.find(eq => {
+            const eqBaseName = eq.equipmentName.trim();
+            return eqBaseName.includes(baseName) || baseName.includes(eqBaseName);
+          });
+
+          if (!teamEquipment) {
+            equipmentStatus[equipmentType] = {
+              quantity: 0,
+              completed: false,
+              hasEquipment: false
+            };
+          } else {
+            // Check if this item is completed in the inspection
+            const inspectionItem = inspection?.inspectionItems.find(
+              item => item.equipmentName === equipmentType
+            );
+
+            // Count uploaded photos
+            let uploadedPhotoCount = 0;
+            if (inspectionItem?.photos) {
+              try {
+                const photos = typeof inspectionItem.photos === 'string'
+                  ? JSON.parse(inspectionItem.photos as string)
+                  : inspectionItem.photos;
+                uploadedPhotoCount = Array.isArray(photos) ? photos.length : 0;
+              } catch (e) {
+                uploadedPhotoCount = 0;
+              }
+            }
+
+            // Debug logging
+            console.log(`[Overview Debug] ${team.name} - ${equipmentType}:`, {
+              hasInspection: !!inspection,
+              hasInspectionItem: !!inspectionItem,
+              uploadedPhotoCount: uploadedPhotoCount,
+              requiredPhotoCount: inspectionItem?.requiredPhotoCount || teamEquipment.quantity,
+              teamEquipmentQuantity: teamEquipment.quantity,
+              photosRaw: inspectionItem?.photos ? 'exists' : 'none'
+            });
+
+            equipmentStatus[equipmentType] = {
+              quantity: teamEquipment.quantity,
+              completed: inspectionItem?.isCompleted || false,
+              hasEquipment: true,
+              uploadedPhotoCount: uploadedPhotoCount,
+              requiredPhotoCount: inspectionItem?.requiredPhotoCount || teamEquipment.quantity
+            };
+          }
+        }
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          equipmentStatus
+        };
+      });
+
+      res.json({
+        factoryId: parseInt(factoryId),
+        year: parseInt(year),
+        month: parseInt(month),
+        equipmentTypes,
+        teams: matrix
+      });
+    } catch (error) {
+      console.error('Error fetching inspection overview:', error);
+      res.status(500).json({ message: 'Failed to fetch inspection overview' });
     }
   });
 

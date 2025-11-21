@@ -1,26 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useSite, Site } from '@/hooks/use-site';
-import { SITES } from '@/lib/constants';
-import { Camera, Upload, X, Save, FileText } from 'lucide-react';
+import { Camera, Upload, X, Save, CheckCircle2, Circle, FileText, Image } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import axios from 'axios';
+import { getInspectionYearRange, cn } from '@/lib/utils';
 
 interface Team {
   id: number;
   name: string;
   site: string;
+  factoryId: number | null;
+}
+
+interface RequiredItem {
+  equipmentName: string;
+  requiredPhotoCount: number;
+  inspectionDay: number;
+  factoryName?: string;
+}
+
+interface RequiredItemsResponse {
+  teamId: number;
+  year: number;
+  month: number;
+  inspectionDate: string;
+  items: RequiredItem[];
+}
+
+interface Factory {
+  id: number;
+  name: string;
+  code: string;
 }
 
 interface SafetyInspection {
@@ -37,58 +61,121 @@ interface SafetyInspection {
 interface InspectionItem {
   id: string;
   equipmentName: string;
-  photoUrl: string;
+  requiredPhotoCount: number;
+  photos: string | UploadedPhoto[]; // JSON string or array
   remarks?: string;
+  isCompleted: boolean;
   uploadedAt: Date;
 }
 
-interface InspectionTemplate {
-  id: number;
-  equipmentName: string;
-  displayOrder: number;
+interface UploadedPhoto {
+  url: string;
+  uploadedAt: string;
+}
+
+interface ItemState {
+  photos: UploadedPhoto[];
+  remarks: string;
+}
+
+interface InspectionOverview {
+  factoryId: number;
+  year: number;
+  month: number;
+  equipmentTypes: string[];
+  teams: TeamOverview[];
+}
+
+interface TeamOverview {
+  teamId: number;
+  teamName: string;
+  equipmentStatus: Record<string, {
+    quantity: number;
+    completed: boolean;
+    hasEquipment: boolean;
+    uploadedPhotoCount: number;
+    requiredPhotoCount: number;
+  }>;
 }
 
 export default function SafetyInspectionPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { site, setSite } = useSite();
+  const [, setLocation] = useLocation();
 
+  const [selectedFactory, setSelectedFactory] = useState<number | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [uploadedItems, setUploadedItems] = useState<Record<string, { photoUrl: string; remarks: string }>>({});
+  const [uploadedItems, setUploadedItems] = useState<Record<string, ItemState>>({});
   const [uploadingEquipment, setUploadingEquipment] = useState<string | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
+  // 공장 목록 조회
+  const { data: factories = [], isLoading: factoriesLoading } = useQuery<Factory[]>({
+    queryKey: ['factories'],
+    queryFn: async () => {
+      const { data } = await axios.get('/api/factories');
+      return data;
+    },
+  });
+
+  // 팀 목록 조회
+  const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const { data } = await axios.get('/api/teams');
+      return data;
+    },
+  });
+
+  // 선택된 공장의 팀만 필터링
+  const filteredTeams = selectedFactory
+    ? teams.filter(team => team.factoryId === selectedFactory)
+    : teams;
+
+  // 팀장의 경우 해당 팀의 공장을 자동 설정
   useEffect(() => {
-    if (user) {
-      if (user.role !== 'ADMIN' && user.site) {
-        setSite(user.site as Site);
-      }
-      if (user.role === 'TEAM_LEADER' && user.teamId) {
-        setSelectedTeam(user.teamId);
+    if (user?.role === 'TEAM_LEADER' && user.teamId) {
+      setSelectedTeam(user.teamId);
+      const userTeam = teams.find(t => t.id === user.teamId);
+      if (userTeam?.factoryId) {
+        setSelectedFactory(userTeam.factoryId);
       }
     }
-  }, [user, setSite]);
+  }, [user, teams]);
 
-  const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ['teams', site],
+  // 첫 공장 자동 선택 (관리자인 경우)
+  useEffect(() => {
+    if (user?.role === 'ADMIN' && factories.length > 0 && !selectedFactory) {
+      setSelectedFactory(factories[0].id);
+    }
+  }, [user, factories, selectedFactory]);
+
+  // 필수 점검 항목 조회 (월별 일정 ∩ 라인 장비)
+  const { data: requiredItemsData, isLoading: itemsLoading } = useQuery<RequiredItemsResponse>({
+    queryKey: ['required-inspection-items', selectedTeam, selectedYear, selectedMonth],
     queryFn: async () => {
-      const { data } = await axios.get(`/api/teams?site=${site}`);
+      const { data } = await axios.get(`/api/inspections/${selectedTeam}/${selectedYear}/${selectedMonth}/required-items`);
       return data;
     },
-    enabled: !!site,
+    enabled: !!selectedTeam && !!selectedYear && !!selectedMonth,
   });
 
-  const { data: templates = [], isLoading: templatesLoading } = useQuery<InspectionTemplate[]>({
-    queryKey: ['inspection-templates', selectedTeam],
+  const requiredItems = requiredItemsData?.items || [];
+
+  // 종합 현황 조회 (공장 전체 팀의 점검 상태)
+  const { data: overviewData, isLoading: overviewLoading } = useQuery<InspectionOverview>({
+    queryKey: ['inspection-overview', selectedFactory, selectedYear, selectedMonth],
     queryFn: async () => {
-      const { data } = await axios.get(`/api/inspection/templates/${selectedTeam}`);
+      const { data } = await axios.get(`/api/inspections/overview/${selectedFactory}/${selectedYear}/${selectedMonth}`);
       return data;
     },
-    enabled: !!selectedTeam,
+    enabled: !!selectedFactory && !!selectedYear && !!selectedMonth,
   });
 
+  // 기존 점검 기록 조회
   const { data: inspection, isLoading: inspectionLoading } = useQuery<SafetyInspection | null>({
     queryKey: ['safety-inspection', selectedTeam, selectedYear, selectedMonth],
     queryFn: async () => {
@@ -105,11 +192,56 @@ export default function SafetyInspectionPage() {
     enabled: !!selectedTeam && !!selectedYear && !!selectedMonth,
   });
 
-  const handlePhotoUpload = async (equipmentName: string, file: File) => {
+  // 기존 점검 데이터를 uploadedItems에 로드
+  useEffect(() => {
+    if (inspection && inspection.inspectionItems) {
+      const loaded: Record<string, ItemState> = {};
+      inspection.inspectionItems.forEach((item) => {
+        const photos: UploadedPhoto[] = typeof item.photos === 'string'
+          ? JSON.parse(item.photos || '[]')
+          : (item.photos || []);
+        loaded[item.equipmentName] = {
+          photos,
+          remarks: item.remarks || '',
+        };
+      });
+      setUploadedItems(loaded);
+    } else {
+      // inspection이 null이거나 없으면 uploadedItems 초기화
+      setUploadedItems({});
+    }
+  }, [inspection]);
+
+  // 진행률 계산
+  const getProgress = () => {
+    if (requiredItems.length === 0) return { completed: 0, total: 0, percentage: 0 };
+
+    const completed = requiredItems.filter((item) => {
+      const state = uploadedItems[item.equipmentName];
+      return state && state.photos.length >= item.requiredPhotoCount;
+    }).length;
+
+    const total = requiredItems.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, percentage };
+  };
+
+  const handlePhotoUpload = async (equipmentName: string, requiredCount: number, file: File) => {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "오류", description: "파일 크기는 10MB 이하여야 합니다.", variant: "destructive" });
+      toast({ title: '오류', description: '파일 크기는 10MB 이하여야 합니다.', variant: 'destructive' });
+      return;
+    }
+
+    const currentPhotos = uploadedItems[equipmentName]?.photos || [];
+    if (currentPhotos.length >= requiredCount) {
+      toast({
+        title: '오류',
+        description: `최대 ${requiredCount}장까지 업로드할 수 있습니다.`,
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -119,41 +251,137 @@ export default function SafetyInspectionPage() {
       formData.append('files', file);
 
       const res = await axios.post('/api/upload-multiple', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       const uploadedFile = res.data.files[0];
-      setUploadedItems(prev => ({
+      const newPhoto: UploadedPhoto = {
+        url: uploadedFile.url,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      setUploadedItems((prev) => ({
         ...prev,
         [equipmentName]: {
-          photoUrl: uploadedFile.url,
-          remarks: prev[equipmentName]?.remarks || ''
-        }
+          photos: [...(prev[equipmentName]?.photos || []), newPhoto],
+          remarks: prev[equipmentName]?.remarks || '',
+        },
       }));
 
-      toast({ title: "성공", description: "사진이 업로드되었습니다." });
+      toast({ title: '성공', description: '사진이 업로드되었습니다.' });
     } catch (err) {
-      toast({ title: "오류", description: "사진 업로드에 실패했습니다.", variant: "destructive" });
+      toast({ title: '오류', description: '사진 업로드에 실패했습니다.', variant: 'destructive' });
+    } finally {
+      setUploadingEquipment(null);
+    }
+  };
+
+  const handleMultiplePhotoUpload = async (equipmentName: string, requiredCount: number, files: File[]) => {
+    if (!files || files.length === 0) return;
+
+    // 현재 업로드된 사진 수 확인
+    const currentPhotos = uploadedItems[equipmentName]?.photos || [];
+    const remainingSlots = requiredCount - currentPhotos.length;
+
+    if (remainingSlots <= 0) {
+      toast({
+        title: '오류',
+        description: `최대 ${requiredCount}장까지 업로드할 수 있습니다.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 자동 트림: 필요한 만큼만 앞에서부터 선택
+    const filesToUpload = files.slice(0, remainingSlots);
+
+    // 초과 알림
+    if (files.length > remainingSlots) {
+      toast({
+        title: '알림',
+        description: `${files.length}개 중 처음 ${remainingSlots}개의 사진만 업로드됩니다.`,
+      });
+    }
+
+    // 개별 파일 크기 검증
+    for (const file of filesToUpload) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: '오류',
+          description: `${file.name}의 크기가 10MB를 초과합니다.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    try {
+      setUploadingEquipment(equipmentName);
+      const formData = new FormData();
+      filesToUpload.forEach(file => formData.append('files', file));
+
+      const res = await axios.post('/api/upload-multiple', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const newPhotos: UploadedPhoto[] = res.data.files.map((file: any) => ({
+        url: file.url,
+        uploadedAt: new Date().toISOString(),
+      }));
+
+      setUploadedItems((prev) => ({
+        ...prev,
+        [equipmentName]: {
+          photos: [...(prev[equipmentName]?.photos || []), ...newPhotos],
+          remarks: prev[equipmentName]?.remarks || '',
+        },
+      }));
+
+      toast({
+        title: '성공',
+        description: `${newPhotos.length}개의 사진이 업로드되었습니다.`,
+      });
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast({
+        title: '오류',
+        description: '사진 업로드에 실패했습니다.',
+        variant: 'destructive',
+      });
     } finally {
       setUploadingEquipment(null);
     }
   };
 
   const handleRemarksChange = (equipmentName: string, remarks: string) => {
-    setUploadedItems(prev => ({
+    setUploadedItems((prev) => ({
       ...prev,
       [equipmentName]: {
-        photoUrl: prev[equipmentName]?.photoUrl || '',
-        remarks
-      }
+        photos: prev[equipmentName]?.photos || [],
+        remarks,
+      },
     }));
   };
 
-  const removePhoto = (equipmentName: string) => {
-    setUploadedItems(prev => {
-      const newItems = { ...prev };
-      delete newItems[equipmentName];
-      return newItems;
+  const removePhoto = (equipmentName: string, photoIndex: number) => {
+    setUploadedItems((prev) => {
+      const currentState = prev[equipmentName];
+      if (!currentState) return prev;
+
+      const updatedPhotos = currentState.photos.filter((_, index) => index !== photoIndex);
+
+      if (updatedPhotos.length === 0) {
+        const { [equipmentName]: _, ...rest } = prev;
+        return rest;
+      }
+
+      return {
+        ...prev,
+        [equipmentName]: {
+          ...currentState,
+          photos: updatedPhotos,
+        },
+      };
     });
   };
 
@@ -161,113 +389,150 @@ export default function SafetyInspectionPage() {
     mutationFn: async () => {
       if (!selectedTeam) throw new Error('팀을 선택해주세요');
 
-      const items = Object.entries(uploadedItems).map(([equipmentName, data]) => ({
-        equipmentName,
-        photoUrl: data.photoUrl,
-        remarks: data.remarks || null
-      }));
+      const items = requiredItems.map((required) => {
+        const state = uploadedItems[required.equipmentName] || { photos: [], remarks: '' };
+        return {
+          equipmentName: required.equipmentName,
+          requiredPhotoCount: required.requiredPhotoCount,
+          photos: JSON.stringify(state.photos),
+          remarks: state.remarks || null,
+          isCompleted: state.photos.length >= required.requiredPhotoCount,
+        };
+      });
 
-      if (items.length === 0) {
-        throw new Error('최소 1개 이상의 사진을 업로드해주세요');
-      }
+      const allCompleted = items.every((item) => item.isCompleted);
 
       const payload = {
         teamId: selectedTeam,
         year: selectedYear,
         month: selectedMonth,
         inspectionDate: new Date(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-04`),
-        items
+        isCompleted: allCompleted,
+        items,
       };
 
       const { data } = await axios.post('/api/inspection', payload);
       return data;
     },
     onSuccess: () => {
-      toast({ title: "성공", description: "안전점검 기록이 저장되었습니다." });
+      toast({ title: '성공', description: '안전점검 기록이 저장되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['safety-inspection', selectedTeam, selectedYear, selectedMonth] });
-      setUploadedItems({});
+      queryClient.invalidateQueries({ queryKey: ['inspection-overview', selectedFactory, selectedYear, selectedMonth] });
+      setShowSuccessDialog(true);
     },
     onError: (err: any) => {
       toast({
-        title: "오류",
-        description: err.response?.data?.message || err.message || "저장에 실패했습니다.",
-        variant: "destructive"
+        title: '오류',
+        description: err.response?.data?.message || err.message || '저장에 실패했습니다.',
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   const handleSave = () => {
+    // 필수 사진 검증
+    const progress = getProgress();
+
+    if (progress.total === 0) {
+      toast({
+        title: '점검 항목 없음',
+        description: '점검할 항목이 없습니다. 팀, 연도, 월을 확인해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (progress.completed < progress.total) {
+      // 미완료 항목 찾기
+      const incompleteItems = requiredItems
+        .filter((item) => {
+          const state = uploadedItems[item.equipmentName];
+          return !state || state.photos.length < item.requiredPhotoCount;
+        })
+        .map((item) => {
+          const uploaded = uploadedItems[item.equipmentName]?.photos.length || 0;
+          return `${item.equipmentName} (${uploaded}/${item.requiredPhotoCount})`;
+        });
+
+      toast({
+        title: '필수 사진 미업로드',
+        description: `${incompleteItems.length}개 항목의 필수 사진이 부족합니다:\n${incompleteItems.slice(0, 3).join(', ')}${incompleteItems.length > 3 ? ` 외 ${incompleteItems.length - 3}개` : ''}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     saveMutation.mutate();
   };
 
-  if (teamsLoading || templatesLoading) {
+  if (teamsLoading || factoriesLoading) {
     return (
-      <div>
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="container mx-auto p-4 lg:p-8">
-          <LoadingSpinner size="lg" text="데이터를 불러오는 중..." className="py-16" />
+        <main className="container mx-auto p-6">
+          <LoadingSpinner />
         </main>
       </div>
     );
   }
 
-  return (
-    <div>
-      <Header />
-      <main className="container mx-auto p-4 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">안전점검 (매월 4일)</h1>
-          <p className="text-muted-foreground">월별 기기별 안전점검 사진을 업로드합니다. (최대 15개)</p>
-        </div>
+  const progress = getProgress();
+  const isFullyCompleted = progress.completed === progress.total && progress.total > 0;
 
-        {/* Filters */}
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <main className="container mx-auto p-6">
+        {/* 필터 */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>점검 대상 선택</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>안전 점검 대상 선택</CardTitle>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/inspection-gallery')}
+              >
+                <Image className="w-4 h-4 mr-2" />
+                내역 보기
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {user?.role === 'ADMIN' && (
                 <div>
-                  <Label htmlFor="site">현장</Label>
-                  <Select value={site} onValueChange={(value: Site) => setSite(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="현장 선택" />
+                  <Label htmlFor="factory">공장</Label>
+                  <Select
+                    value={selectedFactory?.toString() || ''}
+                    onValueChange={(value) => {
+                      setSelectedFactory(parseInt(value));
+                      setSelectedTeam(null); // 공장 변경 시 팀 선택 초기화
+                    }}
+                  >
+                    <SelectTrigger id="factory">
+                      <SelectValue placeholder="공장 선택" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {SITES.map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {factories.map((factory) => (
+                        <SelectItem key={factory.id} value={factory.id.toString()}>
+                          {factory.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
               <div>
-                <Label htmlFor="team">팀</Label>
-                <Select
-                  value={selectedTeam?.toString() || ''}
-                  onValueChange={(value) => setSelectedTeam(parseInt(value))}
-                  disabled={user?.role === 'TEAM_LEADER'}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="팀 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teams.map(team => (
-                      <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label htmlFor="year">년도</Label>
                 <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
                   <SelectTrigger>
                     <SelectValue placeholder="년도 선택" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                      <SelectItem key={year} value={year.toString()}>{year}년</SelectItem>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                    {getInspectionYearRange().map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}년
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -278,9 +543,11 @@ export default function SafetyInspectionPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="월 선택" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                      <SelectItem key={month} value={month.toString()}>{month}월</SelectItem>
+                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <SelectItem key={month} value={month.toString()}>
+                        {month}월
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -289,150 +556,314 @@ export default function SafetyInspectionPage() {
           </CardContent>
         </Card>
 
+        {/* 종합 현황표 */}
+        {selectedFactory && selectedYear && selectedMonth ? (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>종합 점검 현황</CardTitle>
+              <CardDescription>
+                {factories.find(f => f.id === selectedFactory)?.name} 전체 팀의 {selectedMonth}월 점검 상태
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {overviewLoading ? (
+                <LoadingSpinner />
+              ) : overviewData ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-32 sticky left-0 bg-white z-10">팀명</TableHead>
+                          {overviewData.equipmentTypes.map((equipment) => (
+                            <TableHead key={equipment} className="text-center min-w-24">
+                              {equipment.replace(' 점검', '')}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {overviewData.teams.map((team) => (
+                          <TableRow
+                            key={team.teamId}
+                            onClick={() => setSelectedTeam(team.teamId)}
+                            className={cn(
+                              "cursor-pointer transition-colors",
+                              selectedTeam === team.teamId
+                                ? "bg-blue-50 border-l-4 border-l-blue-500"
+                                : "hover:bg-gray-50"
+                            )}
+                          >
+                            <TableCell className={cn(
+                              "font-medium sticky left-0 z-10",
+                              selectedTeam === team.teamId ? "bg-blue-50" : "bg-white"
+                            )}>
+                              {team.teamName}
+                            </TableCell>
+                            {overviewData.equipmentTypes.map((equipment) => {
+                              const status = team.equipmentStatus[equipment];
+                              if (!status.hasEquipment) {
+                                return (
+                                  <TableCell key={equipment} className="text-center bg-gray-100 text-gray-400">
+                                    -
+                                  </TableCell>
+                                );
+                              }
+
+                              // 세 가지 상태 결정
+                              const isCompleted = status.uploadedPhotoCount >= status.requiredPhotoCount;
+                              const isPartial = status.uploadedPhotoCount > 0 && status.uploadedPhotoCount < status.requiredPhotoCount;
+
+                              let bgColor, textColor;
+                              if (isCompleted) {
+                                bgColor = 'bg-green-100';
+                                textColor = 'text-green-700';
+                              } else if (isPartial) {
+                                bgColor = 'bg-yellow-100';
+                                textColor = 'text-yellow-700';
+                              } else {
+                                bgColor = 'bg-red-100';
+                                textColor = 'text-red-700';
+                              }
+
+                              return (
+                                <TableCell
+                                  key={equipment}
+                                  className={`text-center font-medium ${bgColor} ${textColor}`}
+                                >
+                                  {(status.uploadedPhotoCount ?? 0)}/{(status.requiredPhotoCount ?? 0)}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-md">
+                      <span className="font-medium">💡 팁:</span>
+                      <span>팀을 선택하려면 표에서 팀 행을 클릭하세요</span>
+                    </div>
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-100 border border-green-300 rounded" />
+                        <span>점검 완료</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded" />
+                        <span>부분 완료</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-100 border border-red-300 rounded" />
+                        <span>점검 미완료</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded" />
+                        <span>해당 장비 없음</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  종합 현황 데이터가 없습니다.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         {!selectedTeam ? (
           <EmptyState
             icon={FileText}
             title="팀을 선택해주세요"
             description="점검 기록을 작성하려면 팀을 선택해주세요."
           />
-        ) : inspection?.isCompleted ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>점검 완료</CardTitle>
-              <CardDescription>
-                {selectedYear}년 {selectedMonth}월 안전점검이 완료되었습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>기기명</TableHead>
-                    <TableHead>사진</TableHead>
-                    <TableHead>비고</TableHead>
-                    <TableHead>업로드 시간</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {inspection.inspectionItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.equipmentName}</TableCell>
-                      <TableCell>
-                        <img src={item.photoUrl} alt={item.equipmentName} className="w-20 h-20 object-cover rounded" />
-                      </TableCell>
-                      <TableCell>{item.remarks || '-'}</TableCell>
-                      <TableCell>{new Date(item.uploadedAt).toLocaleString('ko-KR')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+        ) : itemsLoading ? (
+          <LoadingSpinner />
+        ) : requiredItems.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="점검 항목이 없습니다"
+            description={`${selectedMonth}월에 점검할 항목이 없거나, 라인에 등록된 장비가 없습니다. 관리자에게 문의하세요.`}
+          />
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>안전점검 기록</CardTitle>
-              <CardDescription>
-                기기별 사진을 업로드하고 비고를 입력하세요. (최대 15개)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!Array.isArray(templates) || templates.length === 0 ? (
-                <EmptyState
-                  icon={FileText}
-                  title="점검 템플릿이 없습니다"
-                  description="관리자에게 점검 템플릿 추가를 요청하세요."
-                />
-              ) : (
-                <div className="space-y-4">
-                  {Array.isArray(templates) && templates.slice(0, 15).map((template) => (
-                    <Card key={template.id} className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-2">{template.equipmentName}</h3>
-                          {uploadedItems[template.equipmentName]?.photoUrl ? (
-                            <div className="space-y-3">
-                              <div className="relative inline-block">
+          <>
+            {/* 진행률 표시 */}
+            <Card className="mb-6">
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">
+                      전체 진행률: {progress.completed} / {progress.total} 항목 완료
+                    </span>
+                    <span className="text-sm font-medium text-primary">{progress.percentage}%</span>
+                  </div>
+                  <Progress value={progress.percentage} className="h-3" />
+                  {isFullyCompleted && (
+                    <p className="text-sm text-green-600 font-medium flex items-center gap-1 mt-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      모든 항목이 완료되었습니다!
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 점검 항목 목록 */}
+            <div className="space-y-4">
+              {requiredItems.map((item) => {
+                const state = uploadedItems[item.equipmentName] || { photos: [], remarks: '' };
+                const isItemCompleted = state.photos.length >= item.requiredPhotoCount;
+                const isUploading = uploadingEquipment === item.equipmentName;
+
+                return (
+                  <Card key={item.equipmentName} className={isItemCompleted ? 'border-green-500 bg-green-50/50' : ''}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {isItemCompleted ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-gray-400" />
+                          )}
+                          {item.equipmentName}
+                        </CardTitle>
+                        <span className="text-sm text-muted-foreground">
+                          사진: {state.photos.length} / {item.requiredPhotoCount}장
+                          {item.inspectionDay && ` · ${item.inspectionDay}일까지`}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* 업로드된 사진들 */}
+                        {state.photos.length > 0 && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {state.photos.map((photo, index) => (
+                              <div key={index} className="relative">
                                 <img
-                                  src={uploadedItems[template.equipmentName].photoUrl}
-                                  alt={template.equipmentName}
-                                  className="w-40 h-40 object-cover rounded border"
+                                  src={photo.url}
+                                  alt={`${item.equipmentName} ${index + 1}`}
+                                  className="w-full h-32 object-cover rounded border"
                                 />
                                 <Button
                                   type="button"
                                   variant="destructive"
                                   size="sm"
                                   className="absolute top-1 right-1 h-6 w-6 p-0"
-                                  onClick={() => removePhoto(template.equipmentName)}
+                                  onClick={() => removePhoto(item.equipmentName, index)}
                                 >
-                                  <X className="h-4 w-4" />
+                                  <X className="h-3 w-3" />
                                 </Button>
+                                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                                  {index + 1}
+                                </span>
                               </div>
-                              <div>
-                                <Label htmlFor={`remarks-${template.id}`}>비고 (선택사항)</Label>
-                                <Textarea
-                                  id={`remarks-${template.id}`}
-                                  placeholder="특이사항을 입력하세요..."
-                                  value={uploadedItems[template.equipmentName]?.remarks || ''}
-                                  onChange={(e) => handleRemarksChange(template.equipmentName, e.target.value)}
-                                  className="mt-1"
-                                  rows={2}
-                                />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 사진 업로드 버튼 */}
+                        {state.photos.length < item.requiredPhotoCount && (
+                          <div>
+                            <Label
+                              htmlFor={`photo-${item.equipmentName}`}
+                              className={isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+                            >
+                              <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-md hover:bg-muted">
+                                {isUploading ? (
+                                  <>
+                                    <Upload className="h-5 w-5 animate-pulse" />
+                                    <span>업로드 중...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Camera className="h-5 w-5" />
+                                    <span>
+                                      사진 추가 ({item.requiredPhotoCount - state.photos.length}장 더 필요)
+                                      {item.requiredPhotoCount - state.photos.length > 1 && ' · 여러 장 선택 가능'}
+                                    </span>
+                                  </>
+                                )}
                               </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <Label
-                                htmlFor={`photo-${template.id}`}
-                                className={uploadingEquipment === template.equipmentName ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
-                              >
-                                <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-md hover:bg-muted">
-                                  {uploadingEquipment === template.equipmentName ? (
-                                    <>
-                                      <Upload className="h-5 w-5 animate-pulse" />
-                                      <span>업로드 중...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Camera className="h-5 w-5" />
-                                      <span>사진 업로드</span>
-                                    </>
-                                  )}
-                                </div>
-                              </Label>
-                              <Input
-                                id={`photo-${template.id}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                disabled={uploadingEquipment === template.equipmentName}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handlePhotoUpload(template.equipmentName, file);
-                                }}
-                              />
-                            </div>
-                          )}
+                            </Label>
+                            <Input
+                              id={`photo-${item.equipmentName}`}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              disabled={isUploading}
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length > 0) handleMultiplePhotoUpload(item.equipmentName, item.requiredPhotoCount, files);
+                                e.target.value = ''; // Reset input
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* 비고 */}
+                        <div>
+                          <Label htmlFor={`remarks-${item.equipmentName}`}>비고 (선택사항)</Label>
+                          <Textarea
+                            id={`remarks-${item.equipmentName}`}
+                            placeholder="특이사항을 입력하세요..."
+                            value={state.remarks}
+                            onChange={(e) => handleRemarksChange(item.equipmentName, e.target.value)}
+                            rows={2}
+                          />
                         </div>
                       </div>
-                    </Card>
-                  ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
 
-                  <div className="flex justify-end gap-3 mt-6">
-                    <Button
-                      onClick={handleSave}
-                      disabled={Object.keys(uploadedItems).length === 0 || saveMutation.isPending}
-                      size="lg"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {saveMutation.isPending ? '저장 중...' : '저장하기'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* 저장 버튼 */}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button onClick={handleSave} disabled={saveMutation.isPending || !isFullyCompleted} size="lg">
+                <Save className="h-4 w-4 mr-2" />
+                {saveMutation.isPending ? '저장 중...' : isFullyCompleted ? '저장하기' : `저장하기 (${progress.completed}/${progress.total})`}
+              </Button>
+            </div>
+          </>
         )}
+
+        {/* 저장 성공 다이얼로그 */}
+        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                저장 완료
+              </DialogTitle>
+              <DialogDescription>
+                안전점검 기록이 성공적으로 저장되었습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowSuccessDialog(false)}
+              >
+                계속 작성
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  setLocation('/inspection-gallery');
+                }}
+              >
+                사진 갤러리 보기
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

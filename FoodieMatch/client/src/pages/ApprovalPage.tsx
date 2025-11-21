@@ -323,7 +323,7 @@ export default function ApprovalPage() {
             <div className="bg-muted p-4 rounded-lg">
               <h3 className="font-semibold mb-2">보고서 내용</h3>
               <p className="text-sm text-muted-foreground">
-                {approvalRequest.monthlyReport.team?.name || '해당 팀'}의 {approvalRequest.monthlyReport.year}년 {approvalRequest.monthlyReport.month}월 TBM 체크리스트 수행 내역을 확인하시고 결재해 주시기 바랍니다.
+                {approvalRequest.monthlyReport.team?.name || '해당 팀'}의 {approvalRequest.monthlyReport.year}년 {approvalRequest.monthlyReport.month}월 TBM 일지 수행 내역을 확인하시고 결재해 주시기 바랍니다.
               </p>
               <div className="mt-4">
                 <a

@@ -38,9 +38,12 @@ export default function TbmPage() {
     if (user) {
       if (user.role !== 'ADMIN' && user.site) {
         setSite(user.site as Site);
+      } else if (user.role === 'ADMIN' && !site) {
+        // ADMIN 사용자는 기본값 '아산'으로 설정
+        setSite('아산');
       }
     }
-  }, [user, setSite]);
+  }, [user, setSite, site]);
 
   // URL 파라미터에서 reportId를 읽어서 자동으로 해당 리포트 로드
   useEffect(() => {
@@ -48,7 +51,7 @@ export default function TbmPage() {
     const reportId = params.get('reportId');
 
     if (reportId) {
-      axios.get(`/api/reports/${reportId}`).then(res => {
+      axios.get(`/api/tbm/${reportId}`).then(res => {
         const report = res.data;
         setReportForEdit(report);
         setDate(new Date(report.reportDate));
@@ -73,7 +76,7 @@ export default function TbmPage() {
 
   const handleModifyReport = useCallback((reportId: number) => {
     setIsLoadingModify(true);
-    axios.get(`/api/reports/${reportId}`).then(res => {
+    axios.get(`/api/tbm/${reportId}`).then(res => {
       const report = res.data;
       setReportForEdit(report);
       setDate(new Date(report.reportDate));
@@ -124,15 +127,7 @@ export default function TbmPage() {
                 <CardTitle>TBM 일지</CardTitle>
                 <div className="flex gap-2">
                   {view === 'checklist' && (
-                      <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>목록 보기</Button>
-                  )}
-                  {user?.role === 'ADMIN' && (
-                    <Button variant="secondary" asChild>
-                      <Link href="/checklist-editor">
-                        <Settings className="w-4 h-4 mr-2" />
-                        TBM 편집
-                      </Link>
-                    </Button>
+                      <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>내역 보기</Button>
                   )}
                 </div>
             </div>

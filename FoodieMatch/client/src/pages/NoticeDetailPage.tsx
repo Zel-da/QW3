@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useRoute } from 'wouter';
 import { Header } from "@/components/header";
@@ -99,6 +99,30 @@ export default function NoticeDetailPage() {
     }
   });
 
+  // 공지사항 읽음 처리
+  const markAsReadMutation = useMutation({
+    mutationFn: async (noticeId: string) => {
+      const res = await fetch(`/api/notices/${noticeId}/mark-read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error('Failed to mark as read');
+      return res.json();
+    },
+    onSuccess: () => {
+      // 공지사항 목록과 대시보드 통계 업데이트
+      queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    }
+  });
+
+  // 공지사항 조회 시 자동으로 읽음 처리
+  useEffect(() => {
+    if (notice && user && noticeId && !notice.isRead) {
+      markAsReadMutation.mutate(noticeId);
+    }
+  }, [notice, user, noticeId]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'attachment') => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -167,7 +191,7 @@ export default function NoticeDetailPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <Button asChild variant="outline" className="text-base h-12 min-w-[120px]">
-            <Link href="/">
+            <Link href="/notices">
               <ArrowLeft className="w-5 h-5 mr-2" />
               목록으로
             </Link>

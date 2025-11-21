@@ -123,3 +123,33 @@
   font-family: 'Noto Sans KR', var(--font-sans);
   line-height: 1.7;
 }
+
+/* 스크롤바를 항상 표시하고 명확하게 보이도록 스타일링 */
+.scrollbar-visible {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(214.3, 31.8%, 81.4%) hsl(210, 40%, 96%);
+}
+
+.scrollbar-visible::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-visible::-webkit-scrollbar-track {
+  background: hsl(210, 40%, 96%);
+  border-radius: 4px;
+}
+
+.scrollbar-visible::-webkit-scrollbar-thumb {
+  background: hsl(214.3, 31.8%, 81.4%);
+  border-radius: 4px;
+  border: 2px solid hsl(210, 40%, 96%);
+}
+
+.scrollbar-visible::-webkit-scrollbar-thumb:hover {
+  background: hsl(214.3, 31.8%, 71.4%);
+}
+
+.scrollbar-visible::-webkit-scrollbar-thumb:active {
+  background: hsl(214.3, 31.8%, 61.4%);
+}

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'wouter';
-import { BookOpen, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { BookOpen, CheckCircle2, XCircle, Search, ArrowLeft } from 'lucide-react';
 import type { Course, UserProgress, UserAssessment } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
@@ -131,12 +131,20 @@ export default function MyCertificatesPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-4">
-              <BookOpen className="w-8 h-8 text-primary" />
-              <div>
-                <CardTitle className="text-2xl">나의 수강 이력</CardTitle>
-                <CardDescription>교육 과정의 진행 상황과 학습 이력을 확인할 수 있습니다.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <BookOpen className="w-8 h-8 text-primary" />
+                <div>
+                  <CardTitle className="text-2xl">나의 수강 이력</CardTitle>
+                  <CardDescription>교육 과정의 진행 상황과 학습 이력을 확인할 수 있습니다.</CardDescription>
+                </div>
               </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/courses">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  돌아가기
+                </Link>
+              </Button>
             </div>
           </CardHeader>
           <CardContent>

@@ -137,12 +137,6 @@ export default function Dashboard() {
           <div className="flex gap-2">
             {user?.role === 'ADMIN' && (
               <>
-                <Link href="/education-management">
-                  <Button variant="secondary">
-                    <Settings className="w-4 h-4 mr-2" />
-                    교육 관리
-                  </Button>
-                </Link>
                 <Link href="/education-monitoring">
                   <Button variant="secondary">
                     <BarChart3 className="w-4 h-4 mr-2" />

@@ -4,10 +4,12 @@ import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, X, Video, Music, FileText, Youtube } from 'lucide-react';
+import { Search, Plus, X, Video, Music, FileText, Youtube, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { Course } from '@shared/schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +17,28 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
 import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
+
+// YouTube URL을 임베드 URL로 변환하는 헬퍼 함수
+const getYouTubeEmbedUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.includes('/embed/')) return url;
+
+  let videoId = '';
+
+  // watch?v= 형식 (타임스탬프 등 다른 파라미터 무시)
+  const watchMatch = url.match(/[?&]v=([^&]+)/);
+  if (watchMatch) videoId = watchMatch[1];
+
+  // youtu.be/ID 형식
+  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+  if (shortMatch) videoId = shortMatch[1];
+
+  // embed/ID 형식
+  const embedMatch = url.match(/\/embed\/([^?]+)/);
+  if (embedMatch) videoId = embedMatch[1];
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+};
 
 const fetchCourses = async () => {
     const res = await fetch('/api/courses');
@@ -78,6 +102,8 @@ export default function EducationManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const { data: courses = [], isLoading } = useQuery<Course[]>({
       queryKey: ['courses'],
@@ -126,8 +152,10 @@ export default function EducationManagementPage() {
             };
             reader.readAsText(quizFile);
         } else {
+            setSuccessMessage('교육 과정이 생성되었습니다.');
             toast({ title: '교육 과정이 생성되었습니다.' });
             queryClient.invalidateQueries({ queryKey: ['courses'] });
+            setShowSuccessDialog(true);
         }
       }
   });
@@ -135,8 +163,10 @@ export default function EducationManagementPage() {
   const deleteCourseMutation = useMutation({
     mutationFn: deleteCourse,
     onSuccess: () => {
+      setSuccessMessage('교육 과정이 삭제되었습니다.');
       toast({ title: '교육 과정이 삭제되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      setShowSuccessDialog(true);
     },
     onError: () => {
         toast({ title: '삭제 중 오류가 발생했습니다.', variant: 'destructive' });
@@ -146,8 +176,10 @@ export default function EducationManagementPage() {
   const assessmentMutation = useMutation({
       mutationFn: createAssessments,
       onSuccess: () => {
+        setSuccessMessage('교육 과정과 퀴즈가 성공적으로 생성되었습니다.');
         toast({ title: '교육 과정과 퀴즈가 성공적으로 생성되었습니다.' });
         queryClient.invalidateQueries({ queryKey: ['courses'] });
+        setShowSuccessDialog(true);
       }
   });
 
@@ -204,6 +236,49 @@ export default function EducationManagementPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 검증: 최소 1개의 미디어 콘텐츠 필요
+    const hasMediaContent =
+      videoUrl ||
+      audioUrl ||
+      documentUrl ||
+      mediaItems.some(item => item.url);
+
+    if (!hasMediaContent) {
+      toast({
+        title: '콘텐츠 필수',
+        description: '교육 과정에는 최소 1개의 미디어 콘텐츠(YouTube, 동영상, 오디오, 문서)가 필요합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 검증: YouTube URL 형식 확인
+    if (videoType === 'youtube' && videoUrl) {
+      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/).+$/;
+      if (!youtubeRegex.test(videoUrl)) {
+        toast({
+          title: 'YouTube URL 형식 오류',
+          description: '올바른 YouTube URL을 입력해주세요. (예: https://www.youtube.com/watch?v=...)',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    // 검증: 미디어 항목 중 YouTube URL 형식 확인
+    const youtubeItems = mediaItems.filter(item => item.type === 'youtube' && item.url);
+    for (const item of youtubeItems) {
+      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/).+$/;
+      if (!youtubeRegex.test(item.url)) {
+        toast({
+          title: 'YouTube URL 형식 오류',
+          description: `올바른 YouTube URL을 입력해주세요: "${item.name || item.url}"`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const courseData: any = {
       title,
       description,
@@ -215,11 +290,7 @@ export default function EducationManagementPage() {
     };
 
     if (videoType === 'youtube') {
-      let youtubeEmbedUrl = videoUrl;
-      if (videoUrl.includes('watch?v=')) {
-        youtubeEmbedUrl = videoUrl.replace('watch?v=', 'embed/');
-      }
-      courseData.videoUrl = youtubeEmbedUrl;
+      courseData.videoUrl = getYouTubeEmbedUrl(videoUrl);
     } else if (videoType === 'file') {
       courseData.videoUrl = videoUrl; // Already uploaded file URL
     } else if (videoType === 'audio') {
@@ -266,7 +337,15 @@ export default function EducationManagementPage() {
       <main className="container mx-auto p-4 lg:p-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">교육 콘텐츠 관리</CardTitle>
+            <div className="flex items-center justify-between mb-2">
+              <CardTitle className="text-2xl">교육 콘텐츠 관리</CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin-dashboard">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  관리자 대시보드로
+                </Link>
+              </Button>
+            </div>
             <CardDescription>새로운 교육 영상과 퀴즈를 업로드합니다.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -370,7 +449,7 @@ export default function EducationManagementPage() {
                             {item.url && (
                               <div className="aspect-video">
                                 <iframe
-                                  src={item.url.includes('embed') ? item.url : item.url.replace('watch?v=', 'embed/')}
+                                  src={getYouTubeEmbedUrl(item.url)}
                                   className="w-full h-full rounded"
                                   allowFullScreen
                                 />
@@ -414,7 +493,18 @@ export default function EducationManagementPage() {
                 <Input id="quizFile" type="file" accept=".csv" onChange={(e) => setQuizFile(e.target.files ? e.target.files[0] : null)} />
                 <p className="text-sm text-muted-foreground">CSV 파일 형식: question,options (세미콜론으로 구분),correctAnswer (0-based index)</p>
               </div>
-              <Button type="submit" disabled={courseMutation.isPending || assessmentMutation.isPending}>업로드</Button>
+              <Button
+                type="submit"
+                disabled={
+                  courseMutation.isPending ||
+                  assessmentMutation.isPending ||
+                  !title ||
+                  !description ||
+                  duration === 0
+                }
+              >
+                업로드
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -507,11 +597,31 @@ export default function EducationManagementPage() {
                 )}
             </CardContent>
         </Card>
-        <CourseEditDialog 
+        <CourseEditDialog
             isOpen={isEditDialogOpen}
             onClose={() => setIsEditDialogOpen(false)}
             course={selectedCourse}
         />
+
+        {/* 성공 다이얼로그 */}
+        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                작업 완료
+              </DialogTitle>
+              <DialogDescription>
+                {successMessage}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setShowSuccessDialog(false)}>
+                확인
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

@@ -11,7 +11,8 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
 import { SITES, ROLE_LABELS } from '@/lib/constants';
-import { Search, Users, Mail, Send, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Users, Mail, Send, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { EmptyState } from '@/components/EmptyState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -270,7 +271,15 @@ export default function AdminPage() {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">사용자 관리</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl">사용자 관리</CardTitle>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/admin-dashboard">
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      관리자 대시보드로
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
             <div className="mb-4 flex flex-col sm:flex-row gap-3">
@@ -287,7 +296,7 @@ export default function AdminPage() {
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="팀별로 보기" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                   <SelectItem value="all">모든 팀</SelectItem>
                   {teams.map(team => (
                     <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
@@ -298,7 +307,7 @@ export default function AdminPage() {
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="정렬 기준" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                   <SelectItem value="name">이름순</SelectItem>
                   <SelectItem value="username">사용자명순</SelectItem>
                   <SelectItem value="role">권한순</SelectItem>
@@ -336,7 +345,7 @@ export default function AdminPage() {
                           <SelectTrigger className="w-[120px]">
                             <SelectValue placeholder="현장 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {SITES.map(site => (
                               <SelectItem key={site} value={site}>{site}</SelectItem>
                             ))}
@@ -348,7 +357,7 @@ export default function AdminPage() {
                           <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="역할 선택" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                             {Object.entries(ROLE_LABELS).map(([role, label]) => (
                               <SelectItem key={role} value={role}>{label}</SelectItem>
                             ))}
@@ -470,7 +479,7 @@ export default function AdminPage() {
                       <SelectTrigger id="testEmailType">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                         <SelectItem value="education">안전교육 알림</SelectItem>
                         <SelectItem value="tbm">TBM 작성 알림</SelectItem>
                         <SelectItem value="inspection">안전점검 알림</SelectItem>

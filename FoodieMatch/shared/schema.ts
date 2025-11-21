@@ -4,8 +4,8 @@ import { z } from 'zod';
 export enum Role {
   ADMIN = 'ADMIN',
   TEAM_LEADER = 'TEAM_LEADER',
-  WORKER = 'WORKER',
-  OFFICE_WORKER = 'OFFICE_WORKER',
+  SITE_MANAGER = 'SITE_MANAGER',      // 현장관리자 (구 WORKER)
+  APPROVER = 'APPROVER',              // 임원/결재자 (구 OFFICE_WORKER)
 }
 
 export interface User {
@@ -32,8 +32,23 @@ export interface Notice {
   attachmentName?: string | null;
   videoUrl?: string | null;      // 신규: 동영상 URL
   videoType?: string | null;     // 신규: 'file' | 'youtube'
+  isRead?: boolean;              // 신규: 현재 사용자가 읽었는지 여부
+  attachments?: Array<{          // 신규: 다중 미디어 첨부 파일
+    url: string;
+    name: string;
+    type: string;                // 'image' | 'video' | 'youtube' | 'audio' | 'attachment'
+    size: number;
+    mimeType?: string;
+  }>;
   author: User;
   comments: Comment[];
+}
+
+export interface NoticeRead {
+  id: string;
+  noticeId: string;
+  userId: string;
+  readAt: Date;
 }
 
 export interface Comment {
@@ -205,6 +220,7 @@ export interface AbsenceRecord {
 export interface InspectionTemplate {
   id: number;
   teamId: number;
+  month: number;         // 1-12 (월별 구분)
   equipmentName: string;
   displayOrder: number;
   isRequired: boolean;

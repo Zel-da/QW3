@@ -27,6 +27,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // 검증: 빈 필드 체크
+    if (!formData.username.trim() || !formData.password.trim()) {
+      setError('사용자명과 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {

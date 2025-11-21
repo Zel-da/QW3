@@ -78,6 +78,20 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
+    // 검증: 사용자명 형식
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(formData.username)) {
+      setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.');
+      return;
+    }
+
+    // 검증: 이메일 형식
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
     if (formData.password.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
       return;

@@ -45,7 +45,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
         queryKey: ['attendance-overview', attendanceMonth.year, attendanceMonth.month, site],
         queryFn: async () => {
             if (!site) return null;
-            const { data } = await axios.get(`/api/reports/attendance-overview?year=${attendanceMonth.year}&month=${attendanceMonth.month}&site=${site}`);
+            const { data } = await axios.get(`/api/tbm/attendance-overview?year=${attendanceMonth.year}&month=${attendanceMonth.month}&site=${site}`);
             return data;
         },
         enabled: !!site,
@@ -270,7 +270,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                         <a
                                                             href={`/tbm?reportId=${reportId}`}
                                                             className="text-yellow-900 hover:underline cursor-pointer font-bold"
-                                                            title="해당 TBM 체크리스트로 이동"
+                                                            title="해당 TBM 일지로 이동"
                                                         >
                                                             {symbol}
                                                         </a>

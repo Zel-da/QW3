@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
+import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Users as UsersIcon, BookOpen, TrendingUp, AlertCircle, Eye } from 'lucide-react';
+import { Search, Users as UsersIcon, BookOpen, TrendingUp, AlertCircle, Eye, ArrowLeft } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team, Course, UserProgress, UserAssessment } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -284,7 +285,15 @@ export default function EducationMonitoringPage() {
       <main className="container mx-auto p-4 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">교육 현황 모니터링</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold">교육 현황 모니터링</h1>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                돌아가기
+              </Link>
+            </Button>
+          </div>
           <p className="text-muted-foreground">전체 사용자의 안전교육 진행 상황을 확인하고 관리합니다.</p>
         </div>
 
