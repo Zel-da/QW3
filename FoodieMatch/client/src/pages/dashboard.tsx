@@ -153,12 +153,7 @@ export default function Dashboard() {
               </Button>
             </Link>
           </div>
-        </div>
-
-        {/* Dashboard Statistics */}
-        <DashboardStats />
-
-        {/* Course Filtering and Display */}
+        </div>{/* Course Filtering and Display */}
         {courses.length === 0 ? (
           <EmptyState
             icon={BookOpen}
