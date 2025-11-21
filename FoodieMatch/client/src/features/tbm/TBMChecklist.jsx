@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -18,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
 import { FileDropzone } from '@/components/FileDropzone';
+import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
@@ -142,6 +144,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setTeamUsers([]);
     }
   }, [selectedTeam]);
+
+  // 자동 임시저장 기능
+  const autoSaveKey = `tbm_draft_${selectedTeam}_${date ? new Date(date).toISOString().split('T')[0] : 'new'}`;
+  const { clearSaved } = useAutoSave({
+    key: autoSaveKey,
+    data: {
+      formState,
+      signatures,
+      remarks,
+      remarksImages,
+      absentUsers,
+    },
+    enabled: !!selectedTeam && !reportForEdit, // 팀이 선택되고 수정 모드가 아닐 때만 자동저장
+    onRestore: (restored) => {
+      if (restored.formState) setFormState(restored.formState);
+      if (restored.signatures) setSignatures(restored.signatures);
+      if (restored.remarks) setRemarks(restored.remarks);
+      if (restored.remarksImages) setRemarksImages(restored.remarksImages);
+      if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
+    },
+  });
 
   const updateFormState = (itemId, field, value) => {
     setFormState(prev => ({
@@ -325,6 +348,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       } else {
         await axios.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
+        // 제출 성공 시 임시저장 데이터 삭제
+        clearSaved();
       }
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
       setShowSuccessDialog(true);
@@ -379,9 +404,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       </Select>
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-      {loading && <p>로딩 중...</p>}
+      {loading && <TBMChecklistSkeleton />}
 
-      {checklist && (
+      {!loading && checklist && (
         <>
           <div className="mb-4">
             <h3 className="font-semibold text-lg">작성자: {user?.name}</h3>
