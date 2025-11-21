@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, X, Video, Music, Youtube } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Course, Assessment } from '@shared/schema';
+import { FileDropzone } from '@/components/FileDropzone';
 
 interface CourseEditDialogProps {
   isOpen: boolean;
@@ -236,17 +237,13 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="documentFile">교육 자료 문서 (선택사항)</Label>
-            <Input
-              id="documentFile"
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+            <Label>교육 자료 문서 (선택사항)</Label>
+            <FileDropzone
+              onFilesSelected={async (files) => {
+                if (files.length === 0) return;
 
                 const formDataUpload = new FormData();
-                formDataUpload.append('files', file);
+                formDataUpload.append('files', files[0]);
 
                 try {
                   const res = await fetch('/api/upload-multiple', {
@@ -262,9 +259,21 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                   toast({ title: '업로드 실패', variant: 'destructive' });
                 }
               }}
+              accept={{
+                'application/pdf': ['.pdf'],
+                'application/msword': ['.doc'],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                'application/vnd.ms-excel': ['.xls'],
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                'application/vnd.ms-powerpoint': ['.ppt'],
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
+              }}
+              maxFiles={1}
+              maxSize={50 * 1024 * 1024}
+              multiple={false}
             />
             {formData.documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {formData.documentUrl}</p>}
-            <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글</p>
+            <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글 (드래그 앤 드롭 또는 클릭하여 업로드)</p>
           </div>
 
           {/* Multi-Media Attachments Section */}

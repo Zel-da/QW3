@@ -12,6 +12,7 @@ import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { FileDropzone } from "@/components/FileDropzone";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -125,6 +126,30 @@ export default function NoticeDetailPage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'attachment') => {
     const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const uploadFormData = new FormData();
+    files.forEach(file => uploadFormData.append('files', file));
+
+    try {
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'File upload failed');
+
+      const newFiles = data.files.map((f: any) => ({
+        url: f.url,
+        name: f.name,
+        size: f.size,
+        type: fileType
+      }));
+
+      setCommentAttachments(prev => [...prev, ...newFiles]);
+    } catch (err) {
+      toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
+    }
+  };
+
+  const handleFilesSelected = async (files: File[], fileType: 'image' | 'attachment') => {
     if (files.length === 0) return;
 
     const uploadFormData = new FormData();
@@ -436,11 +461,11 @@ export default function NoticeDetailPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium mb-2">이미지</label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleFileChange(e, 'image')}
+                      <FileDropzone
+                        onFilesSelected={(files) => handleFilesSelected(files, 'image')}
+                        accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                        maxFiles={5}
+                        maxSize={10 * 1024 * 1024}
                       />
                     </div>
 
@@ -468,10 +493,10 @@ export default function NoticeDetailPage() {
 
                     <div>
                       <label className="block text-sm font-medium mb-2">파일</label>
-                      <Input
-                        type="file"
-                        multiple
-                        onChange={(e) => handleFileChange(e, 'attachment')}
+                      <FileDropzone
+                        onFilesSelected={(files) => handleFilesSelected(files, 'attachment')}
+                        maxFiles={5}
+                        maxSize={50 * 1024 * 1024}
                       />
                     </div>
 

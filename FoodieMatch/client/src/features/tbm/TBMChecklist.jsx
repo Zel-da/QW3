@@ -17,6 +17,7 @@ import { stripSiteSuffix } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
+import { FileDropzone } from '@/components/FileDropzone';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
@@ -439,19 +440,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
                         <div className="flex flex-col items-center justify-center gap-2 w-full">
                           <div className="w-full">
-                            <Label htmlFor={`photo-${item.id}`} className="cursor-pointer">
-                              <div className="flex items-center justify-center gap-2 p-2 border-2 border-red-300 rounded-md hover:bg-muted bg-red-50">
-                                <Camera className="h-5 w-5 text-red-600" />
-                                <span className="font-medium">사진 업로드 <span className="text-red-600">*</span></span>
-                              </div>
-                            </Label>
-                            <Input
-                              id={`photo-${item.id}`}
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              onChange={(e) => handlePhotoUpload(item.id, e.target.files)}
+                            <Label className="font-medium">사진 업로드 <span className="text-red-600">*</span></Label>
+                            <FileDropzone
+                              onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
+                              accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                              maxFiles={10}
+                              maxSize={10 * 1024 * 1024}
                             />
 
                             {/* Display uploaded images */}
@@ -519,37 +513,37 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             {/* 오른쪽: 사진 업로드 */}
             <div className="space-y-2">
               <Label>TBM 사진</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                <Input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={(e) => e.target.files && handleRemarksImageUpload(e.target.files)}
-                  className="mb-4"
-                />
-                {remarksImages.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {remarksImages.map((imageUrl, idx) => (
-                      <div key={idx} className="relative">
-                        <img
-                          src={imageUrl}
-                          alt={`특이사항 ${idx + 1}`}
-                          className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setEnlargedImage(imageUrl)}
-                        />
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={() => removeRemarksImage(idx)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <FileDropzone
+                onFilesSelected={(files) => handleRemarksImageUpload(files)}
+                accept={{
+                  'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+                  'video/*': ['.mp4', '.avi', '.mov', '.wmv']
+                }}
+                maxFiles={10}
+                maxSize={50 * 1024 * 1024}
+              />
+              {remarksImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {remarksImages.map((imageUrl, idx) => (
+                    <div key={idx} className="relative">
+                      <img
+                        src={imageUrl}
+                        alt={`특이사항 ${idx + 1}`}
+                        className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setEnlargedImage(imageUrl)}
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        onClick={() => removeRemarksImage(idx)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
