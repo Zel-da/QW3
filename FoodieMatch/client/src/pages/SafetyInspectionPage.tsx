@@ -11,9 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useUndoToast } from '@/hooks/useUndoToast';
 import { Camera, Upload, X, Save, CheckCircle2, Circle, FileText, Image } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { SafetyInspectionSkeleton } from '@/components/skeletons/SafetyInspectionSkeleton';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import axios from 'axios';
@@ -213,6 +216,20 @@ export default function SafetyInspectionPage() {
     }
   }, [inspection]);
 
+  // 자동 임시저장 기능
+  const autoSaveKey = `safety_draft_${selectedTeam}_${selectedYear}_${selectedMonth}`;
+  const { clearSaved } = useAutoSave({
+    key: autoSaveKey,
+    data: uploadedItems,
+    enabled: !!selectedTeam && !inspection?.isCompleted, // 팀 선택되고 미완료 상태일 때만
+    onRestore: (restored) => {
+      setUploadedItems(restored);
+    },
+  });
+
+  // Undo 토스트 기능
+  const { showUndoToast } = useUndoToast();
+
   // 진행률 계산
   const getProgress = () => {
     if (requiredItems.length === 0) return { completed: 0, total: 0, percentage: 0 };
@@ -365,6 +382,11 @@ export default function SafetyInspectionPage() {
   };
 
   const removePhoto = (equipmentName: string, photoIndex: number) => {
+    // 이전 상태 백업 (Undo용)
+    const previousItems = { ...uploadedItems };
+    const deletedPhoto = uploadedItems[equipmentName]?.photos[photoIndex];
+
+    // 낙관적 업데이트: 즉시 사진 삭제
     setUploadedItems((prev) => {
       const currentState = prev[equipmentName];
       if (!currentState) return prev;
@@ -383,6 +405,16 @@ export default function SafetyInspectionPage() {
           photos: updatedPhotos,
         },
       };
+    });
+
+    // Undo 토스트 표시
+    showUndoToast({
+      message: '사진이 삭제되었습니다.',
+      onUndo: () => {
+        setUploadedItems(previousItems);
+        toast({ title: '취소됨', description: '삭제가 취소되었습니다.' });
+      },
+      duration: 5000,
     });
   };
 
@@ -419,6 +451,8 @@ export default function SafetyInspectionPage() {
       toast({ title: '성공', description: '안전점검 기록이 저장되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['safety-inspection', selectedTeam, selectedYear, selectedMonth] });
       queryClient.invalidateQueries({ queryKey: ['inspection-overview', selectedFactory, selectedYear, selectedMonth] });
+      // 제출 성공 시 임시저장 데이터 삭제
+      clearSaved();
       setShowSuccessDialog(true);
     },
     onError: (err: any) => {
@@ -683,7 +717,7 @@ export default function SafetyInspectionPage() {
             description="점검 기록을 작성하려면 팀을 선택해주세요."
           />
         ) : itemsLoading ? (
-          <LoadingSpinner />
+          <SafetyInspectionSkeleton />
         ) : requiredItems.length === 0 ? (
           <EmptyState
             icon={FileText}
