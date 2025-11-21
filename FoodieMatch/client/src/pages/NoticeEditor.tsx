@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { Plus, X, Video, Music, Youtube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { FileDropzone } from "@/components/FileDropzone";
 
 // YouTube URL을 embed URL로 변환
 function getYouTubeEmbedUrl(url: string): string {
@@ -119,6 +120,34 @@ export default function NoticeEditor() {
 
       setAttachments(prev => [...prev, ...newFiles]);
       setError(''); // Clear any previous errors
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFilesSelected = async (files: File[], fileType: 'image' | 'attachment') => {
+    if (files.length === 0) return;
+
+    const uploadFormData = new FormData();
+    files.forEach(file => uploadFormData.append('files', file));
+
+    try {
+      setIsUploading(true);
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'File upload failed');
+
+      const newFiles = data.files.map((f: any) => ({
+        url: f.url,
+        name: f.name,
+        size: f.size,
+        type: fileType
+      }));
+
+      setAttachments(prev => [...prev, ...newFiles]);
+      setError('');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -260,16 +289,15 @@ export default function NoticeEditor() {
                 <Textarea id="content" name="content" required value={formData.content} onChange={handleChange} rows={12} className="text-base" />
               </div>
               <div className="space-y-3">
-                <Label htmlFor="image" className="text-base md:text-lg">이미지 업로드</Label>
-                <Input
-                  id="image"
-                  type="file"
-                  onChange={(e) => handleFileChange(e, 'image')}
-                  className="text-base h-12"
-                  accept="image/*"
-                  multiple
+                <Label className="text-base md:text-lg">이미지 업로드</Label>
+                <FileDropzone
+                  onFilesSelected={(files) => handleFilesSelected(files, 'image')}
+                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                  maxFiles={10}
+                  maxSize={10 * 1024 * 1024}
+                  disabled={isUploading}
                 />
-                {formData.imageUrl && <img src={formData.imageUrl} alt="Preview" className="mt-3 rounded-md max-h-64 w-full object-contain" />}
+                {isUploading && <p className="text-sm text-muted-foreground">업로드 중...</p>}
 
                 {/* Display uploaded images */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
@@ -293,15 +321,14 @@ export default function NoticeEditor() {
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="attachment" className="text-base md:text-lg">파일 첨부</Label>
-                <Input
-                  id="attachment"
-                  type="file"
-                  onChange={(e) => handleFileChange(e, 'attachment')}
-                  className="text-base h-12"
-                  multiple
+                <Label className="text-base md:text-lg">파일 첨부</Label>
+                <FileDropzone
+                  onFilesSelected={(files) => handleFilesSelected(files, 'attachment')}
+                  maxFiles={10}
+                  maxSize={50 * 1024 * 1024}
+                  disabled={isUploading}
                 />
-                {formData.attachmentName && <p className="text-base text-muted-foreground mt-2">📎 첨부된 파일: {formData.attachmentName}</p>}
+                {isUploading && <p className="text-sm text-muted-foreground">업로드 중...</p>}
 
                 {/* Display uploaded files */}
                 <div className="space-y-2 mt-3">

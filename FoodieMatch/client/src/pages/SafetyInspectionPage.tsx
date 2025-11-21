@@ -18,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import axios from 'axios';
 import { getInspectionYearRange, cn } from '@/lib/utils';
+import { FileDropzone } from '@/components/FileDropzone';
 
 interface Team {
   id: number;
@@ -766,42 +767,23 @@ export default function SafetyInspectionPage() {
                           </div>
                         )}
 
-                        {/* 사진 업로드 버튼 */}
+                        {/* 사진 업로드 */}
                         {state.photos.length < item.requiredPhotoCount && (
                           <div>
-                            <Label
-                              htmlFor={`photo-${item.equipmentName}`}
-                              className={isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
-                            >
-                              <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-md hover:bg-muted">
-                                {isUploading ? (
-                                  <>
-                                    <Upload className="h-5 w-5 animate-pulse" />
-                                    <span>업로드 중...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Camera className="h-5 w-5" />
-                                    <span>
-                                      사진 추가 ({item.requiredPhotoCount - state.photos.length}장 더 필요)
-                                      {item.requiredPhotoCount - state.photos.length > 1 && ' · 여러 장 선택 가능'}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
+                            <Label>
+                              사진 추가 ({item.requiredPhotoCount - state.photos.length}장 더 필요)
                             </Label>
-                            <Input
-                              id={`photo-${item.equipmentName}`}
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              disabled={isUploading}
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                if (files.length > 0) handleMultiplePhotoUpload(item.equipmentName, item.requiredPhotoCount, files);
-                                e.target.value = ''; // Reset input
+                            <FileDropzone
+                              onFilesSelected={(files) => {
+                                if (files.length > 0) {
+                                  handleMultiplePhotoUpload(item.equipmentName, item.requiredPhotoCount, files);
+                                }
                               }}
+                              accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                              maxFiles={item.requiredPhotoCount - state.photos.length}
+                              maxSize={10 * 1024 * 1024}
+                              multiple={true}
+                              disabled={isUploading}
                             />
                           </div>
                         )}

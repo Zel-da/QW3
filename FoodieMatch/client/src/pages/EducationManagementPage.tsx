@@ -17,6 +17,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
 import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
+import { FileDropzone } from '@/components/FileDropzone';
 
 // YouTube URL을 임베드 URL로 변환하는 헬퍼 함수
 const getYouTubeEmbedUrl = (url: string): string => {
@@ -366,17 +367,13 @@ export default function EducationManagementPage() {
 
               {/* 문서 파일 업로드 */}
               <div className="space-y-2">
-                <Label htmlFor="documentFile">교육 자료 문서 (선택사항)</Label>
-                <Input
-                  id="documentFile"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+                <Label>교육 자료 문서 (선택사항)</Label>
+                <FileDropzone
+                  onFilesSelected={async (files) => {
+                    if (files.length === 0) return;
 
                     const formData = new FormData();
-                    formData.append('files', file);
+                    formData.append('files', files[0]);
 
                     try {
                       const res = await fetch('/api/upload-multiple', {
@@ -392,9 +389,21 @@ export default function EducationManagementPage() {
                       toast({ title: '업로드 실패', variant: 'destructive' });
                     }
                   }}
+                  accept={{
+                    'application/pdf': ['.pdf'],
+                    'application/msword': ['.doc'],
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                    'application/vnd.ms-excel': ['.xls'],
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                    'application/vnd.ms-powerpoint': ['.ppt'],
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
+                  }}
+                  maxFiles={1}
+                  maxSize={50 * 1024 * 1024}
+                  multiple={false}
                 />
                 {documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {documentUrl}</p>}
-                <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글</p>
+                <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글 (드래그 앤 드롭 또는 클릭하여 업로드)</p>
               </div>
 
               {/* 미디어 콘텐츠 */}
