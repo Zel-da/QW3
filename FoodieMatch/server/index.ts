@@ -6,7 +6,7 @@ import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
-import { verifyEmailConnection } from "./emailService";
+import { verifyEmailConnection } from "./simpleEmailService";
 import { startAllSchedulers } from "./scheduler";
 
 const app = express();
@@ -37,7 +37,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Internal HTTP network - set to false even in production
+    // Cloud deployment (Render): HTTPS uses secure cookies
+    // Local/Internal network: HTTP uses non-secure cookies
+    secure: process.env.NODE_ENV === 'production' && process.env.RENDER === 'true',
     httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
     sameSite: 'lax', // Allow cookies in same-site requests
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days (reduced from 30 for better security)
@@ -129,12 +131,9 @@ app.use((req, res, next) => {
   // Initialize email service
   await verifyEmailConnection();
 
-  // Start email schedulers (only in production or if explicitly enabled)
-  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_EMAIL_SCHEDULERS === 'true') {
-    await startAllSchedulers();
-  } else {
-    log('⏸️  Email schedulers disabled (set ENABLE_EMAIL_SCHEDULERS=true to enable in development)');
-  }
+  // Start email schedulers
+  await startAllSchedulers();
+  log('✅ Email service initialized with schedulers');
 
   const port = parseInt(process.env.PORT || '5000', 10);
 

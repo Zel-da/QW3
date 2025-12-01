@@ -41,6 +41,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [remarks, setRemarks] = useState('');
   const [remarksImages, setRemarksImages] = useState([]);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [existingReport, setExistingReport] = useState(null);
+  const [isViewMode, setIsViewMode] = useState(false);
 
   useEffect(() => {
     if (site) {
@@ -56,46 +58,88 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [user, site, reportForEdit]);
 
+  // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
+  useEffect(() => {
+    if (selectedTeam && date && !reportForEdit) {
+      // 로컬 시간대 기준 날짜 문자열 생성 (UTC 변환 시 날짜가 바뀌는 문제 방지)
+      const d = new Date(date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      axios.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
+        .then(res => {
+          if (res.data.exists && res.data.report) {
+            setExistingReport(res.data.report);
+            setIsViewMode(true);
+            // 기존 데이터로 폼 초기화
+            initializeFormFromReport(res.data.report);
+            toast({
+              title: "기존 TBM 발견",
+              description: "해당 날짜에 이미 작성된 TBM이 있어 조회 모드로 표시합니다.",
+            });
+          } else {
+            setExistingReport(null);
+            setIsViewMode(false);
+            // 새 작성 모드로 초기화
+            setFormState({});
+            setSignatures({});
+            setAbsentUsers({});
+            setRemarks('');
+            setRemarksImages([]);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to check existing TBM:', err);
+        });
+    } else if (!selectedTeam) {
+      // 팀이 선택 해제되면 초기화
+      setExistingReport(null);
+      setIsViewMode(false);
+    }
+  }, [selectedTeam, date, reportForEdit, toast]);
+
+  // 리포트 데이터로 폼 초기화하는 함수
+  const initializeFormFromReport = (report) => {
+    const initialFormState = {};
+    report.reportDetails.forEach(detail => {
+      initialFormState[detail.itemId] = {
+        checkState: detail.checkState,
+        description: detail.actionDescription,
+        attachments: detail.attachments ? detail.attachments.map(att => ({
+          url: att.url,
+          name: att.name,
+          size: att.size || 0,
+          type: att.type || 'image'
+        })) : []
+      };
+    });
+    setFormState(initialFormState);
+
+    const initialSignatures = {};
+    report.reportSignatures.forEach(sig => {
+      if (sig.signatureImage) {
+        const key = sig.userId || `member-${sig.memberId}`;
+        initialSignatures[key] = sig.signatureImage;
+      }
+    });
+    setSignatures(initialSignatures);
+
+    if (report.remarks) {
+      try {
+        const remarksData = JSON.parse(report.remarks);
+        setRemarks(remarksData.text || '');
+        setRemarksImages(remarksData.images || []);
+      } catch {
+        setRemarks(report.remarks);
+        setRemarksImages([]);
+      }
+    }
+  };
+
   useEffect(() => {
     if (reportForEdit) {
-      const initialFormState = {};
-      reportForEdit.reportDetails.forEach(detail => {
-        initialFormState[detail.itemId] = {
-          checkState: detail.checkState,
-          description: detail.actionDescription,
-          attachments: detail.attachments ? detail.attachments.map(att => ({
-            url: att.url,
-            name: att.name,
-            size: att.size || 0,
-            type: att.type || 'image'
-          })) : []
-        };
-      });
-      setFormState(initialFormState);
-
-      const initialSignatures = {};
-      reportForEdit.reportSignatures.forEach(sig => {
-        if (sig.signatureImage) {
-          // userId나 memberId 중 하나를 키로 사용
-          const key = sig.userId || `member-${sig.memberId}`;
-          initialSignatures[key] = sig.signatureImage;
-        }
-      });
-      setSignatures(initialSignatures);
-
-      // remarks 초기화 (JSON 파싱)
-      if (reportForEdit.remarks) {
-        try {
-          const remarksData = JSON.parse(reportForEdit.remarks);
-          setRemarks(remarksData.text || '');
-          setRemarksImages(remarksData.images || []);
-        } catch {
-          // JSON이 아니면 그냥 텍스트로 처리
-          setRemarks(reportForEdit.remarks);
-          setRemarksImages([]);
-        }
-      }
-    } else {
+      initializeFormFromReport(reportForEdit);
+      setIsViewMode(false); // 수정 모드이므로 viewMode는 false
+    } else if (!existingReport) {
+      // 새 작성 모드일 때만 초기화
       setFormState({});
       setSignatures({});
       setAbsentUsers({});
@@ -126,7 +170,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             ...teamMembers.map(member => ({
               id: `member-${member.id}`, // memberId와 userId 구분
               name: member.name,
-              role: 'SITE_MANAGER', // 기본 역할
+              role: 'TEAM_LEADER', // 기본 역할
               isTeamMember: true, // TeamMember 표시
               memberId: member.id // 원본 memberId 보관
             }))
@@ -145,8 +189,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [selectedTeam]);
 
-  // 자동 임시저장 기능
-  const autoSaveKey = `tbm_draft_${selectedTeam}_${date ? new Date(date).toISOString().split('T')[0] : 'new'}`;
+  // 자동 임시저장 기능 - 로컬 시간대 기준 날짜 키 생성
+  const getLocalDateStr = (d) => {
+    const dt = new Date(d);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  };
+  const autoSaveKey = `tbm_draft_${selectedTeam}_${date ? getLocalDateStr(date) : 'new'}`;
   const { clearSaved } = useAutoSave({
     key: autoSaveKey,
     data: {
@@ -342,8 +390,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         signaturesCount: reportData.signatures.length
       });
 
-      if (reportForEdit) {
-        await axios.put(`/api/tbm/${reportForEdit.id}`, reportData);
+      // 수정 모드인지 확인 (reportForEdit 또는 existingReport가 있는 경우)
+      const reportIdToUpdate = reportForEdit?.id || existingReport?.id;
+
+      if (reportIdToUpdate) {
+        await axios.put(`/api/tbm/${reportIdToUpdate}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
       } else {
         await axios.post('/api/reports', reportData);
@@ -404,6 +455,38 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       </Select>
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+
+      {/* 기존 TBM 발견 시 알림 */}
+      {isViewMode && existingReport && (
+        <Alert className="mb-4 border-blue-200 bg-blue-50">
+          <CheckCircle2 className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800">기존 TBM 발견</AlertTitle>
+          <AlertDescription className="text-blue-700">
+            해당 날짜({new Date(existingReport.reportDate).toLocaleDateString('ko-KR')})에 이미 작성된 TBM이 있습니다.
+            <span className="font-medium ml-1">조회 모드</span>로 표시 중입니다.
+          </AlertDescription>
+          <div className="mt-3 flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setIsViewMode(false);
+                // 수정 모드로 전환 - reportForEdit와 동일하게 처리
+              }}
+            >
+              수정하기
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate('/monthly-report')}
+            >
+              월별 보고서 보기
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       {loading && <TBMChecklistSkeleton />}
 
       {!loading && checklist && (
@@ -412,12 +495,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <h3 className="font-semibold text-lg">작성자: {user?.name}</h3>
           </div>
           <h3 className="font-semibold text-xl mt-6">점검항목</h3>
-          <Table>
+          <Table className="border-collapse">
             <TableHeader>
-              <TableRow>
-                <TableHead>구분</TableHead>
-                <TableHead>점검항목</TableHead>
-                <TableHead className="text-center">점검결과</TableHead>
+              <TableRow className="border-b-2 border-gray-300">
+                <TableHead className="border-r border-gray-200">구분</TableHead>
+                <TableHead className="border-r border-gray-200">점검항목</TableHead>
+                <TableHead className="text-center border-r border-gray-200">점검결과</TableHead>
                 <TableHead className="text-center">사진/내용</TableHead>
               </TableRow>
             </TableHeader>
@@ -430,6 +513,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 // 이전 항목과 같은 카테고리인지 확인
                 const prevItem = index > 0 ? items[index - 1] : null;
                 const showCategory = !prevItem || prevItem.category !== item.category;
+
+                // 다음 항목과 다른 카테고리인지 확인 (마지막 행인지)
+                const nextItem = index < items.length - 1 ? items[index + 1] : null;
+                const isLastInCategory = !nextItem || nextItem.category !== item.category;
 
                 // 같은 카테고리의 항목 수 계산 (rowSpan용)
                 let rowSpan = 1;
@@ -444,21 +531,28 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 }
 
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow
+                    key={item.id}
+                    className={`
+                      border-b border-gray-200
+                      ${showCategory && index > 0 ? "border-t-2 border-t-gray-400" : ""}
+                      ${isLastInCategory ? "border-b-2 border-b-gray-400" : ""}
+                    `}
+                  >
                     {showCategory && (
                       <TableCell
-                        className="align-top font-medium bg-muted/30 border-r"
+                        className="align-top font-medium bg-muted/30 border-r border-gray-200"
                         rowSpan={rowSpan}
                       >
                         {item.category}
                       </TableCell>
                     )}
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>
-                      <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4">
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                    <TableCell className="border-r border-gray-200">{item.description}</TableCell>
+                    <TableCell className="border-r border-gray-200">
+                      <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode}>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
                       </RadioGroup>
                     </TableCell>
                     <TableCell className="text-center">
@@ -466,12 +560,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                         <div className="flex flex-col items-center justify-center gap-2 w-full">
                           <div className="w-full">
                             <Label className="font-medium">사진 업로드 <span className="text-red-600">*</span></Label>
-                            <FileDropzone
-                              onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
-                              accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                              maxFiles={10}
-                              maxSize={10 * 1024 * 1024}
-                            />
+                            {!isViewMode && (
+                              <FileDropzone
+                                onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
+                                accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                                maxFiles={50}
+                                maxSize={10 * 1024 * 1024}
+                              />
+                            )}
 
                             {/* Display uploaded images */}
                             {currentItemState.attachments && currentItemState.attachments.length > 0 && (
@@ -486,15 +582,17 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                                     />
                                     <p className="text-xs truncate mt-1">{file.name}</p>
                                     <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="sm"
-                                      className="absolute top-1 right-1 h-6 w-6 p-0"
-                                      onClick={() => removeAttachment(item.id, idx)}
-                                    >
-                                      ✕
-                                    </Button>
+                                    {!isViewMode && (
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                        className="absolute top-1 right-1 h-6 w-6 p-0"
+                                        onClick={() => removeAttachment(item.id, idx)}
+                                      >
+                                        ✕
+                                      </Button>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -508,6 +606,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                               onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
                               className="mt-1 w-full border-2 border-red-300"
                               rows={3}
+                              disabled={isViewMode}
                             />
                           </div>
                         </div>
@@ -520,10 +619,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </Table>
 
           {/* 특이사항 섹션 */}
-          <h3 className="font-semibold text-xl mt-8 mb-4">특이사항</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="border-t-2 border-gray-300 pt-6 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* 왼쪽: 특이사항 텍스트 */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:border-r md:border-gray-200 md:pr-6">
               <Label htmlFor="remarks">특이사항</Label>
               <Textarea
                 id="remarks"
@@ -532,21 +630,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
                 className="w-full"
+                disabled={isViewMode}
               />
             </div>
 
             {/* 오른쪽: 사진 업로드 */}
             <div className="space-y-2">
               <Label>TBM 사진</Label>
-              <FileDropzone
-                onFilesSelected={(files) => handleRemarksImageUpload(files)}
-                accept={{
-                  'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-                  'video/*': ['.mp4', '.avi', '.mov', '.wmv']
-                }}
-                maxFiles={10}
-                maxSize={50 * 1024 * 1024}
-              />
+              {!isViewMode && (
+                <FileDropzone
+                  onFilesSelected={(files) => handleRemarksImageUpload(files)}
+                  accept={{
+                    'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+                    'video/*': ['.mp4', '.avi', '.mov', '.wmv']
+                  }}
+                  maxFiles={50}
+                  maxSize={50 * 1024 * 1024}
+                />
+              )}
               {remarksImages.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   {remarksImages.map((imageUrl, idx) => (
@@ -557,14 +658,16 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                         className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setEnlargedImage(imageUrl)}
                       />
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute top-1 right-1 h-6 w-6"
-                        onClick={() => removeRemarksImage(idx)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      {!isViewMode && (
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => removeRemarksImage(idx)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -572,23 +675,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             </div>
           </div>
 
-          <h3 className="font-semibold text-xl mt-8">참석자 서명</h3>
-          <Table>
+          {/* 참석자 서명 섹션 */}
+          <div className="border-t-2 border-gray-300 pt-6 mt-8">
+            <h3 className="font-semibold text-xl mb-4">참석자 서명</h3>
+          </div>
+          <Table className="border-collapse">
             <TableHeader>
-              <TableRow>
-                <TableHead>이름</TableHead>
-                <TableHead>출근 상태</TableHead>
+              <TableRow className="border-b-2 border-gray-300">
+                <TableHead className="border-r border-gray-200">이름</TableHead>
+                <TableHead className="border-r border-gray-200">출근 상태</TableHead>
                 <TableHead>서명</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {[...teamUsers, user].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'APPROVER').map(worker => (
-                <TableRow key={worker.id} className={absentUsers[worker.id] ? 'bg-gray-100' : ''}>
-                  <TableCell className="font-semibold">{worker.name}</TableCell>
-                  <TableCell>
+                <TableRow key={worker.id} className={`border-b border-gray-200 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
+                  <TableCell className="font-semibold border-r border-gray-200">{worker.name}</TableCell>
+                  <TableCell className="border-r border-gray-200">
                     <Select
                       value={absentUsers[worker.id] || 'PRESENT'}
                       onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
+                      disabled={isViewMode}
                     >
                       <SelectTrigger className="w-[150px]">
                         <SelectValue placeholder="출근" />
@@ -618,7 +725,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     ) : (
                       <Button
                         onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                        disabled={absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id])}
+                        disabled={isViewMode || (absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id]))}
                         size="sm"
                       >
                         서명
@@ -660,14 +767,32 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-end mt-6">
-        <Button
-          onClick={handleSubmit}
-          size="lg"
-          disabled={!checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
-        >
-          제출하기
-        </Button>
+      <div className="flex justify-end mt-6 gap-3">
+        {isViewMode ? (
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate('/monthly-report')}
+            >
+              월별 보고서 보기
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => setIsViewMode(false)}
+            >
+              수정하기
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            size="lg"
+            disabled={!checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
+          >
+            {existingReport ? '수정하기' : '제출하기'}
+          </Button>
+        )}
       </div>
 
       {/* 제출 성공 다이얼로그 */}

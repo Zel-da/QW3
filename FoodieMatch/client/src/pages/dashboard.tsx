@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { CourseCard } from "@/components/course-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,7 +11,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, Award, Search, Settings, BarChart3 } from "lucide-react";
+import { BookOpen, Award, Search, Settings, BarChart3, ChevronRight, Clock, CheckCircle } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
@@ -126,30 +127,29 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
-        <div className="flex justify-between items-center mb-8" data-testid="hero-section">
-          <h1 className="text-4xl font-bold text-foreground korean-text">
-            안전 관리 교육 프로그램
+
+      <main className="container mx-auto px-4 py-4 md:py-8">
+        {/* Hero Section - 모바일 최적화 */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6" data-testid="hero-section">
+          <h1 className="text-xl md:text-4xl font-bold text-foreground korean-text">
+            안전 교육
           </h1>
           <div className="flex gap-2">
             {user?.role === 'ADMIN' && (
-              <>
-                <Link href="/education-monitoring">
-                  <Button variant="secondary">
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    교육 현황
-                  </Button>
-                </Link>
-              </>
+              <Link href="/education-monitoring">
+                <Button variant="secondary" size="sm" className="text-xs md:text-sm">
+                  <BarChart3 className="w-4 h-4 md:mr-2" />
+                  <span className="hidden md:inline">교육 현황</span>
+                </Button>
+              </Link>
             )}
             <Link href="/my-certificates">
-              <Button variant="outline">
-                <Award className="w-4 h-4 mr-2" />
-                내 이수 현황
+              <Button variant="outline" size="sm" className="text-xs md:text-sm">
+                <Award className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">내 이수 현황</span>
+                <span className="md:hidden">이수 현황</span>
               </Button>
             </Link>
           </div>
@@ -193,22 +193,24 @@ export default function Dashboard() {
                 </SelectContent>
               </Select>
             </div>
-            <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-8">
-              <TabsList className="mb-6">
-                <TabsTrigger value="all" className="text-lg font-semibold px-6 py-3">전체 ({courses.length})</TabsTrigger>
-              <TabsTrigger value="in-progress" className="text-lg font-semibold px-6 py-3">
-                진행중 ({courses.filter(c => {
-                  const p = userProgress.find(up => up.courseId === c.id);
-                  return !p?.completed;
-                }).length})
-              </TabsTrigger>
-              <TabsTrigger value="completed" className="text-lg font-semibold px-6 py-3">
-                수료 ({courses.filter(c => {
-                  const p = userProgress.find(up => up.courseId === c.id);
-                  return p?.completed === true;
-                }).length})
-              </TabsTrigger>
-            </TabsList>
+            <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)} className="mb-6 md:mb-8">
+              <TabsList className="mb-4 md:mb-6 w-full md:w-auto grid grid-cols-3 md:flex md:justify-start">
+                <TabsTrigger value="all" className="text-sm md:text-lg font-semibold px-3 md:px-6 py-2 md:py-3">
+                  전체 <span className="ml-1">({courses.length})</span>
+                </TabsTrigger>
+                <TabsTrigger value="in-progress" className="text-sm md:text-lg font-semibold px-3 md:px-6 py-2 md:py-3">
+                  진행중 <span className="ml-1">({courses.filter(c => {
+                    const p = userProgress.find(up => up.courseId === c.id);
+                    return !p?.completed;
+                  }).length})</span>
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="text-sm md:text-lg font-semibold px-3 md:px-6 py-2 md:py-3">
+                  수료 <span className="ml-1">({courses.filter(c => {
+                    const p = userProgress.find(up => up.courseId === c.id);
+                    return p?.completed === true;
+                  }).length})</span>
+                </TabsTrigger>
+              </TabsList>
 
             <TabsContent value={filterStatus}>
               {filteredCourses.length === 0 ? (
@@ -227,7 +229,8 @@ export default function Dashboard() {
                 />
               ) : (
                 <>
-                  <div className="mb-8" data-testid="course-table">
+                  {/* 데스크톱 테이블 뷰 */}
+                  <div className="hidden md:block mb-8" data-testid="course-table">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -283,6 +286,66 @@ export default function Dashboard() {
                     </Table>
                   </div>
 
+                  {/* 모바일 카드 리스트 뷰 */}
+                  <div className="md:hidden space-y-3 mb-6">
+                    {paginatedCourses.map((course) => {
+                      const progress = userProgress.find(p => p.courseId === course.id);
+                      const progressPercent = progress?.progress || 0;
+                      const isCompleted = progress?.completed || false;
+
+                      return (
+                        <Card
+                          key={course.id}
+                          className="overflow-hidden cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
+                          onClick={() => handleStartCourse(course.id)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                isCompleted ? 'bg-green-100' :
+                                progressPercent > 0 ? 'bg-orange-100' :
+                                'bg-gray-100'
+                              }`}>
+                                {isCompleted ? (
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                ) : (
+                                  <BookOpen className={`h-5 w-5 ${progressPercent > 0 ? 'text-orange-600' : 'text-gray-500'}`} />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-medium text-sm truncate">{course.title}</h3>
+                                  <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                    isCompleted ? 'bg-green-100 text-green-800' :
+                                    progressPercent > 0 ? 'bg-orange-100 text-orange-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {isCompleted ? '수료' : progressPercent > 0 ? '진행중' : '시작 전'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                                  {course.description}
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {course.duration}분
+                                    </span>
+                                    <span>{progressPercent}% 완료</span>
+                                  </div>
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                {/* 진행률 바 */}
+                                <Progress value={progressPercent} className="h-1.5 mt-2" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-center">
@@ -323,6 +386,8 @@ export default function Dashboard() {
         )}
 
       </main>
+
+      <BottomNavigation />
     </div>
   );
 }

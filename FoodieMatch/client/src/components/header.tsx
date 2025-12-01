@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Shield, BookOpen, Home, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
@@ -8,30 +8,46 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 export function Header() {
   const { user, logout } = useAuth();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [location] = useLocation();
+
+  // 현재 경로가 해당 링크와 일치하는지 확인 (하위 경로 포함)
+  const isActive = (path: string) => {
+    if (path === '/') return location === '/';
+    return location.startsWith(path);
+  };
+
+  // 활성 상태에 따른 클래스 반환
+  const getLinkClass = (path: string) => {
+    const baseClass = "text-base font-medium transition-colors flex items-center whitespace-nowrap";
+    if (isActive(path)) {
+      return `${baseClass} text-foreground font-bold`;
+    }
+    return `${baseClass} text-muted-foreground hover:text-primary`;
+  };
 
   const navLinks = (
     <>
-      <Link href="/" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+      <Link href="/" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/')}>
         홈
       </Link>
-      <Link href="/notices" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
+      <Link href="/notices" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/notices')}>
         공지사항
       </Link>
-      <Link href="/courses" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground hover:text-primary transition-colors flex items-center whitespace-nowrap">
-        안전교육
-      </Link>
-      <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+      <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/tbm')}>
         TBM
+      </Link>
+      <Link href="/courses" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/courses')}>
+        안전교육
       </Link>
       {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
         <>
-          <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+          <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/safety-inspection')}>
             안전점검
           </Link>
-          <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+          <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/monthly-report')}>
             월별 보고서
           </Link>
-          <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className="text-base font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap">
+          <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/admin-dashboard')}>
             관리
           </Link>
         </>

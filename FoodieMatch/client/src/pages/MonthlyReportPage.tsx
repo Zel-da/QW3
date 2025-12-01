@@ -18,9 +18,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen } from 'lucide-react';
+import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
 import { SITES } from '@/lib/constants';
+import { SignatureDialog } from '@/components/SignatureDialog';
+import { DualSignatureDialog } from '@/components/DualSignatureDialog';
 
 // ==================== API Functions ====================
 
@@ -173,6 +175,15 @@ export default function MonthlyReportPage() {
   const [downloadMonth, setDownloadMonth] = useState(new Date().getMonth() + 1);
   const [downloadDay, setDownloadDay] = useState(new Date().getDate());
 
+  // 안전교육 엑셀 다운로드용 상태
+  const [educationManager, setEducationManager] = useState(''); // 담당자
+  const [educationApprover, setEducationApprover] = useState(''); // 승인자
+  const [showEducationSignature, setShowEducationSignature] = useState(false); // 서명 다이얼로그
+  const [educationSignatureData, setEducationSignatureData] = useState(''); // 담당 서명 데이터
+  const [approverSignatureData, setApproverSignatureData] = useState(''); // 승인 서명 데이터
+  const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
+  const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
+
   // ==================== Queries ====================
 
   useEffect(() => {
@@ -183,6 +194,24 @@ export default function MonthlyReportPage() {
     }
   }, [user, setSite]);
 
+  // 사이트별 담당자/승인자 기본값 불러오기
+  useEffect(() => {
+    if (site) {
+      const savedManager = localStorage.getItem(`educationManager_${site}`);
+      const savedApprover = localStorage.getItem(`educationApprover_${site}`);
+      if (savedManager) {
+        setEducationManager(savedManager);
+      } else {
+        setEducationManager('');
+      }
+      if (savedApprover) {
+        setEducationApprover(savedApprover);
+      } else {
+        setEducationApprover('');
+      }
+    }
+  }, [site]);
+
   const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
     queryKey: ['teams', site],
     queryFn: () => fetchTeams(site),
@@ -192,6 +221,17 @@ export default function MonthlyReportPage() {
   useEffect(() => {
     setSelectedTeam(null);
   }, [site]);
+
+  // 교육 다운로드 다이얼로그가 열릴 때 teamDateMap 초기화
+  useEffect(() => {
+    if (showEducationDatePicker && teams && teams.length > 0) {
+      const initialMap: Record<number, number> = {};
+      teams.forEach((team) => {
+        initialMap[team.id] = downloadDay; // 기본값으로 현재 선택된 날짜 사용
+      });
+      setTeamDateMap(initialMap);
+    }
+  }, [showEducationDatePicker, teams, downloadDay]);
 
   // 팀장의 경우 해당 팀 자동 선택
   useEffect(() => {
@@ -351,33 +391,34 @@ export default function MonthlyReportPage() {
     const totalTeams = attendanceOverview.teams.length;
     const teamsWithApproval = attendanceOverview.teams.filter(t => t.hasApproval).length;
     const teamsWithEducation = attendanceOverview.teams.filter(t => t.educationCompleted).length;
-    const teamsWithIssues = attendanceOverview.teams.filter(t => {
-      const dailyStatuses = Object.values(t.dailyStatuses);
-      return dailyStatuses.some(status =>
-        status.status === 'has-issues' || status.status === 'not-submitted'
-      );
-    }).length;
 
     const totalDays = attendanceOverview.daysInMonth;
-    const weekdays = Array.from({ length: totalDays }, (_, i) => i + 1)
-      .filter(day => !isWeekend(date.year, date.month, day))
-      .length;
+    // 주말과 미래 날짜 제외한 평일만 계산
+    const weekdaysList = Array.from({ length: totalDays }, (_, i) => i + 1)
+      .filter(day => !isWeekend(date.year, date.month, day) && !isFutureDate(date.year, date.month, day));
+    const weekdays = weekdaysList.length;
 
     let totalSubmissions = 0;
     let totalIssues = 0;
     let totalNotSubmitted = 0;
 
+    // 주말과 미래 날짜를 제외하고 계산
     attendanceOverview.teams.forEach(team => {
-      Object.values(team.dailyStatuses).forEach(status => {
-        if (status.status === 'completed') totalSubmissions++;
-        else if (status.status === 'has-issues') totalIssues++;
-        else if (status.status === 'not-submitted') totalNotSubmitted++;
+      weekdaysList.forEach(day => {
+        const status = team.dailyStatuses[day]?.status;
+        if (status === 'completed') totalSubmissions++;
+        else if (status === 'has-issues') totalIssues++;
+        else if (status === 'not-submitted') totalNotSubmitted++;
       });
     });
 
-    const submissionRate = totalTeams > 0 && weekdays > 0
-      ? Math.round((totalSubmissions / (totalTeams * weekdays)) * 100)
-      : 0;
+    // 이슈 있는 팀 계산 (주말/미래 제외)
+    const teamsWithIssues = attendanceOverview.teams.filter(t => {
+      return weekdaysList.some(day => {
+        const status = t.dailyStatuses[day]?.status;
+        return status === 'has-issues' || status === 'not-submitted';
+      });
+    }).length;
 
     return {
       totalTeams,
@@ -391,7 +432,6 @@ export default function MonthlyReportPage() {
       totalSubmissions,
       totalIssues,
       totalNotSubmitted,
-      submissionRate,
     };
   }, [attendanceOverview?.teams, date.year, date.month]);
 
@@ -431,18 +471,21 @@ export default function MonthlyReportPage() {
 
     return attendanceOverview.teams.map(team => {
       const totalDays = attendanceOverview.daysInMonth;
-      const weekdays = Array.from({ length: totalDays }, (_, i) => i + 1)
-        .filter(day => !isWeekend(date.year, date.month, day) && !isFutureDate(date.year, date.month, day))
-        .length;
+      // 주말과 미래 날짜 제외한 평일만 계산
+      const weekdaysList = Array.from({ length: totalDays }, (_, i) => i + 1)
+        .filter(day => !isWeekend(date.year, date.month, day) && !isFutureDate(date.year, date.month, day));
+      const weekdays = weekdaysList.length;
 
       let completed = 0;
       let issues = 0;
       let notSubmitted = 0;
 
-      Object.values(team.dailyStatuses).forEach(status => {
-        if (status.status === 'completed') completed++;
-        else if (status.status === 'has-issues') issues++;
-        else if (status.status === 'not-submitted') notSubmitted++;
+      // 주말과 미래 날짜를 제외하고 계산
+      weekdaysList.forEach(day => {
+        const status = team.dailyStatuses[day]?.status;
+        if (status === 'completed') completed++;
+        else if (status === 'has-issues') issues++;
+        else if (status === 'not-submitted') notSubmitted++;
       });
 
       const rate = weekdays > 0 ? Math.round((completed / weekdays) * 100) : 0;
@@ -589,7 +632,8 @@ export default function MonthlyReportPage() {
     setShowEducationDatePicker(true);
   }, [site, toast]);
 
-  const handleEducationExcelDownloadConfirm = useCallback(async () => {
+  // 날짜 선택 후 서명 다이얼로그 열기
+  const handleEducationExcelDownloadConfirm = useCallback(() => {
     if (!site) {
       toast({
         title: "오류",
@@ -600,6 +644,23 @@ export default function MonthlyReportPage() {
     }
 
     setShowEducationDatePicker(false);
+    // 서명 다이얼로그 열기
+    setShowEducationSignature(true);
+  }, [site, toast]);
+
+  // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
+  const handleEducationSignatureSave = useCallback(async (managerSignature: string, approverSignature: string) => {
+    setEducationSignatureData(managerSignature);
+    setApproverSignatureData(approverSignature);
+    setShowEducationSignature(false);
+
+    // 담당자/승인자 이름을 사이트별로 localStorage에 저장
+    if (site && educationManager.trim()) {
+      localStorage.setItem(`educationManager_${site}`, educationManager.trim());
+    }
+    if (site && educationApprover.trim()) {
+      localStorage.setItem(`educationApprover_${site}`, educationApprover.trim());
+    }
 
     toast({
       title: "안전교육 현황 다운로드 중...",
@@ -607,12 +668,20 @@ export default function MonthlyReportPage() {
     });
 
     try {
+      // 팀별 날짜 데이터 준비
+      const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
+
       const response = await axios.get(`/api/tbm/safety-education-excel`, {
         params: {
           site,
           year: downloadYear,
           month: downloadMonth,
-          date: downloadDay
+          date: downloadDay,
+          manager: educationManager,
+          approver: educationApprover,
+          managerSignature: managerSignature,
+          approverSignature: approverSignature,
+          teamDates: teamDatesParam // 팀별 날짜 데이터 추가
         },
         responseType: 'blob',
       });
@@ -642,7 +711,7 @@ export default function MonthlyReportPage() {
         variant: "destructive"
       });
     }
-  }, [site, downloadYear, downloadMonth, downloadDay, toast]);
+  }, [site, downloadYear, downloadMonth, downloadDay, educationManager, educationApprover, toast, useTeamSpecificDates, teamDateMap]);
 
   const handleApprovalRequest = useCallback(() => {
     console.log('[결재 요청] 버튼 클릭됨', { selectedTeam, date });
@@ -781,6 +850,14 @@ export default function MonthlyReportPage() {
                   <UserCheck className="h-4 w-4 mr-2" />
                   {approvalMutation.isPending ? '결재 요청 중...' : '결재 요청'}
                 </Button>
+                <Button
+                  onClick={() => setLocation('/approval-history')}
+                  variant="outline"
+                  size="sm"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  결재내역
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -886,10 +963,12 @@ export default function MonthlyReportPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className={`grid w-full max-w-md ${user?.role === 'ADMIN' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="attendance">출석 현황</TabsTrigger>
             <TabsTrigger value="statistics">통계</TabsTrigger>
-            <TabsTrigger value="comprehensive">종합 보고서</TabsTrigger>
+            {user?.role === 'ADMIN' && (
+              <TabsTrigger value="comprehensive">종합 보고서</TabsTrigger>
+            )}
           </TabsList>
 
           {/* Tab 1: Attendance Overview */}
@@ -994,11 +1073,27 @@ export default function MonthlyReportPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTeams.map(team => (
+                      {filteredTeams.map(team => {
+                        // 팀의 TBM 완료 여부 확인
+                        const hasIncomplete = Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).some(day => {
+                          const isWknd = isWeekend(date.year, date.month, day);
+                          const isFuture = isFutureDate(date.year, date.month, day);
+
+                          // 주말이나 미래 날짜는 제외
+                          if (isWknd || isFuture) return false;
+
+                          const statusData = team.dailyStatuses[day];
+                          const status = statusData?.status;
+
+                          // 미제출인 경우만 미완료로 간주
+                          return status === 'not-submitted';
+                        });
+
+                        return (
                         <TableRow key={team.teamId}>
                           <TableCell
                             className={`border border-slate-300 font-medium sticky left-0 z-10 cursor-pointer hover:bg-blue-50 transition-colors ${
-                              selectedTeam === team.teamId ? 'bg-blue-100' : 'bg-white'
+                              selectedTeam === team.teamId ? 'bg-blue-100' : hasIncomplete ? 'bg-red-100' : 'bg-white'
                             }`}
                             onClick={() => {
                               setSelectedTeam(team.teamId);
@@ -1083,7 +1178,8 @@ export default function MonthlyReportPage() {
                             );
                           })}
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   <div className="mt-4 flex gap-6 text-sm flex-wrap">
@@ -1385,7 +1481,7 @@ export default function MonthlyReportPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">총 일수</p>
                           <p className="text-xl font-semibold">{statistics.totalDays}일</p>
@@ -1397,10 +1493,6 @@ export default function MonthlyReportPage() {
                         <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">작성 완료</p>
                           <p className="text-xl font-semibold text-green-600">{statistics.totalSubmissions}건</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">출석률</p>
-                          <p className="text-xl font-semibold text-blue-600">{statistics.submissionRate}%</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t">
@@ -1573,7 +1665,8 @@ export default function MonthlyReportPage() {
             )}
           </TabsContent>
 
-          {/* Tab 3: Comprehensive Report */}
+          {/* Tab 3: Comprehensive Report - ADMIN Only */}
+          {user?.role === 'ADMIN' && (
           <TabsContent value="comprehensive" className="space-y-6">
             {/* Comprehensive Report Action Buttons */}
             <Card>
@@ -1587,7 +1680,7 @@ export default function MonthlyReportPage() {
                     id="comprehensive-excel-download"
                   >
                     <FileDown className="h-4 w-4 mr-2" />
-                    종합 엑셀 다운로드
+                    TBM 종합 보고서
                   </Button>
                   <Button
                     onClick={handleEducationExcelDownload}
@@ -1814,6 +1907,7 @@ export default function MonthlyReportPage() {
               </div>
             )}
           </TabsContent>
+          )}
         </Tabs>
 
         {/* Comprehensive Excel Download Date Picker Dialog */}
@@ -1876,67 +1970,162 @@ export default function MonthlyReportPage() {
 
         {/* Education Excel Download Date Picker Dialog */}
         <Dialog open={showEducationDatePicker} onOpenChange={setShowEducationDatePicker}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>안전교육 현황 다운로드</DialogTitle>
               <DialogDescription>
-                다운로드할 날짜를 선택해주세요.
+                다운로드할 날짜와 담당자 정보를 입력해주세요.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edu-download-year">년도</Label>
-                <Select
-                  value={downloadYear.toString()}
-                  onValueChange={(v) => setDownloadYear(parseInt(v))}
-                >
-                  <SelectTrigger id="edu-download-year">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                    {getInspectionYearRange().map(year => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}년
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edu-download-year">년도</Label>
+                  <Select
+                    value={downloadYear.toString()}
+                    onValueChange={(v) => setDownloadYear(parseInt(v))}
+                  >
+                    <SelectTrigger id="edu-download-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {getInspectionYearRange().map(year => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}년
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edu-download-month">월</Label>
+                  <Select
+                    value={downloadMonth.toString()}
+                    onValueChange={(v) => setDownloadMonth(parseInt(v))}
+                  >
+                    <SelectTrigger id="edu-download-month">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                        <SelectItem key={month} value={month.toString()}>
+                          {month}월
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edu-download-day">기본 날짜</Label>
+                  <Select
+                    value={downloadDay.toString()}
+                    onValueChange={(v) => {
+                      const newDay = parseInt(v);
+                      setDownloadDay(newDay);
+                      // 팀별 날짜가 비활성화된 경우 모든 팀의 날짜를 기본 날짜로 동기화
+                      if (!useTeamSpecificDates && teams) {
+                        const newMap: Record<number, number> = {};
+                        teams.forEach((team) => {
+                          newMap[team.id] = newDay;
+                        });
+                        setTeamDateMap(newMap);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="edu-download-day">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}일
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edu-download-month">월</Label>
-                <Select
-                  value={downloadMonth.toString()}
-                  onValueChange={(v) => setDownloadMonth(parseInt(v))}
-                >
-                  <SelectTrigger id="edu-download-month">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {month}월
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edu-manager">담당자</Label>
+                  <Input
+                    id="edu-manager"
+                    placeholder="담당자 이름 입력"
+                    value={educationManager}
+                    onChange={(e) => setEducationManager(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edu-approver">승인자</Label>
+                  <Input
+                    id="edu-approver"
+                    placeholder="승인자 이름 입력"
+                    value={educationApprover}
+                    onChange={(e) => setEducationApprover(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edu-download-day">일</Label>
-                <Select
-                  value={downloadDay.toString()}
-                  onValueChange={(v) => setDownloadDay(parseInt(v))}
-                >
-                  <SelectTrigger id="edu-download-day">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                    {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
-                      <SelectItem key={day} value={day.toString()}>
-                        {day}일
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              {/* 팀별 날짜 선택 옵션 */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="use-team-dates"
+                    checked={useTeamSpecificDates}
+                    onCheckedChange={(checked) => {
+                      setUseTeamSpecificDates(!!checked);
+                      // 비활성화 시 모든 팀의 날짜를 기본 날짜로 리셋
+                      if (!checked && teams) {
+                        const newMap: Record<number, number> = {};
+                        teams.forEach((team) => {
+                          newMap[team.id] = downloadDay;
+                        });
+                        setTeamDateMap(newMap);
+                      }
+                    }}
+                  />
+                  <Label htmlFor="use-team-dates" className="text-sm cursor-pointer font-medium">
+                    팀별로 다른 날짜 사용
+                  </Label>
+                </div>
+
+                {useTeamSpecificDates && teams && teams.length > 0 && (
+                  <div className="space-y-2 max-h-[250px] overflow-y-auto border rounded-md p-3 bg-gray-50">
+                    <div className="text-xs text-muted-foreground mb-2">
+                      각 팀의 교육 날짜를 개별적으로 설정합니다.
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {teams.map((team) => (
+                        <div key={team.id} className="flex items-center gap-2 bg-white p-2 rounded border">
+                          <span className="text-sm flex-1 truncate" title={stripSiteSuffix(team.name)}>
+                            {stripSiteSuffix(team.name)}
+                          </span>
+                          <Select
+                            value={(teamDateMap[team.id] || downloadDay).toString()}
+                            onValueChange={(v) => {
+                              setTeamDateMap(prev => ({
+                                ...prev,
+                                [team.id]: parseInt(v)
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="w-[80px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[200px] overflow-y-auto scrollbar-visible">
+                              {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
+                                <SelectItem key={day} value={day.toString()}>
+                                  {day}일
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -1944,11 +2133,20 @@ export default function MonthlyReportPage() {
                 <Button variant="outline">취소</Button>
               </DialogClose>
               <Button onClick={handleEducationExcelDownloadConfirm}>
-                다운로드
+                다음 (서명)
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Education Dual Signature Dialog (담당 + 승인) */}
+        <DualSignatureDialog
+          isOpen={showEducationSignature}
+          onClose={() => setShowEducationSignature(false)}
+          onSave={handleEducationSignatureSave}
+          managerName={educationManager || '담당자'}
+          approverName={educationApprover || '승인자'}
+        />
       </main>
     </div>
   );

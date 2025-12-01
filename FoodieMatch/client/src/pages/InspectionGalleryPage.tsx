@@ -6,11 +6,12 @@ import { Header } from "@/components/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+// Dialog는 ImageViewer에서 사용
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { Camera, CheckCircle2, XCircle, Calendar, Building2, Users, X, PenSquare } from "lucide-react";
+import { Camera, CheckCircle2, XCircle, Calendar, Building2, Users, PenSquare, X } from "lucide-react";
+import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import { Site, SITES } from "@/lib/constants";
 import { getInspectionYearRange, cn } from "@/lib/utils";
 import { useSite } from "@/hooks/use-site";
@@ -52,6 +53,7 @@ interface Inspection {
 interface PhotoInfo {
   url: string;
   uploadedAt: string;
+  rotation?: number; // 0, 90, 180, 270
 }
 
 interface Factory {
@@ -89,7 +91,11 @@ export default function InspectionGalleryPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
+  // 이미지 뷰어 상태
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   const [, setLocation] = useLocation();
   const teamCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -179,30 +185,31 @@ export default function InspectionGalleryPage() {
 
   const displayedInspections = filteredInspections || [];
 
+  // 이미지 뷰어 열기
+  const openImageViewer = (photos: PhotoInfo[], clickedIndex: number) => {
+    const images: ImageInfo[] = photos.map(p => ({
+      url: p.url,
+      uploadedAt: p.uploadedAt,
+      rotation: p.rotation || 0
+    }));
+    setViewerImages(images);
+    setViewerInitialIndex(clickedIndex);
+    setViewerOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto p-4 lg:p-6">
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Camera className="w-6 h-6" />
-                  안전점검 사진 갤러리
-                </CardTitle>
-                <CardDescription>
-                  월별 안전점검 사진을 확인하고 관리합니다
-                </CardDescription>
-              </div>
-              <Button
-                onClick={() => setLocation('/safety-inspection')}
-                className="flex items-center gap-2"
-              >
-                <PenSquare className="w-4 h-4" />
-                작성하기
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
+              안전점검 사진 갤러리
+            </CardTitle>
+            <CardDescription>
+              월별 안전점검 사진을 확인하고 관리합니다
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Filters */}
@@ -261,6 +268,14 @@ export default function InspectionGalleryPage() {
                 </Select>
               </div>
 
+              <Button
+                onClick={() => setLocation('/safety-inspection')}
+                variant="outline"
+                className="h-10 ml-auto flex items-center gap-2"
+              >
+                <PenSquare className="w-4 h-4" />
+                작성하기
+              </Button>
             </div>
 
             {/* 종합 현황표 */}
@@ -274,9 +289,9 @@ export default function InspectionGalleryPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-32 sticky left-0 bg-white z-10 font-semibold">팀명</TableHead>
+                          <TableHead className="w-32 sticky left-0 bg-white z-10 font-bold text-black">팀명</TableHead>
                           {overviewData.equipmentTypes.map((equipment) => (
-                            <TableHead key={equipment} className="text-center min-w-24 font-semibold">
+                            <TableHead key={equipment} className="text-center min-w-24 font-bold text-black">
                               {equipment.replace(' 점검', '')}
                             </TableHead>
                           ))}
@@ -314,25 +329,15 @@ export default function InspectionGalleryPage() {
                               const isCompleted = status.uploadedPhotoCount >= status.requiredPhotoCount;
                               const isPartial = status.uploadedPhotoCount > 0 && status.uploadedPhotoCount < status.requiredPhotoCount;
 
-                              let bgColor, textColor, hoverColor;
-                              if (isCompleted) {
-                                bgColor = 'bg-green-100';
-                                textColor = 'text-green-700';
-                                hoverColor = 'hover:bg-green-200';
-                              } else if (isPartial) {
-                                bgColor = 'bg-yellow-100';
-                                textColor = 'text-yellow-700';
-                                hoverColor = 'hover:bg-yellow-200';
-                              } else {
-                                bgColor = 'bg-red-100';
-                                textColor = 'text-red-700';
-                                hoverColor = 'hover:bg-red-200';
-                              }
-
                               return (
                                 <TableCell
                                   key={equipment}
-                                  className={`text-center font-medium cursor-pointer transition-colors ${bgColor} ${textColor} ${hoverColor}`}
+                                  className={cn(
+                                    "text-center font-medium cursor-pointer transition-colors",
+                                    isCompleted && "bg-green-100 text-green-700 hover:bg-green-200",
+                                    isPartial && "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
+                                    !isCompleted && !isPartial && "bg-red-100 text-red-700 hover:bg-red-200"
+                                  )}
                                   onClick={() => {
                                     setSelectedTeamId(team.teamId);
                                     setTimeout(() => {
@@ -345,7 +350,7 @@ export default function InspectionGalleryPage() {
                                     }, 100);
                                   }}
                                 >
-                                  {(status.uploadedPhotoCount ?? 0)}/{(status.requiredPhotoCount ?? 0)}
+                                  {status.requiredPhotoCount ?? 0}
                                 </TableCell>
                               );
                             })}
@@ -525,12 +530,15 @@ export default function InspectionGalleryPage() {
                                     <div
                                       key={idx}
                                       className="relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer group"
-                                      onClick={() => setEnlargedImage(photo.url)}
+                                      onClick={() => openImageViewer(photos, idx)}
                                     >
                                       <img
                                         src={photo.url}
                                         alt={`${item.equipmentName} - ${idx + 1}`}
                                         className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                        style={{
+                                          transform: `rotate(${photo.rotation || 0}deg)`,
+                                        }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                                         <Camera className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -557,28 +565,14 @@ export default function InspectionGalleryPage() {
         </Card>
       </main>
 
-      {/* Image Viewer Dialog */}
-      <Dialog open={!!enlargedImage} onOpenChange={(open) => !open && setEnlargedImage(null)}>
-        <DialogContent className="max-w-4xl w-full p-0">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
-              onClick={() => setEnlargedImage(null)}
-            >
-              <X className="h-6 w-6" />
-            </Button>
-            {enlargedImage && (
-              <img
-                src={enlargedImage}
-                alt="확대된 이미지"
-                className="w-full h-auto max-h-[80vh] object-contain"
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Image Viewer */}
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerInitialIndex}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        readOnly={true}
+      />
     </div>
   );
 }

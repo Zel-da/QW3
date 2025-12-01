@@ -30,7 +30,7 @@ export default function LoginPage() {
 
     // 검증: 빈 필드 체크
     if (!formData.username.trim() || !formData.password.trim()) {
-      setError('사용자명과 비밀번호를 모두 입력해주세요.');
+      setError('사용자 ID와 비밀번호를 모두 입력해주세요.');
       return;
     }
 
@@ -70,17 +70,17 @@ export default function LoginPage() {
       <Header />
       <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center min-h-[80vh]">
         <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">로그인</CardTitle>
+          <CardHeader className="p-6">
+            <CardTitle className="text-xl sm:text-2xl text-center">로그인</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">사용자명</Label>
-                <Input id="username" name="username" type="text" required onChange={handleChange} />
+                <Label htmlFor="username" className="text-sm font-medium">사용자 ID</Label>
+                <Input id="username" name="username" type="text" required onChange={handleChange} className="h-11" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">비밀번호</Label>
+                <Label htmlFor="password" className="text-sm font-medium">비밀번호</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -88,19 +88,19 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     required
                     onChange={handleChange}
-                    className="pr-10"
+                    className="pr-10 h-11"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? '로그인 중...' : '로그인'}
               </Button>

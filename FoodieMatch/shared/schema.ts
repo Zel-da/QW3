@@ -3,9 +3,9 @@ import { z } from 'zod';
 // Enum for User Roles, matching prisma/schema.prisma
 export enum Role {
   ADMIN = 'ADMIN',
-  TEAM_LEADER = 'TEAM_LEADER',
-  SITE_MANAGER = 'SITE_MANAGER',      // 현장관리자 (구 WORKER)
-  APPROVER = 'APPROVER',              // 임원/결재자 (구 OFFICE_WORKER)
+  TEAM_LEADER = 'TEAM_LEADER',        // 라인/팀 관리자
+  APPROVER = 'APPROVER',              // 임원/결재자
+  PENDING = 'PENDING',                // 가입 대기 (홈, 공지사항만 접근 가능)
 }
 
 export interface User {

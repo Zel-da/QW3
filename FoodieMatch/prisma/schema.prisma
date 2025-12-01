@@ -13,7 +13,7 @@ model User {
   name                   String?
   email                  String?           @unique
   password               String?
-  role                   String            @default("SITE_MANAGER")
+  role                   String            @default("PENDING")
   site                   String?
   teamId                 Int?
   createdAt              DateTime          @default(now())
@@ -406,6 +406,7 @@ model Attachment {
   type           String        @default("file") // 'image' | 'file' | 'video' | 'youtube' | 'audio'
   size           Int           @default(0)
   mimeType       String        @default("application/octet-stream")
+  rotation       Int           @default(0) // 이미지 회전 각도 (0, 90, 180, 270)
   createdAt      DateTime      @default(now())
   noticeId       String?
   notice         Notice?       @relation(fields: [noticeId], references: [id], onDelete: Cascade)
@@ -515,92 +516,65 @@ model InspectionItem {
   @@map("InspectionItems")
 }
 
-// ========== 이메일 템플릿 및 스케줄 시스템 ==========
+// ========== 단순화된 이메일 시스템 ==========
 
-// 이메일 템플릿
-model EmailTemplate {
-  id          String          @id @default(uuid())
-  name        String          // 템플릿 이름
-  type        String          // EDUCATION_REMINDER, TBM_REMINDER, SAFETY_INSPECTION_REMINDER, etc.
-  subject     String          // 이메일 제목 (변수 포함 가능)
-  htmlContent String          @db.Text // HTML 본문 (변수 포함 가능: {{variableName}})
-  variables   String          @db.Text // JSON 배열: 사용 가능한 변수 목록
-  description String?         // 템플릿 설명
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  schedules   EmailSchedule[]
-  conditions  EmailCondition[]
+// 간소화된 이메일 설정 (5가지 주요 이메일만 관리)
+model SimpleEmailConfig {
+  id            String   @id @default(uuid())
+  emailType     String   @unique // "EXEC_SIGNATURE_REQUEST", "EXEC_SIGNATURE_COMPLETE", "TBM_REMINDER", "EDUCATION_REMINDER", "INSPECTION_REMINDER"
+  subject       String   // 이메일 제목
+  content       String   @db.Text // HTML 내용 (직접 수정 가능)
+  enabled       Boolean  @default(true)
 
-  @@index([type])
-  @@index([isActive])
-  @@map("EmailTemplates")
+  // 발송 시점 설정
+  sendTiming    String   // "IMMEDIATE", "AFTER_N_DAYS", "SCHEDULED_TIME", "MONTHLY_DAY"
+  daysAfter     Int?     // N일 후 (sendTiming="AFTER_N_DAYS"일 때)
+  scheduledTime String?  // 특정 시간 "HH:MM" (sendTiming="SCHEDULED_TIME"일 때)
+  monthlyDay    Int?     // 월별 특정일 1-31 (sendTiming="MONTHLY_DAY"일 때)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([emailType])
+  @@index([enabled])
+  @@map("SimpleEmailConfigs")
 }
 
-// 이메일 스케줄 (cron 기반 자동 발송)
-model EmailSchedule {
-  id           String        @id @default(uuid())
-  name         String        // 스케줄 이름
-  templateId   String        // 사용할 템플릿
-  cronExpression String      // cron 표현식 (예: "0 7 * * *")
-  description  String?       // 스케줄 설명
-  isEnabled    Boolean       @default(true)
-  lastRun      DateTime?     // 마지막 실행 시간
-  nextRun      DateTime?     // 다음 실행 시간
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  template     EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  sendLogs     EmailSendLog[]
-
-  @@index([templateId])
-  @@index([isEnabled])
-  @@index([nextRun])
-  @@map("EmailSchedules")
-}
-
-// 이메일 조건 정의 (상태 기반 자동 발송)
-model EmailCondition {
-  id              String   @id @default(uuid())
-  name            String   // "TBM 3일 미작성 알림"
-  conditionType   String   // "TBM_NOT_SUBMITTED_DAYS", "MONTHLY_REPORT_COMPLETED", etc.
-  parameters      String   @db.Text // JSON: {"days": 3, "targetRole": "TEAM_LEADER"}
-  templateId      String   // 어떤 이메일 템플릿을 사용할지
-  recipientType   String   // "TEAM_LEADER", "EXECUTIVE", "SPECIFIC_USER", "AFFECTED_USER", "CUSTOM"
-  recipientConfig String?  @db.Text // JSON: 커스텀 수신자 로직 (예: 특정 사용자 ID 목록)
-  isEnabled       Boolean  @default(true)
-  description     String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  template        EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  sendLogs        EmailSendLog[]
-
-  @@index([conditionType])
-  @@index([isEnabled])
-  @@index([templateId])
-  @@map("EmailConditions")
-}
-
-// 이메일 발송 이력 (중복 발송 방지 및 추적)
-model EmailSendLog {
+// 이메일 발송 이력 (추적 및 통계)
+model EmailLog {
   id             String   @id @default(uuid())
-  conditionId    String?  // EmailCondition에서 발송된 경우
-  scheduleId     String?  // EmailSchedule에서 발송된 경우
-  templateType   String   // 템플릿 타입
+  emailType      String   // 이메일 타입
   recipientId    String   // 수신자 User ID
   recipientEmail String   // 수신자 이메일
+  subject        String   // 발송된 이메일 제목
   sentAt         DateTime @default(now())
   status         String   @default("sent") // "sent", "failed", "bounced"
   errorMessage   String?  @db.Text
-  condition      EmailCondition? @relation(fields: [conditionId], references: [id], onDelete: SetNull)
-  schedule       EmailSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  @@index([conditionId])
-  @@index([scheduleId])
+  @@index([emailType])
   @@index([recipientId])
   @@index([recipientEmail])
   @@index([sentAt])
   @@index([status])
-  @@map("EmailSendLogs")
+  @@map("EmailLogs")
+}
+
+// ========== 공휴일 관리 ==========
+
+// 공휴일 모델 (TBM 작성 필요 여부 판단에 사용)
+model Holiday {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date // 공휴일 날짜
+  name        String   // 공휴일 이름 (예: 설날, 추석, 어린이날 등)
+  isRecurring Boolean  @default(false) // 매년 반복 여부 (양력 기준)
+  site        String?  // 사이트별 적용 (null이면 전체 적용)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, site])
+  @@index([date])
+  @@index([site])
+  @@map("Holidays")
 }
 
 // ========== 세션 스토어 ==========

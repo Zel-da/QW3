@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Header } from '@/components/header';
+import { AdminPageLayout, PageHeader } from '@/components/admin';
 import { useAuth } from '@/context/AuthContext';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Users as UsersIcon, BookOpen, TrendingUp, AlertCircle, Eye, ArrowLeft } from 'lucide-react';
+import { Search, Users as UsersIcon, BookOpen, TrendingUp, AlertCircle, Eye, GraduationCap } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team, Course, UserProgress, UserAssessment } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -57,6 +56,7 @@ export default function EducationMonitoringPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in-progress' | 'not-started'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 10;
 
   // Query education overview data
@@ -197,6 +197,74 @@ export default function EducationMonitoringPage() {
     return uniqueTeams.sort();
   }, [data]);
 
+  // 선택된 교육의 사용자별 수강 현황
+  const selectedCourseUserStatus = React.useMemo(() => {
+    if (!data || !selectedCourseId) return null;
+
+    const course = data.courses.find(c => c.id === selectedCourseId);
+    if (!course) return null;
+
+    const usersWithStatus = data.users.map(user => {
+      const progress = data.allProgress.find(p => p.userId === user.id && p.courseId === selectedCourseId);
+      const assessment = data.allAssessments.find(a => a.userId === user.id && a.courseId === selectedCourseId);
+
+      let status: 'completed' | 'in-progress' | 'not-started' = 'not-started';
+      let progressPercent = 0;
+
+      if (progress) {
+        progressPercent = progress.progress;
+        if (progress.completed) {
+          status = 'completed';
+        } else if (progress.progress > 0) {
+          status = 'in-progress';
+        }
+      }
+
+      return {
+        userId: user.id,
+        userName: user.name || user.username,
+        teamName: user.team?.name || '-',
+        site: user.site,
+        status,
+        progress: progressPercent,
+        assessmentPassed: assessment?.passed || false,
+        assessmentScore: assessment?.score,
+        lastAccessed: progress?.lastAccessed ? new Date(progress.lastAccessed) : null,
+      };
+    });
+
+    // 현장 필터 적용
+    let filtered = usersWithStatus;
+    if (selectedSite !== '전체') {
+      filtered = filtered.filter(u => u.site === selectedSite);
+    }
+
+    // 팀 필터 적용
+    if (selectedTeam !== 'all') {
+      filtered = filtered.filter(u => u.teamName === selectedTeam);
+    }
+
+    // 검색 필터 적용
+    if (searchTerm) {
+      filtered = filtered.filter(u =>
+        u.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.teamName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    const completed = filtered.filter(u => u.status === 'completed');
+    const inProgress = filtered.filter(u => u.status === 'in-progress');
+    const notStarted = filtered.filter(u => u.status === 'not-started');
+
+    return {
+      course,
+      completed,
+      inProgress,
+      notStarted,
+      total: filtered.length,
+    };
+  }, [data, selectedCourseId, selectedSite, selectedTeam, searchTerm]);
+
   // Filter user statistics
   const filteredUserStats = React.useMemo(() => {
     let filtered = [...userStatistics];
@@ -255,49 +323,42 @@ export default function EducationMonitoringPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div>
-        <Header />
-        <main className="container mx-auto p-4 lg:p-8">
-          <LoadingSpinner size="lg" text="교육 현황을 불러오는 중..." className="py-16" />
-        </main>
-      </div>
+      <AdminPageLayout>
+        <PageHeader
+          title="교육 현황 모니터링"
+          description="전체 사용자의 안전교육 진행 상황을 확인하고 관리합니다."
+          icon={<GraduationCap className="h-6 w-6" />}
+          backUrl="/admin-dashboard"
+          backText="대시보드"
+        />
+        <LoadingSpinner size="lg" text="교육 현황을 불러오는 중..." className="py-16" />
+      </AdminPageLayout>
     );
   }
 
   if (!currentUser || currentUser.role !== 'ADMIN') {
     return (
-      <div>
-        <Header />
-        <main className="container mx-auto p-4 lg:p-8">
-          <EmptyState
-            icon={AlertCircle}
-            title="접근 권한이 없습니다"
-            description="이 페이지는 관리자만 접근할 수 있습니다."
-          />
-        </main>
-      </div>
+      <AdminPageLayout>
+        <EmptyState
+          icon={AlertCircle}
+          title="접근 권한이 없습니다"
+          description="이 페이지는 관리자만 접근할 수 있습니다."
+        />
+      </AdminPageLayout>
     );
   }
 
   return (
-    <div>
-      <Header />
-      <main className="container mx-auto p-4 lg:p-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold">교육 현황 모니터링</h1>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/dashboard">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                돌아가기
-              </Link>
-            </Button>
-          </div>
-          <p className="text-muted-foreground">전체 사용자의 안전교육 진행 상황을 확인하고 관리합니다.</p>
-        </div>
+    <AdminPageLayout>
+      <PageHeader
+        title="교육 현황 모니터링"
+        description="전체 사용자의 안전교육 진행 상황을 확인하고 관리합니다."
+        icon={<GraduationCap className="h-6 w-6" />}
+        backUrl="/admin-dashboard"
+        backText="대시보드"
+      />
 
-        {/* Overall Statistics Cards */}
+      {/* Overall Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
@@ -349,7 +410,7 @@ export default function EducationMonitoringPage() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>과정별 수강 현황</CardTitle>
-            <CardDescription>각 교육 과정의 전체 진행 상황입니다.</CardDescription>
+            <CardDescription>교육을 클릭하면 해당 교육의 수강자 목록을 확인할 수 있습니다.</CardDescription>
           </CardHeader>
           <CardContent>
             {courseStatistics.length === 0 ? (
@@ -372,8 +433,15 @@ export default function EducationMonitoringPage() {
                 </TableHeader>
                 <TableBody>
                   {courseStatistics.map((stat) => (
-                    <TableRow key={stat.courseId}>
-                      <TableCell className="font-medium">{stat.courseTitle}</TableCell>
+                    <TableRow
+                      key={stat.courseId}
+                      className={`cursor-pointer transition-colors hover:bg-muted/50 ${selectedCourseId === stat.courseId ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                      onClick={() => setSelectedCourseId(selectedCourseId === stat.courseId ? null : stat.courseId)}
+                    >
+                      <TableCell className="font-medium">
+                        {stat.courseTitle}
+                        {selectedCourseId === stat.courseId && <span className="ml-2 text-blue-600 text-xs">(선택됨)</span>}
+                      </TableCell>
                       <TableCell className="text-center">{stat.completedUsers} / {stat.totalUsers}</TableCell>
                       <TableCell className="text-center">{stat.inProgressUsers}</TableCell>
                       <TableCell className="text-center">{stat.notStartedUsers}</TableCell>
@@ -390,6 +458,130 @@ export default function EducationMonitoringPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* 선택된 교육의 수강자 목록 */}
+        {selectedCourseUserStatus && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    {selectedCourseUserStatus.course.title} - 수강자 현황
+                  </CardTitle>
+                  <CardDescription>
+                    총 {selectedCourseUserStatus.total}명 중 완료 {selectedCourseUserStatus.completed.length}명, 진행중 {selectedCourseUserStatus.inProgress.length}명, 미시작 {selectedCourseUserStatus.notStarted.length}명
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setSelectedCourseId(null)}>
+                  닫기
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* 필터 */}
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="이름 또는 팀으로 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {currentUser?.role === 'ADMIN' && (
+                  <SiteSelector />
+                )}
+                {teams.length > 0 && (
+                  <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="팀 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">전체 팀</SelectItem>
+                      {teams.map(team => (
+                        <SelectItem key={team} value={team!}>{team}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* 완료 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Badge className="bg-green-500">완료</Badge>
+                    <span className="text-sm text-muted-foreground">({selectedCourseUserStatus.completed.length}명)</span>
+                  </h4>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {selectedCourseUserStatus.completed.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">완료한 사용자가 없습니다.</p>
+                    ) : (
+                      selectedCourseUserStatus.completed.map(user => (
+                        <div key={user.userId} className="flex justify-between items-center p-2 bg-green-50 rounded text-sm">
+                          <div>
+                            <span className="font-medium">{user.userName}</span>
+                            <span className="text-muted-foreground ml-2">({user.teamName})</span>
+                          </div>
+                          {user.assessmentPassed && (
+                            <Badge variant="outline" className="text-xs">평가통과</Badge>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* 진행중 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Badge className="bg-blue-500">진행중</Badge>
+                    <span className="text-sm text-muted-foreground">({selectedCourseUserStatus.inProgress.length}명)</span>
+                  </h4>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {selectedCourseUserStatus.inProgress.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">진행중인 사용자가 없습니다.</p>
+                    ) : (
+                      selectedCourseUserStatus.inProgress.map(user => (
+                        <div key={user.userId} className="flex justify-between items-center p-2 bg-blue-50 rounded text-sm">
+                          <div>
+                            <span className="font-medium">{user.userName}</span>
+                            <span className="text-muted-foreground ml-2">({user.teamName})</span>
+                          </div>
+                          <span className="text-xs text-blue-600">{user.progress}%</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* 미시작 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Badge variant="outline">미시작</Badge>
+                    <span className="text-sm text-muted-foreground">({selectedCourseUserStatus.notStarted.length}명)</span>
+                  </h4>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {selectedCourseUserStatus.notStarted.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">미시작 사용자가 없습니다.</p>
+                    ) : (
+                      selectedCourseUserStatus.notStarted.map(user => (
+                        <div key={user.userId} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                          <div>
+                            <span className="font-medium">{user.userName}</span>
+                            <span className="text-muted-foreground ml-2">({user.teamName})</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Team Statistics (라인별 수강 현황) */}
         <Card className="mb-8">
@@ -454,135 +646,6 @@ export default function EducationMonitoringPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* User Statistics with Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>사용자별 학습 현황</CardTitle>
-            <CardDescription>개별 사용자의 교육 진행 상황을 확인합니다.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Filters */}
-            <div className="mb-6 flex flex-wrap items-center gap-4">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="이름 또는 팀으로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {currentUser.role === 'ADMIN' && (
-                <SiteSelector />
-              )}
-              {teams.length > 0 && (
-                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="팀 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">전체 팀</SelectItem>
-                    {teams.map(team => (
-                      <SelectItem key={team} value={team!}>{team}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="상태 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체 상태</SelectItem>
-                  <SelectItem value="completed">완료</SelectItem>
-                  <SelectItem value="in-progress">진행중</SelectItem>
-                  <SelectItem value="not-started">미시작</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* User Table */}
-            {filteredUserStats.length === 0 ? (
-              <EmptyState
-                icon={UsersIcon}
-                title="사용자가 없습니다"
-                description={searchTerm || selectedSite !== '전체' || selectedTeam !== 'all' || statusFilter !== 'all'
-                  ? "검색 조건에 맞는 사용자가 없습니다."
-                  : "등록된 사용자가 없습니다."}
-              />
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>이름</TableHead>
-                      <TableHead>팀</TableHead>
-                      <TableHead className="text-center">완료</TableHead>
-                      <TableHead className="text-center">진행중</TableHead>
-                      <TableHead className="text-center">미시작</TableHead>
-                      <TableHead className="text-center">평균 진행률</TableHead>
-                      <TableHead className="text-center">상태</TableHead>
-                      <TableHead className="text-center">최근 활동</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedUserStats.map((stat) => (
-                      <TableRow key={stat.userId}>
-                        <TableCell className="font-medium">{stat.userName}</TableCell>
-                        <TableCell>{stat.teamName || '-'}</TableCell>
-                        <TableCell className="text-center">{stat.completedCourses} / {stat.totalCourses}</TableCell>
-                        <TableCell className="text-center">{stat.inProgressCourses}</TableCell>
-                        <TableCell className="text-center">{stat.notStartedCourses}</TableCell>
-                        <TableCell className="text-center">{stat.avgProgress}%</TableCell>
-                        <TableCell className="text-center">{getStatusBadge(stat)}</TableCell>
-                        <TableCell className="text-center text-sm text-muted-foreground">
-                          {stat.lastActivity
-                            ? new Date(stat.lastActivity).toLocaleDateString('ko-KR')
-                            : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center mt-6">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(page)}
-                              isActive={currentPage === page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+    </AdminPageLayout>
   );
 }

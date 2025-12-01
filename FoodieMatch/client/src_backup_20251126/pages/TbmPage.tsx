@@ -1,0 +1,178 @@
+import { useState, useEffect, useCallback } from 'react';
+import { format } from "date-fns";
+import axios from 'axios';
+import { Header } from "@/components/header";
+import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "../components/ui/button";
+import { Calendar as CalendarIcon, Settings } from "lucide-react"
+import { Link, useLocation } from "wouter";
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { ko } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import ReportListView from '../features/tbm/ReportListView.jsx';
+import ReportDetailView from '../features/tbm/ReportDetailView.jsx';
+import { useSite, Site } from "@/hooks/use-site";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/context/AuthContext";
+import { stripSiteSuffix } from '@/lib/utils';
+import { SITES } from '@/lib/constants';
+import { useToast } from "@/hooks/use-toast";
+
+export default function TbmPage() {
+  const [view, setView] = useState('checklist');
+  const [reportForEdit, setReportForEdit] = useState<any | null>(null);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const { site, setSite } = useSite();
+  const { user } = useAuth();
+  const [location] = useLocation();
+  const { toast } = useToast();
+  const [isLoadingModify, setIsLoadingModify] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role !== 'ADMIN' && user.site) {
+        setSite(user.site as Site);
+      } else if (user.role === 'ADMIN' && !site) {
+        // ADMIN 사용자는 기본값 '아산'으로 설정
+        setSite('아산');
+      }
+    }
+  }, [user, setSite, site]);
+
+  // URL 파라미터에서 reportId를 읽어서 자동으로 해당 리포트 로드
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get('reportId');
+
+    if (reportId) {
+      axios.get(`/api/tbm/${reportId}`).then(res => {
+        const report = res.data;
+        setReportForEdit(report);
+        setDate(new Date(report.reportDate));
+        setView('checklist');
+        // URL에서 reportId 파라미터 제거
+        window.history.replaceState({}, '', '/tbm');
+      }).catch(err => {
+        console.error("Failed to load report from URL:", err);
+        toast({
+          title: "리포트 로드 실패",
+          description: err.response?.data?.message || "리포트를 불러오는 중 오류가 발생했습니다.",
+          variant: "destructive"
+        });
+      });
+    }
+  }, [toast]);
+
+  const handleSelectReport = useCallback((reportId: number) => {
+    setReportForEdit({ id: reportId }); 
+    setView('detail');
+  }, []);
+
+  const handleModifyReport = useCallback((reportId: number) => {
+    setIsLoadingModify(true);
+    axios.get(`/api/tbm/${reportId}`).then(res => {
+      const report = res.data;
+      setReportForEdit(report);
+      setDate(new Date(report.reportDate));
+      setView('checklist');
+    }).catch(err => {
+      console.error("Failed to fetch report for editing:", err);
+      toast({
+        title: "수정 불러오기 실패",
+        description: err.response?.data?.message || "리포트를 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+    }).finally(() => {
+      setIsLoadingModify(false);
+    });
+  }, [toast]);
+
+  const handleBackToList = useCallback(() => {
+    setReportForEdit(null);
+    setView('list');
+  }, []);
+
+  const handleFinishEditing = useCallback(() => {
+    setReportForEdit(null);
+    setView('list');
+  }, []);
+
+  const renderView = () => {
+    if (!site) return <p>현장 정보를 불러오는 중...</p>;
+
+    switch (view) {
+      case 'list':
+        return <ReportListView onSelectReport={handleSelectReport} onBack={() => setView('checklist')} site={site} />;
+      case 'detail':
+        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} isLoadingModify={isLoadingModify} />;
+      case 'checklist':
+      default:
+        return <TBMChecklist reportForEdit={reportForEdit} onFinishEditing={handleFinishEditing} date={date} site={site} />;
+    }
+  };
+
+  return (
+    <div>
+      <Header />
+      <main className="container mx-auto p-4 lg:p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl sm:text-2xl">TBM 일지</CardTitle>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mt-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-[240px] h-11 justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: ko }) : <span>날짜 선택</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    locale={ko}
+                    initialFocus
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                  />
+                </PopoverContent>
+              </Popover>
+              {user?.role === 'ADMIN' && (
+                <Select onValueChange={(value: Site) => setSite(value)} value={site}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-11">
+                    <SelectValue placeholder="현장 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SITES.map(site => (
+                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {view === 'checklist' && (
+                <Button variant="outline" className="h-11 w-full sm:w-auto sm:ml-auto" onClick={() => { setReportForEdit(null); setView('list'); }}>
+                  내역 보기
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {renderView()}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

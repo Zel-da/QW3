@@ -46,7 +46,7 @@ export function NoticeListSkeleton() {
  */
 export function NoticeDetailSkeleton() {
   return (
-    <Card className="max-w-4xl mx-auto">
+    <Card>
       <CardHeader className="space-y-4">
         <Skeleton className="h-12 w-3/4" />
         <div className="flex gap-4">

@@ -7,12 +7,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useUndoToast } from "@/hooks/useUndoToast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileDropzone } from "@/components/FileDropzone";
 import { NoticeDetailSkeleton } from "@/components/skeletons/NoticeListSkeleton";
@@ -81,6 +81,11 @@ export default function NoticeDetailPage() {
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
 
+  // 이미지 뷰어 상태
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+
   // 댓글 작성 자동 임시저장
   const autoSaveKey = `comment_draft_${noticeId}`;
   const { clearSaved } = useAutoSave({
@@ -93,9 +98,6 @@ export default function NoticeDetailPage() {
     },
   });
 
-  // Undo 토스트 기능
-  const { showUndoToast } = useUndoToast();
-
   const { data: notice, isLoading, error } = useQuery<Notice>({
     queryKey: ['notice', noticeId],
     queryFn: () => fetchNotice(noticeId!),
@@ -107,6 +109,27 @@ export default function NoticeDetailPage() {
     queryFn: () => fetchComments(noticeId!),
     enabled: !!noticeId,
   });
+
+  // 이미지 뷰어 열기
+  const openImageViewer = (images: ImageInfo[], initialIndex: number) => {
+    setViewerImages(images);
+    setViewerInitialIndex(initialIndex);
+    setViewerOpen(true);
+  };
+
+  // 공지사항 이미지 목록 가져오기
+  const getNoticeImages = (): ImageInfo[] => {
+    const images: ImageInfo[] = [];
+    if (notice?.imageUrl) {
+      images.push({ url: notice.imageUrl, rotation: 0 });
+    }
+    if ((notice as any)?.attachments) {
+      (notice as any).attachments
+        .filter((a: any) => a.type === 'image')
+        .forEach((a: any) => images.push({ url: a.url, rotation: a.rotation || 0 }));
+    }
+    return images;
+  };
 
   const commentMutation = useMutation({
     mutationFn: postComment,
@@ -253,35 +276,18 @@ export default function NoticeDetailPage() {
   const handleDelete = async () => {
     if (!noticeId) return;
 
-    let isUndone = false;
-    let deletionTimerId: NodeJS.Timeout;
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
-    // Undo 토스트 표시
-    showUndoToast({
-      message: '공지사항을 삭제합니다...',
-      onUndo: () => {
-        isUndone = true;
-        clearTimeout(deletionTimerId);
-        toast({ title: '취소됨', description: '삭제가 취소되었습니다.' });
-      },
-      duration: 5000,
-    });
+    try {
+      const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('삭제에 실패했습니다.');
 
-    // 5초 후 실제 삭제
-    deletionTimerId = setTimeout(async () => {
-      if (isUndone) return;
-
-      try {
-        const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('삭제에 실패했습니다.');
-
-        toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
-        await queryClient.invalidateQueries({ queryKey: ['notices'] });
-        window.location.href = '/';
-      } catch (err) {
-        toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
-      }
-    }, 5000);
+      toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
+      await queryClient.invalidateQueries({ queryKey: ['notices'] });
+      window.location.href = '/notices';
+    } catch (err) {
+      toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
+    }
   };
 
   return (
@@ -319,20 +325,32 @@ export default function NoticeDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0">
-              {notice.imageUrl && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <img
-                      src={notice.imageUrl}
-                      alt={sanitizeText(notice.title)}
-                      className="w-full h-auto object-cover rounded-md mb-8 border cursor-pointer hover:opacity-90 transition-opacity"
-                    />
-                  </DialogTrigger>
-                  <DialogContent className="max-w-7xl w-full">
-                    <img src={notice.imageUrl} alt={sanitizeText(notice.title)} className="w-full h-auto" />
-                  </DialogContent>
-                </Dialog>
-              )}
+              {/* 메인 이미지 섹션 */}
+              {(() => {
+                const noticeImages = getNoticeImages();
+                return noticeImages.length > 0 && (
+                  <>
+                    {/* 메인 이미지 (첫 번째 이미지) */}
+                    {notice.imageUrl && (
+                      <div className="relative group mb-8">
+                        <img
+                          src={notice.imageUrl}
+                          alt={sanitizeText(notice.title)}
+                          className="w-full h-auto object-cover rounded-md border cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => {
+                            openImageViewer(getNoticeImages(), 0);
+                          }}
+                        />
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 이미지 뷰어는 페이지 하단에서 렌더링 */}
+                  </>
+                );
+              })()}
               <div className="prose prose-2xl max-w-none leading-relaxed whitespace-pre-wrap">{sanitizeText(notice.content)}</div>
 
               {/* Video Display */}
@@ -359,25 +377,31 @@ export default function NoticeDetailPage() {
                 <div className="mt-10 border-t pt-8">
                   <h3 className="text-2xl font-semibold mb-4">첨부 파일</h3>
 
-                  {/* Display images */}
+                  {/* Display images - 클릭 시 갤러리로 열기 */}
                   {(notice as any).attachments.filter((a: any) => a.type === 'image').length > 0 && (
                     <div className="mb-6">
                       <h4 className="text-xl font-medium mb-3">이미지</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {(notice as any).attachments.filter((a: any) => a.type === 'image').map((file: any, idx: number) => (
-                          <Dialog key={idx}>
-                            <DialogTrigger asChild>
-                              <div className="border rounded-lg p-2 cursor-pointer hover:shadow-lg transition-shadow">
-                                <img src={file.url} alt={file.name} className="w-full h-48 object-cover rounded" />
-                                <p className="text-sm truncate mt-2">{file.name}</p>
-                                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                        {(notice as any).attachments.filter((a: any) => a.type === 'image').map((file: any, idx: number) => {
+                          // 갤러리 인덱스 계산 (메인 이미지가 있으면 +1)
+                          const galleryIndex = notice.imageUrl ? idx + 1 : idx;
+                          return (
+                            <div
+                              key={idx}
+                              className="border rounded-lg p-2 cursor-pointer hover:shadow-lg transition-shadow group relative"
+                              onClick={() => {
+                                openImageViewer(getNoticeImages(), galleryIndex);
+                              }}
+                            >
+                              <img src={file.url} alt={file.name} className="w-full h-48 object-cover rounded" />
+                              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ZoomIn className="h-6 w-6 text-white drop-shadow-lg" />
                               </div>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-7xl w-full">
-                              <img src={file.url} alt={file.name} className="w-full h-auto" />
-                            </DialogContent>
-                          </Dialog>
-                        ))}
+                              <p className="text-sm truncate mt-2">{file.name}</p>
+                              <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -538,7 +562,7 @@ export default function NoticeDetailPage() {
                       <FileDropzone
                         onFilesSelected={(files) => handleFilesSelected(files, 'image')}
                         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                        maxFiles={5}
+                        maxFiles={50}
                         maxSize={10 * 1024 * 1024}
                       />
                     </div>
@@ -569,7 +593,7 @@ export default function NoticeDetailPage() {
                       <label className="block text-sm font-medium mb-2">파일</label>
                       <FileDropzone
                         onFilesSelected={(files) => handleFilesSelected(files, 'attachment')}
-                        maxFiles={5}
+                        maxFiles={50}
                         maxSize={50 * 1024 * 1024}
                       />
                     </div>
@@ -607,6 +631,15 @@ export default function NoticeDetailPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* 이미지 뷰어 */}
+      <ImageViewer
+        images={viewerImages}
+        initialIndex={viewerInitialIndex}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        readOnly={true}
+      />
     </div>
   );
 }

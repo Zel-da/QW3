@@ -51,6 +51,6 @@ export type Site = typeof SITES[number];
 export const ROLE_LABELS = {
   ADMIN: '총관리자',
   TEAM_LEADER: '팀장',
-  SITE_MANAGER: '현장관리자',
   APPROVER: '임원',
+  PENDING: '가입대기',
 } as const;

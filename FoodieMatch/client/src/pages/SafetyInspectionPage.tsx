@@ -12,8 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { useUndoToast } from '@/hooks/useUndoToast';
-import { Camera, Upload, X, Save, CheckCircle2, Circle, FileText, Image } from 'lucide-react';
+import { Camera, Upload, X, Save, CheckCircle2, Circle, FileText, Image, RotateCw, ZoomIn } from 'lucide-react';
+import { ImageViewer, ImageInfo } from '@/components/ImageViewer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
 import { SafetyInspectionSkeleton } from '@/components/skeletons/SafetyInspectionSkeleton';
@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import axios from 'axios';
 import { getInspectionYearRange, cn } from '@/lib/utils';
 import { FileDropzone } from '@/components/FileDropzone';
+import { MonthPicker } from '@/components/MonthPicker';
 
 interface Team {
   id: number;
@@ -75,6 +76,7 @@ interface InspectionItem {
 interface UploadedPhoto {
   url: string;
   uploadedAt: string;
+  rotation?: number; // 0, 90, 180, 270
 }
 
 interface ItemState {
@@ -115,6 +117,14 @@ export default function SafetyInspectionPage() {
   const [uploadedItems, setUploadedItems] = useState<Record<string, ItemState>>({});
   const [uploadingEquipment, setUploadingEquipment] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
+  const [incompleteItems, setIncompleteItems] = useState<string[]>([]);
+
+  // 이미지 뷰어 상태
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [viewerEquipmentName, setViewerEquipmentName] = useState<string>('');
 
   // 공장 목록 조회
   const { data: factories = [], isLoading: factoriesLoading } = useQuery<Factory[]>({
@@ -226,9 +236,6 @@ export default function SafetyInspectionPage() {
       setUploadedItems(restored);
     },
   });
-
-  // Undo 토스트 기능
-  const { showUndoToast } = useUndoToast();
 
   // 진행률 계산
   const getProgress = () => {
@@ -382,11 +389,6 @@ export default function SafetyInspectionPage() {
   };
 
   const removePhoto = (equipmentName: string, photoIndex: number) => {
-    // 이전 상태 백업 (Undo용)
-    const previousItems = { ...uploadedItems };
-    const deletedPhoto = uploadedItems[equipmentName]?.photos[photoIndex];
-
-    // 낙관적 업데이트: 즉시 사진 삭제
     setUploadedItems((prev) => {
       const currentState = prev[equipmentName];
       if (!currentState) return prev;
@@ -406,16 +408,72 @@ export default function SafetyInspectionPage() {
         },
       };
     });
+  };
 
-    // Undo 토스트 표시
-    showUndoToast({
-      message: '사진이 삭제되었습니다.',
-      onUndo: () => {
-        setUploadedItems(previousItems);
-        toast({ title: '취소됨', description: '삭제가 취소되었습니다.' });
-      },
-      duration: 5000,
+  // 사진 회전 (90도씩)
+  const rotatePhoto = (equipmentName: string, photoIndex: number) => {
+    setUploadedItems((prev) => {
+      const currentState = prev[equipmentName];
+      if (!currentState) return prev;
+
+      const updatedPhotos = currentState.photos.map((photo, index) => {
+        if (index === photoIndex) {
+          const currentRotation = photo.rotation || 0;
+          const newRotation = (currentRotation + 90) % 360;
+          return { ...photo, rotation: newRotation };
+        }
+        return photo;
+      });
+
+      return {
+        ...prev,
+        [equipmentName]: {
+          ...currentState,
+          photos: updatedPhotos,
+        },
+      };
     });
+  };
+
+  // 이미지 뷰어 열기
+  const openImageViewer = (equipmentName: string, photos: UploadedPhoto[], clickedIndex: number) => {
+    const images: ImageInfo[] = photos.map(p => ({
+      url: p.url,
+      uploadedAt: p.uploadedAt,
+      rotation: p.rotation || 0
+    }));
+    setViewerImages(images);
+    setViewerInitialIndex(clickedIndex);
+    setViewerEquipmentName(equipmentName);
+    setViewerOpen(true);
+  };
+
+  // 이미지 뷰어에서 회전 저장
+  const handleViewerRotate = (index: number, newRotation: number) => {
+    setUploadedItems((prev) => {
+      const currentState = prev[viewerEquipmentName];
+      if (!currentState) return prev;
+
+      const updatedPhotos = currentState.photos.map((photo, i) => {
+        if (i === index) {
+          return { ...photo, rotation: newRotation };
+        }
+        return photo;
+      });
+
+      return {
+        ...prev,
+        [viewerEquipmentName]: {
+          ...currentState,
+          photos: updatedPhotos,
+        },
+      };
+    });
+
+    // 뷰어 이미지도 업데이트
+    setViewerImages((prev) =>
+      prev.map((img, i) => (i === index ? { ...img, rotation: newRotation } : img))
+    );
   };
 
   const saveMutation = useMutation({
@@ -479,7 +537,7 @@ export default function SafetyInspectionPage() {
 
     if (progress.completed < progress.total) {
       // 미완료 항목 찾기
-      const incompleteItems = requiredItems
+      const incomplete = requiredItems
         .filter((item) => {
           const state = uploadedItems[item.equipmentName];
           return !state || state.photos.length < item.requiredPhotoCount;
@@ -489,14 +547,18 @@ export default function SafetyInspectionPage() {
           return `${item.equipmentName} (${uploaded}/${item.requiredPhotoCount})`;
         });
 
-      toast({
-        title: '필수 사진 미업로드',
-        description: `${incompleteItems.length}개 항목의 필수 사진이 부족합니다:\n${incompleteItems.slice(0, 3).join(', ')}${incompleteItems.length > 3 ? ` 외 ${incompleteItems.length - 3}개` : ''}`,
-        variant: 'destructive',
-      });
+      // 경고 다이얼로그 표시
+      setIncompleteItems(incomplete);
+      setShowIncompleteWarning(true);
       return;
     }
 
+    saveMutation.mutate();
+  };
+
+  // 미완료 상태로 저장 강제 진행
+  const handleForceSave = () => {
+    setShowIncompleteWarning(false);
     saveMutation.mutate();
   };
 
@@ -517,26 +579,18 @@ export default function SafetyInspectionPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-4 lg:p-6">
         {/* 필터 */}
         <Card className="mb-8">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>안전 점검 대상 선택</CardTitle>
-              <Button
-                variant="outline"
-                onClick={() => setLocation('/inspection-gallery')}
-              >
-                <Image className="w-4 h-4 mr-2" />
-                내역 보기
-              </Button>
-            </div>
+            <CardTitle className="text-xl sm:text-2xl">안전 점검 대상 선택</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-4">
+              {/* 공장 선택 (ADMIN만) */}
               {user?.role === 'ADMIN' && (
-                <div>
-                  <Label htmlFor="factory">공장</Label>
+                <div className="w-full sm:w-auto">
+                  <Label htmlFor="factory" className="mb-2 block">공장</Label>
                   <Select
                     value={selectedFactory?.toString() || ''}
                     onValueChange={(value) => {
@@ -544,7 +598,7 @@ export default function SafetyInspectionPage() {
                       setSelectedTeam(null); // 공장 변경 시 팀 선택 초기화
                     }}
                   >
-                    <SelectTrigger id="factory">
+                    <SelectTrigger id="factory" className="w-full sm:w-[200px]">
                       <SelectValue placeholder="공장 선택" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
@@ -557,35 +611,27 @@ export default function SafetyInspectionPage() {
                   </Select>
                 </div>
               )}
-              <div>
-                <Label htmlFor="year">년도</Label>
-                <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="년도 선택" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                    {getInspectionYearRange().map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}년
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="month">월</Label>
-                <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="월 선택" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {month}월
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              {/* 년/월 선택 및 내역 보기 */}
+              <div className="flex flex-wrap items-center gap-4">
+                <MonthPicker
+                  year={selectedYear}
+                  month={selectedMonth}
+                  onChange={(year, month) => {
+                    setSelectedYear(year);
+                    setSelectedMonth(month);
+                  }}
+                  minYear={2020}
+                  maxYear={new Date().getFullYear() + 1}
+                />
+                <Button
+                  variant="outline"
+                  className="h-10 ml-auto"
+                  onClick={() => setLocation('/inspection-gallery')}
+                >
+                  <Image className="w-4 h-4 mr-2" />
+                  내역 보기
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -609,16 +655,24 @@ export default function SafetyInspectionPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-32 sticky left-0 bg-white z-10">팀명</TableHead>
+                          <TableHead className="w-32 sticky left-0 bg-white z-10 font-bold text-black">팀명</TableHead>
                           {overviewData.equipmentTypes.map((equipment) => (
-                            <TableHead key={equipment} className="text-center min-w-24">
+                            <TableHead key={equipment} className="text-center min-w-24 font-bold text-black">
                               {equipment.replace(' 점검', '')}
                             </TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {overviewData.teams.map((team) => (
+                        {overviewData.teams.map((team) => {
+                          // 팀의 점검 완료 여부 확인
+                          const hasAnyEquipment = Object.values(team.equipmentStatus).some(s => s.hasEquipment);
+                          const allCompleted = hasAnyEquipment && Object.values(team.equipmentStatus).every(status => {
+                            if (!status.hasEquipment) return true; // 장비 없으면 완료로 간주
+                            return status.uploadedPhotoCount >= status.requiredPhotoCount;
+                          });
+
+                          return (
                           <TableRow
                             key={team.teamId}
                             onClick={() => setSelectedTeam(team.teamId)}
@@ -631,7 +685,11 @@ export default function SafetyInspectionPage() {
                           >
                             <TableCell className={cn(
                               "font-medium sticky left-0 z-10",
-                              selectedTeam === team.teamId ? "bg-blue-50" : "bg-white"
+                              selectedTeam === team.teamId
+                                ? "bg-blue-50"
+                                : !allCompleted
+                                  ? "bg-red-100"
+                                  : "bg-white"
                             )}>
                               {team.teamName}
                             </TableCell>
@@ -649,29 +707,23 @@ export default function SafetyInspectionPage() {
                               const isCompleted = status.uploadedPhotoCount >= status.requiredPhotoCount;
                               const isPartial = status.uploadedPhotoCount > 0 && status.uploadedPhotoCount < status.requiredPhotoCount;
 
-                              let bgColor, textColor;
-                              if (isCompleted) {
-                                bgColor = 'bg-green-100';
-                                textColor = 'text-green-700';
-                              } else if (isPartial) {
-                                bgColor = 'bg-yellow-100';
-                                textColor = 'text-yellow-700';
-                              } else {
-                                bgColor = 'bg-red-100';
-                                textColor = 'text-red-700';
-                              }
-
                               return (
                                 <TableCell
                                   key={equipment}
-                                  className={`text-center font-medium ${bgColor} ${textColor}`}
+                                  className={cn(
+                                    "text-center font-medium cursor-pointer transition-colors",
+                                    isCompleted && "bg-green-100 text-green-700 hover:bg-green-200",
+                                    isPartial && "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
+                                    !isCompleted && !isPartial && "bg-red-100 text-red-700 hover:bg-red-200"
+                                  )}
                                 >
-                                  {(status.uploadedPhotoCount ?? 0)}/{(status.requiredPhotoCount ?? 0)}
+                                  {status.requiredPhotoCount ?? 0}
                                 </TableCell>
                               );
                             })}
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -776,22 +828,48 @@ export default function SafetyInspectionPage() {
                       <div className="space-y-4">
                         {/* 업로드된 사진들 */}
                         {state.photos.length > 0 && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                             {state.photos.map((photo, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={photo.url}
-                                  alt={`${item.equipmentName} ${index + 1}`}
-                                  className="w-full h-32 object-cover rounded border"
-                                />
+                              <div key={index} className="relative group">
+                                <div className="w-full h-28 sm:h-32 overflow-hidden rounded border bg-gray-100">
+                                  <img
+                                    src={photo.url}
+                                    alt={`${item.equipmentName} ${index + 1}`}
+                                    className="w-full h-full object-cover transition-transform duration-200"
+                                    style={{ transform: `rotate(${photo.rotation || 0}deg)` }}
+                                  />
+                                </div>
+                                {/* 회전 버튼 */}
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="absolute top-1 left-1 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                                  onClick={() => rotatePhoto(item.equipmentName, index)}
+                                  title="90도 회전"
+                                >
+                                  <RotateCw className="h-4 w-4" />
+                                </Button>
+                                {/* 확대 버튼 */}
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="absolute top-1 left-9 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                                  onClick={() => openImageViewer(item.equipmentName, state.photos, index)}
+                                  title="확대 보기"
+                                >
+                                  <ZoomIn className="h-4 w-4" />
+                                </Button>
+                                {/* 삭제 버튼 */}
                                 <Button
                                   type="button"
                                   variant="destructive"
                                   size="sm"
-                                  className="absolute top-1 right-1 h-6 w-6 p-0"
+                                  className="absolute top-1 right-1 h-7 w-7 p-0"
                                   onClick={() => removePhoto(item.equipmentName, index)}
                                 >
-                                  <X className="h-3 w-3" />
+                                  <X className="h-4 w-4" />
                                 </Button>
                                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
                                   {index + 1}
@@ -808,6 +886,7 @@ export default function SafetyInspectionPage() {
                               사진 추가 ({item.requiredPhotoCount - state.photos.length}장 더 필요)
                             </Label>
                             <FileDropzone
+                              key={`${item.equipmentName}-${state.photos.length}`}
                               onFilesSelected={(files) => {
                                 if (files.length > 0) {
                                   handleMultiplePhotoUpload(item.equipmentName, item.requiredPhotoCount, files);
@@ -840,9 +919,9 @@ export default function SafetyInspectionPage() {
               })}
             </div>
 
-            {/* 저장 버튼 */}
+            {/* 저장 버튼 - 미완료도 저장 가능 */}
             <div className="flex justify-end gap-3 mt-6">
-              <Button onClick={handleSave} disabled={saveMutation.isPending || !isFullyCompleted} size="lg">
+              <Button onClick={handleSave} disabled={saveMutation.isPending} className="h-12 w-full sm:w-auto min-w-[160px]">
                 <Save className="h-4 w-4 mr-2" />
                 {saveMutation.isPending ? '저장 중...' : isFullyCompleted ? '저장하기' : `저장하기 (${progress.completed}/${progress.total})`}
               </Button>
@@ -880,6 +959,59 @@ export default function SafetyInspectionPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 미완료 경고 다이얼로그 */}
+        <Dialog open={showIncompleteWarning} onOpenChange={setShowIncompleteWarning}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <Circle className="h-5 w-5" />
+                필수 사진 미완료
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                다음 항목의 필수 사진이 부족합니다:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-48 overflow-y-auto bg-amber-50 p-3 rounded-md">
+              <ul className="space-y-1 text-sm">
+                {incompleteItems.map((item, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-amber-800">
+                    <span className="text-amber-500">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              미완료 상태로 저장하시겠습니까? 나중에 사진을 추가할 수 있습니다.
+            </p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowIncompleteWarning(false)}
+              >
+                취소
+              </Button>
+              <Button
+                variant="default"
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={handleForceSave}
+              >
+                미완료로 저장
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 이미지 뷰어 */}
+        <ImageViewer
+          images={viewerImages}
+          initialIndex={viewerInitialIndex}
+          isOpen={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          onRotate={handleViewerRotate}
+          readOnly={false}
+        />
       </main>
     </div>
   );

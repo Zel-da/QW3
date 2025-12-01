@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Header } from '@/components/header';
+import { AdminPageLayout, PageHeader } from '@/components/admin';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Users as UsersIcon, ArrowLeft } from 'lucide-react';
-import { Link } from 'wouter';
+import { Search, Users as UsersIcon, Building2 } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -490,24 +489,16 @@ export default function TeamManagementPage() {
   }, [searchTerm]);
 
   return (
-    <div>
-      <Header />
-      <main className="container mx-auto p-4 lg:p-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold">팀 관리</h1>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/admin-dashboard">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                관리자 대시보드로
-              </Link>
-            </Button>
-          </div>
-          <p className="text-muted-foreground">팀을 생성하고 팀원을 관리합니다.</p>
-        </div>
+    <AdminPageLayout>
+      <PageHeader
+        title="팀 관리"
+        description="팀을 생성하고 팀원을 관리합니다."
+        icon={<Building2 className="h-6 w-6" />}
+        backUrl="/admin-dashboard"
+        backText="대시보드"
+      />
 
-        {/* 관리자 전용: 팀 생성 */}
+      {/* 관리자 전용: 팀 생성 */}
         {currentUser?.role === 'ADMIN' && (
           <div className="grid gap-8 md:grid-cols-2 mb-8">
             <Card>
@@ -752,8 +743,8 @@ export default function TeamManagementPage() {
                           let roleLabel = '사용자';
                           if (user.role === 'ADMIN') roleLabel = '관리자';
                           else if (user.role === 'TEAM_LEADER') roleLabel = '팀장';
-                          else if (user.role === 'SITE_MANAGER') roleLabel = '현장관리자';
                           else if (user.role === 'APPROVER') roleLabel = '임원';
+                          else if (user.role === 'PENDING') roleLabel = '가입대기';
 
                           return (
                             <SelectItem key={user.id} value={user.id}>
@@ -986,7 +977,6 @@ export default function TeamManagementPage() {
             </CardContent>
           </Card>
         )}
-      </main>
-    </div>
+    </AdminPageLayout>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from './emailService';
 import { executeAllConditions } from './conditionExecutor';
 
+// Create dedicated prisma instance for scheduler to avoid circular dependency issues
 const prisma = new PrismaClient();
 
 // Store active cron jobs for management
@@ -208,46 +209,82 @@ export function scheduleSafetyInspectionReminders() {
 
 /**
  * 데이터베이스에서 이메일 스케줄을 로드하고 cron 작업 생성
+ * (SimpleEmailConfig 모델 사용)
  */
 export async function loadEmailSchedulesFromDB() {
   try {
-    console.log('📧 데이터베이스에서 이메일 스케줄 로드 중...');
+    console.log('📧 데이터베이스에서 이메일 설정 로드 중...');
 
-    const schedules = await prisma.emailSchedule.findMany({
-      where: { isEnabled: true },
-      include: { template: true }
+    const configs = await prisma.simpleEmailConfig.findMany({
+      where: { enabled: true }
     });
 
-    for (const schedule of schedules) {
+    for (const config of configs) {
       try {
-        // Create cron job for this schedule
-        const task = cron.schedule(schedule.cronExpression, async () => {
-          console.log(`📧 스케줄 실행: ${schedule.name}`);
+        // sendTiming에 따라 cron 표현식 생성
+        let cronExpression: string | null = null;
 
-          try {
-            // Update lastRun
-            await prisma.emailSchedule.update({
-              where: { id: schedule.id },
-              data: { lastRun: new Date() }
-            });
+        switch (config.sendTiming) {
+          case 'SCHEDULED_TIME':
+            // 매일 특정 시간에 실행 (예: "09:00" -> "0 9 * * *")
+            if (config.scheduledTime) {
+              const [hour, minute] = config.scheduledTime.split(':');
+              cronExpression = `${minute} ${hour} * * *`;
+            }
+            break;
+          case 'MONTHLY_DAY':
+            // 매월 특정 일에 실행 (예: 4일 오전 9시 -> "0 9 4 * *")
+            if (config.monthlyDay) {
+              cronExpression = `0 9 ${config.monthlyDay} * *`;
+            }
+            break;
+          // IMMEDIATE, AFTER_N_DAYS는 이벤트 기반이므로 cron 스케줄 불필요
+        }
 
-            // Execute based on template type
-            await executeScheduledEmail(schedule);
-          } catch (error) {
-            console.error(`❌ 스케줄 실행 실패 (${schedule.name}):`, error);
-          }
-        });
+        if (cronExpression) {
+          const task = cron.schedule(cronExpression, async () => {
+            console.log(`📧 스케줄 실행: ${config.emailType}`);
 
-        activeCronJobs.set(schedule.id, task);
-        console.log(`✅ 스케줄 등록: ${schedule.name} (${schedule.cronExpression})`);
+            try {
+              // 이메일 타입에 따라 실행
+              await executeSimpleEmailConfig(config);
+            } catch (error) {
+              console.error(`❌ 스케줄 실행 실패 (${config.emailType}):`, error);
+            }
+          });
+
+          activeCronJobs.set(config.id, task);
+          console.log(`✅ 스케줄 등록: ${config.emailType} (${cronExpression})`);
+        } else {
+          console.log(`ℹ️ ${config.emailType}: 이벤트 기반 발송 (cron 스케줄 없음)`);
+        }
       } catch (error) {
-        console.error(`❌ 스케줄 로드 실패 (${schedule.name}):`, error);
+        console.error(`❌ 스케줄 로드 실패 (${config.emailType}):`, error);
       }
     }
 
-    console.log(`✅ 총 ${schedules.length}개의 스케줄 로드 완료`);
+    console.log(`✅ 총 ${configs.length}개의 이메일 설정 로드 완료`);
   } catch (error) {
     console.error('❌ 스케줄 로드 중 오류:', error);
+  }
+}
+
+/**
+ * SimpleEmailConfig에 따라 이메일 전송 실행
+ */
+async function executeSimpleEmailConfig(config: any) {
+  switch (config.emailType) {
+    case 'EDUCATION_REMINDER':
+      await sendEducationReminders();
+      break;
+    case 'TBM_REMINDER':
+      await sendTBMReminders();
+      break;
+    case 'INSPECTION_REMINDER':
+      await sendSafetyInspectionReminders();
+      break;
+    default:
+      console.log(`ℹ️ ${config.emailType}은 스케줄 발송을 지원하지 않습니다.`);
   }
 }
 

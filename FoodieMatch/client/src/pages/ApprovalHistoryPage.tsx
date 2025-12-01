@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import axios from 'axios';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
-import { CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, ArrowLeft } from 'lucide-react';
 import type { ApprovalRequest } from '@shared/schema';
 
 const fetchSentApprovals = async (status?: string): Promise<ApprovalRequest[]> => {
@@ -38,6 +40,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function ApprovalHistoryPage() {
+  const [, setLocation] = useLocation();
   const [sentStatus, setSentStatus] = useState<string>('ALL');
   const [receivedStatus, setReceivedStatus] = useState<string>('ALL');
 
@@ -56,6 +59,16 @@ export default function ApprovalHistoryPage() {
       <Header />
       <main className="container mx-auto p-4 lg:p-8">
         <div className="mb-6">
+          <div className="flex items-center gap-4 mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation('/monthly-report')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              월별보고서
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold">결재 이력</h1>
           <p className="text-muted-foreground mt-2">
             월별 보고서 결재 요청 및 승인 이력을 확인할 수 있습니다.
@@ -190,9 +203,19 @@ export default function ApprovalHistoryPage() {
                       </TableHeader>
                       <TableBody>
                         {receivedApprovals.map((approval) => (
-                          <TableRow key={approval.id}>
+                          <TableRow
+                            key={approval.id}
+                            className={approval.status === 'PENDING' ? 'cursor-pointer hover:bg-muted/50' : ''}
+                            onClick={() => {
+                              if (approval.status === 'PENDING') {
+                                setLocation(`/approval/${approval.id}`);
+                              }
+                            }}
+                          >
                             <TableCell className="font-medium">
-                              {approval.monthlyReport?.team?.name || '-'}
+                              <span className={approval.status === 'PENDING' ? 'text-blue-600 hover:underline' : ''}>
+                                {approval.monthlyReport?.team?.name || '-'}
+                              </span>
                             </TableCell>
                             <TableCell>
                               {approval.monthlyReport ? `${approval.monthlyReport.year}년 ${approval.monthlyReport.month}월` : '-'}

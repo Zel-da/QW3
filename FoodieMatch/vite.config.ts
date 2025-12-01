@@ -30,6 +30,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // 벤더 라이브러리 청크 분할
+        manualChunks: {
+          // React 핵심
+          'vendor-react': ['react', 'react-dom'],
+          // 상태 관리 및 라우팅
+          'vendor-state': ['@tanstack/react-query', 'wouter', 'zustand'],
+          // UI 컴포넌트
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs', '@radix-ui/react-toast'],
+          // 유틸리티
+          'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    // 청크 사이즈 경고 임계값
+    chunkSizeWarningLimit: 500,
   },
   server: {
     host: "0.0.0.0",

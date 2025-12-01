@@ -40,10 +40,18 @@ const submitAssessment = async ({ courseId, userId, answers }: { courseId: strin
   const passed = (score / questions.length) >= 0.8;
 
   if (passed) {
+    // 합격: completed true, currentStep 3
     await axios.put(`/api/users/${userId}/progress/${courseId}`, {
       progress: 100,
       completed: true,
       currentStep: 3, // Assessment completed
+    });
+  } else {
+    // 불합격: progress 100 유지 (영상 시청 완료 상태 유지)
+    await axios.put(`/api/users/${userId}/progress/${courseId}`, {
+      progress: 100,
+      completed: false,
+      currentStep: 2, // 교육은 완료, 평가는 미통과
     });
   }
 

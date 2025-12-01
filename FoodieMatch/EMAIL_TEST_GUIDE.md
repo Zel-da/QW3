@@ -13,7 +13,7 @@ SMTP_PORT=25
 SMTP_FROM=safety@yourcompany.com  # 실제 발신자 이메일
 
 # 베이스 URL
-BASE_URL=http://localhost:5173    # 개발: localhost, 운영: 실제 도메인
+BASE_URL=http://localhost:5001    # 개발: localhost, 운영: 실제 도메인
 
 # 스케줄러 활성화 (테스트용)
 ENABLE_EMAIL_SCHEDULERS=true      # 스케줄러 테스트 시 true
@@ -102,7 +102,7 @@ serving on port 5000
 
 #### 3-1. 공지사항 이메일 테스트
 
-1. 브라우저에서 `http://localhost:5173` 접속
+1. 브라우저에서 `http://localhost:5001` 접속
 2. 관리자 계정으로 로그인
 3. 공지사항 작성 페이지로 이동
 4. 새 공지사항 등록

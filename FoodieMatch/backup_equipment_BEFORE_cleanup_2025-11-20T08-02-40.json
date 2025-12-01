@@ -1,0 +1,1888 @@
+{
+  "timestamp": "2025-11-20T08:02:40.773Z",
+  "teamEquipments": [
+    {
+      "id": 2,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "크레인",
+      "quantity": 5,
+      "createdAt": "2025-11-18T05:43:36.701Z",
+      "updatedAt": "2025-11-18T06:02:59.191Z"
+    },
+    {
+      "id": 3,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.704Z",
+      "updatedAt": "2025-11-18T06:02:59.193Z"
+    },
+    {
+      "id": 4,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.706Z",
+      "updatedAt": "2025-11-18T06:02:59.195Z"
+    },
+    {
+      "id": 6,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.711Z",
+      "updatedAt": "2025-11-18T06:02:59.198Z"
+    },
+    {
+      "id": 7,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "용접기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.713Z",
+      "updatedAt": "2025-11-18T06:02:59.200Z"
+    },
+    {
+      "id": 8,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.715Z",
+      "updatedAt": "2025-11-18T06:02:59.202Z"
+    },
+    {
+      "id": 9,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.717Z",
+      "updatedAt": "2025-11-18T06:02:59.203Z"
+    },
+    {
+      "id": 10,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.719Z",
+      "updatedAt": "2025-11-18T06:02:59.205Z"
+    },
+    {
+      "id": 11,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "작업대발판",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.721Z",
+      "updatedAt": "2025-11-18T06:02:59.207Z"
+    },
+    {
+      "id": 12,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.724Z",
+      "updatedAt": "2025-11-18T06:02:59.210Z"
+    },
+    {
+      "id": 13,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "크레인",
+      "quantity": 5,
+      "createdAt": "2025-11-18T05:43:36.727Z",
+      "updatedAt": "2025-11-18T06:02:59.212Z"
+    },
+    {
+      "id": 14,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.729Z",
+      "updatedAt": "2025-11-18T06:02:59.213Z"
+    },
+    {
+      "id": 15,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.730Z",
+      "updatedAt": "2025-11-18T06:02:59.215Z"
+    },
+    {
+      "id": 16,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.732Z",
+      "updatedAt": "2025-11-18T06:02:59.216Z"
+    },
+    {
+      "id": 17,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "밀링기,면취기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.733Z",
+      "updatedAt": "2025-11-18T06:02:59.218Z"
+    },
+    {
+      "id": 18,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.735Z",
+      "updatedAt": "2025-11-18T06:02:59.219Z"
+    },
+    {
+      "id": 19,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "용접기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.736Z",
+      "updatedAt": "2025-11-18T06:02:59.221Z"
+    },
+    {
+      "id": 20,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.738Z",
+      "updatedAt": "2025-11-18T06:02:59.223Z"
+    },
+    {
+      "id": 21,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.740Z",
+      "updatedAt": "2025-11-18T06:02:59.224Z"
+    },
+    {
+      "id": 22,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.742Z",
+      "updatedAt": "2025-11-18T06:02:59.226Z"
+    },
+    {
+      "id": 23,
+      "teamId": 40,
+      "teamName": "조립 2라인",
+      "equipmentName": "작업대발판",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.743Z",
+      "updatedAt": "2025-11-18T06:02:59.227Z"
+    },
+    {
+      "id": 24,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.748Z",
+      "updatedAt": "2025-11-18T06:02:59.231Z"
+    },
+    {
+      "id": 25,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "크레인",
+      "quantity": 6,
+      "createdAt": "2025-11-18T05:43:36.750Z",
+      "updatedAt": "2025-11-18T06:02:59.233Z"
+    },
+    {
+      "id": 26,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.752Z",
+      "updatedAt": "2025-11-18T06:02:59.235Z"
+    },
+    {
+      "id": 27,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.754Z",
+      "updatedAt": "2025-11-18T06:02:59.237Z"
+    },
+    {
+      "id": 28,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.756Z",
+      "updatedAt": "2025-11-18T06:02:59.239Z"
+    },
+    {
+      "id": 29,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "밀링기,면취기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.758Z",
+      "updatedAt": "2025-11-18T06:02:59.240Z"
+    },
+    {
+      "id": 30,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.759Z",
+      "updatedAt": "2025-11-18T06:02:59.242Z"
+    },
+    {
+      "id": 31,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "용접기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.761Z",
+      "updatedAt": "2025-11-18T06:02:59.243Z"
+    },
+    {
+      "id": 32,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.763Z",
+      "updatedAt": "2025-11-18T06:02:59.245Z"
+    },
+    {
+      "id": 33,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "보링기,반전기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.765Z",
+      "updatedAt": "2025-11-18T06:02:59.246Z"
+    },
+    {
+      "id": 35,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.768Z",
+      "updatedAt": "2025-11-18T06:02:59.249Z"
+    },
+    {
+      "id": 36,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "작업대발판",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.770Z",
+      "updatedAt": "2025-11-18T06:02:59.250Z"
+    },
+    {
+      "id": 37,
+      "teamId": 42,
+      "teamName": "전기라인",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.773Z",
+      "updatedAt": "2025-11-18T06:02:59.253Z"
+    },
+    {
+      "id": 38,
+      "teamId": 42,
+      "teamName": "전기라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.775Z",
+      "updatedAt": "2025-11-18T06:02:59.255Z"
+    },
+    {
+      "id": 39,
+      "teamId": 42,
+      "teamName": "전기라인",
+      "equipmentName": "밀링기,면취기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.777Z",
+      "updatedAt": "2025-11-18T06:02:59.256Z"
+    },
+    {
+      "id": 40,
+      "teamId": 42,
+      "teamName": "전기라인",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.778Z",
+      "updatedAt": "2025-11-18T06:02:59.258Z"
+    },
+    {
+      "id": 76,
+      "teamId": 4,
+      "teamName": "연구소",
+      "equipmentName": "크레인",
+      "quantity": 3,
+      "createdAt": "2025-11-18T05:43:36.857Z",
+      "updatedAt": "2025-11-19T00:30:18.760Z"
+    },
+    {
+      "id": 77,
+      "teamId": 4,
+      "teamName": "연구소",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.860Z",
+      "updatedAt": "2025-11-19T00:30:18.760Z"
+    },
+    {
+      "id": 79,
+      "teamId": 4,
+      "teamName": "연구소",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.864Z",
+      "updatedAt": "2025-11-19T00:30:18.760Z"
+    },
+    {
+      "id": 80,
+      "teamId": 4,
+      "teamName": "연구소",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.866Z",
+      "updatedAt": "2025-11-19T00:30:18.760Z"
+    },
+    {
+      "id": 41,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.782Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 42,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "크레인",
+      "quantity": 7,
+      "createdAt": "2025-11-18T05:43:36.784Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 43,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.786Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 44,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.788Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 45,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.789Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 46,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.791Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 47,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "용접기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.793Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 48,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.796Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 49,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.797Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 50,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "밧데리충전기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.800Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 51,
+      "teamId": 2,
+      "teamName": "제관라인",
+      "equipmentName": "작업대발판",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.801Z",
+      "updatedAt": "2025-11-19T00:30:18.799Z"
+    },
+    {
+      "id": 68,
+      "teamId": 45,
+      "teamName": "자재팀",
+      "equipmentName": "지게차",
+      "quantity": 4,
+      "createdAt": "2025-11-18T05:43:36.839Z",
+      "updatedAt": "2025-11-18T06:02:59.304Z"
+    },
+    {
+      "id": 69,
+      "teamId": 45,
+      "teamName": "자재팀",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.841Z",
+      "updatedAt": "2025-11-18T06:02:59.305Z"
+    },
+    {
+      "id": 70,
+      "teamId": 45,
+      "teamName": "자재팀",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.843Z",
+      "updatedAt": "2025-11-18T06:02:59.307Z"
+    },
+    {
+      "id": 71,
+      "teamId": 45,
+      "teamName": "자재팀",
+      "equipmentName": "분배전반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.844Z",
+      "updatedAt": "2025-11-18T06:02:59.308Z"
+    },
+    {
+      "id": 72,
+      "teamId": 45,
+      "teamName": "자재팀",
+      "equipmentName": "밧데리충전기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.846Z",
+      "updatedAt": "2025-11-18T06:02:59.309Z"
+    },
+    {
+      "id": 73,
+      "teamId": 46,
+      "teamName": "품질관리팀",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.850Z",
+      "updatedAt": "2025-11-18T06:02:59.311Z"
+    },
+    {
+      "id": 74,
+      "teamId": 46,
+      "teamName": "품질관리팀",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.852Z",
+      "updatedAt": "2025-11-18T06:02:59.313Z"
+    },
+    {
+      "id": 75,
+      "teamId": 46,
+      "teamName": "품질관리팀",
+      "equipmentName": "밀링기,면취기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.854Z",
+      "updatedAt": "2025-11-18T06:02:59.314Z"
+    },
+    {
+      "id": 81,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.869Z",
+      "updatedAt": "2025-11-18T06:02:59.325Z"
+    },
+    {
+      "id": 82,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "크레인",
+      "quantity": 2,
+      "createdAt": "2025-11-18T05:43:36.871Z",
+      "updatedAt": "2025-11-18T06:02:59.326Z"
+    },
+    {
+      "id": 83,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "절곡기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.873Z",
+      "updatedAt": "2025-11-18T06:02:59.327Z"
+    },
+    {
+      "id": 84,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.875Z",
+      "updatedAt": "2025-11-18T06:02:59.329Z"
+    },
+    {
+      "id": 85,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.877Z",
+      "updatedAt": "2025-11-18T06:02:59.331Z"
+    },
+    {
+      "id": 86,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.879Z",
+      "updatedAt": "2025-11-18T06:02:59.332Z"
+    },
+    {
+      "id": 87,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "용접기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.881Z",
+      "updatedAt": "2025-11-18T06:02:59.333Z"
+    },
+    {
+      "id": 88,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.882Z",
+      "updatedAt": "2025-11-18T06:02:59.335Z"
+    },
+    {
+      "id": 89,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.884Z",
+      "updatedAt": "2025-11-18T06:02:59.336Z"
+    },
+    {
+      "id": 90,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.886Z",
+      "updatedAt": "2025-11-18T06:02:59.337Z"
+    },
+    {
+      "id": 91,
+      "teamId": 48,
+      "teamName": "고객지원팀",
+      "equipmentName": "작업대발판",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.888Z",
+      "updatedAt": "2025-11-18T06:02:59.339Z"
+    },
+    {
+      "id": 92,
+      "teamId": 49,
+      "teamName": "부품팀",
+      "equipmentName": "지게차",
+      "quantity": 5,
+      "createdAt": "2025-11-18T05:43:36.891Z",
+      "updatedAt": "2025-11-18T06:02:59.341Z"
+    },
+    {
+      "id": 93,
+      "teamId": 49,
+      "teamName": "부품팀",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.893Z",
+      "updatedAt": "2025-11-18T06:02:59.343Z"
+    },
+    {
+      "id": 94,
+      "teamId": 49,
+      "teamName": "부품팀",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.895Z",
+      "updatedAt": "2025-11-18T06:02:59.345Z"
+    },
+    {
+      "id": 95,
+      "teamId": 49,
+      "teamName": "부품팀",
+      "equipmentName": "분배전반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.897Z",
+      "updatedAt": "2025-11-18T06:02:59.346Z"
+    },
+    {
+      "id": 96,
+      "teamId": 49,
+      "teamName": "부품팀",
+      "equipmentName": "밧데리충전기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.899Z",
+      "updatedAt": "2025-11-18T06:02:59.348Z"
+    },
+    {
+      "id": 52,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.805Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 53,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "크레인",
+      "quantity": 6,
+      "createdAt": "2025-11-18T05:43:36.807Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 1,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "지게차",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.692Z",
+      "updatedAt": "2025-11-18T06:02:59.182Z"
+    },
+    {
+      "id": 5,
+      "teamId": 39,
+      "teamName": "조립 1라인",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.708Z",
+      "updatedAt": "2025-11-18T06:02:59.196Z"
+    },
+    {
+      "id": 34,
+      "teamId": 41,
+      "teamName": "조립 3라인",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.766Z",
+      "updatedAt": "2025-11-18T06:02:59.247Z"
+    },
+    {
+      "id": 54,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "전단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.809Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 55,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "절곡기",
+      "quantity": 3,
+      "createdAt": "2025-11-18T05:43:36.811Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 56,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "걸이구",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.813Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 58,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "소화전,소화기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.816Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 59,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "밀링기,면취기",
+      "quantity": 2,
+      "createdAt": "2025-11-18T05:43:36.819Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 60,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "세척기선반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.820Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 61,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "보링기,반전기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.823Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 62,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "탁상용연삭기,드릴",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.825Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 63,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "분배전반",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.827Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 64,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "고속절단기,핸드그라인더",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.829Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 65,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "전동드릴밴드쏘우",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.831Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 66,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "산소절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.833Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 67,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "보일러,국소배기장치",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.835Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 57,
+      "teamId": 3,
+      "teamName": "가공라인",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 4,
+      "createdAt": "2025-11-18T05:43:36.815Z",
+      "updatedAt": "2025-11-19T00:30:18.741Z"
+    },
+    {
+      "id": 78,
+      "teamId": 4,
+      "teamName": "연구소",
+      "equipmentName": "드릴기,플라즈마,레이져절단기",
+      "quantity": 1,
+      "createdAt": "2025-11-18T05:43:36.862Z",
+      "updatedAt": "2025-11-19T00:30:18.760Z"
+    }
+  ],
+  "inspectionScheduleTemplates": [
+    {
+      "id": 34,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T05:45:06.268Z",
+      "updatedAt": "2025-11-18T06:48:43.001Z"
+    },
+    {
+      "id": 35,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T05:45:06.269Z",
+      "updatedAt": "2025-11-18T06:48:43.002Z"
+    },
+    {
+      "id": 36,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T05:45:06.271Z",
+      "updatedAt": "2025-11-18T06:48:43.004Z"
+    },
+    {
+      "id": 37,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T05:45:06.273Z",
+      "updatedAt": "2025-11-18T06:48:43.006Z"
+    },
+    {
+      "id": 38,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T05:45:06.275Z",
+      "updatedAt": "2025-11-18T06:48:43.007Z"
+    },
+    {
+      "id": 39,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T05:45:06.277Z",
+      "updatedAt": "2025-11-18T06:48:43.009Z"
+    },
+    {
+      "id": 43,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T05:45:06.283Z",
+      "updatedAt": "2025-11-18T06:48:43.016Z"
+    },
+    {
+      "id": 44,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T05:45:06.285Z",
+      "updatedAt": "2025-11-18T06:48:43.018Z"
+    },
+    {
+      "id": 45,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T05:45:06.287Z",
+      "updatedAt": "2025-11-18T06:48:43.021Z"
+    },
+    {
+      "id": 46,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T05:45:06.288Z",
+      "updatedAt": "2025-11-18T06:48:43.022Z"
+    },
+    {
+      "id": 47,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T05:45:06.290Z",
+      "updatedAt": "2025-11-18T06:48:43.024Z"
+    },
+    {
+      "id": 48,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T05:45:06.292Z",
+      "updatedAt": "2025-11-18T06:48:43.025Z"
+    },
+    {
+      "id": 40,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "드릴기,플라즈마",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T05:45:06.278Z",
+      "updatedAt": "2025-11-18T06:03:06.946Z"
+    },
+    {
+      "id": 41,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "위험물,가스저장소",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T05:45:06.280Z",
+      "updatedAt": "2025-11-18T06:03:06.948Z"
+    },
+    {
+      "id": 42,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "소화전,소화기",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T05:45:06.281Z",
+      "updatedAt": "2025-11-18T06:03:06.950Z"
+    },
+    {
+      "id": 50,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "용접기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T05:45:06.296Z",
+      "updatedAt": "2025-11-18T06:48:43.029Z"
+    },
+    {
+      "id": 49,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "밀링기,면취기",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T05:45:06.294Z",
+      "updatedAt": "2025-11-18T06:03:06.964Z"
+    },
+    {
+      "id": 51,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "위험물,가스저장소",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T05:45:06.297Z",
+      "updatedAt": "2025-11-18T06:03:06.967Z"
+    },
+    {
+      "id": 241,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "드릴기,플라즈마 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.011Z",
+      "updatedAt": "2025-11-18T06:48:43.011Z"
+    },
+    {
+      "id": 242,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.012Z",
+      "updatedAt": "2025-11-18T06:48:43.012Z"
+    },
+    {
+      "id": 243,
+      "factoryId": 1,
+      "month": 1,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.014Z",
+      "updatedAt": "2025-11-18T06:48:43.014Z"
+    },
+    {
+      "id": 250,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "밀링기,면취기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.027Z",
+      "updatedAt": "2025-11-18T06:48:43.027Z"
+    },
+    {
+      "id": 252,
+      "factoryId": 1,
+      "month": 2,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.031Z",
+      "updatedAt": "2025-11-18T06:48:43.031Z"
+    },
+    {
+      "id": 253,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.032Z",
+      "updatedAt": "2025-11-18T06:48:43.032Z"
+    },
+    {
+      "id": 254,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.034Z",
+      "updatedAt": "2025-11-18T06:48:43.034Z"
+    },
+    {
+      "id": 255,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.036Z",
+      "updatedAt": "2025-11-18T06:48:43.036Z"
+    },
+    {
+      "id": 256,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.038Z",
+      "updatedAt": "2025-11-18T06:48:43.038Z"
+    },
+    {
+      "id": 257,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.040Z",
+      "updatedAt": "2025-11-18T06:48:43.040Z"
+    },
+    {
+      "id": 258,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.042Z",
+      "updatedAt": "2025-11-18T06:48:43.042Z"
+    },
+    {
+      "id": 259,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "전동공구 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.043Z",
+      "updatedAt": "2025-11-18T06:48:43.043Z"
+    },
+    {
+      "id": 260,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "탭핑기,스폿용접기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.045Z",
+      "updatedAt": "2025-11-18T06:48:43.045Z"
+    },
+    {
+      "id": 261,
+      "factoryId": 1,
+      "month": 3,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.047Z",
+      "updatedAt": "2025-11-18T06:48:43.047Z"
+    },
+    {
+      "id": 262,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.049Z",
+      "updatedAt": "2025-11-18T06:48:43.049Z"
+    },
+    {
+      "id": 263,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.050Z",
+      "updatedAt": "2025-11-18T06:48:43.050Z"
+    },
+    {
+      "id": 264,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.052Z",
+      "updatedAt": "2025-11-18T06:48:43.052Z"
+    },
+    {
+      "id": 265,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.053Z",
+      "updatedAt": "2025-11-18T06:48:43.053Z"
+    },
+    {
+      "id": 266,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.054Z",
+      "updatedAt": "2025-11-18T06:48:43.054Z"
+    },
+    {
+      "id": 267,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.056Z",
+      "updatedAt": "2025-11-18T06:48:43.056Z"
+    },
+    {
+      "id": 268,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "배전반 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.058Z",
+      "updatedAt": "2025-11-18T06:48:43.058Z"
+    },
+    {
+      "id": 269,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "이동크레인 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.059Z",
+      "updatedAt": "2025-11-18T06:48:43.059Z"
+    },
+    {
+      "id": 270,
+      "factoryId": 1,
+      "month": 4,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.061Z",
+      "updatedAt": "2025-11-18T06:48:43.061Z"
+    },
+    {
+      "id": 271,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.063Z",
+      "updatedAt": "2025-11-18T06:48:43.063Z"
+    },
+    {
+      "id": 272,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.065Z",
+      "updatedAt": "2025-11-18T06:48:43.065Z"
+    },
+    {
+      "id": 273,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.067Z",
+      "updatedAt": "2025-11-18T06:48:43.067Z"
+    },
+    {
+      "id": 274,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.069Z",
+      "updatedAt": "2025-11-18T06:48:43.069Z"
+    },
+    {
+      "id": 275,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.071Z",
+      "updatedAt": "2025-11-18T06:48:43.071Z"
+    },
+    {
+      "id": 276,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.073Z",
+      "updatedAt": "2025-11-18T06:48:43.073Z"
+    },
+    {
+      "id": 277,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "프레스 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.075Z",
+      "updatedAt": "2025-11-18T06:48:43.075Z"
+    },
+    {
+      "id": 278,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "굴착기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.077Z",
+      "updatedAt": "2025-11-18T06:48:43.077Z"
+    },
+    {
+      "id": 279,
+      "factoryId": 1,
+      "month": 5,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.078Z",
+      "updatedAt": "2025-11-18T06:48:43.078Z"
+    },
+    {
+      "id": 280,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.080Z",
+      "updatedAt": "2025-11-18T06:48:43.080Z"
+    },
+    {
+      "id": 281,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.082Z",
+      "updatedAt": "2025-11-18T06:48:43.082Z"
+    },
+    {
+      "id": 282,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.083Z",
+      "updatedAt": "2025-11-18T06:48:43.083Z"
+    },
+    {
+      "id": 283,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.085Z",
+      "updatedAt": "2025-11-18T06:48:43.085Z"
+    },
+    {
+      "id": 284,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.086Z",
+      "updatedAt": "2025-11-18T06:48:43.086Z"
+    },
+    {
+      "id": 285,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.087Z",
+      "updatedAt": "2025-11-18T06:48:43.087Z"
+    },
+    {
+      "id": 286,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "드릴기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.089Z",
+      "updatedAt": "2025-11-18T06:48:43.089Z"
+    },
+    {
+      "id": 287,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "용접기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.091Z",
+      "updatedAt": "2025-11-18T06:48:43.091Z"
+    },
+    {
+      "id": 288,
+      "factoryId": 1,
+      "month": 6,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.092Z",
+      "updatedAt": "2025-11-18T06:48:43.092Z"
+    },
+    {
+      "id": 289,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.094Z",
+      "updatedAt": "2025-11-18T06:48:43.094Z"
+    },
+    {
+      "id": 290,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.096Z",
+      "updatedAt": "2025-11-18T06:48:43.096Z"
+    },
+    {
+      "id": 291,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.097Z",
+      "updatedAt": "2025-11-18T06:48:43.097Z"
+    },
+    {
+      "id": 292,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.099Z",
+      "updatedAt": "2025-11-18T06:48:43.099Z"
+    },
+    {
+      "id": 293,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.100Z",
+      "updatedAt": "2025-11-18T06:48:43.100Z"
+    },
+    {
+      "id": 294,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.102Z",
+      "updatedAt": "2025-11-18T06:48:43.102Z"
+    },
+    {
+      "id": 295,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "전동공구 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.104Z",
+      "updatedAt": "2025-11-18T06:48:43.104Z"
+    },
+    {
+      "id": 296,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "배전반 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.106Z",
+      "updatedAt": "2025-11-18T06:48:43.106Z"
+    },
+    {
+      "id": 297,
+      "factoryId": 1,
+      "month": 7,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.108Z",
+      "updatedAt": "2025-11-18T06:48:43.108Z"
+    },
+    {
+      "id": 298,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.109Z",
+      "updatedAt": "2025-11-18T06:48:43.109Z"
+    },
+    {
+      "id": 299,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.111Z",
+      "updatedAt": "2025-11-18T06:48:43.111Z"
+    },
+    {
+      "id": 300,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.113Z",
+      "updatedAt": "2025-11-18T06:48:43.113Z"
+    },
+    {
+      "id": 301,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.115Z",
+      "updatedAt": "2025-11-18T06:48:43.115Z"
+    },
+    {
+      "id": 302,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.116Z",
+      "updatedAt": "2025-11-18T06:48:43.116Z"
+    },
+    {
+      "id": 303,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.118Z",
+      "updatedAt": "2025-11-18T06:48:43.118Z"
+    },
+    {
+      "id": 304,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "탭핑기,스폿용접기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.119Z",
+      "updatedAt": "2025-11-18T06:48:43.119Z"
+    },
+    {
+      "id": 305,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "굴착기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.121Z",
+      "updatedAt": "2025-11-18T06:48:43.121Z"
+    },
+    {
+      "id": 306,
+      "factoryId": 1,
+      "month": 8,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.122Z",
+      "updatedAt": "2025-11-18T06:48:43.122Z"
+    },
+    {
+      "id": 307,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.123Z",
+      "updatedAt": "2025-11-18T06:48:43.123Z"
+    },
+    {
+      "id": 308,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.125Z",
+      "updatedAt": "2025-11-18T06:48:43.125Z"
+    },
+    {
+      "id": 309,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.126Z",
+      "updatedAt": "2025-11-18T06:48:43.126Z"
+    },
+    {
+      "id": 310,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.127Z",
+      "updatedAt": "2025-11-18T06:48:43.127Z"
+    },
+    {
+      "id": 311,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.128Z",
+      "updatedAt": "2025-11-18T06:48:43.128Z"
+    },
+    {
+      "id": 312,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.130Z",
+      "updatedAt": "2025-11-18T06:48:43.130Z"
+    },
+    {
+      "id": 313,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "밀링기,면취기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.131Z",
+      "updatedAt": "2025-11-18T06:48:43.131Z"
+    },
+    {
+      "id": 314,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "이동크레인 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.132Z",
+      "updatedAt": "2025-11-18T06:48:43.132Z"
+    },
+    {
+      "id": 315,
+      "factoryId": 1,
+      "month": 9,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.134Z",
+      "updatedAt": "2025-11-18T06:48:43.134Z"
+    },
+    {
+      "id": 316,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.135Z",
+      "updatedAt": "2025-11-18T06:48:43.135Z"
+    },
+    {
+      "id": 317,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.136Z",
+      "updatedAt": "2025-11-18T06:48:43.136Z"
+    },
+    {
+      "id": 318,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.138Z",
+      "updatedAt": "2025-11-18T06:48:43.138Z"
+    },
+    {
+      "id": 319,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.139Z",
+      "updatedAt": "2025-11-18T06:48:43.139Z"
+    },
+    {
+      "id": 320,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.140Z",
+      "updatedAt": "2025-11-18T06:48:43.140Z"
+    },
+    {
+      "id": 321,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.141Z",
+      "updatedAt": "2025-11-18T06:48:43.141Z"
+    },
+    {
+      "id": 322,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "프레스 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.143Z",
+      "updatedAt": "2025-11-18T06:48:43.143Z"
+    },
+    {
+      "id": 323,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "배전반 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.144Z",
+      "updatedAt": "2025-11-18T06:48:43.144Z"
+    },
+    {
+      "id": 324,
+      "factoryId": 1,
+      "month": 10,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.146Z",
+      "updatedAt": "2025-11-18T06:48:43.146Z"
+    },
+    {
+      "id": 334,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T06:48:43.159Z",
+      "updatedAt": "2025-11-18T06:48:43.159Z"
+    },
+    {
+      "id": 335,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T06:48:43.161Z",
+      "updatedAt": "2025-11-18T06:48:43.161Z"
+    },
+    {
+      "id": 336,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T06:48:43.163Z",
+      "updatedAt": "2025-11-18T06:48:43.163Z"
+    },
+    {
+      "id": 337,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T06:48:43.164Z",
+      "updatedAt": "2025-11-18T06:48:43.164Z"
+    },
+    {
+      "id": 338,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T06:48:43.165Z",
+      "updatedAt": "2025-11-18T06:48:43.165Z"
+    },
+    {
+      "id": 339,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T06:48:43.167Z",
+      "updatedAt": "2025-11-18T06:48:43.167Z"
+    },
+    {
+      "id": 340,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "용접기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T06:48:43.169Z",
+      "updatedAt": "2025-11-18T06:48:43.169Z"
+    },
+    {
+      "id": 341,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "이동크레인 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T06:48:43.170Z",
+      "updatedAt": "2025-11-18T06:48:43.170Z"
+    },
+    {
+      "id": 342,
+      "factoryId": 1,
+      "month": 12,
+      "equipmentName": "위험물,가스저장소 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T06:48:43.172Z",
+      "updatedAt": "2025-11-18T06:48:43.172Z"
+    },
+    {
+      "id": 343,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "지게차 점검",
+      "displayOrder": 1,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 344,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "크레인 점검",
+      "displayOrder": 2,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 345,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "전단기 점검",
+      "displayOrder": 3,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 346,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "절곡기 점검",
+      "displayOrder": 4,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 347,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "컨베이어 점검",
+      "displayOrder": 5,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 348,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "걸이구 점검",
+      "displayOrder": 6,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 349,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "드릴기 점검",
+      "displayOrder": 7,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 350,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "굴착기 점검",
+      "displayOrder": 8,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    },
+    {
+      "id": 351,
+      "factoryId": 1,
+      "month": 11,
+      "equipmentName": "소화전,소화기 점검",
+      "displayOrder": 9,
+      "createdAt": "2025-11-18T07:14:39.491Z",
+      "updatedAt": "2025-11-18T07:14:39.491Z"
+    }
+  ]
+}

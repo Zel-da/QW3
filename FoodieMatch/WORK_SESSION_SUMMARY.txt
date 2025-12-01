@@ -1,0 +1,246 @@
+================================================================================
+작업 세션 요약 - 2025년 11월 21일
+================================================================================
+
+[세션 개요]
+- 완료 작업: 2개 (작업 2, 작업 3)
+- 스킵 작업: 1개 (작업 4)
+- 총 커밋: 3개
+- 서버 상태: 정상 실행 중 (Port 5001)
+
+================================================================================
+[작업 2] 대시보드 통계 차트 추가 (Recharts)
+================================================================================
+
+커밋: 2d3df512
+날짜: 2025-11-21
+
+구현 내용:
+- Recharts 라이브러리를 사용한 통계 시각화
+- DashboardStats 컴포넌트 생성
+- 홈 페이지에 통계 섹션 추가
+
+생성된 파일:
+  client/src/components/DashboardStats.tsx (새 파일)
+
+수정된 파일:
+  client/src/pages/DashboardHomePage.tsx
+  package.json (recharts 추가)
+  package-lock.json
+
+주요 기능:
+  1. 통계 카드 4개
+     - 공지사항 통계 (총 개수, 미읽음)
+     - 교육 진행률 (완료/총)
+     - TBM 제출 현황 (제출/총)
+     - 안전점검 상태 (완료 여부, 마감일)
+
+  2. 차트 2개
+     - 파이 차트: 교육 완료율
+     - 바 차트: TBM 제출 현황 (일별)
+
+  3. 동적 제목: N월 현황 (현재 월 표시)
+
+================================================================================
+[작업 3] 드래그 앤 드롭 파일 업로드 구현
+================================================================================
+
+커밋 1: e0ebed7c
+날짜: 2025-11-21
+
+구현 내용:
+- react-dropzone 라이브러리 추가
+- FileDropzone 재사용 가능 컴포넌트 생성
+- 3개 페이지에 통합
+
+생성된 파일:
+  client/src/components/FileDropzone.tsx (새 파일)
+
+수정된 파일:
+  client/src/pages/NoticeEditor.tsx
+  client/src/pages/EducationManagementPage.tsx
+  client/src/pages/SafetyInspectionPage.tsx
+  package.json (react-dropzone 추가)
+  package-lock.json
+
+적용 위치:
+  1. 공지사항 작성 (NoticeEditor)
+     - 이미지 업로드: 최대 10개, 10MB
+     - 파일 첨부: 최대 10개, 50MB
+
+  2. 교육 과정 관리 (EducationManagement)
+     - 교육 자료 문서: 최대 1개, 50MB (PDF, Word, Excel, PPT)
+
+  3. 안전점검 (SafetyInspection)
+     - 사진 업로드: 필요한 개수만큼, 10MB
+
+---
+
+커밋 2: d3b5bd14
+날짜: 2025-11-21
+
+구현 내용:
+- 추가 3개 페이지에 FileDropzone 통합
+
+수정된 파일:
+  client/src/pages/NoticeDetailPage.tsx
+  client/src/components/CourseEditDialog.tsx
+  client/src/features/tbm/TBMChecklist.jsx
+
+적용 위치:
+  4. 공지사항 댓글 (NoticeDetailPage)
+     - 댓글 이미지: 최대 5개, 10MB
+     - 댓글 파일: 최대 5개, 50MB
+
+  5. 교육 과정 편집 (CourseEditDialog)
+     - 교육 자료 문서: 최대 1개, 50MB
+
+  6. TBM 체크리스트 (TBMChecklist)
+     - 체크리스트 사진: 최대 10개, 10MB
+     - TBM 특이사항 사진/영상: 최대 10개, 50MB (이미지, 비디오)
+
+FileDropzone 컴포넌트 기능:
+  - 드래그 앤 드롭 영역 with 시각적 피드백
+  - 파일 미리보기 (아이콘, 이름, 크기)
+  - 파일 제거 기능
+  - 설정 가능: maxFiles, maxSize, accept types
+  - 반응형 디자인 (모바일 지원)
+
+================================================================================
+[작업 4] 자동 리포트 이메일 발송 시스템 - 스킵됨
+================================================================================
+
+이유: 사용자 요청으로 스킵
+
+참고:
+- 이메일 시스템은 이미 완전히 구현되어 있음
+  - EmailTemplate, EmailSchedule, EmailCondition 테이블
+  - SMTP 연결, 템플릿 엔진, 발송 로직
+  - EmailSettingsPage UI (템플릿/스케줄/조건 관리)
+  - 조건부 발송 프레임워크 (매 시간 체크)
+
+- 필요 시 나중에 구현 가능:
+  - 리포트 통계 API 추가
+  - 리포트 조건 체커 추가
+  - 리포트 이메일 템플릿 작성
+
+================================================================================
+[전체 파일 변경 요약]
+================================================================================
+
+생성된 파일 (2개):
+  client/src/components/DashboardStats.tsx
+  client/src/components/FileDropzone.tsx
+
+수정된 파일 (9개):
+  client/src/pages/DashboardHomePage.tsx
+  client/src/pages/NoticeEditor.tsx
+  client/src/pages/EducationManagementPage.tsx
+  client/src/pages/SafetyInspectionPage.tsx
+  client/src/pages/NoticeDetailPage.tsx
+  client/src/components/CourseEditDialog.tsx
+  client/src/features/tbm/TBMChecklist.jsx
+  package.json
+  package-lock.json
+
+추가된 npm 패키지:
+  - recharts
+  - react-dropzone
+
+================================================================================
+[Git 커밋 이력]
+================================================================================
+
+1. 2d3df512 - feat: 대시보드 통계 차트 추가 (Recharts)
+   작업 2 완료
+
+2. e0ebed7c - feat: 드래그 앤 드롭 파일 업로드 구현 (작업 3)
+   FileDropzone 컴포넌트 생성 및 3개 페이지 통합
+
+3. d3b5bd14 - feat: 전체 파일 업로드 FileDropzone으로 통합 (작업 3 완료)
+   추가 3개 페이지 통합, 총 6개 파일 9곳 완료
+
+================================================================================
+[다음 AI를 위한 컨텍스트]
+================================================================================
+
+현재 프로젝트 상태:
+  - 브랜치: main
+  - 커밋 앞: origin/main보다 3개 앞섬
+  - 서버: localhost:5001에서 정상 실행 중
+  - 데이터베이스: PostgreSQL, Prisma ORM
+
+최근 작업 패턴:
+  - 각 작업마다 커밋 생성
+  - 서버 재시작 시 HMR 충돌 방지 위해 프로세스 종료 후 수정
+  - Prisma client 이슈 발생 시: npx prisma generate로 재생성
+
+주의사항:
+  - node_modules/.prisma/client 파일은 커밋하지 않음
+  - nul 파일은 삭제 필요 (Windows 오류)
+  - 백업 JSON 파일들은 .gitignore 대상
+
+사용자 선호:
+  - 한국어 커밋 메시지
+  - 각 작업 후 커밋/백업
+  - git reset --hard 절대 사용 금지 (git revert 사용)
+  - 상세한 커밋 메시지 (변경사항, 개선효과 명시)
+
+미완료 작업:
+  - 없음 (작업 4는 의도적으로 스킵)
+
+향후 가능한 작업:
+  - 자동 리포트 이메일 발송 (필요 시)
+  - PDF 리포트 생성
+  - 차트 이미지 생성 및 이메일 첨부
+
+================================================================================
+[기술 스택 현황]
+================================================================================
+
+Frontend:
+  - React 18
+  - TypeScript
+  - Vite
+  - TailwindCSS
+  - Radix UI
+  - TanStack Query
+  - React Hook Form + Zod
+  - Recharts (신규)
+  - react-dropzone (신규)
+  - Zustand
+
+Backend:
+  - Express.js
+  - Node.js
+  - Passport.js
+  - Multer (파일 업로드)
+  - ExcelJS
+  - node-cron (스케줄러)
+  - nodemailer (이메일)
+
+Database:
+  - PostgreSQL
+  - Prisma ORM
+
+Deployment:
+  - 개발 서버: localhost:5173 (Vite)
+  - API 서버: localhost:5001 (Express)
+  - 내부 HTTP 네트워크 환경 (secure: false)
+
+================================================================================
+[종료 상태]
+================================================================================
+
+✅ 작업 2 완료: 대시보드 통계 차트
+✅ 작업 3 완료: 드래그 앤 드롭 파일 업로드 (6개 파일, 9곳)
+⏭️ 작업 4 스킵: 자동 리포트 이메일 발송
+
+서버 상태: 정상
+브랜치: main (로컬 3 커밋 앞)
+다음 작업: 없음
+
+================================================================================
+작성일: 2025-11-21
+작성자: Claude Code
+================================================================================

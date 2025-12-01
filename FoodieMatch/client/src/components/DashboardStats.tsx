@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Bell, GraduationCap, ClipboardCheck, ShieldCheck, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import CountUp from "react-countup";
 
 interface DashboardStatsData {
   notices: {
@@ -85,9 +86,9 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-6 mb-8">
-      <h2 className="text-2xl font-bold text-center mt-8">{currentMonth}월 현황</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-center mt-8">{currentMonth}월 현황</h2>
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* 공지사항 카드 */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -97,7 +98,9 @@ export function DashboardStats() {
             <Bell className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.notices.total}개</div>
+            <div className="text-xl sm:text-2xl font-bold">
+              <CountUp end={stats.notices.total} duration={1.5} />개
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.notices.unread > 0 ? (
                 <span className="text-orange-600 font-medium">
@@ -110,27 +113,6 @@ export function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* 교육 현황 카드 */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              이번달 교육
-            </CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.education.completedCourses}/{stats.education.totalCourses}
-            </div>
-            <div className="mt-2">
-              <Progress value={educationCompletionRate} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-1">
-                완료율 {educationCompletionRate}%
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* TBM 제출 현황 카드 */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -140,13 +122,36 @@ export function DashboardStats() {
             <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.tbm.thisMonthSubmitted}/{stats.tbm.thisMonthTotal}일
+            <div className="text-xl sm:text-2xl font-bold">
+              <CountUp end={stats.tbm.thisMonthSubmitted} duration={1.5} />/
+              <CountUp end={stats.tbm.thisMonthTotal} duration={1.5} />일
             </div>
             <div className="mt-2">
               <Progress value={tbmCompletionRate} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                제출률 {tbmCompletionRate}%
+                제출률 <CountUp end={tbmCompletionRate} duration={1.5} suffix="%" />
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 교육 현황 카드 */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              이번달 교육
+            </CardTitle>
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold">
+              <CountUp end={stats.education.completedCourses} duration={1.5} />/
+              <CountUp end={stats.education.totalCourses} duration={1.5} />
+            </div>
+            <div className="mt-2">
+              <Progress value={educationCompletionRate} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">
+                완료율 <CountUp end={educationCompletionRate} duration={1.5} suffix="%" />
               </p>
             </div>
           </CardContent>
@@ -161,7 +166,7 @@ export function DashboardStats() {
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               {stats.inspection.thisMonthCompleted ? (
                 <span className="text-green-600">완료</span>
               ) : (
@@ -178,13 +183,34 @@ export function DashboardStats() {
       {/* Charts Section */}
       {stats.education.totalCourses > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
+          {/* TBM 제출 현황 바 차트 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>TBM 제출 현황</CardTitle>
+              <CardDescription>이번 달 제출 현황</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[250px] sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tbmChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="제출완료" fill={COLORS.completed} />
+                  <Bar dataKey="미제출" fill={COLORS.notStarted} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
           {/* 교육 완료 현황 파이 차트 */}
           <Card>
             <CardHeader>
               <CardTitle>이번달 교육 현황</CardTitle>
               <CardDescription>과정별 진행 상태</CardDescription>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -204,27 +230,6 @@ export function DashboardStats() {
                   <Tooltip />
                   <Legend />
                 </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* TBM 제출 현황 바 차트 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>TBM 제출 현황</CardTitle>
-              <CardDescription>이번 달 제출 현황</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tbmChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="제출완료" fill={COLORS.completed} />
-                  <Bar dataKey="미제출" fill={COLORS.notStarted} />
-                </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>

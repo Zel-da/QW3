@@ -242,7 +242,13 @@ const checklistData: Record<number, { category: string; subCategory: string; des
 async function main() {
   console.log(`Start seeding ...`);
 
-  // 1. Clear existing TBM data
+  // ⚠️ WARNING: 팀 데이터 삭제 비활성화
+  // 실수로 전체 시드 실행 시 기존 데이터 보호
+  console.log('⚠️  팀 데이터 초기화는 건너뜁니다 (기존 데이터 보호)');
+
+  // 아래 코드는 의도적으로 주석 처리됨
+  // 완전히 새로 시작할 때만 주석 해제하여 사용
+  /*
   console.log('Deleting existing TBM data...');
   await prisma.reportDetail.deleteMany({});
   await prisma.reportSignature.deleteMany({});
@@ -255,25 +261,16 @@ async function main() {
   await prisma.user.deleteMany({});
   await prisma.team.deleteMany({});
   console.log('Finished deleting TBM data.');
+  */
 
-  // 2. Upsert Admin User
-  const plainPassword = 'admin1234';
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
+  // 2. Admin User 생성 건너뜀 (이미 존재함)
+  console.log('⚠️  Admin 유저 생성 건너뜁니다 (이미 존재)');
 
-  await prisma.user.create({
-    data: {
-      username: 'admin',
-      name: 'Admin User',
-      email: 'admin@example.com',
-      password: hashedPassword,
-      role: 'ADMIN',
-      site: '아산', // Default site for admin
-    },
-  });
-  console.log(`Created admin user: admin`);
+  // 3. 팀 데이터 생성 건너뜀 (기존 데이터 보호)
+  console.log('⚠️  팀 데이터 생성 건너뜁니다 (이미 존재함)');
 
-  // 3. Seed new TBM data for 18 teams (9 for Asan, 9 for Hwaseong)
+  // 아래 코드는 의도적으로 주석 처리됨
+  /*
   console.log('Seeding new TBM data for Asan and Hwaseong...');
   const sites = ['아산', '화성'];
   const baseTeams = [
@@ -318,6 +315,122 @@ async function main() {
         console.log(`-- Seeded ${itemsToCreate.length} checklist items for ${teamName}`);
       }
     }
+  }
+  */
+
+  // 4. Seed Email Configurations (5 basic emails)
+  console.log('Seeding email configurations...');
+
+  // Clear existing email configs
+  await prisma.simpleEmailConfig.deleteMany({});
+  await prisma.emailLog.deleteMany({});
+
+  const emailConfigs = [
+    {
+      emailType: 'EXEC_SIGNATURE_REQUEST',
+      subject: '월간 TBM 보고서 임원 서명 요청',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #2563eb;">월간 TBM 보고서 임원 서명 요청</h2>
+  <p>안녕하세요.</p>
+  <p>{{MONTH}}월 TBM 보고서에 대한 임원 서명이 필요합니다.</p>
+  <p><strong>보고서:</strong> {{REPORT_NAME}}</p>
+  <p><strong>작성팀:</strong> {{TEAM_NAME}}</p>
+  <p><strong>작성일:</strong> {{CREATED_DATE}}</p>
+  <p>아래 링크를 클릭하여 보고서를 확인하고 서명해주세요.</p>
+  <p><a href="{{REPORT_URL}}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">보고서 확인 및 서명</a></p>
+  <p>감사합니다.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'EXEC_SIGNATURE_COMPLETE',
+      subject: '월간 TBM 보고서 임원 서명 완료',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #10b981;">월간 TBM 보고서 임원 서명 완료</h2>
+  <p>안녕하세요.</p>
+  <p>{{MONTH}}월 TBM 보고서에 임원 서명이 완료되었습니다.</p>
+  <p><strong>보고서:</strong> {{REPORT_NAME}}</p>
+  <p><strong>서명자:</strong> {{SIGNER_NAME}} ({{SIGNER_ROLE}})</p>
+  <p><strong>서명일시:</strong> {{SIGNED_DATE}}</p>
+  <p>아래 링크를 클릭하여 최종 보고서를 확인하세요.</p>
+  <p><a href="{{REPORT_URL}}" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">최종 보고서 확인</a></p>
+  <p>감사합니다.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'TBM_REMINDER',
+      subject: 'TBM 일지 미작성 알림',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #f59e0b;">TBM 일지 미작성 알림</h2>
+  <p>안녕하세요, {{USER_NAME}}님.</p>
+  <p>{{DATE}} TBM 일지가 아직 작성되지 않았습니다.</p>
+  <p><strong>팀:</strong> {{TEAM_NAME}}</p>
+  <p><strong>미작성 일수:</strong> {{DAYS_OVERDUE}}일</p>
+  <p>빠른 시일 내에 TBM 일지를 작성해주시기 바랍니다.</p>
+  <p><a href="{{TBM_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">TBM 일지 작성하기</a></p>
+  <p>감사합니다.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'AFTER_N_DAYS',
+      daysAfter: 3,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'EDUCATION_REMINDER',
+      subject: '안전교육 미수강 알림',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #f59e0b;">안전교육 미수강 알림</h2>
+  <p>안녕하세요, {{USER_NAME}}님.</p>
+  <p>필수 안전교육이 아직 완료되지 않았습니다.</p>
+  <p><strong>교육명:</strong> {{COURSE_NAME}}</p>
+  <p><strong>마감일:</strong> {{DUE_DATE}}</p>
+  <p><strong>진행률:</strong> {{PROGRESS}}%</p>
+  <p>마감일까지 안전교육을 완료해주시기 바랍니다.</p>
+  <p><a href="{{COURSE_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">교육 이어보기</a></p>
+  <p>감사합니다.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'AFTER_N_DAYS',
+      daysAfter: 7,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'INSPECTION_REMINDER',
+      subject: '안전점검 미작성 알림 (매월 4일)',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #f59e0b;">안전점검 미작성 알림</h2>
+  <p>안녕하세요, {{USER_NAME}}님.</p>
+  <p>{{MONTH}}월 안전점검이 아직 작성되지 않았습니다.</p>
+  <p><strong>담당팀:</strong> {{TEAM_NAME}}</p>
+  <p><strong>마감일:</strong> 매월 4일</p>
+  <p>매월 4일까지 안전점검을 완료해주시기 바랍니다.</p>
+  <p><a href="{{INSPECTION_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">안전점검 작성하기</a></p>
+  <p>감사합니다.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'MONTHLY_DAY',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: 4,
+    },
+  ];
+
+  for (const config of emailConfigs) {
+    await prisma.simpleEmailConfig.create({
+      data: config,
+    });
+    console.log(`Created email config: ${config.emailType}`);
   }
 
   console.log(`Seeding finished.`);

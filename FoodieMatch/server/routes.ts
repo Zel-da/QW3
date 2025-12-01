@@ -12,8 +12,10 @@ import ExcelJS from "exceljs";
 import { tbmReportSchema } from "@shared/schema";
 import sharp from "sharp";
 import rateLimit from "express-rate-limit";
-import { sendEmail, verifyEmailConnection, getEducationReminderTemplate, getTBMReminderTemplate, getSafetyInspectionReminderTemplate } from "./emailService";
+// Email services are now dynamically imported where needed
 import { getApprovalRequestTemplate, getApprovalApprovedTemplate, getApprovalRejectedTemplate } from "./approvalEmailTemplates";
+// R2 Storage for cloud deployment
+import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -199,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
         data: {
-          username, name, email, password: hashedPassword, role: 'SITE_MANAGER',
+          username, name, email, password: hashedPassword, role: 'PENDING',
           teamId: teamId ? parseInt(teamId, 10) : null,
           site: site || null,
         },
@@ -445,6 +447,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch education overview:", error);
       res.status(500).json({ message: "교육 현황을 불러오는데 실패했습니다" });
+    }
+  });
+
+  // Admin Dashboard Stats API
+  app.get("/api/admin/dashboard-stats", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // Users stats
+      const totalUsers = await prisma.user.count();
+      // PENDING이 아닌 사용자를 활성 사용자로 간주
+      const activeUsers = await prisma.user.count({
+        where: { role: { not: 'PENDING' } }
+      });
+      const newUsersThisMonth = await prisma.user.count({
+        where: { createdAt: { gte: startOfMonth } }
+      });
+
+      // Teams stats
+      const totalTeams = await prisma.team.count();
+
+      // Education stats
+      const totalCourses = await prisma.course.count();
+      const completedEducation = await prisma.userProgress.count({
+        where: { completed: true }
+      });
+      const inProgressEducation = await prisma.userProgress.count({
+        where: { completed: false, progress: { gt: 0 } }
+      });
+
+      // TBM stats (DailyReport)
+      const todayTbmCount = await prisma.dailyReport.count({
+        where: {
+          reportDate: {
+            gte: startOfToday,
+            lte: endOfToday
+          }
+        }
+      });
+      const thisMonthTbmCount = await prisma.dailyReport.count({
+        where: {
+          reportDate: { gte: startOfMonth }
+        }
+      });
+
+      // Inspection stats (SafetyInspection)
+      const pendingInspections = await prisma.safetyInspection.count({
+        where: { isCompleted: false }
+      });
+      const completedInspectionsThisMonth = await prisma.safetyInspection.count({
+        where: {
+          isCompleted: true,
+          completedAt: { gte: startOfMonth }
+        }
+      });
+
+      res.json({
+        users: {
+          total: totalUsers,
+          active: activeUsers,
+          newThisMonth: newUsersThisMonth
+        },
+        teams: {
+          total: totalTeams
+        },
+        education: {
+          total: totalCourses,
+          completed: completedEducation,
+          inProgress: inProgressEducation
+        },
+        tbm: {
+          todayCount: todayTbmCount,
+          thisMonthCount: thisMonthTbmCount,
+          completionRate: 0 // 계산 로직 추가 가능
+        },
+        inspection: {
+          pendingCount: pendingInspections,
+          completedThisMonth: completedInspectionsThisMonth
+        }
+      });
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats:", error);
+      res.status(500).json({ message: "대시보드 통계를 불러오는데 실패했습니다" });
     }
   });
 
@@ -832,7 +920,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 원본 파일 삭제
       fs.unlinkSync(req.file.path);
 
-      const photoUrl = `/uploads/${compressedFileName}`;
+      // R2 또는 로컬 스토리지에 업로드
+      const { url: photoUrl } = await uploadToStorage(
+        compressedPath,
+        compressedFileName,
+        'image/jpeg',
+        uploadDir
+      );
 
       const item = await prisma.inspectionItem.create({
         data: {
@@ -1050,6 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             approvalUrl
           );
 
+          const { sendEmail } = await import('./simpleEmailService');
           await sendEmail({
             to: approvalRequest.approver.email,
             subject: emailTemplate.subject,
@@ -1137,6 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/approvals/:id/approve", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const { signature } = req.body; // 프론트엔드에서 전송한 서명 이미지
       const userId = req.session.user!.id;
 
       const approval = await prisma.approvalRequest.findUnique({
@@ -1160,7 +1256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: { id },
         data: {
           status: 'APPROVED',
-          approvedAt: new Date()
+          approvedAt: new Date(),
+          executiveSignature: signature || null  // 서명 이미지 저장
         },
         include: {
           requester: true,
@@ -1185,6 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updated.approvedAt ? new Date(updated.approvedAt).toLocaleString('ko-KR') : ''
           );
 
+          const { sendEmail } = await import('./simpleEmailService');
           await sendEmail({
             to: updated.requester.email,
             subject: emailTemplate.subject,
@@ -1256,6 +1354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updated.rejectionReason || '사유 없음'
           );
 
+          const { sendEmail } = await import('./simpleEmailService');
           await sendEmail({
             to: updated.requester.email,
             subject: emailTemplate.subject,
@@ -1374,8 +1473,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DASHBOARD STATS (대시보드 통계)
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.user!.id;
-      const userTeamId = req.session.user!.teamId;
+      const user = req.session.user!;
+      const userId = user.id;
+      const userTeamId = user.teamId;
 
       // 공지사항 통계 - 30일 이내 + 사용자가 안읽은 개수
       const thirtyDaysAgo = new Date();
@@ -1429,10 +1529,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalThisMonth = thisMonthCourses.length;
       const inProgressCourses = thisMonthProgress.filter(p => !p.completed && p.progress > 0).length;
 
-      // TBM 통계
+      // TBM 통계 - 주말 및 공휴일 제외 영업일 기준
       const daysInMonth = new Date(thisYear, thisMonth, 0).getDate();
+
+      // 공휴일 목록 조회
+      const monthStart = new Date(thisYear, thisMonth - 1, 1);
+      const monthEnd = new Date(thisYear, thisMonth, 0, 23, 59, 59, 999);
+      const holidays = await prisma.holiday.findMany({
+        where: {
+          date: { gte: monthStart, lte: monthEnd },
+          OR: [
+            { site: null },
+            { site: user?.site || undefined }
+          ]
+        }
+      });
+      const holidayDays = new Set(holidays.map(h => new Date(h.date).getDate()));
+
+      // 영업일 계산 (토요일, 일요일, 공휴일 제외)
+      let businessDays = 0;
+      const today = new Date();
+      const todayDay = today.getDate();
+      const isCurrentMonth = today.getFullYear() === thisYear && (today.getMonth() + 1) === thisMonth;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        // 현재 월인 경우 오늘까지만 계산
+        if (isCurrentMonth && day > todayDay) break;
+
+        const date = new Date(thisYear, thisMonth - 1, day);
+        const dayOfWeek = date.getDay();
+        // 일요일(0), 토요일(6), 공휴일 제외
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDays.has(day)) {
+          businessDays++;
+        }
+      }
+
       let thisMonthSubmitted = 0;
-      let thisMonthTotal = daysInMonth;
+      let thisMonthTotal = businessDays;
 
       if (userTeamId) {
         const thisMonthReports = await prisma.dailyReport.findMany({
@@ -1659,34 +1792,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notices", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { title, content, category, imageUrl, attachmentUrl, attachmentName, attachments, videoUrl, videoType } = req.body;
-      console.log('📥 Received notice data:', { title, videoUrl, videoType });
+      console.log('📥 Received notice data:', {
+        title,
+        videoUrl,
+        videoType,
+        userId: req.session.user?.id,
+        userRole: req.session.user?.role
+      });
+
+      // 사용자 권한 확인
+      if (!req.session.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      // 필수 필드 검증
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
       const newNotice = await prisma.notice.create({
         data: {
           title,
           content,
           category: category || 'GENERAL',
-          authorId: req.session.user!.id,
-          imageUrl,
-          attachmentUrl,
-          attachmentName,
-          videoUrl,
-          videoType,
-          attachments: attachments ? {
+          authorId: req.session.user.id,
+          imageUrl: imageUrl || null,
+          attachmentUrl: attachmentUrl || null,
+          attachmentName: attachmentName || null,
+          videoUrl: videoUrl || null,
+          videoType: videoType || null,
+          attachments: attachments && attachments.length > 0 ? {
             create: attachments.map((att: any) => ({
               url: att.url,
               name: att.name,
               type: att.type || 'file',
               size: att.size || 0,
-              mimeType: att.mimeType || 'application/octet-stream'
+              mimeType: att.mimeType || 'application/octet-stream',
+              rotation: att.rotation || 0
             }))
           } : undefined
         },
         include: { attachments: true }
       });
+
+      console.log('✅ Notice created successfully:', newNotice.id);
       res.status(201).json(newNotice);
     } catch (error) {
-      console.error('Failed to create notice:', error);
-      res.status(500).json({ message: "Failed to create notice" });
+      console.error('❌ Failed to create notice:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      res.status(500).json({
+        message: "Failed to create notice",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -1716,7 +1878,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: att.name,
               type: att.type || 'file',
               size: att.size || 0,
-              mimeType: att.mimeType || 'application/octet-stream'
+              mimeType: att.mimeType || 'application/octet-stream',
+              rotation: att.rotation || 0
             }))
           } : undefined
         },
@@ -2404,9 +2567,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🗂️ 종합 엑셀 생성: ${site} 사이트 ${year}년 ${month}월`);
 
-      // 사이트별 팀 목록 조회
+      // 사이트별 팀 목록 조회 (결재자 정보 포함)
       const teams = await prisma.team.findMany({
         where: { site: site as string },
+        include: {
+          approver: true  // 팀에 지정된 결재 임원 정보
+        },
         orderBy: { name: 'asc' }
       });
 
@@ -2517,35 +2683,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sheet1.mergeCells('T3:Z4');
           sheet1.mergeCells('AA3:AG4');
 
-          // 임원 서명 추가
-          if (monthlyApproval?.approvalRequest) {
-            const approverName = monthlyApproval.approvalRequest.approver?.name;
-            const executiveSignature = monthlyApproval.approvalRequest.executiveSignature;
+          // 임원 이름 및 서명 추가
+          // 우선순위: ApprovalRequest에서 결재한 임원 > 팀에 지정된 결재 임원
+          const approverName = monthlyApproval?.approvalRequest?.approver?.name
+            || team.approver?.name;
+          const executiveSignature = monthlyApproval?.approvalRequest?.executiveSignature;
 
-            if (approverName) {
-              sheet1.getCell('T3').value = approverName;
-              sheet1.getCell('T3').font = font;
-              sheet1.getCell('T3').alignment = centerAlignment;
-            }
+          if (approverName) {
+            sheet1.getCell('T3').value = approverName;
+            sheet1.getCell('T3').font = font;
+            sheet1.getCell('T3').alignment = centerAlignment;
+            console.log(`  ✅ 임원 이름 추가: ${approverName}`);
+          }
 
-            if (executiveSignature) {
-              try {
-                const base64Data = executiveSignature.includes('base64,')
-                  ? executiveSignature.split('base64,')[1]
-                  : executiveSignature;
+          if (executiveSignature) {
+            try {
+              const base64Data = executiveSignature.includes('base64,')
+                ? executiveSignature.split('base64,')[1]
+                : executiveSignature;
 
-                const imageId = workbook.addImage({
-                  base64: base64Data,
-                  extension: 'png'
-                });
+              const imageId = workbook.addImage({
+                base64: base64Data,
+                extension: 'png'
+              });
 
-                sheet1.addImage(imageId, {
-                  tl: { col: 26, row: 2 }, // AA3
-                  ext: { width: 150, height: 50 }
-                });
-              } catch (err) {
-                console.error(`  ⚠️  서명 이미지 삽입 실패:`, err);
-              }
+              sheet1.addImage(imageId, {
+                tl: { col: 26, row: 2 }, // AA3
+                ext: { width: 150, height: 50 }
+              });
+              console.log(`  ✅ 임원 서명 이미지 추가됨`);
+            } catch (err) {
+              console.error(`  ⚠️  서명 이미지 삽입 실패:`, err);
             }
           }
 
@@ -2730,96 +2898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // ===== SHEET 2: 서명 =====
-          const sanitizedName2 = team.name.replace(/[*?:\\/\[\]]/g, '-');
-          const sheetName2 = `${sanitizedName2}_서명`.substring(0, 31);
-          const sheet2 = workbook.addWorksheet(sheetName2);
-
-          sheet2.getColumn(1).width = 20;
-          sheet2.getCell('A1').value = '이름';
-          sheet2.getCell('A1').font = boldFont;
-          sheet2.getCell('A1').alignment = centerAlignment;
-          sheet2.getCell('A1').border = border;
-
-          const sigDateColMap: Record<number, number> = {};
-          for (let day = 1; day <= lastDayOfMonth; day++) {
-            const col = 1 + day;
-            sheet2.getColumn(col).width = 7.5;
-            sheet2.getCell(1, col).value = day;
-            sheet2.getCell(1, col).font = boldFont;
-            sheet2.getCell(1, col).alignment = centerAlignment;
-            sheet2.getCell(1, col).border = border;
-            sigDateColMap[day] = col;
-          }
-
-          // User와 TeamMember를 모두 포함
-          const userRowMap: Record<string, number> = {};
-          const memberRowMap: Record<number, number> = {};
-          let currentRow = 2;
-
-          // 먼저 User(계정 있는 사용자) 추가
-          teamUsers.forEach((u) => {
-            userRowMap[u.id] = currentRow;
-            sheet2.getRow(currentRow).height = 30;
-            sheet2.getCell(currentRow, 1).value = u.name;
-            sheet2.getCell(currentRow, 1).font = font;
-            sheet2.getCell(currentRow, 1).alignment = centerAlignment;
-            sheet2.getCell(currentRow, 1).border = border;
-            currentRow++;
-          });
-
-          // 그 다음 TeamMember(계정 없는 사용자) 추가
-          teamMembers.forEach((m) => {
-            memberRowMap[m.id] = currentRow;
-            sheet2.getRow(currentRow).height = 30;
-            sheet2.getCell(currentRow, 1).value = m.name;
-            sheet2.getCell(currentRow, 1).font = font;
-            sheet2.getCell(currentRow, 1).alignment = centerAlignment;
-            sheet2.getCell(currentRow, 1).border = border;
-            currentRow++;
-          });
-
-          // 서명 이미지 삽입
-          dailyReports.forEach(report => {
-            const day = new Date(report.reportDate).getDate();
-            const col = sigDateColMap[day];
-            if (!col) return;
-
-            report.reportSignatures.forEach(sig => {
-              let row: number | undefined;
-
-              // User 서명인지 TeamMember 서명인지 확인
-              if (sig.userId) {
-                row = userRowMap[sig.userId];
-              } else if (sig.memberId) {
-                row = memberRowMap[sig.memberId];
-              }
-
-              if (row && sig.signatureImage) {
-                try {
-                  const base64Data = sig.signatureImage.split('base64,').pop();
-                  if (!base64Data) return;
-
-                  const imageId = workbook.addImage({ base64: base64Data, extension: 'png' });
-                  sheet2.addImage(imageId, {
-                    tl: { col: col - 0.5, row: row - 0.5 },
-                    ext: { width: 50, height: 25 }
-                  });
-                } catch (e) {
-                  console.error("Error adding signature image:", e);
-                }
-              }
-            });
-          });
-
-          // User와 TeamMember를 모두 포함한 총 행 수
-          const totalRows = teamUsers.length + teamMembers.length;
-          for (let r = 2; r <= totalRows + 1; r++) {
-            for (let c = 2; c <= lastDayOfMonth + 1; c++) {
-              sheet2.getCell(r, c).border = border;
-            }
-          }
-
+          // 서명 시트는 더 이상 생성하지 않음 (임원 서명만 첫 시트에 포함)
           console.log(`  ✅ 팀 ${team.name} 완료`);
         } catch (error) {
           console.error(`  ❌ 팀 ${team.name} 처리 실패:`, error);
@@ -2849,11 +2928,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
   app.get("/api/tbm/safety-education-excel", requireAuth, async (req, res) => {
     try {
-      const { site, year, month, date } = req.query;
+      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates } = req.query;
 
       // 파라미터 검증
       if (!site || !year || !month || !date) {
         return res.status(400).json({ message: "site, year, month, and date are required." });
+      }
+
+      // 팀별 날짜 맵 파싱 (선택사항)
+      let teamDateMap: Record<number, number> = {};
+      if (teamDates) {
+        try {
+          teamDateMap = JSON.parse(teamDates as string);
+          console.log(`🗓️ 팀별 날짜 설정:`, teamDateMap);
+        } catch (e) {
+          console.error('teamDates 파싱 실패:', e);
+        }
       }
 
       if (site !== '아산' && site !== '화성') {
@@ -2900,29 +2990,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📋 팀 총 ${teams.length}개 발견`);
 
-      // 선택한 일자의 TBM 보고서 조회 (사진 포함)
-      const reports = await prisma.dailyReport.findMany({
-        where: {
-          teamId: { in: teams.map(t => t.id) },
-          reportDate: { gte: selectedDate, lte: selectedDateEnd }
-        },
-        include: {
-          team: true,
-          reportDetails: {
+      // 팀별 날짜 맵이 있으면 팀별로 다른 날짜의 보고서를 조회
+      // 없으면 기존처럼 선택한 단일 날짜 사용
+      const hasTeamDates = Object.keys(teamDateMap).length > 0;
+
+      let reports: any[] = [];
+
+      if (hasTeamDates) {
+        // 팀별로 다른 날짜 사용
+        console.log(`🗓️ 팀별 날짜 모드로 TBM 보고서 조회...`);
+        for (const team of teams) {
+          const teamDay = teamDateMap[team.id] || dateNum;
+          const teamDateStart = new Date(yearNum, monthNum - 1, teamDay, 0, 0, 0);
+          const teamDateEnd = new Date(yearNum, monthNum - 1, teamDay, 23, 59, 59, 999);
+
+          const teamReport = await prisma.dailyReport.findFirst({
+            where: {
+              teamId: team.id,
+              reportDate: { gte: teamDateStart, lte: teamDateEnd }
+            },
             include: {
-              attachments: {
-                where: { type: 'image' },
-                orderBy: { createdAt: 'asc' }
+              team: true,
+              reportDetails: {
+                include: {
+                  attachments: {
+                    where: { type: 'image' },
+                    orderBy: { createdAt: 'asc' }
+                  }
+                }
+              },
+              reportSignatures: {
+                include: { user: true, member: true }
               }
             }
-          },
-          reportSignatures: {
-            include: { user: true, member: true }
+          });
+
+          if (teamReport) {
+            reports.push(teamReport);
+            console.log(`  📅 ${team.name}: ${teamDay}일 보고서 발견`);
+          } else {
+            console.log(`  📅 ${team.name}: ${teamDay}일 보고서 없음`);
           }
         }
-      });
+      } else {
+        // 기존 방식: 선택한 단일 날짜의 모든 팀 보고서 조회
+        reports = await prisma.dailyReport.findMany({
+          where: {
+            teamId: { in: teams.map(t => t.id) },
+            reportDate: { gte: selectedDate, lte: selectedDateEnd }
+          },
+          include: {
+            team: true,
+            reportDetails: {
+              include: {
+                attachments: {
+                  where: { type: 'image' },
+                  orderBy: { createdAt: 'asc' }
+                }
+              }
+            },
+            reportSignatures: {
+              include: { user: true, member: true }
+            }
+          }
+        });
+      }
 
-      console.log(`📸 선택 일자(${date}일)의 TBM 보고서: ${reports.length}개`);
+      console.log(`📸 TBM 보고서: ${reports.length}개 (팀별 날짜: ${hasTeamDates ? '활성화' : '비활성화'})`);
 
       // 전체 활성 팀원 수 집계 (교육 대상자수)
       const totalMembers = await prisma.teamMember.count({
@@ -2954,214 +3088,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
         wrapText: true
       };
 
+      // 담당자/승인자 및 서명 데이터 파싱
+      const managerName = manager ? decodeURIComponent(manager as string) : '';
+      const approverName = approver ? decodeURIComponent(approver as string) : '';
+
+      let managerSigBuffer: Buffer | null = null;
+      let approverSigBuffer: Buffer | null = null;
+
+      if (managerSignature) {
+        try {
+          const base64Data = (managerSignature as string).replace(/^data:image\/\w+;base64,/, '');
+          managerSigBuffer = Buffer.from(base64Data, 'base64');
+        } catch (e) {
+          console.error('담당 서명 데이터 파싱 실패:', e);
+        }
+      }
+
+      if (approverSignature) {
+        try {
+          const base64Data = (approverSignature as string).replace(/^data:image\/\w+;base64,/, '');
+          approverSigBuffer = Buffer.from(base64Data, 'base64');
+        } catch (e) {
+          console.error('승인 서명 데이터 파싱 실패:', e);
+        }
+      }
+
       // ===== 시트 1: 갑지 (안전보건 교육일지) =====
       console.log('\n📄 시트 1: 갑지 생성...');
       const coverSheet = workbook.addWorksheet('안전보건_교육일지');
 
-      // 열 너비 설정
-      coverSheet.getColumn(1).width = 15;
-      for (let i = 2; i <= 10; i++) {
-        coverSheet.getColumn(i).width = 10;
+      // 열 너비 설정 (A-I 9개 열)
+      for (let i = 1; i <= 9; i++) {
+        coverSheet.getColumn(i).width = 10.625;
       }
 
       let currentRow = 1;
 
       // 제목 및 결재란 (1~4행)
-      coverSheet.mergeCells('A1:G4');
+      // 제목: A1:F4
+      coverSheet.mergeCells('A1:F4');
       coverSheet.getCell('A1').value = '안전보건 교육일지';
       coverSheet.getCell('A1').font = titleFont;
       coverSheet.getCell('A1').alignment = centerAlignment;
       coverSheet.getCell('A1').border = border;
 
-      // 결재란 상단
-      coverSheet.mergeCells('H1:I2');
+      // 결재란: G1:G4 (결재 텍스트)
+      coverSheet.mergeCells('G1:G4');
+      coverSheet.getCell('G1').value = '결\n재';
+      coverSheet.getCell('G1').font = boldFont;
+      coverSheet.getCell('G1').alignment = centerAlignment;
+      coverSheet.getCell('G1').border = border;
+
+      // 담당 헤더: H1:H2
+      coverSheet.mergeCells('H1:H2');
       coverSheet.getCell('H1').value = '담당';
       coverSheet.getCell('H1').font = boldFont;
       coverSheet.getCell('H1').alignment = centerAlignment;
       coverSheet.getCell('H1').border = border;
 
-      coverSheet.mergeCells('J1:J4');
-      coverSheet.getCell('J1').value = '결\n재';
-      coverSheet.getCell('J1').font = boldFont;
-      coverSheet.getCell('J1').alignment = centerAlignment;
-      coverSheet.getCell('J1').border = border;
+      // 승인 헤더: I1:I2
+      coverSheet.mergeCells('I1:I2');
+      coverSheet.getCell('I1').value = '승인';
+      coverSheet.getCell('I1').font = boldFont;
+      coverSheet.getCell('I1').alignment = centerAlignment;
+      coverSheet.getCell('I1').border = border;
 
-      coverSheet.mergeCells('K1:L2');
-      coverSheet.getCell('K1').value = '검토';
-      coverSheet.getCell('K1').font = boldFont;
-      coverSheet.getCell('K1').alignment = centerAlignment;
-      coverSheet.getCell('K1').border = border;
-
-      coverSheet.mergeCells('M1:N2');
-      coverSheet.getCell('M1').value = '승인';
-      coverSheet.getCell('M1').font = boldFont;
-      coverSheet.getCell('M1').alignment = centerAlignment;
-      coverSheet.getCell('M1').border = border;
-
-      // 결재란 하단 (서명 공간)
-      coverSheet.mergeCells('H3:I4');
+      // 담당 서명공간: H3:H4
+      coverSheet.mergeCells('H3:H4');
       coverSheet.getCell('H3').value = '';
       coverSheet.getCell('H3').border = border;
+      coverSheet.getRow(3).height = 30;
+      coverSheet.getRow(4).height = 30;
 
-      coverSheet.mergeCells('K3:L4');
-      coverSheet.getCell('K3').value = '';
-      coverSheet.getCell('K3').border = border;
+      // 담당 서명 이미지 삽입 (있는 경우)
+      if (managerSigBuffer) {
+        try {
+          const managerSigImageId = workbook.addImage({
+            buffer: managerSigBuffer,
+            extension: 'png'
+          });
+          coverSheet.addImage(managerSigImageId, {
+            tl: { col: 7, row: 2 }, // H3 위치
+            ext: { width: 60, height: 40 }
+          });
+          console.log('  📝 담당 서명 삽입 완료');
+        } catch (e) {
+          console.error('담당 서명 이미지 삽입 실패:', e);
+        }
+      }
 
-      coverSheet.mergeCells('M3:N4');
-      coverSheet.getCell('M3').value = '';
-      coverSheet.getCell('M3').border = border;
+      // 승인 서명공간: I3:I4
+      coverSheet.mergeCells('I3:I4');
+      coverSheet.getCell('I3').value = '';
+      coverSheet.getCell('I3').border = border;
+
+      // 승인 서명 이미지 삽입 (있는 경우)
+      if (approverSigBuffer) {
+        try {
+          const approverSigImageId = workbook.addImage({
+            buffer: approverSigBuffer,
+            extension: 'png'
+          });
+          coverSheet.addImage(approverSigImageId, {
+            tl: { col: 8, row: 2 }, // I3 위치
+            ext: { width: 60, height: 40 }
+          });
+          console.log('  📝 승인 서명 삽입 완료');
+        } catch (e) {
+          console.error('승인 서명 이미지 삽입 실패:', e);
+        }
+      }
 
       currentRow = 5;
 
-      // 교육의 구분
-      coverSheet.mergeCells(`A${currentRow}:B${currentRow + 2}`);
+      // 교육의 구분 (행 5-7)
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 2}`);
       coverSheet.getCell(`A${currentRow}`).value = '교육의\n구  분';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
       coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`A${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`C${currentRow}`).value = '1. 신규채용시 교육(8시간이상)    2. 작업내용 변경시 교육(2시간 이상)';
-      coverSheet.getCell(`C${currentRow}`).font = font;
-      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      coverSheet.getCell(`C${currentRow}`).border = border;
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '1. 신규채용시 교육(8시간이상)    2. 작업내용 변경시 교육(2시간 이상)';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`B${currentRow}`).border = border;
 
       currentRow++;
-      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`C${currentRow}`).value = '3. 특별안전보건교 교육(16시간)    4. 정기안전교육(월2시간 이상)';
-      coverSheet.getCell(`C${currentRow}`).font = font;
-      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      coverSheet.getCell(`C${currentRow}`).border = border;
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '3. 특별안전보건교 교육(16시간)    4. 정기안전교육(월2시간 이상)';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`B${currentRow}`).border = border;
 
       currentRow++;
-      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`C${currentRow}`).value = '5. 관리감독자 교육(16시간/분기)    6. 기 타 (                ) 교육';
-      coverSheet.getCell(`C${currentRow}`).font = font;
-      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      coverSheet.getCell(`C${currentRow}`).border = border;
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = '5. 관리감독자 교육(16시간/분기)    6. 기 타 (                ) 교육';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      coverSheet.getCell(`B${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육시간
-      coverSheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      // 교육시간 (행 8)
       coverSheet.getCell(`A${currentRow}`).value = '교육시간';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
       coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`A${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`C${currentRow}`).value = `[${monthNum}/1~${monthNum}/${new Date(yearNum, monthNum, 0).getDate()}]년 30분 TBM현장교육`;
-      coverSheet.getCell(`C${currentRow}`).font = font;
-      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
-      coverSheet.getCell(`C${currentRow}`).border = border;
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = `[${monthNum}/1~${monthNum}/${new Date(yearNum, monthNum, 0).getDate()}]아침 30분 TBM현장교육`;
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      coverSheet.getCell(`B${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육인원 헤더
+      // 교육인원 (행 9-12)
       coverSheet.mergeCells(`A${currentRow}:A${currentRow + 3}`);
       coverSheet.getCell(`A${currentRow}`).value = '교육인원';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
       coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`A${currentRow}`).border = border;
 
-      // 교육인원 테이블 헤더
+      // 교육인원 테이블 헤더 (행 9)
       coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
       coverSheet.getCell(`B${currentRow}`).value = '구분';
       coverSheet.getCell(`B${currentRow}`).font = boldFont;
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
       coverSheet.getCell(`D${currentRow}`).value = '계';
       coverSheet.getCell(`D${currentRow}`).font = boldFont;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
-      coverSheet.getCell(`F${currentRow}`).value = '남';
+      coverSheet.getCell(`E${currentRow}`).value = '남';
+      coverSheet.getCell(`E${currentRow}`).font = boldFont;
+      coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`E${currentRow}`).border = border;
+
+      coverSheet.getCell(`F${currentRow}`).value = '여';
       coverSheet.getCell(`F${currentRow}`).font = boldFont;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
-      coverSheet.getCell(`H${currentRow}`).value = '여';
-      coverSheet.getCell(`H${currentRow}`).font = boldFont;
-      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`H${currentRow}`).border = border;
-
-      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`J${currentRow}`).value = '교육 및 실시사유';
-      coverSheet.getCell(`J${currentRow}`).font = boldFont;
-      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`J${currentRow}`).border = border;
+      coverSheet.mergeCells(`G${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`G${currentRow}`).value = '교육 및 실시사유';
+      coverSheet.getCell(`G${currentRow}`).font = boldFont;
+      coverSheet.getCell(`G${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`G${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육 대상자수
+      // 교육 대상자수 (행 10)
       coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
       coverSheet.getCell(`B${currentRow}`).value = '교육 대상자수';
       coverSheet.getCell(`B${currentRow}`).font = font;
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
       coverSheet.getCell(`D${currentRow}`).value = totalMembers;
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
-      coverSheet.getCell(`F${currentRow}`).value = totalMembers - 2; // 임시 남자 수
+      coverSheet.getCell(`E${currentRow}`).value = totalMembers; // 전원 남자로 가정
+      coverSheet.getCell(`E${currentRow}`).font = font;
+      coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`E${currentRow}`).border = border;
+
+      coverSheet.getCell(`F${currentRow}`).value = 0;
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
-      coverSheet.getCell(`H${currentRow}`).value = 2; // 임시 여자 수
-      coverSheet.getCell(`H${currentRow}`).font = font;
-      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`H${currentRow}`).border = border;
-
-      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`J${currentRow}`).value = '';
-      coverSheet.getCell(`J${currentRow}`).border = border;
+      coverSheet.mergeCells(`G${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`G${currentRow}`).value = '-';
+      coverSheet.getCell(`G${currentRow}`).font = font;
+      coverSheet.getCell(`G${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`G${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육 실시자수
+      // 교육 실시자수 (행 11)
       coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
       coverSheet.getCell(`B${currentRow}`).value = '교육 실시자수';
       coverSheet.getCell(`B${currentRow}`).font = font;
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
       coverSheet.getCell(`D${currentRow}`).value = signedMembers;
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
-      coverSheet.getCell(`F${currentRow}`).value = signedMembers - 2; // 임시
+      coverSheet.getCell(`E${currentRow}`).value = signedMembers; // 전원 남자로 가정
+      coverSheet.getCell(`E${currentRow}`).font = font;
+      coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`E${currentRow}`).border = border;
+
+      coverSheet.getCell(`F${currentRow}`).value = 0;
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
-      coverSheet.getCell(`H${currentRow}`).value = 2; // 임시
-      coverSheet.getCell(`H${currentRow}`).font = font;
-      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`H${currentRow}`).border = border;
-
-      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`J${currentRow}`).value = '-';
-      coverSheet.getCell(`J${currentRow}`).font = font;
-      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`J${currentRow}`).border = border;
+      coverSheet.mergeCells(`G${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`G${currentRow}`).value = '-';
+      coverSheet.getCell(`G${currentRow}`).font = font;
+      coverSheet.getCell(`G${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`G${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육 미 실시자수
+      // 교육 미 실시자수 (행 12)
       coverSheet.mergeCells(`B${currentRow}:C${currentRow}`);
       coverSheet.getCell(`B${currentRow}`).value = '교육 미 실시자수';
       coverSheet.getCell(`B${currentRow}`).font = font;
@@ -3169,48 +3349,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).border = border;
 
       const notAttended = totalMembers - signedMembers;
-      coverSheet.mergeCells(`D${currentRow}:E${currentRow}`);
       coverSheet.getCell(`D${currentRow}`).value = notAttended > 0 ? notAttended : '-';
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      coverSheet.getCell(`E${currentRow}`).value = '-';
+      coverSheet.getCell(`E${currentRow}`).font = font;
+      coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
+      coverSheet.getCell(`E${currentRow}`).border = border;
+
       coverSheet.getCell(`F${currentRow}`).value = '-';
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
-      coverSheet.getCell(`H${currentRow}`).value = '-';
-      coverSheet.getCell(`H${currentRow}`).font = font;
-      coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`H${currentRow}`).border = border;
-
-      coverSheet.mergeCells(`J${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`J${currentRow}`).value = '-';
-      coverSheet.getCell(`J${currentRow}`).font = font;
-      coverSheet.getCell(`J${currentRow}`).alignment = centerAlignment;
-      coverSheet.getCell(`J${currentRow}`).border = border;
+      coverSheet.mergeCells(`G${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`G${currentRow}`).value = '';
+      coverSheet.getCell(`G${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육과목
-      coverSheet.mergeCells(`A${currentRow}:B${currentRow}`);
+      // 교육과목 (행 13)
       coverSheet.getCell(`A${currentRow}`).value = '교육과목';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
       coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`A${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`C${currentRow}:N${currentRow}`);
-      coverSheet.getCell(`C${currentRow}`).value = 'TBM 교육실시';
-      coverSheet.getCell(`C${currentRow}`).font = font;
-      coverSheet.getCell(`C${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
-      coverSheet.getCell(`C${currentRow}`).border = border;
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
+      coverSheet.getCell(`B${currentRow}`).value = 'TBM 교육실시';
+      coverSheet.getCell(`B${currentRow}`).font = font;
+      coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      coverSheet.getCell(`B${currentRow}`).border = border;
 
       currentRow++;
 
-      // 교육 내용
+      // 교육 내용 (행 14-20)
       coverSheet.mergeCells(`A${currentRow}:A${currentRow + 6}`);
       coverSheet.getCell(`A${currentRow}`).value = '교 육\n\n내 용';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
@@ -3228,7 +3402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       for (const content of educationContents) {
-        coverSheet.mergeCells(`B${currentRow}:N${currentRow}`);
+        coverSheet.mergeCells(`B${currentRow}:I${currentRow}`);
         coverSheet.getCell(`B${currentRow}`).value = content;
         coverSheet.getCell(`B${currentRow}`).font = font;
         coverSheet.getCell(`B${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
@@ -3236,7 +3410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentRow++;
       }
 
-      // 교육실시자 및 장소
+      // 교육실시자 및 장소 (행 21-22)
       coverSheet.mergeCells(`A${currentRow}:A${currentRow + 1}`);
       coverSheet.getCell(`A${currentRow}`).value = '교육실시자 및\n장소';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
@@ -3261,7 +3435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:N${currentRow}`);
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
       coverSheet.getCell(`H${currentRow}`).value = '비고';
       coverSheet.getCell(`H${currentRow}`).font = boldFont;
       coverSheet.getCell(`H${currentRow}`).alignment = centerAlignment;
@@ -3282,25 +3456,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`D${currentRow}`).border = border;
 
       coverSheet.mergeCells(`F${currentRow}:G${currentRow}`);
-      coverSheet.getCell(`F${currentRow}`).value = '곽 현장';
+      coverSheet.getCell(`F${currentRow}`).value = '각 현장';
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`H${currentRow}:N${currentRow}`);
+      coverSheet.mergeCells(`H${currentRow}:I${currentRow}`);
       coverSheet.getCell(`H${currentRow}`).value = '';
       coverSheet.getCell(`H${currentRow}`).border = border;
 
       currentRow++;
 
-      // 특기 사항
-      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 1}`);
+      // 특기 사항 (행 23-26)
+      coverSheet.mergeCells(`A${currentRow}:A${currentRow + 3}`);
       coverSheet.getCell(`A${currentRow}`).value = '특 기\n사 항';
       coverSheet.getCell(`A${currentRow}`).font = boldFont;
       coverSheet.getCell(`A${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`A${currentRow}`).border = border;
 
-      coverSheet.mergeCells(`B${currentRow}:N${currentRow + 1}`);
+      coverSheet.mergeCells(`B${currentRow}:I${currentRow + 3}`);
       coverSheet.getCell(`B${currentRow}`).value = '-';
       coverSheet.getCell(`B${currentRow}`).font = font;
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
@@ -3345,55 +3519,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
           photoCell.border = border;
           photoSheet.mergeCells(teamPhotoRow, colStart, teamPhotoRow + 20, colEnd); // 사진 공간 (높이 20행)
 
-          if (report?.reportDetails) {
-            // 첫 번째 사진 찾기
-            let firstPhoto = null;
-            for (const detail of report.reportDetails) {
-              if (detail.attachments && detail.attachments.length > 0) {
-                firstPhoto = detail.attachments[0];
-                break;
+          if (report) {
+            // TBM 특이사항 사진에서 첫 번째 사진 찾기 (remarks JSON에서 images 배열)
+            let tbmPhotoUrl: string | null = null;
+
+            if (report.remarks) {
+              try {
+                const remarksData = JSON.parse(report.remarks);
+                if (remarksData.images && Array.isArray(remarksData.images) && remarksData.images.length > 0) {
+                  tbmPhotoUrl = remarksData.images[0];
+                  console.log(`    📷 팀 ${team.name}: TBM 특이사항 사진 발견`);
+                }
+              } catch (e) {
+                // remarks가 JSON이 아닌 경우 무시 (기존 텍스트 형식)
+                console.log(`    ℹ️ 팀 ${team.name}: remarks가 텍스트 형식`);
               }
             }
 
-            if (firstPhoto) {
+            if (tbmPhotoUrl) {
               try {
-                // 파일 경로에서 실제 파일명 추출
-                const photoPath = path.join(__dirname, firstPhoto.url);
-                console.log(`    📸 팀 ${team.name} 사진 삽입: ${photoPath}`);
+                // URL에서 파일 경로 추출 (예: "/uploads/abc.jpg" -> "uploads/abc.jpg")
+                let photoPath = tbmPhotoUrl;
+                if (photoPath.startsWith('/')) {
+                  photoPath = photoPath.substring(1); // 앞의 / 제거
+                }
+                // URL 디코딩 (한글 파일명 처리)
+                photoPath = decodeURIComponent(photoPath);
+                // __dirname은 server 폴더이므로 그대로 path.join 사용
+                const fullPath = path.join(__dirname, photoPath);
+                console.log(`    📸 팀 ${team.name} TBM 사진 삽입: ${fullPath}`);
 
-                // 파일 읽기
-                const imageBuffer = fs.readFileSync(photoPath);
+                // 파일 존재 확인
+                if (!fs.existsSync(fullPath)) {
+                  console.error(`    ❌ 파일 없음: ${fullPath}`);
+                  photoCell.value = '사진 파일 없음';
+                  photoCell.alignment = centerAlignment;
+                  photoCell.font = { ...font, color: { argb: '808080' } };
+                } else {
+                  // 파일 읽기
+                  const imageBuffer = fs.readFileSync(fullPath);
 
-                // 확장자 추출
-                const ext = firstPhoto.url.split('.').pop()?.toLowerCase() || 'jpg';
-                const validExt = ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpg';
+                  // 확장자 추출
+                  const ext = tbmPhotoUrl.split('.').pop()?.toLowerCase() || 'jpg';
+                  const validExt = ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpeg';
 
-                // ExcelJS에 이미지 추가
-                const imageId = workbook.addImage({
-                  buffer: imageBuffer,
-                  extension: validExt as 'jpg' | 'jpeg' | 'png' | 'gif'
-                });
+                  // ExcelJS에 이미지 추가
+                  const imageId = workbook.addImage({
+                    buffer: imageBuffer,
+                    extension: validExt as 'jpg' | 'jpeg' | 'png' | 'gif'
+                  });
 
-                // 이미지 삽입 (사진 셀의 위치와 크기)
-                photoSheet.addImage(imageId, {
-                  tl: { col: colStart - 1, row: teamPhotoRow - 1 },
-                  ext: { width: 280, height: 210 }
-                });
+                  // 이미지 삽입 (사진 셀의 위치와 크기)
+                  photoSheet.addImage(imageId, {
+                    tl: { col: colStart - 1, row: teamPhotoRow - 1 },
+                    ext: { width: 280, height: 210 }
+                  });
+                  console.log(`    ✅ TBM 사진 삽입 성공`);
+                }
               } catch (error) {
-                console.error(`    ❌ 사진 삽입 실패 (${team.name}):`, error);
+                console.error(`    ❌ TBM 사진 삽입 실패 (${team.name}):`, error);
                 photoCell.value = '사진 로드 실패';
                 photoCell.alignment = centerAlignment;
                 photoCell.font = font;
               }
             } else {
-              // 사진 없음
-              photoCell.value = '사진 없음';
+              // 특이사항 사진 없음
+              photoCell.value = '특이사항 사진 없음';
               photoCell.alignment = centerAlignment;
               photoCell.font = { ...font, color: { argb: '808080' } };
             }
           } else {
-            // 보고서 없음
-            photoCell.value = `${date}일 보고서 없음`;
+            // 보고서 없음 (팀별 날짜 사용 시 해당 팀의 날짜 표시)
+            const teamDay = teamDateMap[team.id] || dateNum;
+            photoCell.value = `${teamDay}일 보고서 없음`;
             photoCell.alignment = centerAlignment;
             photoCell.font = { ...font, color: { argb: '808080' } };
           }
@@ -3484,6 +3682,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           // 서명 이미지 삽입
+          console.log(`    📊 팀 ${team.name}: 보고서 ${monthlyReports.length}개, User ${teamUsers.length}명, Member ${teamMembers.length}명`);
+          let insertedSignatures = 0;
+
           monthlyReports.forEach(report => {
             const day = new Date(report.reportDate).getDate();
             const col = sigDateColMap[day];
@@ -3509,12 +3710,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     tl: { col: col - 0.5, row: row - 0.5 },
                     ext: { width: 50, height: 25 }
                   });
+                  insertedSignatures++;
                 } catch (e) {
                   console.error(`    ⚠️  서명 이미지 삽입 실패 (${team.name}):`, e);
                 }
               }
             });
           });
+
+          console.log(`    📝 팀 ${team.name}: 서명 ${insertedSignatures}개 삽입됨`);
 
           // 모든 셀에 테두리 적용
           const totalRows = teamUsers.length + teamMembers.length;
@@ -3550,6 +3754,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 날짜와 팀으로 기존 TBM 조회 (중복 작성 방지용)
+  app.get("/api/tbm/check-existing", requireAuth, async (req, res) => {
+    try {
+      const { teamId, date } = req.query;
+
+      if (!teamId || !date) {
+        return res.status(400).json({ message: "teamId and date are required" });
+      }
+
+      const teamIdNum = parseInt(teamId as string);
+
+      // 날짜 문자열(YYYY-MM-DD)을 로컬 시간대 기준으로 파싱
+      const dateStr = date as string;
+      const [year, month, day] = dateStr.split('-').map(Number);
+
+      // 해당 날짜의 시작과 끝 설정 (로컬 시간대 기준)
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      const existingReport = await prisma.dailyReport.findFirst({
+        where: {
+          teamId: teamIdNum,
+          reportDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        include: {
+          team: true,
+          reportDetails: { include: { item: true, author: true, attachments: true } },
+          reportSignatures: { include: { user: true, member: true } }
+        },
+      });
+
+      if (existingReport) {
+        res.json({ exists: true, report: existingReport });
+      } else {
+        res.json({ exists: false, report: null });
+      }
+    } catch (error) {
+      console.error('Failed to check existing TBM:', error);
+      res.status(500).json({ message: "Failed to check existing TBM" });
+    }
+  });
+
   app.get("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
@@ -3582,6 +3831,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Creating TBM report with results:', results?.length || 0);
 
+      // 먼저 팀의 유효한 템플릿 아이템들을 조회
+      const validTemplateItems = await prisma.templateItem.findMany({
+        where: {
+          template: {
+            teamId: teamId
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      const validItemIds = new Set(validTemplateItems.map(item => item.id));
+      console.log(`Found ${validItemIds.size} valid template items for team ${teamId}`);
+
       const newReport = await prisma.dailyReport.create({
         data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
       });
@@ -3589,6 +3853,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (results && results.length > 0) {
         for (const r of results) {
           try {
+            // itemId 유효성 검사
+            if (!validItemIds.has(r.itemId)) {
+              console.warn(`⚠️ Skipping invalid itemId ${r.itemId} for team ${teamId}`);
+              continue;
+            }
+
             const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
 
             console.log(`Creating reportDetail for item ${r.itemId}, attachments: ${hasAttachments ? r.attachments!.length : 0}`);
@@ -3613,7 +3883,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           } catch (detailError) {
             console.error(`Error creating reportDetail for item ${r.itemId}:`, detailError);
-            throw detailError;
+            // 개별 아이템 실패 시 계속 진행
+            console.error(`⚠️ Continuing despite error for item ${r.itemId}`);
           }
         }
       }
@@ -4029,7 +4300,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const { progress, completed, currentStep, timeSpent } = req.body;
 
+        // 먼저 사용자와 코스가 존재하는지 확인
+        const [userExists, courseExists] = await Promise.all([
+          prisma.user.findUnique({ where: { id: userId } }),
+          prisma.course.findUnique({ where: { id: courseId } })
+        ]);
 
+        if (!userExists) {
+          console.error(`⚠️ User not found: ${userId}`);
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!courseExists) {
+          console.error(`⚠️ Course not found: ${courseId}`);
+          return res.status(404).json({ message: "Course not found" });
+        }
 
         const existingProgress = await prisma.userProgress.findFirst({
 
@@ -4055,6 +4340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           });
 
+          console.log(`✅ Progress updated for user ${userId}, course ${courseId}`);
           res.json(updatedProgress);
 
         } else {
@@ -4073,13 +4359,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           });
 
+          console.log(`✅ Progress created for user ${userId}, course ${courseId}`);
           res.json(newProgress);
 
         }
 
       } catch (error) {
-        console.error('Failed to update progress:', error);
-        res.status(500).json({ message: "Failed to update progress" });
+        console.error('❌ Failed to update progress:', error);
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+        res.status(500).json({
+          message: "Failed to update progress",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
 
     });
@@ -4202,12 +4498,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .replace(/[^a-zA-Z0-9가-힣_-]/g, '')  // Keep only alphanumeric, Korean, underscore, hyphen
         .substring(0, 100);  // Limit length
       const safeFileName = `${timestamp}_${sanitizedName}${ext}`;
-      const newPath = path.join(uploadDir, safeFileName);
 
-      fs.renameSync(finalPath, newPath);
+      // R2 또는 로컬 스토리지에 업로드
+      const { url } = await uploadToStorage(
+        finalPath,
+        safeFileName,
+        req.file.mimetype,
+        uploadDir
+      );
 
       res.json({
-        url: `/uploads/${encodeURIComponent(safeFileName)}`,
+        url,
         name: originalName,
         size: finalSize,
         mimeType: req.file.mimetype
@@ -4218,9 +4519,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Multiple files upload (max 10 files)
+  // Multiple files upload (max 50 files)
   app.post('/api/upload-multiple', requireAuth, uploadLimiter, (req, res, next) => {
-    upload.array('files', 10)(req, res, (err) => {
+    upload.array('files', 50)(req, res, (err) => {
       if (err) {
         console.error('Multer error:', err);
         return res.status(400).json({
@@ -4295,13 +4596,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .replace(/[^a-zA-Z0-9가-힣_-]/g, '')  // Keep only alphanumeric, Korean, underscore, hyphen
             .substring(0, 100);  // Limit length
           const safeFileName = `${timestamp}_${random}_${sanitizedName}${ext}`;
-          const newPath = path.join(uploadDir, safeFileName);
 
           if (fs.existsSync(finalPath)) {
-            fs.renameSync(finalPath, newPath);
+            // R2 또는 로컬 스토리지에 업로드
+            const { url } = await uploadToStorage(
+              finalPath,
+              safeFileName,
+              file.mimetype,
+              uploadDir
+            );
 
             uploadedFiles.push({
-              url: `/uploads/${encodeURIComponent(safeFileName)}`,
+              url,
               name: originalName,
               size: finalSize,
               mimeType: file.mimetype,
@@ -4370,853 +4676,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { 
       console.error("Error updating template:", error);
       res.status(500).json({ message: 'Failed to update checklist template' }); 
-    }
-  });
-
-  // ========== EMAIL NOTIFICATION API ==========
-
-  // ==================== Email Template Management ====================
-
-  // Get all email templates
-  app.get('/api/email/templates', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const templates = await prisma.emailTemplate.findMany({
-        orderBy: { createdAt: 'desc' }
-      });
-      res.json(templates);
-    } catch (error) {
-      console.error('Error fetching email templates:', error);
-      res.status(500).json({ message: 'Failed to fetch email templates' });
-    }
-  });
-
-  // Get single email template by ID
-  app.get('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const template = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!template) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      res.json(template);
-    } catch (error) {
-      console.error('Error fetching email template:', error);
-      res.status(500).json({ message: 'Failed to fetch email template' });
-    }
-  });
-
-  // Create new email template
-  app.post('/api/email/templates', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { type, name, subject, body, description } = req.body;
-
-      if (!type || !name || !subject || !body) {
-        return res.status(400).json({ message: 'Missing required fields: type, name, subject, body' });
-      }
-
-      const template = await prisma.emailTemplate.create({
-        data: {
-          type,
-          name,
-          subject,
-          body,
-          description: description || null
-        }
-      });
-
-      res.json(template);
-    } catch (error) {
-      console.error('Error creating email template:', error);
-      res.status(500).json({ message: 'Failed to create email template' });
-    }
-  });
-
-  // Update email template
-  app.put('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { type, name, subject, body, description } = req.body;
-
-      const existingTemplate = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingTemplate) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      const template = await prisma.emailTemplate.update({
-        where: { id: parseInt(id) },
-        data: {
-          type: type !== undefined ? type : existingTemplate.type,
-          name: name !== undefined ? name : existingTemplate.name,
-          subject: subject !== undefined ? subject : existingTemplate.subject,
-          body: body !== undefined ? body : existingTemplate.body,
-          description: description !== undefined ? description : existingTemplate.description
-        }
-      });
-
-      res.json(template);
-    } catch (error) {
-      console.error('Error updating email template:', error);
-      res.status(500).json({ message: 'Failed to update email template' });
-    }
-  });
-
-  // Delete email template
-  app.delete('/api/email/templates/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const existingTemplate = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingTemplate) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      // Check if template is used by any conditions or schedules
-      const [conditionsCount, schedulesCount] = await Promise.all([
-        prisma.emailCondition.count({ where: { templateId: parseInt(id) } }),
-        prisma.emailSchedule.count({ where: { templateId: parseInt(id) } })
-      ]);
-
-      if (conditionsCount > 0 || schedulesCount > 0) {
-        return res.status(400).json({
-          message: `Cannot delete template: ${conditionsCount} condition(s) and ${schedulesCount} schedule(s) are using this template.`
-        });
-      }
-
-      await prisma.emailTemplate.delete({
-        where: { id: parseInt(id) }
-      });
-
-      res.json({ message: 'Template deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting email template:', error);
-      res.status(500).json({ message: 'Failed to delete email template' });
-    }
-  });
-
-  // ==================== Email Condition Management ====================
-
-  // Get all email conditions
-  app.get('/api/email/conditions', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const conditions = await prisma.emailCondition.findMany({
-        include: {
-          template: true,
-          sendLogs: true
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-      res.json(conditions);
-    } catch (error) {
-      console.error('Error fetching email conditions:', error);
-      res.status(500).json({ message: 'Failed to fetch email conditions' });
-    }
-  });
-
-  // Get single email condition by ID
-  app.get('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const condition = await prisma.emailCondition.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          template: true,
-          specificUser: {
-            select: { id: true, name: true, email: true }
-          }
-        }
-      });
-
-      if (!condition) {
-        return res.status(404).json({ message: 'Condition not found' });
-      }
-
-      res.json(condition);
-    } catch (error) {
-      console.error('Error fetching email condition:', error);
-      res.status(500).json({ message: 'Failed to fetch email condition' });
-    }
-  });
-
-  // Create new email condition
-  app.post('/api/email/conditions', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { conditionType, templateId, parameters, recipientType, specificUserId, isActive } = req.body;
-
-      if (!conditionType || !templateId || !recipientType) {
-        return res.status(400).json({ message: 'Missing required fields: conditionType, templateId, recipientType' });
-      }
-
-      // Validate template exists
-      const template = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(templateId) }
-      });
-
-      if (!template) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      // If recipientType is SPECIFIC_USER, validate specificUserId
-      if (recipientType === 'SPECIFIC_USER' && !specificUserId) {
-        return res.status(400).json({ message: 'specificUserId is required when recipientType is SPECIFIC_USER' });
-      }
-
-      const condition = await prisma.emailCondition.create({
-        data: {
-          conditionType,
-          templateId: parseInt(templateId),
-          parameters: parameters || {},
-          recipientType,
-          specificUserId: specificUserId ? parseInt(specificUserId) : null,
-          isActive: isActive !== undefined ? isActive : true
-        },
-        include: {
-          template: true,
-          specificUser: {
-            select: { id: true, name: true, email: true }
-          }
-        }
-      });
-
-      res.json(condition);
-    } catch (error) {
-      console.error('Error creating email condition:', error);
-      res.status(500).json({ message: 'Failed to create email condition' });
-    }
-  });
-
-  // Update email condition
-  app.put('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { conditionType, templateId, parameters, recipientType, specificUserId, isActive } = req.body;
-
-      const existingCondition = await prisma.emailCondition.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingCondition) {
-        return res.status(404).json({ message: 'Condition not found' });
-      }
-
-      // If templateId is being updated, validate it exists
-      if (templateId !== undefined) {
-        const template = await prisma.emailTemplate.findUnique({
-          where: { id: parseInt(templateId) }
-        });
-
-        if (!template) {
-          return res.status(404).json({ message: 'Template not found' });
-        }
-      }
-
-      const condition = await prisma.emailCondition.update({
-        where: { id: parseInt(id) },
-        data: {
-          conditionType: conditionType !== undefined ? conditionType : existingCondition.conditionType,
-          templateId: templateId !== undefined ? parseInt(templateId) : existingCondition.templateId,
-          parameters: parameters !== undefined ? parameters : existingCondition.parameters,
-          recipientType: recipientType !== undefined ? recipientType : existingCondition.recipientType,
-          specificUserId: specificUserId !== undefined ? (specificUserId ? parseInt(specificUserId) : null) : existingCondition.specificUserId,
-          isActive: isActive !== undefined ? isActive : existingCondition.isActive
-        },
-        include: {
-          template: true,
-          specificUser: {
-            select: { id: true, name: true, email: true }
-          }
-        }
-      });
-
-      res.json(condition);
-    } catch (error) {
-      console.error('Error updating email condition:', error);
-      res.status(500).json({ message: 'Failed to update email condition' });
-    }
-  });
-
-  // Delete email condition
-  app.delete('/api/email/conditions/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const existingCondition = await prisma.emailCondition.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingCondition) {
-        return res.status(404).json({ message: 'Condition not found' });
-      }
-
-      await prisma.emailCondition.delete({
-        where: { id: parseInt(id) }
-      });
-
-      res.json({ message: 'Condition deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting email condition:', error);
-      res.status(500).json({ message: 'Failed to delete email condition' });
-    }
-  });
-
-  // Test email condition (dry run - shows what would be sent without actually sending)
-  app.post('/api/email/conditions/:id/test', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { testCondition } = await import('./conditionExecutor');
-
-      const result = await testCondition(parseInt(id));
-      res.json(result);
-    } catch (error) {
-      console.error('Error testing email condition:', error);
-      res.status(500).json({ message: 'Failed to test email condition', error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  });
-
-  // Execute email condition (actually send emails)
-  app.post('/api/email/conditions/:id/execute', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { executeSingleCondition } = await import('./conditionExecutor');
-
-      const result = await executeSingleCondition(parseInt(id));
-      res.json(result);
-    } catch (error) {
-      console.error('Error executing email condition:', error);
-      res.status(500).json({ message: 'Failed to execute email condition', error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  });
-
-  // ==================== Email Schedule Management ====================
-
-  // Get all email schedules
-  app.get('/api/email/schedules', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const schedules = await prisma.emailSchedule.findMany({
-        include: {
-          template: true,
-          sendLogs: true
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-      res.json(schedules);
-    } catch (error) {
-      console.error('Error fetching email schedules:', error);
-      res.status(500).json({ message: 'Failed to fetch email schedules' });
-    }
-  });
-
-  // Get single email schedule by ID
-  app.get('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const schedule = await prisma.emailSchedule.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          template: true,
-          condition: {
-            include: {
-              template: true
-            }
-          }
-        }
-      });
-
-      if (!schedule) {
-        return res.status(404).json({ message: 'Schedule not found' });
-      }
-
-      res.json(schedule);
-    } catch (error) {
-      console.error('Error fetching email schedule:', error);
-      res.status(500).json({ message: 'Failed to fetch email schedule' });
-    }
-  });
-
-  // Create new email schedule
-  app.post('/api/email/schedules', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { templateId, conditionId, cronExpression, isActive } = req.body;
-
-      if (!cronExpression) {
-        return res.status(400).json({ message: 'cronExpression is required' });
-      }
-
-      // Must have either templateId or conditionId, but not both
-      if ((!templateId && !conditionId) || (templateId && conditionId)) {
-        return res.status(400).json({ message: 'Must specify either templateId or conditionId, but not both' });
-      }
-
-      // Validate template or condition exists
-      if (templateId) {
-        const template = await prisma.emailTemplate.findUnique({
-          where: { id: parseInt(templateId) }
-        });
-        if (!template) {
-          return res.status(404).json({ message: 'Template not found' });
-        }
-      }
-
-      if (conditionId) {
-        const condition = await prisma.emailCondition.findUnique({
-          where: { id: parseInt(conditionId) }
-        });
-        if (!condition) {
-          return res.status(404).json({ message: 'Condition not found' });
-        }
-      }
-
-      const schedule = await prisma.emailSchedule.create({
-        data: {
-          templateId: templateId ? parseInt(templateId) : null,
-          conditionId: conditionId ? parseInt(conditionId) : null,
-          cronExpression,
-          isActive: isActive !== undefined ? isActive : true
-        },
-        include: {
-          template: true,
-          condition: {
-            include: {
-              template: true
-            }
-          }
-        }
-      });
-
-      // Reload scheduler to pick up the new schedule
-      try {
-        const { reloadSchedule } = await import('./scheduler');
-        await reloadSchedule(schedule.id);
-      } catch (scheduleError) {
-        console.error('Failed to activate new schedule:', scheduleError);
-        // Don't fail the request, just log the error
-      }
-
-      res.json(schedule);
-    } catch (error) {
-      console.error('Error creating email schedule:', error);
-      res.status(500).json({ message: 'Failed to create email schedule' });
-    }
-  });
-
-  // Update email schedule
-  app.put('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { templateId, conditionId, cronExpression, isActive } = req.body;
-
-      const existingSchedule = await prisma.emailSchedule.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingSchedule) {
-        return res.status(404).json({ message: 'Schedule not found' });
-      }
-
-      // Validate template or condition if being updated
-      if (templateId !== undefined) {
-        const template = await prisma.emailTemplate.findUnique({
-          where: { id: parseInt(templateId) }
-        });
-        if (!template) {
-          return res.status(404).json({ message: 'Template not found' });
-        }
-      }
-
-      if (conditionId !== undefined) {
-        const condition = await prisma.emailCondition.findUnique({
-          where: { id: parseInt(conditionId) }
-        });
-        if (!condition) {
-          return res.status(404).json({ message: 'Condition not found' });
-        }
-      }
-
-      const schedule = await prisma.emailSchedule.update({
-        where: { id: parseInt(id) },
-        data: {
-          templateId: templateId !== undefined ? (templateId ? parseInt(templateId) : null) : existingSchedule.templateId,
-          conditionId: conditionId !== undefined ? (conditionId ? parseInt(conditionId) : null) : existingSchedule.conditionId,
-          cronExpression: cronExpression !== undefined ? cronExpression : existingSchedule.cronExpression,
-          isActive: isActive !== undefined ? isActive : existingSchedule.isActive
-        },
-        include: {
-          template: true,
-          condition: {
-            include: {
-              template: true
-            }
-          }
-        }
-      });
-
-      // Reload scheduler to apply the changes
-      try {
-        const { reloadSchedule } = await import('./scheduler');
-        await reloadSchedule(schedule.id);
-      } catch (scheduleError) {
-        console.error('Failed to reload schedule:', scheduleError);
-        // Don't fail the request, just log the error
-      }
-
-      res.json(schedule);
-    } catch (error) {
-      console.error('Error updating email schedule:', error);
-      res.status(500).json({ message: 'Failed to update email schedule' });
-    }
-  });
-
-  // Delete email schedule
-  app.delete('/api/email/schedules/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const existingSchedule = await prisma.emailSchedule.findUnique({
-        where: { id: parseInt(id) }
-      });
-
-      if (!existingSchedule) {
-        return res.status(404).json({ message: 'Schedule not found' });
-      }
-
-      // Stop the scheduler for this schedule before deleting
-      try {
-        const { stopSchedule } = await import('./scheduler');
-        await stopSchedule(parseInt(id));
-      } catch (scheduleError) {
-        console.error('Failed to stop schedule:', scheduleError);
-        // Continue with deletion anyway
-      }
-
-      await prisma.emailSchedule.delete({
-        where: { id: parseInt(id) }
-      });
-
-      res.json({ message: 'Schedule deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting email schedule:', error);
-      res.status(500).json({ message: 'Failed to delete email schedule' });
-    }
-  });
-
-  // ==================== Email Send Logs ====================
-
-  // Get email send logs with pagination and filtering
-  app.get('/api/email/send-logs', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { page = '1', limit = '50', status, conditionId, scheduleId, startDate, endDate } = req.query;
-
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
-      const skip = (pageNum - 1) * limitNum;
-
-      const where: any = {};
-
-      if (status) {
-        where.status = status;
-      }
-
-      if (conditionId) {
-        where.conditionId = parseInt(conditionId as string);
-      }
-
-      if (scheduleId) {
-        where.scheduleId = parseInt(scheduleId as string);
-      }
-
-      if (startDate || endDate) {
-        where.sentAt = {};
-        if (startDate) {
-          where.sentAt.gte = new Date(startDate as string);
-        }
-        if (endDate) {
-          where.sentAt.lte = new Date(endDate as string);
-        }
-      }
-
-      const [logs, total] = await Promise.all([
-        prisma.emailSendLog.findMany({
-          where,
-          include: {
-            condition: {
-              include: {
-                template: true
-              }
-            },
-            schedule: {
-              include: {
-                template: true
-              }
-            }
-          },
-          orderBy: { sentAt: 'desc' },
-          skip,
-          take: limitNum
-        }),
-        prisma.emailSendLog.count({ where })
-      ]);
-
-      res.json({
-        logs,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum)
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching email send logs:', error);
-      res.status(500).json({ message: 'Failed to fetch email send logs' });
-    }
-  });
-
-  // Get email send statistics
-  app.get('/api/email/send-logs/stats', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { startDate, endDate } = req.query;
-
-      const where: any = {};
-
-      if (startDate || endDate) {
-        where.sentAt = {};
-        if (startDate) {
-          where.sentAt.gte = new Date(startDate as string);
-        }
-        if (endDate) {
-          where.sentAt.lte = new Date(endDate as string);
-        }
-      }
-
-      const [total, sent, failed, bounced, recentLogs] = await Promise.all([
-        prisma.emailSendLog.count({ where }),
-        prisma.emailSendLog.count({ where: { ...where, status: 'sent' } }),
-        prisma.emailSendLog.count({ where: { ...where, status: 'failed' } }),
-        prisma.emailSendLog.count({ where: { ...where, status: 'bounced' } }),
-        prisma.emailSendLog.findMany({
-          where,
-          include: {
-            condition: {
-              include: {
-                template: true
-              }
-            },
-            schedule: {
-              include: {
-                template: true
-              }
-            }
-          },
-          orderBy: { sentAt: 'desc' },
-          take: 10
-        })
-      ]);
-
-      res.json({
-        total,
-        sent,
-        failed,
-        bounced,
-        successRate: total > 0 ? ((sent / total) * 100).toFixed(2) : '0.00',
-        recentLogs
-      });
-    } catch (error) {
-      console.error('Error fetching email send statistics:', error);
-      res.status(500).json({ message: 'Failed to fetch email send statistics' });
-    }
-  });
-
-  // ==================== Email Utility APIs ====================
-
-  // Preview email template with variable substitution
-  app.post('/api/email/template-preview', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { templateId, variables } = req.body;
-
-      if (!templateId) {
-        return res.status(400).json({ message: 'templateId is required' });
-      }
-
-      const template = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(templateId) }
-      });
-
-      if (!template) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      // Replace variables in subject and body
-      let subject = template.subject;
-      let body = template.body;
-
-      if (variables && typeof variables === 'object') {
-        Object.entries(variables).forEach(([key, value]) => {
-          const regex = new RegExp(`{{${key}}}`, 'g');
-          subject = subject.replace(regex, String(value));
-          body = body.replace(regex, String(value));
-        });
-      }
-
-      res.json({
-        template: {
-          id: template.id,
-          type: template.type,
-          name: template.name
-        },
-        preview: {
-          subject,
-          body
-        },
-        originalVariables: template.body.match(/{{([^}]+)}}/g) || []
-      });
-    } catch (error) {
-      console.error('Error previewing email template:', error);
-      res.status(500).json({ message: 'Failed to preview email template' });
-    }
-  });
-
-  // Send test email using a template
-  app.post('/api/email/test-template', requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { templateId, to, variables } = req.body;
-
-      if (!templateId || !to) {
-        return res.status(400).json({ message: 'templateId and to are required' });
-      }
-
-      const template = await prisma.emailTemplate.findUnique({
-        where: { id: parseInt(templateId) }
-      });
-
-      if (!template) {
-        return res.status(404).json({ message: 'Template not found' });
-      }
-
-      // Replace variables in subject and body
-      let subject = template.subject;
-      let body = template.body;
-
-      if (variables && typeof variables === 'object') {
-        Object.entries(variables).forEach(([key, value]) => {
-          const regex = new RegExp(`{{${key}}}`, 'g');
-          subject = subject.replace(regex, String(value));
-          body = body.replace(regex, String(value));
-        });
-      }
-
-      // Add test prefix to subject
-      subject = `[TEST] ${subject}`;
-
-      const { sendEmail } = await import('./emailService');
-      const result = await sendEmail({
-        to,
-        subject,
-        html: body
-      });
-
-      if (result.success) {
-        res.json({
-          success: true,
-          message: 'Test email sent successfully',
-          messageId: result.messageId,
-          sentTo: to,
-          template: {
-            id: template.id,
-            name: template.name
-          }
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: 'Failed to send test email',
-          error: result.error
-        });
-      }
-    } catch (error) {
-      console.error('Error sending test email with template:', error);
-      res.status(500).json({ message: 'Failed to send test email with template', error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  });
-
-  // Send test email
-  app.post('/api/email/test', requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
-    try {
-      const { to, subject, message } = req.body;
-
-      if (!to || !subject || !message) {
-        return res.status(400).json({ message: 'Missing required fields' });
-      }
-
-      const { sendEmail } = await import('./emailService');
-      const result = await sendEmail({
-        to,
-        subject,
-        html: `<p>${message}</p>`
-      });
-
-      if (result.success) {
-        res.json({ message: '이메일이 발송되었습니다.', messageId: result.messageId });
-      } else {
-        res.status(500).json({ message: '이메일 발송 실패', error: result.error });
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({ message: 'Failed to send email' });
-    }
-  });
-
-  // Send education reminder emails
-  app.post('/api/email/education-reminder', requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
-    try {
-      const { userIds } = req.body; // Array of user IDs
-
-      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-        return res.status(400).json({ message: 'userIds array is required' });
-      }
-
-      const { sendEmail, getEducationReminderTemplate } = await import('./emailService');
-
-      // Fetch users
-      const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true }
-      });
-
-      const results = [];
-      for (const user of users) {
-        if (!user.email) continue;
-
-        const html = getEducationReminderTemplate(
-          user.name || user.id,
-          '필수 안전교육',
-          '이번 달 말까지'
-        );
-
-        const result = await sendEmail({
-          to: user.email,
-          subject: '[안전보건팀] 안전교육 이수 알림',
-          html
-        });
-
-        results.push({ userId: user.id, email: user.email, success: result.success });
-      }
-
-      res.json({
-        message: `${results.filter(r => r.success).length}/${results.length} 이메일 발송 완료`,
-        results
-      });
-    } catch (error) {
-      console.error('Error sending education reminders:', error);
-      res.status(500).json({ message: 'Failed to send education reminders' });
     }
   });
 
@@ -5862,16 +5321,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
-            // Debug logging
-            console.log(`[Overview Debug] ${team.name} - ${equipmentType}:`, {
-              hasInspection: !!inspection,
-              hasInspectionItem: !!inspectionItem,
-              uploadedPhotoCount: uploadedPhotoCount,
-              requiredPhotoCount: inspectionItem?.requiredPhotoCount || teamEquipment.quantity,
-              teamEquipmentQuantity: teamEquipment.quantity,
-              photosRaw: inspectionItem?.photos ? 'exists' : 'none'
-            });
-
             equipmentStatus[equipmentType] = {
               quantity: teamEquipment.quantity,
               completed: inspectionItem?.isCompleted || false,
@@ -5902,19 +5351,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== Email Test APIs ====================
+  // ========== EMAIL NOTIFICATION API (SIMPLIFIED) ==========
 
-  // Verify email configuration
+  // Get all email configurations (5 basic types)
+  app.get('/api/email/configs', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const configs = await prisma.simpleEmailConfig.findMany({
+        orderBy: { emailType: 'asc' }
+      });
+      res.json(configs);
+    } catch (error) {
+      console.error('Error fetching email configs:', error);
+      res.status(500).json({ message: 'Failed to fetch email configs' });
+    }
+  });
+
+  // Get single email configuration by type
+  app.get('/api/email/configs/:emailType', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { emailType } = req.params;
+      const config = await prisma.simpleEmailConfig.findUnique({
+        where: { emailType }
+      });
+
+      if (!config) {
+        return res.status(404).json({ message: 'Email config not found' });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error('Error fetching email config:', error);
+      res.status(500).json({ message: 'Failed to fetch email config' });
+    }
+  });
+
+  // Update email configuration
+  app.put('/api/email/configs/:emailType', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { emailType } = req.params;
+      const { subject, content, enabled, sendTiming, daysAfter, scheduledTime, monthlyDay } = req.body;
+
+      const existingConfig = await prisma.simpleEmailConfig.findUnique({
+        where: { emailType }
+      });
+
+      if (!existingConfig) {
+        return res.status(404).json({ message: 'Email config not found' });
+      }
+
+      const updated = await prisma.simpleEmailConfig.update({
+        where: { emailType },
+        data: {
+          subject: subject !== undefined ? subject : existingConfig.subject,
+          content: content !== undefined ? content : existingConfig.content,
+          enabled: enabled !== undefined ? enabled : existingConfig.enabled,
+          sendTiming: sendTiming !== undefined ? sendTiming : existingConfig.sendTiming,
+          daysAfter: daysAfter !== undefined ? daysAfter : existingConfig.daysAfter,
+          scheduledTime: scheduledTime !== undefined ? scheduledTime : existingConfig.scheduledTime,
+          monthlyDay: monthlyDay !== undefined ? monthlyDay : existingConfig.monthlyDay
+        }
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating email config:', error);
+      res.status(500).json({ message: 'Failed to update email config' });
+    }
+  });
+
+  // Get email logs with pagination
+  app.get('/api/email/logs', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { page = '1', limit = '50', emailType, status, startDate, endDate } = req.query;
+
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
+      const skip = (pageNum - 1) * limitNum;
+
+      const where: any = {};
+
+      if (emailType) {
+        where.emailType = emailType as string;
+      }
+
+      if (status) {
+        where.status = status as string;
+      }
+
+      if (startDate || endDate) {
+        where.sentAt = {};
+        if (startDate) {
+          where.sentAt.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          where.sentAt.lte = new Date(endDate as string);
+        }
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.emailLog.findMany({
+          where,
+          orderBy: { sentAt: 'desc' },
+          skip,
+          take: limitNum
+        }),
+        prisma.emailLog.count({ where })
+      ]);
+
+      res.json({
+        logs,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching email logs:', error);
+      res.status(500).json({ message: 'Failed to fetch email logs' });
+    }
+  });
+
+  // Get email statistics
+  app.get('/api/email/stats', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const { getEmailStats } = await import('./simpleEmailService');
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const stats = await getEmailStats(start, end);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching email stats:', error);
+      res.status(500).json({ message: 'Failed to fetch email stats' });
+    }
+  });
+
+  // Send test email
+  app.post('/api/email/test', requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { emailType, recipientEmail, variables } = req.body;
+
+      if (!emailType || !recipientEmail) {
+        return res.status(400).json({ message: 'emailType and recipientEmail are required' });
+      }
+
+      const { sendEmailByType } = await import('./simpleEmailService');
+
+      // Add [TEST] prefix to distinguish test emails
+      const testVariables = {
+        ...variables,
+        _TEST_: true
+      };
+
+      const result = await sendEmailByType(
+        emailType,
+        recipientEmail,
+        'test-user-id',
+        testVariables
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      res.status(500).json({ message: 'Failed to send test email' });
+    }
+  });
+
+  // Verify email connection
   app.get("/api/email/verify", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
+      const { verifyEmailConnection } = await import('./simpleEmailService');
       const isVerified = await verifyEmailConnection();
+
       res.json({
         success: isVerified,
         message: isVerified ? '이메일 서비스 연결 성공' : '이메일 서비스 연결 실패',
         config: {
-          host: process.env.SMTP_HOST || 'smtp.gmail.com',
-          port: process.env.SMTP_PORT || '587',
-          user: process.env.SMTP_USER || '설정되지 않음'
+          host: process.env.SMTP_HOST || 'localhost',
+          port: process.env.SMTP_PORT || '25',
+          user: process.env.SMTP_USER || '설정되지 않음',
+          from: process.env.SMTP_FROM || '안전관리팀 <noreply@safety.com>'
         }
       });
     } catch (error) {
@@ -5923,103 +5543,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send test email - Education reminder
-  app.post("/api/email/test/education", requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { to, userName, courseName, dueDate } = req.body;
+  // ==================== 공휴일 관리 API ====================
 
-      if (!to) {
-        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+  // 기간 공휴일 추가 API (여러 날짜 한번에 등록)
+  app.post("/api/holidays/range", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate, name, isRecurring, site } = req.body;
+
+      if (!startDate || !endDate || !name) {
+        return res.status(400).json({ message: "시작일, 종료일, 이름은 필수입니다." });
       }
 
-      const html = getEducationReminderTemplate(
-        userName || '테스트 사용자',
-        courseName || '안전교육 샘플',
-        dueDate || '2024년 12월 31일'
-      );
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      const result = await sendEmail({
-        to,
-        subject: '[테스트] 안전교육 이수 알림',
-        html
+      if (end < start) {
+        return res.status(400).json({ message: "종료일은 시작일보다 이후여야 합니다." });
+      }
+
+      // 최대 31일로 제한
+      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (daysDiff > 31) {
+        return res.status(400).json({ message: "한번에 최대 31일까지만 등록할 수 있습니다." });
+      }
+
+      let createdCount = 0;
+      let skippedCount = 0;
+
+      // 각 날짜에 대해 공휴일 생성
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        try {
+          await prisma.holiday.create({
+            data: {
+              date: new Date(d),
+              name,
+              isRecurring: isRecurring || false,
+              site: site || null
+            }
+          });
+          createdCount++;
+        } catch (error: any) {
+          if (error.code === 'P2002') {
+            // 중복 에러 - 이미 존재하는 공휴일
+            skippedCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      console.log(`✅ 기간 공휴일 등록: ${createdCount}개 추가, ${skippedCount}개 중복`);
+
+      res.status(201).json({
+        message: `${createdCount}개의 공휴일이 추가되었습니다.`,
+        created: createdCount,
+        skipped: skippedCount
       });
-
-      res.json(result);
     } catch (error) {
-      console.error('Test email send error:', error);
-      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+      console.error("Error creating range holidays:", error);
+      res.status(500).json({ message: "기간 공휴일 추가에 실패했습니다." });
     }
   });
 
-  // Send test email - TBM reminder
-  app.post("/api/email/test/tbm", requireAuth, requireRole('ADMIN'), async (req, res) => {
+  // 한국 공휴일 API 연동 (먼저 정의해야 /api/holidays보다 우선 매칭됨)
+  app.post("/api/holidays/fetch-korean", requireAuth, async (req, res) => {
     try {
-      const { to, managerName, teamName, date } = req.body;
+      const { year } = req.body;
+      const targetYear = year || new Date().getFullYear();
 
-      if (!to) {
-        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+      console.log(`🗓️ ${targetYear}년 한국 공휴일 가져오기...`);
+
+      // 대한민국 법정공휴일 (양력 고정)
+      const fixedHolidays = [
+        { month: 1, day: 1, name: '신정' },
+        { month: 3, day: 1, name: '삼일절' },
+        { month: 5, day: 5, name: '어린이날' },
+        { month: 6, day: 6, name: '현충일' },
+        { month: 8, day: 15, name: '광복절' },
+        { month: 10, day: 3, name: '개천절' },
+        { month: 10, day: 9, name: '한글날' },
+        { month: 12, day: 25, name: '크리스마스' },
+      ];
+
+      // 음력 기반 공휴일 (매년 변동) - 2024-2026년 데이터
+      const lunarHolidays: Record<number, Array<{ month: number; day: number; name: string }>> = {
+        2024: [
+          { month: 2, day: 9, name: '설날 연휴' },
+          { month: 2, day: 10, name: '설날' },
+          { month: 2, day: 11, name: '설날 연휴' },
+          { month: 2, day: 12, name: '설날 대체공휴일' },
+          { month: 5, day: 15, name: '부처님오신날' },
+          { month: 9, day: 16, name: '추석 연휴' },
+          { month: 9, day: 17, name: '추석' },
+          { month: 9, day: 18, name: '추석 연휴' },
+        ],
+        2025: [
+          { month: 1, day: 28, name: '설날 연휴' },
+          { month: 1, day: 29, name: '설날' },
+          { month: 1, day: 30, name: '설날 연휴' },
+          { month: 5, day: 5, name: '어린이날 (부처님오신날 겹침)' },
+          { month: 5, day: 6, name: '대체공휴일' },
+          { month: 10, day: 5, name: '추석 연휴' },
+          { month: 10, day: 6, name: '추석' },
+          { month: 10, day: 7, name: '추석 연휴' },
+          { month: 10, day: 8, name: '추석 대체공휴일' },
+        ],
+        2026: [
+          { month: 2, day: 16, name: '설날 연휴' },
+          { month: 2, day: 17, name: '설날' },
+          { month: 2, day: 18, name: '설날 연휴' },
+          { month: 5, day: 24, name: '부처님오신날' },
+          { month: 9, day: 24, name: '추석 연휴' },
+          { month: 9, day: 25, name: '추석' },
+          { month: 9, day: 26, name: '추석 연휴' },
+        ],
+      };
+
+      // 해당 연도의 공휴일 목록 생성
+      const holidaysToCreate: Array<{ date: Date; name: string; isRecurring: boolean; site: null }> = [];
+
+      // 양력 고정 공휴일
+      for (const h of fixedHolidays) {
+        holidaysToCreate.push({
+          date: new Date(targetYear, h.month - 1, h.day),
+          name: h.name,
+          isRecurring: true,
+          site: null
+        });
       }
 
-      const html = getTBMReminderTemplate(
-        managerName || '테스트 관리자',
-        teamName || '테스트 팀',
-        date || new Date().toLocaleDateString()
-      );
+      // 음력 기반 공휴일 (해당 연도가 있는 경우)
+      if (lunarHolidays[targetYear]) {
+        for (const h of lunarHolidays[targetYear]) {
+          // 이미 등록된 날짜는 건너뛰기 (어린이날과 부처님오신날이 겹치는 경우 등)
+          const existing = holidaysToCreate.find(
+            existing => existing.date.getMonth() === h.month - 1 && existing.date.getDate() === h.day
+          );
+          if (!existing) {
+            holidaysToCreate.push({
+              date: new Date(targetYear, h.month - 1, h.day),
+              name: h.name,
+              isRecurring: false,
+              site: null
+            });
+          }
+        }
+      }
 
-      const result = await sendEmail({
-        to,
-        subject: '[테스트] TBM 일지 작성 알림',
-        html
+      // DB에 저장 (중복 무시)
+      let createdCount = 0;
+      let skippedCount = 0;
+
+      for (const holiday of holidaysToCreate) {
+        try {
+          await prisma.holiday.create({
+            data: holiday
+          });
+          createdCount++;
+        } catch (error: any) {
+          if (error.code === 'P2002') {
+            // 중복 에러 - 이미 존재하는 공휴일
+            skippedCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      console.log(`✅ ${targetYear}년 공휴일: ${createdCount}개 추가, ${skippedCount}개 중복`);
+
+      res.json({
+        message: `${targetYear}년 한국 공휴일을 가져왔습니다.`,
+        created: createdCount,
+        skipped: skippedCount,
+        total: holidaysToCreate.length
       });
-
-      res.json(result);
     } catch (error) {
-      console.error('Test email send error:', error);
-      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+      console.error("Error fetching Korean holidays:", error);
+      res.status(500).json({ message: "한국 공휴일 가져오기에 실패했습니다." });
     }
   });
 
-  // Send test email - Safety inspection reminder
-  app.post("/api/email/test/inspection", requireAuth, requireRole('ADMIN'), async (req, res) => {
+  // 공휴일 목록 조회 (연도/월 필터링)
+  app.get("/api/holidays", requireAuth, async (req, res) => {
     try {
-      const { to, managerName, month } = req.body;
+      const { year, month, site } = req.query;
 
-      if (!to) {
-        return res.status(400).json({ success: false, message: '수신자 이메일이 필요합니다.' });
+      const where: any = {};
+
+      // 연도 필터
+      if (year) {
+        const yearNum = parseInt(year as string);
+        const startDate = new Date(yearNum, 0, 1);
+        const endDate = new Date(yearNum + 1, 0, 1);
+        where.date = { gte: startDate, lt: endDate };
       }
 
-      const html = getSafetyInspectionReminderTemplate(
-        managerName || '테스트 관리자',
-        month || `${new Date().getMonth() + 1}월`
-      );
+      // 월 필터 (연도와 함께 사용)
+      if (year && month) {
+        const yearNum = parseInt(year as string);
+        const monthNum = parseInt(month as string) - 1;
+        const startDate = new Date(yearNum, monthNum, 1);
+        const endDate = new Date(yearNum, monthNum + 1, 1);
+        where.date = { gte: startDate, lt: endDate };
+      }
 
-      const result = await sendEmail({
-        to,
-        subject: '[테스트] 월별 안전점검 알림',
-        html
+      // 사이트 필터 (전체 적용 + 해당 사이트 적용)
+      if (site) {
+        where.OR = [
+          { site: null },
+          { site: site as string }
+        ];
+      }
+
+      const holidays = await prisma.holiday.findMany({
+        where,
+        orderBy: { date: 'asc' }
       });
 
-      res.json(result);
+      res.json(holidays);
     } catch (error) {
-      console.error('Test email send error:', error);
-      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+      console.error("Error fetching holidays:", error);
+      res.status(500).json({ message: "공휴일 목록 조회에 실패했습니다." });
     }
   });
 
-  // Send custom test email
-  app.post("/api/email/test/custom", requireAuth, requireRole('ADMIN'), async (req, res) => {
+  // 공휴일 추가
+  app.post("/api/holidays", requireAuth, async (req, res) => {
     try {
-      const { to, subject, html } = req.body;
+      const { date, name, isRecurring, site } = req.body;
 
-      if (!to || !subject || !html) {
-        return res.status(400).json({ success: false, message: '수신자, 제목, 내용이 모두 필요합니다.' });
+      if (!date || !name) {
+        return res.status(400).json({ message: "날짜와 이름은 필수입니다." });
       }
 
-      const result = await sendEmail({ to, subject, html });
-      res.json(result);
+      const holiday = await prisma.holiday.create({
+        data: {
+          date: new Date(date),
+          name,
+          isRecurring: isRecurring || false,
+          site: site || null
+        }
+      });
+
+      res.status(201).json(holiday);
+    } catch (error: any) {
+      console.error("Error creating holiday:", error);
+      if (error.code === 'P2002') {
+        return res.status(400).json({ message: "이미 동일한 날짜에 공휴일이 등록되어 있습니다." });
+      }
+      res.status(500).json({ message: "공휴일 추가에 실패했습니다." });
+    }
+  });
+
+  // 공휴일 수정
+  app.put("/api/holidays/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { date, name, isRecurring, site } = req.body;
+
+      const holiday = await prisma.holiday.update({
+        where: { id: parseInt(id) },
+        data: {
+          ...(date && { date: new Date(date) }),
+          ...(name && { name }),
+          ...(isRecurring !== undefined && { isRecurring }),
+          ...(site !== undefined && { site: site || null })
+        }
+      });
+
+      res.json(holiday);
     } catch (error) {
-      console.error('Custom email send error:', error);
-      res.status(500).json({ success: false, message: '이메일 전송 중 오류 발생' });
+      console.error("Error updating holiday:", error);
+      res.status(500).json({ message: "공휴일 수정에 실패했습니다." });
+    }
+  });
+
+  // 공휴일 삭제
+  app.delete("/api/holidays/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await prisma.holiday.delete({
+        where: { id: parseInt(id) }
+      });
+
+      res.json({ message: "공휴일이 삭제되었습니다." });
+    } catch (error) {
+      console.error("Error deleting holiday:", error);
+      res.status(500).json({ message: "공휴일 삭제에 실패했습니다." });
+    }
+  });
+
+  // 공휴일 일괄 삭제
+  app.delete("/api/holidays", requireAuth, async (req, res) => {
+    try {
+      const { ids } = req.body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "삭제할 공휴일 ID가 필요합니다." });
+      }
+
+      await prisma.holiday.deleteMany({
+        where: { id: { in: ids.map((id: number) => parseInt(String(id))) } }
+      });
+
+      res.json({ message: `${ids.length}개의 공휴일이 삭제되었습니다.` });
+    } catch (error) {
+      console.error("Error deleting holidays:", error);
+      res.status(500).json({ message: "공휴일 일괄 삭제에 실패했습니다." });
     }
   });
 

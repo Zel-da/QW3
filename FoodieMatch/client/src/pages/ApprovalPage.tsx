@@ -121,7 +121,7 @@ export default function ApprovalPage() {
     },
   });
 
-  // Canvas drawing functions
+  // Canvas drawing functions with proper coordinate scaling
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -129,9 +129,22 @@ export default function ApprovalPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Prevent scrolling on touch devices
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    // Calculate scale factors between CSS size and actual canvas size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Get client coordinates and apply scaling
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -147,9 +160,22 @@ export default function ApprovalPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Prevent scrolling on touch devices
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    // Calculate scale factors between CSS size and actual canvas size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Get client coordinates and apply scaling
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
 
     ctx.lineTo(x, y);
     ctx.strokeStyle = '#000';
@@ -206,7 +232,7 @@ export default function ApprovalPage() {
     await rejectMutation.mutateAsync(rejectionReason);
   };
 
-  // Initialize canvas
+  // Initialize canvas with proper dimensions and high-DPI support
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -214,13 +240,22 @@ export default function ApprovalPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    // Get device pixel ratio for high-DPI displays
+    const dpr = window.devicePixelRatio || 1;
+
+    // Get display size from CSS
+    const rect = canvas.getBoundingClientRect();
+
+    // Set actual canvas size (scaled for high-DPI)
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    // Scale context to match device pixel ratio
+    ctx.scale(dpr, dpr);
 
     // Fill white background
     ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
   }, []);
 
   if (isLoading) {
@@ -307,7 +342,7 @@ export default function ApprovalPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">TBM 월별 보고서 결재</CardTitle>

@@ -22,16 +22,45 @@ function isWeekend(year, month, day) {
 const ReportListView = ({ onSelectReport, onBack, site }) => {
     const [reports, setReports] = useState([]);
     const [teams, setTeams] = useState([]);
-    const [filters, setFilters] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10),
-        teamId: '',
-        site: site,
-    });
+
+    // sessionStorage에서 저장된 필터 불러오기
+    const getInitialFilters = () => {
+        const savedFilters = sessionStorage.getItem('tbm_list_filters');
+        if (savedFilters) {
+            try {
+                const parsed = JSON.parse(savedFilters);
+                return {
+                    startDate: parsed.startDate || new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().slice(0, 10),
+                    endDate: parsed.endDate || new Date().toISOString().slice(0, 10),
+                    teamId: parsed.teamId || '',
+                    site: site,
+                };
+            } catch {
+                // 파싱 실패 시 기본값
+            }
+        }
+        return {
+            startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().slice(0, 10),
+            endDate: new Date().toISOString().slice(0, 10),
+            teamId: '',
+            site: site,
+        };
+    };
+
+    const [filters, setFilters] = useState(getInitialFilters);
     const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, team-asc, team-desc
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+
+    // 필터 변경 시 sessionStorage에 저장
+    useEffect(() => {
+        sessionStorage.setItem('tbm_list_filters', JSON.stringify({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            teamId: filters.teamId,
+        }));
+    }, [filters.startDate, filters.endDate, filters.teamId]);
 
     // 출석 현황 표용 year/month
     const currentDate = new Date();
@@ -82,6 +111,14 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
+    // 팀명 클릭 시 해당 팀으로 필터링
+    const handleTeamClick = (teamId) => {
+        setFilters(prev => ({
+            ...prev,
+            teamId: prev.teamId === String(teamId) ? '' : String(teamId) // 같은 팀 클릭 시 필터 해제
+        }));
+    };
+
     // Sort and paginate reports
     const sortedReports = React.useMemo(() => {
         const sorted = [...reports].sort((a, b) => {
@@ -112,10 +149,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold tracking-tight">제출된 점검표 목록</h2>
-                <Button onClick={onBack} variant="outline">작성하기</Button>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">제출된 점검표 목록</h2>
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-4">
@@ -170,6 +204,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                         </SelectContent>
                     </Select>
                 </div>
+                <Button onClick={onBack} variant="outline" className="h-10 ml-auto">작성하기</Button>
             </div>
 
             {loading ? (
@@ -208,10 +243,41 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {attendanceOverview.teams.map(team => (
+                                                {attendanceOverview.teams.map(team => {
+                                                    // 팀의 TBM 완료 여부 확인
+                                                    const hasIncomplete = Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).some(day => {
+                                                        const isWeekendDay = isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+
+                                                        const today = new Date();
+                                                        today.setHours(0, 0, 0, 0);
+                                                        const cellDate = new Date(attendanceMonth.year, attendanceMonth.month - 1, day);
+                                                        const isFuture = cellDate > today;
+
+                                                        // 주말이나 미래 날짜는 제외
+                                                        if (isWeekendDay || isFuture) return false;
+
+                                                        const statusData = team.dailyStatuses[day];
+                                                        const status = statusData?.status;
+
+                                                        // 미제출인 경우만 미완료로 간주
+                                                        return status === 'not-submitted';
+                                                    });
+
+                                                    return (
                                             <TableRow key={team.teamId}>
-                                                <TableCell className="border border-slate-300 font-medium sticky left-0 bg-white z-10">
+                                                <TableCell
+                                                    className={`border border-slate-300 font-medium sticky left-0 z-10 cursor-pointer hover:bg-blue-50 transition-colors ${
+                                                        filters.teamId === String(team.teamId)
+                                                            ? 'bg-blue-200 ring-2 ring-blue-400'
+                                                            : hasIncomplete ? 'bg-red-100' : 'bg-white'
+                                                    }`}
+                                                    onClick={() => handleTeamClick(team.teamId)}
+                                                    title="클릭하여 이 팀의 점검표만 보기"
+                                                >
                                                     {stripSiteSuffix(team.teamName)}
+                                                    {filters.teamId === String(team.teamId) && (
+                                                        <span className="ml-1 text-blue-600 text-xs">(선택됨)</span>
+                                                    )}
                                                 </TableCell>
                                                 {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
                                                     // 주말 체크
@@ -293,7 +359,8 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     );
                                                 })}
                                             </TableRow>
-                                                ))}
+                                                    );
+                                                })}
                                             </TableBody>
                                         </Table>
                                         <div className="mt-4 flex flex-wrap gap-6 text-sm">
@@ -313,7 +380,24 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                 <div className="w-6 h-6 bg-blue-100 border border-slate-300 flex items-center justify-center text-blue-600">-</div>
                                                 <span>주말</span>
                                             </div>
+                                            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-300">
+                                                <span className="text-muted-foreground">팀명을 클릭하면 해당 팀의 점검표만 볼 수 있습니다</span>
+                                            </div>
                                         </div>
+                                        {filters.teamId && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <span className="text-sm font-medium text-blue-700">
+                                                    선택된 팀: {teams.find(t => String(t.id) === filters.teamId)?.name || ''}
+                                                </span>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => setFilters(prev => ({ ...prev, teamId: '' }))}
+                                                >
+                                                    필터 해제
+                                                </Button>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </CardContent>

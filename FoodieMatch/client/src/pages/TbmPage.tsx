@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from "date-fns";
 import axios from 'axios';
 import { Header } from "@/components/header";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "../components/ui/button";
@@ -118,27 +119,20 @@ export default function TbmPage() {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
-      <main className="container mx-auto p-4 lg:p-6">
+      <main className="container mx-auto px-4 py-4 md:p-6">
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <CardTitle>TBM 일지</CardTitle>
-                <div className="flex gap-2">
-                  {view === 'checklist' && (
-                      <Button variant="outline" onClick={() => { setReportForEdit(null); setView('list'); }}>내역 보기</Button>
-                  )}
-                </div>
-            </div>
-            <div className="flex items-center space-x-4 mt-4">
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-lg md:text-2xl">TBM 일지</CardTitle>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 mt-3 md:mt-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
                     variant={"outline"}
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "w-full sm:w-[240px] h-10 md:h-11 justify-start text-left font-normal text-sm md:text-base",
                       !date && "text-muted-foreground"
                     )}
                   >
@@ -158,7 +152,7 @@ export default function TbmPage() {
               </Popover>
               {user?.role === 'ADMIN' && (
                 <Select onValueChange={(value: Site) => setSite(value)} value={site}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px] h-10 md:h-11">
                     <SelectValue placeholder="현장 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -168,13 +162,19 @@ export default function TbmPage() {
                   </SelectContent>
                 </Select>
               )}
+              {view === 'checklist' && (
+                <Button variant="outline" className="h-10 md:h-11 w-full sm:w-auto sm:ml-auto text-sm md:text-base" onClick={() => { setReportForEdit(null); setView('list'); }}>
+                  내역 보기
+                </Button>
+              )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 md:p-6 pt-0">
             {renderView()}
           </CardContent>
         </Card>
       </main>
+      <BottomNavigation />
     </div>
   );
 }

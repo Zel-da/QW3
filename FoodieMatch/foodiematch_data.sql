@@ -71,38 +71,6 @@ INSERT INTO public."ChecklistTemplates" VALUES (7, '품질 일일 안전점검',
 INSERT INTO public."ChecklistTemplates" VALUES (8, '인사총무팀 일일 안전점검', 8);
 INSERT INTO public."ChecklistTemplates" VALUES (9, '생산기술팀 일일 안전점검', 9);
 
-
---
--- Data for Name: DailyReports; Type: TABLE DATA; Schema: public; Owner: neondb_owner
---
-
-INSERT INTO public."DailyReports" VALUES (1, 1, '2025-09-16 05:20:03.24', '홍길동', '특이사항 없음');
-INSERT INTO public."DailyReports" VALUES (2, 1, '2025-09-16 07:10:16.437', '홍길동', '특이사항 없음');
-INSERT INTO public."DailyReports" VALUES (3, 1, '2025-09-16 07:10:25.467', '홍길동', '특이사항 없음ㅇ');
-INSERT INTO public."DailyReports" VALUES (4, 1, '2025-09-22 07:46:01.471', '홍길동', '특이사항 없음');
-INSERT INTO public."DailyReports" VALUES (5, 6, '2025-09-29 00:09:56.125', '홍길동', '특이사항 없음');
-INSERT INTO public."DailyReports" VALUES (6, 8, '2025-10-14 01:32:03.696', '홍길동', '특이사항 없음');
-
-
---
--- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: neondb_owner
---
-
-INSERT INTO public."User" VALUES ('bc05127b-cff6-427f-b6ac-211903436dd4', 'admin', 'admin@safety.com', '$2b$10$eozA9N2H5a56IgyQtLPPpOrsPpzMJA.hx8Q96njW4aXClW.KabCzm', 'admin', '2025-10-14 01:45:07.002');
-INSERT INTO public."User" VALUES ('9bf81ce2-f696-4053-b1d7-568624d79362', 'demouser', 'demo@safety.com', '$2b$10$eozA9N2H5a56IgyQtLPPpOrsPpzMJA.hx8Q96njW4aXClW.KabCzm', 'user', '2025-10-14 01:45:08.829');
-INSERT INTO public."User" VALUES ('ff114024-abaf-464f-9997-2656ee446a9a', '안예준', 'a@a.com', '$2b$10$DexVyJziuSkbRMAt6401YOtzMoWeiEGg.HbjUd1tZHs/OVvL1xU9K', 'user', '2025-10-14 01:52:25.557');
-
-
---
--- Data for Name: Notice; Type: TABLE DATA; Schema: public; Owner: neondb_owner
---
-
-INSERT INTO public."Notice" VALUES ('45b33c77-47cf-4a0e-878b-6c04d226593f', '2025년 안전교육 일정 안내', '2025년 1분기 안전교육 일정을 공지합니다. 모든 직원은 필수 안전교육을 이수해주시기 바랍니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('abb32247-784e-4c3a-bad3-43e172c0a4ed', 'TBM 체크리스트 작성 안내', '매일 작업 전 TBM 체크리스트를 작성하고 팀원 전원의 서명을 받아주시기 바랍니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('3340b20a-2c9c-47ae-8960-1bf51c35bd62', '안전보호구 착용 의무화', '작업장 내에서는 반드시 안전모, 안전화, 안전장갑을 착용해야 합니다.', '2025-10-14 01:45:09.954', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:18:08.497392', 0, NULL, NULL, NULL);
-INSERT INTO public."Notice" VALUES ('eb304428-b79d-479b-a9ba-00d3480c5939', '새로운 공지사항', '데이터를 유지하면서 추가된 공지사항입니다!', '2025-10-14 02:19:53.889', true, 'bc05127b-cff6-427f-b6ac-211903436dd4', '2025-10-14 02:19:53.889', 0, NULL, NULL, NULL);
-
-
 --
 -- Data for Name: TemplateItems; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
