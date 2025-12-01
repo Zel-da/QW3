@@ -551,7 +551,12 @@ export default function NoticeDetailPage() {
               ))}
             </div>
 
-            {user && (
+            {user && user.role === 'PENDING' && (
+              <div className="mt-6 pt-6 border-t text-center text-muted-foreground py-4">
+                가입 승인 대기 중에는 댓글을 작성할 수 없습니다.
+              </div>
+            )}
+            {user && user.role !== 'PENDING' && (
               <form onSubmit={handleCommentSubmit} className="mt-6 pt-6 border-t">
                 <div className="space-y-4">
                   <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="댓글을 입력하세요..." required />
