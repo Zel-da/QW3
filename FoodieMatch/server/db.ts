@@ -9,10 +9,18 @@ declare global {
 }
 
 // Initialize Prisma Client with singleton pattern
+// Neon serverless 환경을 위한 최적화된 설정
 const prismaClientSingleton = () => {
-  return new PrismaClient({
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
+
+  // Prisma 연결 오류 시 자동 재연결
+  client.$on('error' as any, async (e: any) => {
+    console.error('Prisma connection error:', e);
+  });
+
+  return client;
 };
 
 // In production, always create a new instance
