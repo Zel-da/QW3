@@ -5867,6 +5867,305 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // 데이터베이스 관리 API (백업/정리)
+  // ============================================
+
+  // DB 통계 조회
+  app.get("/api/admin/db-stats", requireAuth, async (req, res) => {
+    try {
+      // ADMIN 권한 확인
+      if (req.session.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
+      }
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      // 현재 데이터 통계
+      const [
+        users,
+        teams,
+        factories,
+        equipment,
+        courses,
+        tbmReports,
+        tbmChecklistItems,
+        tbmSignatures,
+        safetyInspections,
+        safetyInspectionItems,
+        emailLogs,
+        sessions,
+        notices
+      ] = await Promise.all([
+        prisma.user.count(),
+        prisma.team.count(),
+        prisma.factory.count(),
+        prisma.equipment.count(),
+        prisma.course.count(),
+        prisma.tbmReport.count(),
+        prisma.tbmChecklistItem.count(),
+        prisma.tbmSignature.count(),
+        prisma.safetyInspection.count(),
+        prisma.safetyInspectionItem.count(),
+        prisma.emailLog.count(),
+        prisma.session.count(),
+        prisma.notice.count()
+      ]);
+
+      // 오래된 데이터 수 (삭제 대상)
+      const [
+        tbmReportsOver1Year,
+        tbmChecklistItemsOver1Year,
+        tbmSignaturesOver1Year,
+        inspectionsOver1Year,
+        inspectionItemsOver1Year,
+        emailLogsOver6Months,
+        expiredSessions
+      ] = await Promise.all([
+        prisma.tbmReport.count({ where: { date: { lt: oneYearAgo } } }),
+        prisma.tbmChecklistItem.count({
+          where: { report: { date: { lt: oneYearAgo } } }
+        }),
+        prisma.tbmSignature.count({
+          where: { report: { date: { lt: oneYearAgo } } }
+        }),
+        prisma.safetyInspection.count({ where: { date: { lt: oneYearAgo } } }),
+        prisma.safetyInspectionItem.count({
+          where: { inspection: { date: { lt: oneYearAgo } } }
+        }),
+        prisma.emailLog.count({ where: { sentAt: { lt: sixMonthsAgo } } }),
+        prisma.session.count({ where: { expires: { lt: new Date() } } })
+      ]);
+
+      res.json({
+        current: {
+          users,
+          teams,
+          factories,
+          equipment,
+          courses,
+          tbmReports,
+          tbmChecklistItems,
+          tbmSignatures,
+          safetyInspections,
+          safetyInspectionItems,
+          emailLogs,
+          sessions,
+          notices
+        },
+        oldData: {
+          tbmReportsOver1Year,
+          tbmChecklistItemsOver1Year,
+          tbmSignaturesOver1Year,
+          inspectionsOver1Year,
+          inspectionItemsOver1Year,
+          emailLogsOver6Months,
+          expiredSessions,
+          totalCleanupTarget: tbmChecklistItemsOver1Year + tbmSignaturesOver1Year +
+                             inspectionItemsOver1Year + emailLogsOver6Months + expiredSessions
+        }
+      });
+    } catch (error) {
+      console.error("Error getting DB stats:", error);
+      res.status(500).json({ message: "DB 통계 조회에 실패했습니다." });
+    }
+  });
+
+  // 전체 백업 다운로드
+  app.post("/api/admin/backup", requireAuth, async (req, res) => {
+    try {
+      // ADMIN 권한 확인
+      if (req.session.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
+      }
+
+      console.log("Starting full database backup...");
+
+      // 모든 테이블 데이터 조회
+      const [
+        users,
+        teams,
+        factories,
+        equipment,
+        courses,
+        tbmTemplates,
+        tbmReports,
+        tbmChecklistItems,
+        tbmSignatures,
+        safetyInspections,
+        safetyInspectionItems,
+        notices,
+        noticeComments,
+        emailLogs,
+        userProgress,
+        simpleEmailConfigs
+      ] = await Promise.all([
+        prisma.user.findMany({ select: { id: true, username: true, name: true, email: true, role: true, teamId: true, factoryId: true, site: true, createdAt: true } }),
+        prisma.team.findMany(),
+        prisma.factory.findMany(),
+        prisma.equipment.findMany(),
+        prisma.course.findMany(),
+        prisma.tbmTemplate.findMany({ include: { categories: { include: { items: true } } } }),
+        prisma.tbmReport.findMany(),
+        prisma.tbmChecklistItem.findMany(),
+        prisma.tbmSignature.findMany(),
+        prisma.safetyInspection.findMany(),
+        prisma.safetyInspectionItem.findMany(),
+        prisma.notice.findMany(),
+        prisma.noticeComment.findMany(),
+        prisma.emailLog.findMany(),
+        prisma.userProgress.findMany(),
+        prisma.simpleEmailConfig.findMany()
+      ]);
+
+      const backupData = {
+        backupDate: new Date().toISOString(),
+        version: "1.0",
+        data: {
+          users,
+          teams,
+          factories,
+          equipment,
+          courses,
+          tbmTemplates,
+          tbmReports,
+          tbmChecklistItems,
+          tbmSignatures,
+          safetyInspections,
+          safetyInspectionItems,
+          notices,
+          noticeComments,
+          emailLogs,
+          userProgress,
+          simpleEmailConfigs
+        },
+        counts: {
+          users: users.length,
+          teams: teams.length,
+          factories: factories.length,
+          equipment: equipment.length,
+          courses: courses.length,
+          tbmTemplates: tbmTemplates.length,
+          tbmReports: tbmReports.length,
+          tbmChecklistItems: tbmChecklistItems.length,
+          tbmSignatures: tbmSignatures.length,
+          safetyInspections: safetyInspections.length,
+          safetyInspectionItems: safetyInspectionItems.length,
+          notices: notices.length,
+          noticeComments: noticeComments.length,
+          emailLogs: emailLogs.length,
+          userProgress: userProgress.length,
+          simpleEmailConfigs: simpleEmailConfigs.length
+        }
+      };
+
+      console.log("Backup complete. Record counts:", backupData.counts);
+
+      // JSON 파일로 다운로드
+      const filename = `backup_${new Date().toISOString().split('T')[0]}.json`;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(JSON.stringify(backupData, null, 2));
+    } catch (error) {
+      console.error("Error creating backup:", error);
+      res.status(500).json({ message: "백업 생성에 실패했습니다." });
+    }
+  });
+
+  // 오래된 데이터 정리
+  app.post("/api/admin/cleanup", requireAuth, async (req, res) => {
+    try {
+      // ADMIN 권한 확인
+      if (req.session.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
+      }
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      console.log("Starting data cleanup...");
+      console.log(`  - 1년 기준일: ${oneYearAgo.toISOString()}`);
+      console.log(`  - 6개월 기준일: ${sixMonthsAgo.toISOString()}`);
+
+      // 1년 이상 된 TBM 보고서 ID 조회
+      const oldTbmReports = await prisma.tbmReport.findMany({
+        where: { date: { lt: oneYearAgo } },
+        select: { id: true }
+      });
+      const oldTbmReportIds = oldTbmReports.map(r => r.id);
+
+      // 1년 이상 된 안전점검 ID 조회
+      const oldInspections = await prisma.safetyInspection.findMany({
+        where: { date: { lt: oneYearAgo } },
+        select: { id: true }
+      });
+      const oldInspectionIds = oldInspections.map(i => i.id);
+
+      // 삭제 실행
+      const results = {
+        tbmChecklistItems: 0,
+        tbmSignatures: 0,
+        inspectionItems: 0,
+        emailLogs: 0,
+        sessions: 0
+      };
+
+      // TBM 체크리스트 항목 삭제 (1년 이상)
+      if (oldTbmReportIds.length > 0) {
+        const deleted1 = await prisma.tbmChecklistItem.deleteMany({
+          where: { reportId: { in: oldTbmReportIds } }
+        });
+        results.tbmChecklistItems = deleted1.count;
+
+        // TBM 서명 삭제 (1년 이상)
+        const deleted2 = await prisma.tbmSignature.deleteMany({
+          where: { reportId: { in: oldTbmReportIds } }
+        });
+        results.tbmSignatures = deleted2.count;
+      }
+
+      // 안전점검 항목 삭제 (1년 이상)
+      if (oldInspectionIds.length > 0) {
+        const deleted3 = await prisma.safetyInspectionItem.deleteMany({
+          where: { inspectionId: { in: oldInspectionIds } }
+        });
+        results.inspectionItems = deleted3.count;
+      }
+
+      // 이메일 로그 삭제 (6개월 이상)
+      const deleted4 = await prisma.emailLog.deleteMany({
+        where: { sentAt: { lt: sixMonthsAgo } }
+      });
+      results.emailLogs = deleted4.count;
+
+      // 만료된 세션 삭제
+      const deleted5 = await prisma.session.deleteMany({
+        where: { expires: { lt: new Date() } }
+      });
+      results.sessions = deleted5.count;
+
+      const totalDeleted = results.tbmChecklistItems + results.tbmSignatures +
+                          results.inspectionItems + results.emailLogs + results.sessions;
+
+      console.log("Cleanup complete:", results);
+
+      res.json({
+        message: `총 ${totalDeleted}건의 데이터가 정리되었습니다.`,
+        details: results
+      });
+    } catch (error) {
+      console.error("Error during cleanup:", error);
+      res.status(500).json({ message: "데이터 정리에 실패했습니다." });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
