@@ -5532,14 +5532,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { verifyEmailConnection } = await import('./simpleEmailService');
       const isVerified = await verifyEmailConnection();
 
+      const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.SMTP_PASSWORD));
+
       res.json({
         success: isVerified,
-        message: isVerified ? '이메일 서비스 연결 성공' : '이메일 서비스 연결 실패',
+        message: isVerified
+          ? 'SMTP 서버 연결 성공'
+          : smtpConfigured
+            ? 'SMTP 서버 연결 실패 - 설정을 확인하세요'
+            : 'SMTP 환경변수가 설정되지 않았습니다',
         config: {
-          host: process.env.SMTP_HOST || 'localhost',
-          port: process.env.SMTP_PORT || '25',
+          host: process.env.SMTP_HOST || '설정되지 않음',
+          port: process.env.SMTP_PORT || '587',
           user: process.env.SMTP_USER || '설정되지 않음',
-          from: process.env.SMTP_FROM || '안전관리팀 <noreply@safety.com>'
+          from: process.env.SMTP_FROM || process.env.SMTP_USER || '설정되지 않음',
+          configured: smtpConfigured
         }
       });
     } catch (error) {
