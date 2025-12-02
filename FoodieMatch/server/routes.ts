@@ -1622,6 +1622,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 최근 활동 조회 (대시보드용)
+  app.get('/api/dashboard/recent-activities', requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
+      const teamId = req.session.user!.teamId;
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const activities: Array<{
+        id: string;
+        type: 'education' | 'tbm' | 'notice';
+        title: string;
+        description: string;
+        timestamp: string;
+        relatedId: string;
+      }> = [];
+
+      // 최근 교육 진행률
+      const recentProgress = await prisma.userProgress.findMany({
+        where: {
+          userId,
+          lastAccessed: { gte: sevenDaysAgo }
+        },
+        include: { course: { select: { title: true } } },
+        orderBy: { lastAccessed: 'desc' },
+        take: 5
+      });
+
+      recentProgress.forEach(p => {
+        activities.push({
+          id: `progress-${p.id}`,
+          type: 'education',
+          title: p.course.title,
+          description: p.completed ? '교육 완료' : `진행률 ${p.progress}%`,
+          timestamp: p.lastAccessed.toISOString(),
+          relatedId: p.courseId
+        });
+      });
+
+      // 최근 TBM 보고서 (팀)
+      if (teamId) {
+        const recentReports = await prisma.dailyReport.findMany({
+          where: {
+            teamId,
+            createdAt: { gte: sevenDaysAgo }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        });
+
+        recentReports.forEach(r => {
+          activities.push({
+            id: `tbm-${r.id}`,
+            type: 'tbm',
+            title: 'TBM 점검표',
+            description: new Date(r.reportDate).toLocaleDateString('ko-KR') + ' 작성',
+            timestamp: r.createdAt.toISOString(),
+            relatedId: String(r.id)
+          });
+        });
+      }
+
+      // 최근 공지사항
+      const recentNotices = await prisma.notice.findMany({
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+          isActive: true
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      });
+
+      recentNotices.forEach(n => {
+        activities.push({
+          id: `notice-${n.id}`,
+          type: 'notice',
+          title: n.title,
+          description: n.category || '공지',
+          timestamp: n.createdAt.toISOString(),
+          relatedId: n.id
+        });
+      });
+
+      // timestamp 기준 정렬 후 최근 10개만 반환
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      res.json(activities.slice(0, 10));
+    } catch (error) {
+      console.error('Failed to fetch recent activities:', error);
+      res.status(500).json({ message: '최근 활동을 불러오는데 실패했습니다' });
+    }
+  });
+
+
   // NOTICE MANAGEMENT
   app.get("/api/notices", async (req, res) => {
     try {
@@ -5906,13 +5999,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prisma.factory.count(),
         prisma.equipment.count(),
         prisma.course.count(),
-        prisma.tbmReport.count(),
-        prisma.tbmChecklistItem.count(),
-        prisma.tbmSignature.count(),
+        prisma.dailyReport.count(),
+        prisma.reportDetail.count(),
+        prisma.reportSignature.count(),
         prisma.safetyInspection.count(),
-        prisma.safetyInspectionItem.count(),
+        prisma.inspectionItem.count(),
         prisma.emailLog.count(),
-        prisma.session.count(),
+        prisma.userSession.count(),
         prisma.notice.count()
       ]);
 
@@ -5926,19 +6019,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailLogsOver6Months,
         expiredSessions
       ] = await Promise.all([
-        prisma.tbmReport.count({ where: { date: { lt: oneYearAgo } } }),
-        prisma.tbmChecklistItem.count({
-          where: { report: { date: { lt: oneYearAgo } } }
+        prisma.dailyReport.count({ where: { reportDate: { lt: oneYearAgo } } }),
+        prisma.reportDetail.count({
+          where: { report: { reportDate: { lt: oneYearAgo } } }
         }),
-        prisma.tbmSignature.count({
-          where: { report: { date: { lt: oneYearAgo } } }
+        prisma.reportSignature.count({
+          where: { report: { reportDate: { lt: oneYearAgo } } }
         }),
-        prisma.safetyInspection.count({ where: { date: { lt: oneYearAgo } } }),
-        prisma.safetyInspectionItem.count({
-          where: { inspection: { date: { lt: oneYearAgo } } }
-        }),
+        prisma.safetyInspection.count({ where: { year: { lt: oneYearAgo.getFullYear() } } }),
+        prisma.inspectionItem.count({ where: { inspection: { year: { lt: oneYearAgo.getFullYear() } } } }),
         prisma.emailLog.count({ where: { sentAt: { lt: sixMonthsAgo } } }),
-        prisma.session.count({ where: { expires: { lt: new Date() } } })
+        prisma.userSession.count({ where: { expires: { lt: new Date() } } })
       ]);
 
       res.json({
@@ -6010,9 +6101,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prisma.equipment.findMany(),
         prisma.course.findMany(),
         prisma.tbmTemplate.findMany({ include: { categories: { include: { items: true } } } }),
-        prisma.tbmReport.findMany(),
-        prisma.tbmChecklistItem.findMany(),
-        prisma.tbmSignature.findMany(),
+        prisma.dailyReport.findMany(),
+        prisma.reportDetail.findMany(),
+        prisma.reportSignature.findMany(),
         prisma.safetyInspection.findMany(),
         prisma.safetyInspectionItem.findMany(),
         prisma.notice.findMany(),
@@ -6095,7 +6186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`  - 6개월 기준일: ${sixMonthsAgo.toISOString()}`);
 
       // 1년 이상 된 TBM 보고서 ID 조회
-      const oldTbmReports = await prisma.tbmReport.findMany({
+      const oldTbmReports = await prisma.dailyReport.findMany({
         where: { date: { lt: oneYearAgo } },
         select: { id: true }
       });
@@ -6119,13 +6210,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // TBM 체크리스트 항목 삭제 (1년 이상)
       if (oldTbmReportIds.length > 0) {
-        const deleted1 = await prisma.tbmChecklistItem.deleteMany({
+        const deleted1 = await prisma.reportDetail.deleteMany({
           where: { reportId: { in: oldTbmReportIds } }
         });
         results.tbmChecklistItems = deleted1.count;
 
         // TBM 서명 삭제 (1년 이상)
-        const deleted2 = await prisma.tbmSignature.deleteMany({
+        const deleted2 = await prisma.reportSignature.deleteMany({
           where: { reportId: { in: oldTbmReportIds } }
         });
         results.tbmSignatures = deleted2.count;
