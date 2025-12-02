@@ -3,20 +3,46 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// 사이트별 발신자 이름 매핑
+const SITE_SENDER_NAMES: Record<string, string> = {
+  'ASAN': '아산 안전관리팀',
+  'HWASEONG': '화성 안전관리팀',
+  'DEFAULT': '안전관리팀'
+};
+
+/**
+ * 사이트에 따른 발신자 이름 반환
+ */
+export function getSenderNameBySite(site?: string): string {
+  if (!site) return SITE_SENDER_NAMES['DEFAULT'];
+  const upperSite = site.toUpperCase();
+  return SITE_SENDER_NAMES[upperSite] || SITE_SENDER_NAMES['DEFAULT'];
+}
+
+/**
+ * 발신자 이메일 주소 생성 (사이트별 이름 적용)
+ */
+export function getSenderAddress(site?: string): string {
+  const senderName = getSenderNameBySite(site);
+  const senderEmail = process.env.SMTP_USER || process.env.SMTP_FROM || 'noreply@safety.com';
+  return `${senderName} <${senderEmail}>`;
+}
+
 // Email configuration
-const smtpPort = parseInt(process.env.SMTP_PORT || '25');
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD; // 둘 다 지원
 const emailConfig = {
-  host: process.env.SMTP_HOST || 'localhost',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: smtpPort,
-  secure: false, // false for port 25 (SMTP)
-  ...(process.env.SMTP_USER && process.env.SMTP_PASSWORD ? {
+  secure: smtpPort === 465, // 465는 SSL, 587은 STARTTLS
+  ...(process.env.SMTP_USER && smtpPass ? {
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD
+      pass: smtpPass
     }
   } : {}),
   tls: {
-    rejectUnauthorized: false, // 인증서 검증 완화 (회사 네트워크 환경)
+    rejectUnauthorized: false, // 인증서 검증 완화
   },
   connectionTimeout: 30000, // 30초 타임아웃
   greetingTimeout: 30000,
@@ -63,10 +89,14 @@ export async function sendEmail(options: {
   subject: string;
   html: string;
   from?: string;
+  site?: string; // 사이트별 발신자 이름을 위한 파라미터
 }) {
   try {
+    // 사이트가 지정되면 사이트별 발신자 사용, 아니면 기본값 사용
+    const fromAddress = options.from || getSenderAddress(options.site);
+
     const mailOptions = {
-      from: options.from || process.env.SMTP_FROM || '안전관리팀 <noreply@safety.com>',
+      from: fromAddress,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
       html: options.html
@@ -84,12 +114,18 @@ export async function sendEmail(options: {
 
 /**
  * 데이터베이스에서 이메일 설정 조회 및 발송
+ * @param emailType - 이메일 타입 (EXEC_SIGNATURE_REQUEST, TBM_REMINDER 등)
+ * @param recipientEmail - 수신자 이메일
+ * @param recipientId - 수신자 ID
+ * @param variables - 템플릿 변수
+ * @param site - 사이트 코드 (ASAN, HWASEONG) - 발신자 이름 결정용
  */
 export async function sendEmailByType(
   emailType: string,
   recipientEmail: string,
   recipientId: string,
-  variables: Record<string, any>
+  variables: Record<string, any>,
+  site?: string
 ) {
   try {
     // 이메일 설정 조회
@@ -118,11 +154,12 @@ export async function sendEmailByType(
     const subject = renderTemplate(config.subject, variables);
     const html = renderTemplate(config.content, variables);
 
-    // 이메일 발송
+    // 이메일 발송 (사이트별 발신자 이름 적용)
     const result = await sendEmail({
       to: recipientEmail,
       subject,
-      html
+      html,
+      site: site // 사이트 코드 전달
     });
 
     // 발송 로그 저장
@@ -173,9 +210,10 @@ export async function sendExecSignatureRequest(
     TEAM_NAME: string;
     CREATED_DATE: string;
     REPORT_URL: string;
-  }
+  },
+  site?: string
 ) {
-  return sendEmailByType('EXEC_SIGNATURE_REQUEST', executiveEmail, executiveId, variables);
+  return sendEmailByType('EXEC_SIGNATURE_REQUEST', executiveEmail, executiveId, variables, site);
 }
 
 /**
@@ -191,9 +229,10 @@ export async function sendExecSignatureComplete(
     SIGNER_ROLE: string;
     SIGNED_DATE: string;
     REPORT_URL: string;
-  }
+  },
+  site?: string
 ) {
-  return sendEmailByType('EXEC_SIGNATURE_COMPLETE', recipientEmail, recipientId, variables);
+  return sendEmailByType('EXEC_SIGNATURE_COMPLETE', recipientEmail, recipientId, variables, site);
 }
 
 /**
@@ -208,9 +247,10 @@ export async function sendTBMReminder(
     TEAM_NAME: string;
     DAYS_OVERDUE: number;
     TBM_URL: string;
-  }
+  },
+  site?: string
 ) {
-  return sendEmailByType('TBM_REMINDER', userEmail, userId, variables);
+  return sendEmailByType('TBM_REMINDER', userEmail, userId, variables, site);
 }
 
 /**
@@ -225,9 +265,10 @@ export async function sendEducationReminder(
     DUE_DATE: string;
     PROGRESS: number;
     COURSE_URL: string;
-  }
+  },
+  site?: string
 ) {
-  return sendEmailByType('EDUCATION_REMINDER', userEmail, userId, variables);
+  return sendEmailByType('EDUCATION_REMINDER', userEmail, userId, variables, site);
 }
 
 /**
@@ -241,9 +282,10 @@ export async function sendInspectionReminder(
     MONTH: string;
     TEAM_NAME: string;
     INSPECTION_URL: string;
-  }
+  },
+  site?: string
 ) {
-  return sendEmailByType('INSPECTION_REMINDER', userEmail, userId, variables);
+  return sendEmailByType('INSPECTION_REMINDER', userEmail, userId, variables, site);
 }
 
 /**
