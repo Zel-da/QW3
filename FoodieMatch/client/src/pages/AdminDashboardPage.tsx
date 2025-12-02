@@ -9,7 +9,7 @@ import {
   Users, Building2, Calendar, Package, Mail, Shield, Settings,
   BookOpen, ClipboardCheck, GraduationCap, Cog, CalendarDays,
   TrendingUp, AlertTriangle, CheckCircle2, Clock, FileText,
-  ArrowRight, Activity
+  ArrowRight, Activity, Database
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
@@ -152,6 +152,15 @@ const menuGroups: MenuGroup[] = [
         roles: ['ADMIN'],
         badge: 'ADMIN',
         color: 'bg-rose-500',
+      },
+      {
+        title: '데이터베이스 관리',
+        description: '데이터 백업 및 오래된 데이터 정리',
+        icon: <Database className="h-6 w-6" />,
+        path: '/db-management',
+        roles: ['ADMIN'],
+        badge: 'ADMIN',
+        color: 'bg-cyan-500',
       },
     ],
   },

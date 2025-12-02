@@ -471,7 +471,7 @@ export default function EducationManagementPage() {
                               type="file"
                               accept={
                                 item.type === 'video' ? 'video/*' :
-                                item.type === 'audio' ? 'audio/*' :
+                                item.type === 'audio' ? 'audio/*,video/mp4' :
                                 '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx'
                               }
                               onChange={(e) => {

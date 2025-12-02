@@ -342,7 +342,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                         <div className="space-y-2">
                           <Input
                             type="file"
-                            accept={item.type === 'video' ? 'video/*' : 'audio/*'}
+                            accept={item.type === 'video' ? 'video/*' : 'audio/*,video/mp4'}
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) handleMediaUpload(idx, file);
@@ -359,7 +359,11 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                                 <video src={item.url} controls className="w-full rounded max-h-60" />
                               )}
                               {item.type === 'audio' && (
-                                <audio src={item.url} controls className="w-full" />
+                                item.url.endsWith('.mp4') || item.name.endsWith('.mp4') ? (
+                                  <video src={item.url} controls className="w-full rounded max-h-60" />
+                                ) : (
+                                  <audio src={item.url} controls className="w-full" />
+                                )
                               )}
                             </div>
                           )}
