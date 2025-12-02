@@ -28,40 +28,62 @@ export function getSenderAddress(site?: string): string {
   return `${senderName} <${senderEmail}>`;
 }
 
-// Email configuration
-const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD; // 둘 다 지원
-const emailConfig = {
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: smtpPort,
-  secure: smtpPort === 465, // 465는 SSL, 587은 STARTTLS
-  ...(process.env.SMTP_USER && smtpPass ? {
-    auth: {
+/**
+ * SMTP 설정을 동적으로 생성 (환경변수 변경 반영)
+ */
+function getEmailConfig() {
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+  const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
+
+  const config: any = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: smtpPort,
+    secure: smtpPort === 465,
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000
+  };
+
+  // 인증 정보가 있을 때만 추가
+  if (process.env.SMTP_USER && smtpPass) {
+    config.auth = {
       user: process.env.SMTP_USER,
       pass: smtpPass
-    }
-  } : {}),
-  tls: {
-    rejectUnauthorized: false, // 인증서 검증 완화
-  },
-  connectionTimeout: 30000, // 30초 타임아웃
-  greetingTimeout: 30000,
-  socketTimeout: 30000
-};
+    };
+  }
 
-// Create reusable transporter
-const transporter = nodemailer.createTransport(emailConfig as any);
+  return config;
+}
+
+/**
+ * Transporter를 동적으로 생성 (매번 최신 환경변수 사용)
+ */
+function createTransporter() {
+  const config = getEmailConfig();
+  console.log('Creating SMTP transporter with config:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    hasAuth: !!config.auth,
+    user: config.auth?.user || 'not set'
+  });
+  return nodemailer.createTransport(config);
+}
 
 /**
  * SMTP 연결 확인
  */
 export async function verifyEmailConnection() {
   try {
+    const transporter = createTransporter();
     await transporter.verify();
     console.log('✅ Email service is ready');
     return true;
-  } catch (error) {
-    console.error('❌ Email service error:', error);
+  } catch (error: any) {
+    console.error('❌ Email service error:', error.message || error);
     return false;
   }
 }
@@ -102,12 +124,14 @@ export async function sendEmail(options: {
       html: options.html
     };
 
+    // 매번 새로운 transporter 생성 (환경변수 변경 반영)
+    const transporter = createTransporter();
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent:', info.messageId, 'to:', mailOptions.to);
 
     return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('❌ Email send error:', error);
+  } catch (error: any) {
+    console.error('❌ Email send error:', error.message || error);
     return { success: false, error };
   }
 }
