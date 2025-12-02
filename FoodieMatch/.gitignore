@@ -35,3 +35,4 @@ uploads/
 # Temporary files
 *.tmp
 .cache/
+nul

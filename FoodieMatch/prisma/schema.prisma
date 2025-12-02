@@ -132,6 +132,7 @@ model UserProgress {
 
   @@index([userId])
   @@index([courseId])
+  @@index([userId, courseId]) // 복합 인덱스: 사용자별 코스 진행률 조회 최적화
 }
 
 model Assessment {
@@ -338,6 +339,7 @@ model ReportDetail {
   @@index([reportId])
   @@index([itemId])
   @@index([authorId])
+  @@index([reportId, itemId]) // 복합 인덱스: 리포트별 항목 조회 최적화
   @@map("ReportDetails")
 }
 
@@ -375,6 +377,7 @@ model MonthlyApproval {
   @@unique([teamId, year, month])
   @@index([teamId])
   @@index([approverId])
+  @@index([approverId, status]) // 복합 인덱스: 승인자별 상태 조회 최적화
 }
 
 // 신규 모델: 결재 요청 및 승인
@@ -396,6 +399,7 @@ model ApprovalRequest {
   @@index([approverId])
   @@index([status])
   @@index([requestedAt])
+  @@index([status, approverId]) // 복합 인덱스: 상태별 승인자 조회 최적화
   @@map("ApprovalRequests")
 }
 

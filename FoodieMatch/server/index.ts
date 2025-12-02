@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import pgSimple from "connect-pg-simple";
 import pg from "pg";
+import helmet from "helmet";
+import compression from "compression";
 import { prisma } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -10,6 +12,16 @@ import { verifyEmailConnection } from "./simpleEmailService";
 import { startAllSchedulers } from "./scheduler";
 
 const app = express();
+
+// Security middleware - HTTP 헤더 보안
+app.use(helmet({
+  contentSecurityPolicy: false, // SPA 호환성을 위해 비활성화
+  crossOriginEmbedderPolicy: false, // 외부 리소스 로드 허용
+}));
+
+// Compression middleware - 응답 gzip 압축 (번들 크기 ~70% 감소)
+app.use(compression());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
