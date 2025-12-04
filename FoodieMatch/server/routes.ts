@@ -18,7 +18,8 @@ import { getApprovalRequestTemplate, getApprovalApprovedTemplate, getApprovalRej
 // R2 Storage for cloud deployment
 import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
 // Google Gemini AI
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
+import { chatbotTools, executeTool } from "./chatbotFunctions";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -6739,27 +6740,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
 - 안전점검: 정기/수시 안전점검 수행
 - 결재: TBM 및 안전점검 결재 처리
 
+당신은 데이터베이스에 접근하여 실시간 데이터를 조회할 수 있습니다.
+사용자가 현황, 통계, 목록 등을 요청하면 적절한 도구를 사용하세요.
+
 답변 규칙:
-1. 간결하고 명확하게 답변하세요 (3-4문장 이내)
+1. 데이터 조회 결과를 보기 쉽게 정리해서 답변하세요
 2. 한국어로 답변하세요
-3. 시스템 관련 질문이 아니면 "안전관리 시스템 관련 질문에 답변드리고 있습니다"라고 안내하세요
-4. 민감한 정보(비밀번호, 개인정보 등)는 절대 제공하지 마세요`;
+3. 숫자와 통계는 명확하게 표시하세요
+4. 민감한 정보(비밀번호 등)는 절대 포함하지 마세요
+5. 표 형식이 적합한 데이터는 마크다운 표(|로 구분)를 사용하세요
+6. 사용자가 차트/그래프를 요청하거나, 통계 데이터가 시각화에 적합한 경우:
+   답변 마지막에 아래 형식으로 차트 데이터를 추가하세요:
+   [CHART]{"type":"bar","title":"제목","data":[{"name":"항목","value":숫자}]}[/CHART]
+   - type: "bar"(막대), "pie"(원형), "line"(꺾은선)
+   - 비율/구성은 pie, 추세는 line, 비교는 bar`;
 
       // 모델: 환경변수로 설정 가능, 기본값은 gemini-2.5-flash-lite (무료 일 1,000회)
       const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 
+      // Gemini Function Calling용 도구 정의
+      const tools = chatbotTools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }));
+
+      // 첫 번째 호출: 도구 사용 여부 결정
       const response = await ai.models.generateContent({
         model: modelName,
         contents: systemPrompt + "\n\n사용자 질문: " + question,
         config: {
-          maxOutputTokens: 500,
-          temperature: 0.7,
-        }
+          maxOutputTokens: 1000,
+          temperature: 0.3,
+        },
+        tools: [{ functionDeclarations: tools }]
       });
 
-      const answer = response.text || "죄송합니다. 응답을 생성하지 못했습니다.";
+      // Function Call이 있는지 확인
+      const functionCalls = response.functionCalls;
 
-      res.json({ answer });
+      if (functionCalls && functionCalls.length > 0) {
+        // 도구 실행 및 결과 수집
+        const toolResults: any[] = [];
+
+        for (const fc of functionCalls) {
+          try {
+            const result = await executeTool(fc.name, fc.args || {});
+            toolResults.push({
+              name: fc.name,
+              result: result
+            });
+          } catch (err) {
+            console.error(`Tool execution error (${fc.name}):`, err);
+            toolResults.push({
+              name: fc.name,
+              error: "조회 중 오류가 발생했습니다."
+            });
+          }
+        }
+
+        // 두 번째 호출: 도구 결과를 바탕으로 최종 응답 생성
+        const finalPrompt = `${systemPrompt}
+
+사용자 질문: ${question}
+
+조회된 데이터:
+${JSON.stringify(toolResults, null, 2)}
+
+위 데이터를 바탕으로 사용자에게 친절하게 답변해주세요.
+데이터를 보기 쉽게 정리해서 설명해주세요.`;
+
+        const finalResponse = await ai.models.generateContent({
+          model: modelName,
+          contents: finalPrompt,
+          config: {
+            maxOutputTokens: 1500,
+            temperature: 0.5,
+          }
+        });
+
+        const rawAnswer = finalResponse.text || "데이터를 조회했으나 응답 생성에 실패했습니다.";
+
+        // 차트 데이터 파싱
+        const chartMatch = rawAnswer.match(/\[CHART\](.*?)\[\/CHART\]/s);
+        let chart = null;
+        let answer = rawAnswer;
+
+        if (chartMatch) {
+          try {
+            chart = JSON.parse(chartMatch[1]);
+            answer = rawAnswer.replace(/\[CHART\].*?\[\/CHART\]/s, '').trim();
+          } catch (e) {
+            console.error("Chart JSON parse error:", e);
+          }
+        }
+
+        res.json({ answer, hasData: true, chart });
+      } else {
+        // 도구 호출 없이 일반 응답
+        const rawAnswer = response.text || "죄송합니다. 응답을 생성하지 못했습니다.";
+
+        // 차트 데이터 파싱 (도구 호출 없어도 차트 제공 가능)
+        const chartMatch = rawAnswer.match(/\[CHART\](.*?)\[\/CHART\]/s);
+        let chart = null;
+        let answer = rawAnswer;
+
+        if (chartMatch) {
+          try {
+            chart = JSON.parse(chartMatch[1]);
+            answer = rawAnswer.replace(/\[CHART\].*?\[\/CHART\]/s, '').trim();
+          } catch (e) {
+            console.error("Chart JSON parse error:", e);
+          }
+        }
+
+        res.json({ answer, hasData: false, chart });
+      }
     } catch (error: any) {
       console.error("Chatbot API error:", error);
 

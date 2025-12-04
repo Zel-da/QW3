@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { ChatButton } from './ChatButton';
 import { ChatWindow } from './ChatWindow';
-import { ChatMessage, ChatMessageType } from './ChatMessage';
+import { ChatMessage, ChatMessageType, ChartData } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { QuickActions } from './QuickActions';
 import { findFAQMatch, getQuickQuestions, FAQItem } from './faqData';
@@ -41,13 +41,23 @@ export function ChatBot() {
   }, [messages, scrollToBottom]);
 
   // AI API 호출 함수
-  const askAI = async (question: string): Promise<string> => {
+  interface AIResponse {
+    answer: string;
+    chart?: ChartData;
+  }
+
+  const askAI = async (question: string): Promise<AIResponse> => {
     try {
       const response = await axios.post('/api/chatbot/ask', { question });
-      return response.data.answer;
+      return {
+        answer: response.data.answer,
+        chart: response.data.chart || undefined
+      };
     } catch (error: any) {
       console.error('AI API error:', error);
-      return error.response?.data?.answer || '죄송합니다. 일시적인 오류가 발생했습니다.';
+      return {
+        answer: error.response?.data?.answer || '죄송합니다. 일시적인 오류가 발생했습니다.'
+      };
     }
   };
 
@@ -85,11 +95,12 @@ export function ChatBot() {
       };
     } else if (USE_AI_FALLBACK) {
       // FAQ 매칭 실패 → AI 폴백
-      const aiAnswer = await askAI(text);
+      const aiResult = await askAI(text);
       botResponse = {
         id: `bot-${Date.now()}`,
         type: 'bot',
-        content: aiAnswer,
+        content: aiResult.answer,
+        chart: aiResult.chart,
         timestamp: new Date(),
       };
     } else {
