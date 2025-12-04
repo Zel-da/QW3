@@ -106,8 +106,34 @@ export function Header() {
                     </div>
                   </div>
                 )}
-                <nav className="grid gap-6 text-lg font-medium">
-                  {navLinks}
+                <nav className="grid gap-2 text-lg font-medium">
+                  <div className="grid gap-1">
+                    <Link href="/" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                      홈
+                    </Link>
+                    <Link href="/notices" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/notices')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                      공지사항
+                    </Link>
+                    <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/tbm')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                      TBM
+                    </Link>
+                    <Link href="/courses" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/courses')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                      안전교육
+                    </Link>
+                    {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+                      <>
+                        <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/safety-inspection')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                          안전점검
+                        </Link>
+                        <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/monthly-report')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                          월별 보고서
+                        </Link>
+                        <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/admin-dashboard')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                          관리
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </nav>
                 {!user && (
                   <div className="mt-6 pt-6 border-t">

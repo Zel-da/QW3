@@ -57,13 +57,13 @@ export function BottomNavigation() {
               )}
             >
               <div className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-full transition-colors",
+                "flex items-center justify-center w-11 h-11 rounded-full transition-colors",
                 active && "bg-primary/10"
               )}>
-                <Icon className={cn("h-5 w-5", active && "text-primary")} />
+                <Icon className={cn("h-6 w-6", active && "text-primary")} />
               </div>
               <span className={cn(
-                "text-[10px] mt-0.5 font-medium truncate",
+                "text-xs mt-0.5 font-medium truncate",
                 active && "text-primary"
               )}>
                 {item.label}
