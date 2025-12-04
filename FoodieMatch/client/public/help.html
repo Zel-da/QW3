@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수산세보틱스 안전관리 플랫폼 - 종합 절차서</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        /* ========================================
+           사이드바 네비게이션
+           ======================================== */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #1e293b;
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 20px 0;
+        }
+
+        .sidebar-header {
+            padding: 15px 20px 25px;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 15px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            color: #60a5fa;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .nav-section {
+            margin-bottom: 10px;
+        }
+
+        .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 10px 20px 5px;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 10px 20px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: #334155;
+            color: white;
+            border-left-color: #3b82f6;
+        }
+
+        .nav-link.active {
+            background: #334155;
+            color: #60a5fa;
+            border-left-color: #3b82f6;
+        }
+
+        .nav-sub-link {
+            padding-left: 35px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .nav-sub-link:hover {
+            color: #e2e8f0;
+        }
+
+        /* ========================================
+           메인 컨텐츠
+           ======================================== */
+        .main-content {
+            margin-left: 280px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 50px 60px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        h1.page-title {
+            font-size: 2rem;
+            color: #1a365d;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2563eb;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #1e40af;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding: 12px 15px;
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            border-radius: 0 6px 6px 0;
+        }
+
+        h2:first-of-type {
+            margin-top: 30px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            color: #1e3a5f;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        h4 {
+            font-size: 1rem;
+            color: #374151;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        .doc-info {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .doc-info p {
+            margin: 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 25px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-admin { background: #fee2e2; color: #991b1b; }
+        .badge-approver { background: #dbeafe; color: #1e40af; }
+        .badge-leader { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #f3f4f6; color: #6b7280; }
+
+        .check-good { color: #16a34a; font-weight: bold; }
+        .check-bad { color: #dc2626; font-weight: bold; }
+
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left: 4px solid #3b82f6;
+            padding: 20px 25px;
+            margin: 25px 0;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .info-box strong {
+            color: #1e40af;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 20px 25px;
+            margin: 25px 0;
+            border-radius: 0 12px 12px 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #e5e7eb;
+            margin: 50px 0;
+        }
+
+        .permission-matrix td:not(:first-child),
+        .permission-matrix th:not(:first-child) {
+            text-align: center;
+            width: 90px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        /* ========================================
+           플로우차트 스타일 (상세 버전)
+           ======================================== */
+        .flowchart {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 35px;
+            margin: 30px 0;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        /* 스크롤바 스타일 */
+        .flow-horizontal::-webkit-scrollbar {
+            height: 6px;
+        }
+        .flow-horizontal::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 3px;
+        }
+        .flow-horizontal::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+        .flow-horizontal::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        .flowchart-title {
+            text-align: center;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 25px;
+            font-size: 1rem;
+            padding-bottom: 15px;
+            border-bottom: 2px dashed #cbd5e1;
+        }
+
+        /* 세로 플로우차트 */
+        .flow-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        /* 가로 플로우차트 */
+        .flow-horizontal {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            flex-wrap: nowrap;
+            padding: 10px 5px;
+        }
+
+        /* 가로 플로우차트 내 박스 - 더 컴팩트하게 */
+        .flow-horizontal .flow-box {
+            min-width: 100px;
+            max-width: 150px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            flex-shrink: 0;
+        }
+
+        .flow-horizontal .flow-box.detailed {
+            min-width: 120px;
+            max-width: 160px;
+        }
+
+        .flow-horizontal .flow-arrow.right {
+            padding: 0 8px;
+            flex-shrink: 0;
+        }
+
+        /* 플로우 박스 기본 */
+        .flow-box {
+            background: white;
+            border: 2px solid #94a3b8;
+            border-radius: 10px;
+            padding: 14px 22px;
+            text-align: center;
+            font-size: 0.88rem;
+            min-width: 140px;
+            max-width: 200px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+            line-height: 1.5;
+        }
+
+        .flow-box small {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .flow-box .step-num {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            line-height: 22px;
+            margin-right: 6px;
+        }
+
+        .flow-box.start {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            border-color: #0284c7;
+            font-weight: 600;
+        }
+
+        .flow-box.end {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-color: #059669;
+            font-weight: 600;
+        }
+
+        .flow-box.warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-color: #d97706;
+        }
+
+        .flow-box.error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-color: #dc2626;
+        }
+
+        .flow-box.action {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+            border-color: #6366f1;
+        }
+
+        .flow-box.system {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+            border-color: #9333ea;
+            font-style: italic;
+        }
+
+        .flow-box.decision {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-color: #d97706;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .flow-box.decision::before {
+            content: "◇ ";
+            color: #b45309;
+        }
+
+        /* 상세 박스 */
+        .flow-box.detailed {
+            max-width: 240px;
+            text-align: left;
+            padding: 16px 20px;
+        }
+
+        .flow-box.detailed .box-title {
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .flow-box.detailed ul {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 0.8rem;
+        }
+
+        .flow-box.detailed li {
+            margin: 3px 0;
+            color: #475569;
+        }
+
+        /* 화살표 */
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 1.3rem;
+        }
+
+        .flow-arrow.down {
+            padding: 10px 0;
+            flex-direction: column;
+        }
+
+        .flow-arrow.down::after {
+            content: "▼";
+        }
+
+        .flow-arrow.down.long {
+            padding: 15px 0;
+        }
+
+        .flow-arrow.down.long::before {
+            content: "│";
+            display: block;
+            margin-bottom: -5px;
+        }
+
+        .flow-arrow.right {
+            padding: 0 15px;
+        }
+
+        .flow-arrow.right::after {
+            content: "▶";
+        }
+
+        .flow-arrow-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        /* 분기 */
+        .flow-branch {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 12px;
+        }
+
+        .flow-branch-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .flow-branch-label {
+            font-size: 0.8rem;
+            color: #475569;
+            margin-bottom: 10px;
+            font-weight: 600;
+            padding: 4px 12px;
+            background: #e2e8f0;
+            border-radius: 12px;
+        }
+
+        .flow-branch-label.yes {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .flow-branch-label.no {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* 그룹 박스 */
+        .flow-group {
+            border: 2px dashed #94a3b8;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.7);
+            text-align: center;
+        }
+
+        .flow-group-title {
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            text-align: center;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid #e2e8f0;
+        }
+
+        .flow-group-title.leader {
+            background: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+
+        .flow-group-title.approver {
+            background: #dbeafe;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }
+
+        .flow-group-title.admin {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+
+        .flow-group-title.user {
+            background: #f3e8ff;
+            color: #7c3aed;
+            border-color: #e9d5ff;
+        }
+
+        /* 스텝 표시 */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            align-items: center;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .flow-step-number {
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .flow-step-content {
+            flex: 1;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px 20px;
+        }
+
+        .flow-step-content h5 {
+            font-size: 0.95rem;
+            color: #1e3a5f;
+            margin-bottom: 6px;
+        }
+
+        .flow-step-content p {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        .flow-step-content ul {
+            margin: 8px 0 0 0;
+            padding-left: 18px;
+            font-size: 0.85rem;
+        }
+
+        .flow-step-connector {
+            width: 32px;
+            display: flex;
+            justify-content: center;
+            padding: 8px 0;
+            color: #94a3b8;
+        }
+
+        /* 화면 목업 */
+        .screen-preview {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 20px 0;
+        }
+
+        .screen-preview-header {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .screen-preview-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .screen-preview-dot.red { background: #ef4444; }
+        .screen-preview-dot.yellow { background: #f59e0b; }
+        .screen-preview-dot.green { background: #22c55e; }
+
+        .screen-preview-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* 반응형 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+            }
+            .main-content {
+                margin-left: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                max-height: 300px;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .container {
+                padding: 25px;
+            }
+            /* 가로 플로우차트는 그대로 유지하되 스크롤 가능 */
+            .flow-horizontal {
+                justify-content: flex-start;
+                padding-bottom: 15px;
+            }
+            .flow-horizontal .flow-box {
+                min-width: 90px;
+                max-width: 130px;
+            }
+            .flow-branch {
+                flex-direction: column;
+                gap: 25px;
+            }
+            .flow-step {
+                flex-direction: column;
+                align-items: center;
+            }
+            .flowchart {
+                padding: 20px 15px;
+            }
+        }
+
+        @media print {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            body {
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            .flowchart {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 네비게이션 -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>안전관리 플랫폼</h1>
+            <p>종합 절차서 v1.0</p>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">시스템 정보</div>
+            <a href="#section1" class="nav-link">1. 시스템 개요</a>
+            <a href="#section2" class="nav-link">2. 사용자 역할 및 권한</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">기본 기능</div>
+            <a href="#section3" class="nav-link">3. 회원가입 및 로그인</a>
+            <a href="#section3-1" class="nav-link nav-sub-link">└ 회원가입 절차</a>
+            <a href="#section3-2" class="nav-link nav-sub-link">└ 로그인 절차</a>
+            <a href="#section4" class="nav-link">4. 홈 대시보드</a>
+            <a href="#section5" class="nav-link">5. 공지사항</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">주요 업무</div>
+            <a href="#section6" class="nav-link">6. 안전교육</a>
+            <a href="#section6-1" class="nav-link nav-sub-link">└ 교육 수강</a>
+            <a href="#section6-2" class="nav-link nav-sub-link">└ 평가 응시</a>
+            <a href="#section7" class="nav-link">7. TBM 일일점검</a>
+            <a href="#section7-1" class="nav-link nav-sub-link">└ TBM 작성</a>
+            <a href="#section7-2" class="nav-link nav-sub-link">└ 팀원 서명</a>
+            <a href="#section8" class="nav-link">8. 월별 안전점검</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">결재 시스템</div>
+            <a href="#section9" class="nav-link">9. 월별 보고서 및 결재</a>
+            <a href="#section9-1" class="nav-link nav-sub-link">└ 결재 요청 (팀장)</a>
+            <a href="#section9-2" class="nav-link nav-sub-link">└ 결재 처리 (임원)</a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">관리</div>
+            <a href="#section10" class="nav-link">10. 관리자 기능</a>
+            <a href="#section11" class="nav-link">11. 시스템 흐름도</a>
+            <a href="#appendix" class="nav-link">부록</a>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="main-content">
+        <div class="container">
+            <h1 class="page-title">수산세보틱스 안전관리 플랫폼<br>종합 절차서</h1>
+
+            <div class="doc-info">
+                <p><strong>시스템명:</strong> 안전관리 플랫폼</p>
+                <p><strong>버전:</strong> 1.0</p>
+                <p><strong>작성일:</strong> 2025년 12월</p>
+                <p><strong>대상:</strong> 전 직원 (관리자, 팀장, 일반 사용자)</p>
+                <p><strong>URL:</strong> <a href="https://tbm-0nu9.onrender.com" target="_blank">https://tbm-0nu9.onrender.com</a></p>
+            </div>
+
+            <!-- Section 1 -->
+            <h2 id="section1">1. 시스템 개요</h2>
+
+            <h3>1.1 시스템 목적</h3>
+            <p>수산세보틱스 안전관리 플랫폼은 작업장 안전을 위한 통합 관리 시스템으로, 다음 기능을 제공합니다:</p>
+            <ul>
+                <li><strong>안전교육:</strong> 온라인 교육 수강 및 평가</li>
+                <li><strong>TBM 일지:</strong> 매일 작업 전 안전점검 체크리스트</li>
+                <li><strong>안전점검:</strong> 월별 장비 점검 (매월 4일)</li>
+                <li><strong>결재 시스템:</strong> 월별 보고서 임원 결재</li>
+                <li><strong>공지사항:</strong> 안전 관련 공지 및 소통</li>
+            </ul>
+
+            <h3>1.2 접속 방법</h3>
+            <table>
+                <tr>
+                    <th>항목</th>
+                    <th>내용</th>
+                </tr>
+                <tr>
+                    <td>URL</td>
+                    <td><a href="https://tbm-0nu9.onrender.com" target="_blank">https://tbm-0nu9.onrender.com</a></td>
+                </tr>
+                <tr>
+                    <td>지원 브라우저</td>
+                    <td>Chrome, Edge, Safari (최신 버전)</td>
+                </tr>
+                <tr>
+                    <td>모바일</td>
+                    <td>반응형 웹 지원 (스마트폰, 태블릿)</td>
+                </tr>
+            </table>
+
+            <h3>1.3 현장 구분</h3>
+            <table>
+                <tr>
+                    <th>현장코드</th>
+                    <th>현장명</th>
+                </tr>
+                <tr>
+                    <td>ASAN</td>
+                    <td>아산공장</td>
+                </tr>
+                <tr>
+                    <td>HWASEONG</td>
+                    <td>화성공장</td>
+                </tr>
+            </table>
+
+            <hr>
+
+            <!-- Section 2 -->
+            <h2 id="section2">2. 사용자 역할 및 권한</h2>
+
+            <h3>2.1 역할 정의</h3>
+            <table>
+                <tr>
+                    <th>역할</th>
+                    <th>설명</th>
+                    <th>주요 권한</th>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-admin">ADMIN</span></td>
+                    <td>시스템 관리자</td>
+                    <td>모든 기능 접근, 사용자/팀/교육 관리</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-approver">APPROVER</span></td>
+                    <td>임원/결재자</td>
+                    <td>월별 보고서 결재, 교육 수강</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-leader">TEAM_LEADER</span></td>
+                    <td>팀장/라인 관리자</td>
+                    <td>TBM 작성, 안전점검, 팀원 관리, 결재 요청</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-pending">PENDING</span></td>
+                    <td>가입 대기</td>
+                    <td>공지사항만 조회 가능</td>
+                </tr>
+            </table>
+
+            <h3>2.2 권한 매트릭스</h3>
+            <table class="permission-matrix">
+                <tr>
+                    <th>기능</th>
+                    <th>ADMIN</th>
+                    <th>APPROVER</th>
+                    <th>TEAM_LEADER</th>
+                    <th>PENDING</th>
+                </tr>
+                <tr>
+                    <td>홈 대시보드</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                </tr>
+                <tr>
+                    <td>공지사항 조회</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                </tr>
+                <tr>
+                    <td>공지사항 작성</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>안전교육 수강</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>TBM 작성</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>안전점검</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>결재 요청</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>결재 승인/반려</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+                <tr>
+                    <td>사용자/시스템 관리</td>
+                    <td class="check-good">✓</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-bad">✗</td>
+                    <td class="check-bad">✗</td>
+                </tr>
+            </table>
+
+            <hr>
+
+            <!-- Section 3 -->
+            <h2 id="section3">3. 회원가입 및 로그인</h2>
+
+            <h3 id="section3-1">3.1 회원가입 절차</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">회원가입 상세 절차</div>
+                <div class="flow-steps">
+                    <div class="flow-step">
+                        <div class="flow-step-number">1</div>
+                        <div class="flow-step-content">
+                            <h5>로그인 페이지 접속</h5>
+                            <p>웹 브라우저에서 시스템 URL 접속</p>
+                            <ul>
+                                <li>URL: https://tbm-0nu9.onrender.com</li>
+                                <li>로그인 화면이 표시됨</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">2</div>
+                        <div class="flow-step-content">
+                            <h5>"회원가입" 버튼 클릭</h5>
+                            <p>로그인 폼 하단의 회원가입 링크 클릭</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">3</div>
+                        <div class="flow-step-content">
+                            <h5>필수 정보 입력</h5>
+                            <ul>
+                                <li><strong>아이디:</strong> 영문+숫자, 4자 이상</li>
+                                <li><strong>비밀번호:</strong> 8자 이상, 영문+숫자 조합</li>
+                                <li><strong>비밀번호 확인:</strong> 동일하게 재입력</li>
+                                <li><strong>이름:</strong> 실명 입력</li>
+                                <li><strong>이메일:</strong> 알림 수신용 (선택)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">4</div>
+                        <div class="flow-step-content">
+                            <h5>"가입하기" 버튼 클릭</h5>
+                            <p>입력 정보 확인 후 가입 완료</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number" style="background:#f59e0b;">⏳</div>
+                        <div class="flow-step-content" style="border-color:#f59e0b;">
+                            <h5>PENDING 상태 (관리자 승인 대기)</h5>
+                            <p>가입 완료 후 관리자가 역할을 지정할 때까지 대기</p>
+                            <ul>
+                                <li>접근 가능: 홈, 공지사항만</li>
+                                <li>안전교육, TBM 등은 이용 불가</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number" style="background:#059669;">✓</div>
+                        <div class="flow-step-content" style="border-color:#059669;">
+                            <h5>관리자 승인 완료</h5>
+                            <p>관리자가 역할/팀/현장 지정 후 정상 이용 가능</p>
+                            <ul>
+                                <li>이메일 또는 직접 확인으로 승인 여부 확인</li>
+                                <li>재로그인 시 전체 기능 사용 가능</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 id="section3-2">3.2 로그인 절차</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">로그인 상세 절차</div>
+                <div class="flow-vertical">
+                    <div class="flow-box start">시스템 접속<br><small>https://tbm-0nu9.onrender.com</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box detailed">
+                        <div class="box-title">로그인 정보 입력</div>
+                        <ul>
+                            <li>아이디 입력</li>
+                            <li>비밀번호 입력</li>
+                        </ul>
+                    </div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box action">"로그인" 버튼 클릭</div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box decision">인증 성공?</div>
+                    <div class="flow-branch">
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label no">실패</div>
+                            <div class="flow-box error">오류 메시지 표시<br><small>"아이디 또는 비밀번호가<br>일치하지 않습니다"</small></div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box warning">5회 실패 시<br><small>15분간 로그인 제한</small></div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label yes">성공</div>
+                            <div class="flow-box system">세션 생성<br><small>자동 로그인 유지</small></div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box end">홈 대시보드 이동</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4>3.2.1 로그아웃</h4>
+            <ol>
+                <li>우측 상단 프로필 아이콘 클릭</li>
+                <li>"로그아웃" 선택</li>
+                <li>로그인 페이지로 자동 이동</li>
+            </ol>
+
+            <hr>
+
+            <!-- Section 4 -->
+            <h2 id="section4">4. 홈 대시보드</h2>
+
+            <h3>4.1 대시보드 구성</h3>
+            <p>홈 대시보드에서는 사용자의 현재 상태를 한눈에 확인할 수 있습니다:</p>
+
+            <table>
+                <tr>
+                    <th>카드</th>
+                    <th>표시 내용</th>
+                    <th>클릭 시 이동</th>
+                </tr>
+                <tr>
+                    <td>📢 공지사항</td>
+                    <td>미읽은 공지 수</td>
+                    <td>공지사항 목록</td>
+                </tr>
+                <tr>
+                    <td>📚 교육현황</td>
+                    <td>이번 달 완료/전체 교육 수</td>
+                    <td>교육 대시보드</td>
+                </tr>
+                <tr>
+                    <td>📋 TBM현황</td>
+                    <td>이번 달 작성일/영업일</td>
+                    <td>TBM 페이지</td>
+                </tr>
+                <tr>
+                    <td>🔧 안전점검</td>
+                    <td>이번 달 점검 완료 여부</td>
+                    <td>안전점검 페이지</td>
+                </tr>
+                <tr>
+                    <td>✅ 결재대기</td>
+                    <td>대기 중인 결재 건수</td>
+                    <td>결재 이력</td>
+                </tr>
+            </table>
+
+            <hr>
+
+            <!-- Section 5 -->
+            <h2 id="section5">5. 공지사항</h2>
+
+            <h3>5.1 공지사항 조회</h3>
+            <ul>
+                <li><strong>일반:</strong> 일반 공지사항</li>
+                <li><strong>안전:</strong> 안전 관련 중요 공지 (빨간색 표시)</li>
+                <li><strong>교육:</strong> 교육 관련 공지</li>
+                <li><strong>기타:</strong> 그 외 공지</li>
+            </ul>
+
+            <h3>5.2 공지사항 작성 (ADMIN 전용)</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">공지사항 작성 절차</div>
+                <div class="flow-horizontal">
+                    <div class="flow-box start">공지사항 메뉴<br><small>+ 작성 버튼</small></div>
+                    <div class="flow-arrow right"></div>
+                    <div class="flow-box detailed">
+                        <div class="box-title">내용 작성</div>
+                        <ul>
+                            <li>제목 입력</li>
+                            <li>본문 작성</li>
+                            <li>카테고리 선택</li>
+                        </ul>
+                    </div>
+                    <div class="flow-arrow right"></div>
+                    <div class="flow-box detailed warning">
+                        <div class="box-title">파일 첨부 (선택)</div>
+                        <ul>
+                            <li>이미지: 10MB</li>
+                            <li>동영상: 50MB</li>
+                            <li>오디오: 50MB</li>
+                        </ul>
+                    </div>
+                    <div class="flow-arrow right"></div>
+                    <div class="flow-box end">등록 완료<br><small>전체 사용자에게<br>공지 표시</small></div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Section 6 -->
+            <h2 id="section6">6. 안전교육</h2>
+
+            <h3 id="section6-1">6.1 교육 수강 절차</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">안전교육 수강 전체 흐름</div>
+                <div class="flow-vertical">
+                    <div class="flow-box start">교육 메뉴 클릭<br><small>좌측 사이드바</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box">교육 과정 목록 확인<br><small>필터: 전체/진행중/완료/미시작</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box action">수강할 과정 선택<br><small>카드 또는 목록 클릭</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box decision">이전 진행 기록?</div>
+                    <div class="flow-branch">
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label">처음 수강</div>
+                            <div class="flow-box action">"학습 시작하기" 클릭</div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label">진행 중</div>
+                            <div class="flow-box action">"이어서 학습하기" 클릭<br><small>이전 진행률부터 시작</small></div>
+                        </div>
+                    </div>
+                    <div class="flow-arrow down"></div>
+
+                    <div class="flow-group">
+                        <div class="flow-group-title user">📹 동영상 시청 단계</div>
+                        <div class="flow-vertical">
+                            <div class="flow-box detailed">
+                                <div class="box-title">교육 콘텐츠 시청</div>
+                                <ul>
+                                    <li>동영상 자동 재생</li>
+                                    <li>진행률 실시간 표시 (0~100%)</li>
+                                    <li>5초마다 자동 저장</li>
+                                    <li>중단 시 이어서 시청 가능</li>
+                                </ul>
+                            </div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box decision">100% 시청 완료?</div>
+                            <div class="flow-branch">
+                                <div class="flow-branch-item">
+                                    <div class="flow-branch-label no">아니오</div>
+                                    <div class="flow-box warning">계속 시청<br><small>또는 나중에 이어서</small></div>
+                                </div>
+                                <div class="flow-branch-item">
+                                    <div class="flow-branch-label yes">예</div>
+                                    <div class="flow-box end">"평가 시작" 버튼 활성화</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 id="section6-2">6.2 평가 응시 절차</h3>
+
+            <div class="info-box">
+                <strong>평가 규칙</strong>
+                <ul>
+                    <li>문제 수: 5~10문제 (과정별 상이)</li>
+                    <li>문제 유형: 4지선다형</li>
+                    <li>합격 기준: <strong>80% 이상</strong></li>
+                    <li>응시 제한: <strong>제한 없음</strong> (횟수 무제한)</li>
+                    <li>제한 시간: 없음</li>
+                </ul>
+            </div>
+
+            <div class="flowchart">
+                <div class="flowchart-title">평가 응시 상세 절차</div>
+                <div class="flow-vertical">
+                    <div class="flow-box start">"평가 시작" 버튼 클릭<br><small>동영상 100% 시청 후 활성화</small></div>
+                    <div class="flow-arrow down"></div>
+
+                    <div class="flow-group">
+                        <div class="flow-group-title">📝 문제 풀이</div>
+                        <div class="flow-vertical">
+                            <div class="flow-box detailed">
+                                <div class="box-title">문제 화면</div>
+                                <ul>
+                                    <li>문제 번호 / 총 문제 수 표시</li>
+                                    <li>문제 내용 표시</li>
+                                    <li>4개 보기 중 1개 선택</li>
+                                    <li>"다음" 또는 "이전" 버튼</li>
+                                </ul>
+                            </div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box">모든 문제 답변 완료</div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box action">"제출" 버튼 클릭</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box system">자동 채점<br><small>즉시 결과 확인</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box decision">80% 이상 정답?</div>
+                    <div class="flow-branch">
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label no">불합격</div>
+                            <div class="flow-box error">결과: 불합격<br><small>점수 및 오답 확인</small></div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box action">"재응시" 버튼 클릭<br><small>횟수 제한 없음</small></div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label yes">합격</div>
+                            <div class="flow-box end">결과: 합격 ✅<br><small>수료증 자동 발급</small></div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box">"수료증 보기" 클릭<br><small>PDF 다운로드 가능</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Section 7 -->
+            <h2 id="section7">7. TBM 일일점검</h2>
+
+            <div class="info-box">
+                <strong>TBM (Tool Box Meeting)</strong>
+                <ul>
+                    <li>매일 작업 시작 전 안전점검 회의</li>
+                    <li>팀별로 체크리스트 작성</li>
+                    <li>참석 팀원 서명 필수</li>
+                    <li>당일 작성분만 수정 가능 (익일부터 조회만)</li>
+                </ul>
+            </div>
+
+            <h3 id="section7-1">7.1 TBM 작성 절차</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">TBM 작성 상세 절차</div>
+                <div class="flow-steps">
+                    <div class="flow-step">
+                        <div class="flow-step-number">1</div>
+                        <div class="flow-step-content">
+                            <h5>TBM 메뉴 접속</h5>
+                            <p>좌측 사이드바에서 "TBM 일일점검" 클릭</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">2</div>
+                        <div class="flow-step-content">
+                            <h5>날짜 및 팀 선택</h5>
+                            <ul>
+                                <li>날짜 선택 (기본: 오늘)</li>
+                                <li>담당 팀/라인 선택</li>
+                                <li>기존 TBM이 있으면 "조회/수정" 표시</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">3</div>
+                        <div class="flow-step-content">
+                            <h5>체크리스트 작성</h5>
+                            <p>각 점검 항목에 대해 상태 선택:</p>
+                            <ul>
+                                <li><span class="check-good">✓ 양호</span> - 이상 없음</li>
+                                <li><span style="color:#d97706;font-weight:bold;">△ 보통</span> - 주의 필요</li>
+                                <li><span class="check-bad">✗ 불량</span> - 조치 필요</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">4</div>
+                        <div class="flow-step-content">
+                            <h5>특이사항 입력</h5>
+                            <ul>
+                                <li>당일 작업 관련 특이사항 기록</li>
+                                <li>필요 시 사진 첨부</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">5</div>
+                        <div class="flow-step-content">
+                            <h5>팀원 서명 수집</h5>
+                            <p>참석 팀원 전원 서명 (아래 상세 절차 참조)</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number" style="background:#059669;">✓</div>
+                        <div class="flow-step-content" style="border-color:#059669;">
+                            <h5>"저장" 버튼 클릭</h5>
+                            <p>TBM 작성 완료</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 id="section7-2">7.2 팀원 서명 절차</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">팀원 서명 수집 절차</div>
+                <div class="flow-vertical">
+                    <div class="flow-box start">서명 영역으로 이동<br><small>TBM 화면 하단</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box">팀원 목록 확인<br><small>참석/미서명/부재 상태 표시</small></div>
+                    <div class="flow-arrow down"></div>
+                    <div class="flow-box decision">해당 팀원 상태?</div>
+                    <div class="flow-branch">
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label">참석</div>
+                            <div class="flow-box action">팀원 이름 클릭</div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box detailed">
+                                <div class="box-title">서명 패드</div>
+                                <ul>
+                                    <li>손가락/마우스로 서명</li>
+                                    <li>"다시" - 서명 초기화</li>
+                                    <li>"확인" - 서명 저장</li>
+                                </ul>
+                            </div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box end">서명 완료 ✓</div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-branch-label">부재</div>
+                            <div class="flow-box action">"부재 처리" 클릭</div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box detailed warning">
+                                <div class="box-title">부재 사유 선택</div>
+                                <ul>
+                                    <li>연차</li>
+                                    <li>반차</li>
+                                    <li>출장</li>
+                                    <li>교육</li>
+                                    <li>기타 (직접 입력)</li>
+                                </ul>
+                            </div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box">부재 처리 완료</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Section 8 -->
+            <h2 id="section8">8. 월별 안전점검</h2>
+
+            <div class="info-box">
+                <strong>월별 안전점검</strong>
+                <ul>
+                    <li>점검일: <strong>매월 4일</strong></li>
+                    <li>대상: 팀별 보유 장비</li>
+                    <li>필수: 장비별 사진 촬영</li>
+                </ul>
+            </div>
+
+            <div class="flowchart">
+                <div class="flowchart-title">월별 안전점검 상세 절차</div>
+                <div class="flow-steps">
+                    <div class="flow-step">
+                        <div class="flow-step-number">1</div>
+                        <div class="flow-step-content">
+                            <h5>안전점검 메뉴 접속</h5>
+                            <p>좌측 사이드바에서 "안전점검" 클릭</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">2</div>
+                        <div class="flow-step-content">
+                            <h5>월/팀 선택</h5>
+                            <ul>
+                                <li>점검 대상 월 선택 (기본: 이번 달)</li>
+                                <li>담당 팀/라인 선택</li>
+                                <li>점검 진행률 표시 (예: 3/5 완료)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">3</div>
+                        <div class="flow-step-content">
+                            <h5>점검 대상 장비 선택</h5>
+                            <ul>
+                                <li>지게차, 크레인, 전기설비, 소화기 등</li>
+                                <li>각 장비별 필요 사진 수 표시</li>
+                                <li>미완료 장비 우선 표시</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">4</div>
+                        <div class="flow-step-content">
+                            <h5>사진 촬영 및 업로드</h5>
+                            <ul>
+                                <li>"사진 추가" 버튼 클릭</li>
+                                <li>카메라로 촬영 또는 갤러리 선택</li>
+                                <li>필요 시 사진 회전 (90°/180°/270°)</li>
+                                <li>특이사항 입력 (선택)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number">5</div>
+                        <div class="flow-step-content">
+                            <h5>모든 장비 점검 완료</h5>
+                            <p>모든 장비의 필수 사진 업로드 확인</p>
+                        </div>
+                    </div>
+                    <div class="flow-step-connector">│</div>
+                    <div class="flow-step">
+                        <div class="flow-step-number" style="background:#059669;">✓</div>
+                        <div class="flow-step-content" style="border-color:#059669;">
+                            <h5>"점검 완료" 버튼 클릭</h5>
+                            <p>월별 안전점검 완료 처리</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Section 9 -->
+            <h2 id="section9">9. 월별 보고서 및 결재</h2>
+
+            <div class="info-box">
+                <strong>월별 보고서</strong>
+                <ul>
+                    <li>내용: 해당 월의 TBM + 안전점검 종합</li>
+                    <li>생성: 팀별로 자동 생성</li>
+                    <li>결재: 임원(APPROVER) 승인 필요</li>
+                </ul>
+            </div>
+
+            <h3 id="section9-1">9.1 결재 요청 (팀장)</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">팀장: 결재 요청 절차</div>
+                <div class="flow-vertical">
+                    <div class="flow-group">
+                        <div class="flow-group-title leader">👤 팀장 (TEAM_LEADER)</div>
+                        <div class="flow-steps">
+                            <div class="flow-step">
+                                <div class="flow-step-number">1</div>
+                                <div class="flow-step-content">
+                                    <h5>월별 보고서 메뉴 접속</h5>
+                                    <p>좌측 사이드바에서 "월별 보고서" 클릭</p>
+                                </div>
+                            </div>
+                            <div class="flow-step-connector">│</div>
+                            <div class="flow-step">
+                                <div class="flow-step-number">2</div>
+                                <div class="flow-step-content">
+                                    <h5>보고서 내용 확인</h5>
+                                    <ul>
+                                        <li>TBM 작성 현황 (작성일수/영업일)</li>
+                                        <li>안전점검 완료 여부</li>
+                                        <li>교육 이수 현황</li>
+                                        <li>특이사항 요약</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="flow-step-connector">│</div>
+                            <div class="flow-step">
+                                <div class="flow-step-number">3</div>
+                                <div class="flow-step-content">
+                                    <h5>"결재 요청하기" 버튼 클릭</h5>
+                                    <p>결재자(임원) 확인 후 요청</p>
+                                </div>
+                            </div>
+                            <div class="flow-step-connector">│</div>
+                            <div class="flow-step">
+                                <div class="flow-step-number" style="background:#f59e0b;">⏳</div>
+                                <div class="flow-step-content" style="border-color:#f59e0b;">
+                                    <h5>결재 대기 상태</h5>
+                                    <ul>
+                                        <li>임원에게 이메일 알림 발송</li>
+                                        <li>보고서 수정 불가 (반려 시까지)</li>
+                                        <li>결재 이력에서 상태 확인 가능</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 id="section9-2">9.2 결재 처리 (임원)</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">임원: 결재 처리 절차</div>
+                <div class="flow-vertical">
+                    <div class="flow-group">
+                        <div class="flow-group-title approver">👔 임원 (APPROVER)</div>
+                        <div class="flow-vertical">
+                            <div class="flow-box start">결재 요청 수신<br><small>이메일 알림 또는 대시보드</small></div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box action">"결재 대기" 메뉴 클릭</div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box detailed">
+                                <div class="box-title">보고서 상세 검토</div>
+                                <ul>
+                                    <li>TBM 작성률 확인</li>
+                                    <li>안전점검 사진 확인</li>
+                                    <li>특이사항 검토</li>
+                                </ul>
+                            </div>
+                            <div class="flow-arrow down"></div>
+                            <div class="flow-box decision">승인 / 반려 결정</div>
+                            <div class="flow-branch">
+                                <div class="flow-branch-item">
+                                    <div class="flow-branch-label yes">승인</div>
+                                    <div class="flow-box action">"승인" 버튼 클릭</div>
+                                    <div class="flow-arrow down"></div>
+                                    <div class="flow-box detailed">
+                                        <div class="box-title">서명 입력</div>
+                                        <ul>
+                                            <li>서명 패드에 서명</li>
+                                            <li>"확인" 클릭</li>
+                                        </ul>
+                                    </div>
+                                    <div class="flow-arrow down"></div>
+                                    <div class="flow-box end">결재 완료 ✅<br><small>팀장에게 알림 발송</small></div>
+                                </div>
+                                <div class="flow-branch-item">
+                                    <div class="flow-branch-label no">반려</div>
+                                    <div class="flow-box action">"반려" 버튼 클릭</div>
+                                    <div class="flow-arrow down"></div>
+                                    <div class="flow-box detailed warning">
+                                        <div class="box-title">반려 사유 입력</div>
+                                        <ul>
+                                            <li>반려 사유 작성</li>
+                                            <li>"확인" 클릭</li>
+                                        </ul>
+                                    </div>
+                                    <div class="flow-arrow down"></div>
+                                    <div class="flow-box error">반려 처리 ❌<br><small>팀장에게 알림 발송</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>반려 후 재요청</strong>
+                <p>반려된 보고서는 팀장이 내용 수정 후 다시 결재 요청할 수 있습니다.</p>
+            </div>
+
+            <hr>
+
+            <!-- Section 10 -->
+            <h2 id="section10">10. 관리자 기능</h2>
+
+            <h3>10.1 사용자 관리</h3>
+            <ol>
+                <li>사용자 목록에서 PENDING 사용자 선택</li>
+                <li>"역할변경" 클릭</li>
+                <li>역할 선택 (TEAM_LEADER, APPROVER 등)</li>
+                <li>현장 선택 (아산, 화성)</li>
+                <li>팀 선택 (해당 시)</li>
+                <li>"저장" 클릭</li>
+            </ol>
+
+            <h3>10.2 팀 관리</h3>
+            <ul>
+                <li>팀명, 현장 (아산/화성) 설정</li>
+                <li>팀장 지정</li>
+                <li>결재자(임원) 지정</li>
+                <li>팀원 추가/삭제</li>
+            </ul>
+
+            <h3>10.3 교육 과정 관리</h3>
+            <ul>
+                <li>과정명, 유형, 소요시간 설정</li>
+                <li>교육 영상 업로드 (YouTube URL 또는 파일)</li>
+                <li>평가 문제 관리 (4지선다형)</li>
+                <li>Excel 일괄 업로드 지원</li>
+            </ul>
+
+            <h3>10.4 기타 관리 기능</h3>
+            <ul>
+                <li>공지사항 작성/수정/삭제</li>
+                <li>TBM 체크리스트 템플릿 관리</li>
+                <li>점검 대상 장비 관리</li>
+                <li>이메일 발송 설정</li>
+                <li>휴무일 관리</li>
+            </ul>
+
+            <hr>
+
+            <!-- Section 11 -->
+            <h2 id="section11">11. 시스템 흐름도</h2>
+
+            <h3>11.1 전체 업무 흐름</h3>
+
+            <div class="flowchart">
+                <div class="flowchart-title">안전관리 플랫폼 전체 업무 흐름</div>
+                <div class="flow-vertical">
+                    <!-- 가입/권한 -->
+                    <div class="flow-group">
+                        <div class="flow-group-title">📝 가입 및 권한 부여</div>
+                        <div class="flow-horizontal">
+                            <div class="flow-box start">회원가입</div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box warning">PENDING<br><small>승인 대기</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box action">관리자 승인</div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box decision">역할 배정</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow down"></div>
+
+                    <div class="flow-branch">
+                        <div class="flow-branch-item">
+                            <div class="flow-box" style="background:#fee2e2;border-color:#dc2626;">ADMIN<br><small>시스템 관리</small></div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-box" style="background:#d1fae5;border-color:#059669;">TEAM_LEADER<br><small>팀장</small></div>
+                        </div>
+                        <div class="flow-branch-item">
+                            <div class="flow-box" style="background:#dbeafe;border-color:#2563eb;">APPROVER<br><small>임원/결재자</small></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow down"></div>
+
+                    <!-- 일일 업무 -->
+                    <div class="flow-group">
+                        <div class="flow-group-title">📅 일일 업무</div>
+                        <div class="flow-horizontal">
+                            <div class="flow-box">출근</div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box action">TBM 작성<br><small>팀원 서명</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box">안전교육 수강<br><small>동영상 + 평가</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box end">작업 시작</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow down"></div>
+
+                    <!-- 월별 업무 -->
+                    <div class="flow-group">
+                        <div class="flow-group-title">📊 월별 업무 (매월 4일~)</div>
+                        <div class="flow-horizontal">
+                            <div class="flow-box">안전점검<br><small>장비 사진 촬영</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box">월별 보고서<br><small>자동 생성</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box action">결재 요청<br><small>팀장 → 임원</small></div>
+                            <div class="flow-arrow right"></div>
+                            <div class="flow-box end">결재 완료 ✅</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Appendix -->
+            <h2 id="appendix">부록</h2>
+
+            <h3>A. 용어 정의</h3>
+            <table>
+                <tr>
+                    <th>용어</th>
+                    <th>설명</th>
+                </tr>
+                <tr>
+                    <td>TBM</td>
+                    <td>Tool Box Meeting, 작업 전 안전점검 회의</td>
+                </tr>
+                <tr>
+                    <td>체크리스트</td>
+                    <td>점검 항목 목록</td>
+                </tr>
+                <tr>
+                    <td>결재</td>
+                    <td>상급자 승인 절차</td>
+                </tr>
+                <tr>
+                    <td>수료증</td>
+                    <td>교육 이수 증명서</td>
+                </tr>
+                <tr>
+                    <td>현장</td>
+                    <td>아산/화성 공장 구분</td>
+                </tr>
+                <tr>
+                    <td>라인</td>
+                    <td>생산 라인 (팀 단위)</td>
+                </tr>
+            </table>
+
+            <h3>B. 버전 이력</h3>
+            <table>
+                <tr>
+                    <th>버전</th>
+                    <th>일자</th>
+                    <th>변경 내용</th>
+                </tr>
+                <tr>
+                    <td>1.0</td>
+                    <td>2025-12</td>
+                    <td>최초 작성</td>
+                </tr>
+            </table>
+
+            <div class="footer">
+                <p><em>본 절차서는 시스템 업데이트에 따라 변경될 수 있습니다.</em></p>
+                <p>수산세보틱스 안전관리 플랫폼 © 2025</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

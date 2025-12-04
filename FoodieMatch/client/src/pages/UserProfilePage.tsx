@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from '@/components/ui/skeleton';
+import { HelpCircle } from 'lucide-react';
 import type { User, Team } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 
@@ -84,6 +86,7 @@ export default function UserProfilePage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: userProfile, isLoading: profileLoading } = useQuery<User>({
     queryKey: ['userProfile', currentUser?.id],
@@ -230,9 +233,20 @@ export default function UserProfilePage() {
                     </div>
                 </div>
 
-                <Button type="submit" disabled={updateMutation.isPending}>
-                    {updateMutation.isPending ? '저장 중...' : '저장'}
-                </Button>
+                <div className="flex gap-3">
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                      {updateMutation.isPending ? '저장 중...' : '저장'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setLocation('/help')}
+                    className="flex items-center gap-2"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    도움말
+                  </Button>
+                </div>
             </CardContent>
             </Card>
         </form>

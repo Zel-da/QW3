@@ -66,6 +66,7 @@ const DbManagementPage = lazy(() => import("./pages/DbManagementPage"));
 // 기타
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // 권한 그룹 정의
@@ -116,6 +117,11 @@ function App() {
               <Route path="/profile">
                 <ProtectedRoute roles={ALL_ROLES}>
                   <UserProfilePage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/help">
+                <ProtectedRoute roles={ALL_ROLES}>
+                  <HelpPage />
                 </ProtectedRoute>
               </Route>
 

@@ -16,8 +16,7 @@ import {
   Calendar,
   ChevronRight,
   Clock,
-  X,
-  FileCheck
+  X
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
@@ -286,24 +285,6 @@ export default function DashboardHomePage() {
           : `⚠️ 점검 필요 (${stats.inspection.dueDate})`
         : '점검 시작하기',
       showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER',
-    },
-    {
-      title: '결재',
-      description: '월별 보고서 결재',
-      icon: FileCheck,
-      color: 'text-indigo-500',
-      bgColor: 'bg-indigo-50 hover:bg-indigo-100',
-      path: '/approval-history',
-      stats: stats?.approvals
-        ? (() => {
-            const total = (stats.approvals.pendingReceived || 0) + (stats.approvals.pendingSent || 0);
-            if (total === 0) return '✅ 대기 중인 결재 없음';
-            if (user?.role === 'APPROVER') return `📋 받은 결재 ${stats.approvals.pendingReceived}건 대기`;
-            if (user?.role === 'TEAM_LEADER') return `📤 보낸 결재 ${stats.approvals.pendingSent}건 대기`;
-            return `📋 대기 중 ${total}건`;
-          })()
-        : '결재 현황 보기',
-      showToAll: user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'TEAM_LEADER',
     },
   ];
 

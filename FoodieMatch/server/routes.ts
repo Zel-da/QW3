@@ -2161,13 +2161,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thisMonthCompleted = inspection?.isCompleted || false;
       }
 
-      // 결재 대기 통계
+      // 결재 대기 통계 (ApprovalRequest 테이블 사용)
       let pendingReceivedApprovals = 0;
       let pendingSentApprovals = 0;
 
       // APPROVER나 ADMIN은 받은 결재 대기 건수 조회
       if (user.role === 'APPROVER' || user.role === 'ADMIN') {
-        pendingReceivedApprovals = await prisma.monthlyApproval.count({
+        pendingReceivedApprovals = await prisma.approvalRequest.count({
           where: {
             approverId: userId,
             status: 'PENDING'
@@ -2177,7 +2177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // TEAM_LEADER나 ADMIN은 보낸 결재 대기 건수 조회
       if (user.role === 'TEAM_LEADER' || user.role === 'ADMIN') {
-        pendingSentApprovals = await prisma.monthlyApproval.count({
+        pendingSentApprovals = await prisma.approvalRequest.count({
           where: {
             requesterId: userId,
             status: 'PENDING'
@@ -2657,10 +2657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 댓글 수정
       const updatedComment = await prisma.comment.update({
         where: { id: commentId },
-        data: {
-          content,
-          updatedAt: new Date()
-        },
+        data: { content },
         include: { author: true, attachments: true }
       });
 
@@ -2692,12 +2689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "댓글 삭제 권한이 없습니다." });
       }
 
-      // 댓글 첨부파일 먼저 삭제
-      await prisma.commentAttachment.deleteMany({
-        where: { commentId }
-      });
-
-      // 댓글 삭제
+      // 댓글 삭제 (Attachment는 onDelete: Cascade로 자동 삭제됨)
       await prisma.comment.delete({
         where: { id: commentId }
       });
@@ -4699,20 +4691,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!existingReport) {
         return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
-      }
-
-      // 당일 수정 제한 체크
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const reportDateOnly = new Date(existingReport.reportDate);
-      reportDateOnly.setHours(0, 0, 0, 0);
-
-      if (reportDateOnly.getTime() !== today.getTime()) {
-        return res.status(403).json({
-          message: "당일 작성한 TBM만 수정할 수 있습니다.",
-          reportDate: existingReport.reportDate,
-          today: today
-        });
       }
 
       const reportData = tbmReportSchema.partial().parse(req.body);
