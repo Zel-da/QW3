@@ -16,6 +16,8 @@ import {
   Users,
   Mail,
   BookOpen,
+  HelpCircle,
+  FileQuestion,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +90,25 @@ export default function MorePage() {
           label: '교육 현황',
           description: '교육 이수 현황 모니터링',
           showTo: ['ADMIN', 'TEAM_LEADER'],
+        },
+      ],
+    },
+    {
+      title: '도움말',
+      items: [
+        {
+          href: '/admin-help',
+          icon: FileQuestion,
+          label: '관리자 업무 절차서',
+          description: '관리자용 상세 업무 안내',
+          showTo: ['ADMIN'],
+        },
+        {
+          href: '/help',
+          icon: HelpCircle,
+          label: '사용자 도움말',
+          description: '시스템 사용 방법 안내',
+          showTo: ['ADMIN', 'TEAM_LEADER', 'WORKER', 'APPROVER'],
         },
       ],
     },

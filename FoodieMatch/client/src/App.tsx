@@ -67,6 +67,7 @@ const DbManagementPage = lazy(() => import("./pages/DbManagementPage"));
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
+const AdminHelpPage = lazy(() => import("./pages/AdminHelpPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // 권한 그룹 정의
@@ -263,6 +264,11 @@ function App() {
               <Route path="/db-management">
                 <ProtectedRoute roles={[Role.ADMIN]}>
                   <DbManagementPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/admin-help">
+                <ProtectedRoute roles={[Role.ADMIN]}>
+                  <AdminHelpPage />
                 </ProtectedRoute>
               </Route>
 
