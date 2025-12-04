@@ -2108,7 +2108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ]
         }
       });
-      const holidayDays = new Set(holidays.map(h => new Date(h.date).getDate()));
+      const holidayDays = new Set(holidays.map(h => new Date(h.date).getUTCDate()));
 
       // 영업일 계산 (토요일, 일요일, 공휴일 제외)
       let businessDays = 0;
@@ -6378,6 +6378,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== 공휴일 관리 API ====================
 
+  // 날짜 문자열을 UTC 정오로 파싱하는 헬퍼 함수 (시간대 문제 방지)
+  function parseHolidayDate(dateStr: string): Date {
+    // "2025-01-29" 형식 -> UTC 정오로 저장
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  }
+
   // 기간 공휴일 추가 API (여러 날짜 한번에 등록)
   app.post("/api/holidays/range", requireAuth, async (req, res) => {
     try {
@@ -6387,8 +6394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "시작일, 종료일, 이름은 필수입니다." });
       }
 
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = parseHolidayDate(startDate);
+      const end = parseHolidayDate(endDate);
 
       if (end < start) {
         return res.status(400).json({ message: "종료일은 시작일보다 이후여야 합니다." });
@@ -6404,7 +6411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let skippedCount = 0;
 
       // 각 날짜에 대해 공휴일 생성
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
         try {
           await prisma.holiday.create({
             data: {
@@ -6495,10 +6502,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 해당 연도의 공휴일 목록 생성
       const holidaysToCreate: Array<{ date: Date; name: string; isRecurring: boolean; site: null }> = [];
 
-      // 양력 고정 공휴일
+      // 양력 고정 공휴일 (UTC 기준으로 생성하여 시간대 문제 방지)
       for (const h of fixedHolidays) {
         holidaysToCreate.push({
-          date: new Date(targetYear, h.month - 1, h.day),
+          date: new Date(Date.UTC(targetYear, h.month - 1, h.day, 12, 0, 0)),
           name: h.name,
           isRecurring: true,
           site: null
@@ -6514,7 +6521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           if (!existing) {
             holidaysToCreate.push({
-              date: new Date(targetYear, h.month - 1, h.day),
+              date: new Date(Date.UTC(targetYear, h.month - 1, h.day, 12, 0, 0)),
               name: h.name,
               isRecurring: false,
               site: null
@@ -6612,7 +6619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const holiday = await prisma.holiday.create({
         data: {
-          date: new Date(date),
+          date: parseHolidayDate(date),
           name,
           isRecurring: isRecurring || false,
           site: site || null
@@ -6638,7 +6645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const holiday = await prisma.holiday.update({
         where: { id: parseInt(id) },
         data: {
-          ...(date && { date: new Date(date) }),
+          ...(date && { date: parseHolidayDate(date) }),
           ...(name && { name }),
           ...(isRecurring !== undefined && { isRecurring }),
           ...(site !== undefined && { site: site || null })

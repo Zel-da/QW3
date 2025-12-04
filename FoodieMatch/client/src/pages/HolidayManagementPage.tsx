@@ -183,13 +183,13 @@ export default function HolidayManagementPage() {
     }
   });
 
-  // 날짜 포맷
+  // 날짜 포맷 (UTC 기준으로 표시하여 시간대 문제 방지)
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][date.getUTCDay()];
     return `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
   };
 

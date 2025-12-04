@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Role } from "@shared/schema";
+import { ChatBot } from "./components/chatbot";
 
 // 로딩 스피너 컴포넌트
 function PageLoader() {
@@ -275,6 +276,8 @@ function App() {
               <Route component={NotFound} />
             </Switch>
           </Suspense>
+          {/* 챗봇 - 모든 페이지에서 표시 */}
+          <ChatBot />
         </QueryClientProvider>
       </AuthProvider>
     </ErrorBoundary>
