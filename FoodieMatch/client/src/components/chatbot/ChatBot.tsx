@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
+import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { ChatButton } from './ChatButton';
 import { ChatWindow } from './ChatWindow';
@@ -16,8 +17,8 @@ const WELCOME_MESSAGE: ChatMessageType = {
   timestamp: new Date(),
 };
 
-// 매칭 실패 시 기본 응답
-const DEFAULT_RESPONSE = '죄송합니다. 해당 질문에 대한 답변을 찾지 못했습니다.\n다른 키워드로 다시 질문해주시거나, 자주 묻는 질문을 선택해주세요.';
+// AI 폴백 사용 여부 (Gemini API)
+const USE_AI_FALLBACK = true;
 
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,6 +40,17 @@ export function ChatBot() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // AI API 호출 함수
+  const askAI = async (question: string): Promise<string> => {
+    try {
+      const response = await axios.post('/api/chatbot/ask', { question });
+      return response.data.answer;
+    } catch (error: any) {
+      console.error('AI API error:', error);
+      return error.response?.data?.answer || '죄송합니다. 일시적인 오류가 발생했습니다.';
+    }
+  };
+
   // 메시지 전송 처리
   const handleSend = useCallback(async (text: string) => {
     // 사용자 메시지 추가
@@ -54,13 +66,14 @@ export function ChatBot() {
     setIsTyping(true);
 
     // FAQ 매칭 시도
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 자연스러운 딜레이
+    await new Promise((resolve) => setTimeout(resolve, 300)); // 자연스러운 딜레이
 
     const match = findFAQMatch(text, user?.role);
 
     let botResponse: ChatMessageType;
 
     if (match) {
+      // FAQ 매칭 성공
       botResponse = {
         id: `bot-${Date.now()}`,
         type: 'bot',
@@ -70,11 +83,21 @@ export function ChatBot() {
           : undefined,
         timestamp: new Date(),
       };
-    } else {
+    } else if (USE_AI_FALLBACK) {
+      // FAQ 매칭 실패 → AI 폴백
+      const aiAnswer = await askAI(text);
       botResponse = {
         id: `bot-${Date.now()}`,
         type: 'bot',
-        content: DEFAULT_RESPONSE,
+        content: aiAnswer,
+        timestamp: new Date(),
+      };
+    } else {
+      // AI 폴백 비활성화 시 기본 응답
+      botResponse = {
+        id: `bot-${Date.now()}`,
+        type: 'bot',
+        content: '죄송합니다. 해당 질문에 대한 답변을 찾지 못했습니다.\n다른 키워드로 다시 질문해주시거나, 자주 묻는 질문을 선택해주세요.',
         timestamp: new Date(),
       };
     }

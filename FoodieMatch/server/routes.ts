@@ -17,6 +17,8 @@ import rateLimit from "express-rate-limit";
 import { getApprovalRequestTemplate, getApprovalApprovedTemplate, getApprovalRejectedTemplate } from "./approvalEmailTemplates";
 // R2 Storage for cloud deployment
 import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
+// Google Gemini AI
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -6692,6 +6694,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting holidays:", error);
       res.status(500).json({ message: "공휴일 일괄 삭제에 실패했습니다." });
+    }
+  });
+
+  // ============================================
+  // 챗봇 API (Gemini AI)
+  // ============================================
+
+  // Gemini AI 챗봇 Rate Limiter (분당 10회 제한)
+  const chatbotLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1분
+    max: 10, // 분당 최대 10회
+    message: { message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/api/chatbot/ask", requireAuth, chatbotLimiter, async (req, res) => {
+    try {
+      const { question } = req.body;
+
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ message: "질문이 필요합니다." });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.error("GEMINI_API_KEY not configured");
+        return res.status(503).json({
+          message: "AI 서비스가 설정되지 않았습니다.",
+          answer: "죄송합니다. AI 서비스가 현재 사용 불가능합니다. 관리자에게 문의해주세요."
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      // 시스템 프롬프트: 안전관리 시스템 도우미 역할
+      const systemPrompt = `당신은 안전관리 시스템의 AI 도우미입니다.
+사용자들의 질문에 친절하고 정확하게 답변해주세요.
+
+이 시스템의 주요 기능:
+- TBM(Tool Box Meeting): 일일 안전점검 보고서 작성
+- 안전교육: 온라인 안전교육 수강 및 평가
+- 안전점검: 정기/수시 안전점검 수행
+- 결재: TBM 및 안전점검 결재 처리
+
+답변 규칙:
+1. 간결하고 명확하게 답변하세요 (3-4문장 이내)
+2. 한국어로 답변하세요
+3. 시스템 관련 질문이 아니면 "안전관리 시스템 관련 질문에 답변드리고 있습니다"라고 안내하세요
+4. 민감한 정보(비밀번호, 개인정보 등)는 절대 제공하지 마세요`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt + "\n\n사용자 질문: " + question }] }
+        ],
+        config: {
+          maxOutputTokens: 500,
+          temperature: 0.7,
+        }
+      });
+
+      const answer = response.text || "죄송합니다. 응답을 생성하지 못했습니다.";
+
+      res.json({ answer });
+    } catch (error: any) {
+      console.error("Chatbot API error:", error);
+
+      // 에러 유형별 처리
+      if (error.message?.includes('API key')) {
+        return res.status(503).json({
+          message: "API 키 오류",
+          answer: "AI 서비스 인증에 문제가 있습니다. 관리자에게 문의해주세요."
+        });
+      }
+
+      if (error.message?.includes('quota') || error.message?.includes('rate')) {
+        return res.status(429).json({
+          message: "요청 한도 초과",
+          answer: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+        });
+      }
+
+      res.status(500).json({
+        message: "AI 응답 생성 실패",
+        answer: "죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      });
     }
   });
 
