@@ -9,7 +9,7 @@ import {
   Users, Building2, Calendar, Package, Mail, Shield, Settings,
   BookOpen, ClipboardCheck, GraduationCap, Cog, CalendarDays,
   TrendingUp, AlertTriangle, CheckCircle2, Clock, FileText,
-  ArrowRight, Activity, Database
+  ArrowRight, Activity, Database, HelpCircle, FileQuestion
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
@@ -161,6 +161,30 @@ const menuGroups: MenuGroup[] = [
         roles: ['ADMIN'],
         badge: 'ADMIN',
         color: 'bg-cyan-500',
+      },
+    ],
+  },
+  {
+    groupTitle: '도움말',
+    groupIcon: <HelpCircle className="h-5 w-5" />,
+    groupColor: 'from-teal-500 to-teal-600',
+    items: [
+      {
+        title: '관리자 업무 절차서',
+        description: '관리자용 상세 업무 안내 및 플로우차트',
+        icon: <FileQuestion className="h-6 w-6" />,
+        path: '/admin-help',
+        roles: ['ADMIN'],
+        badge: 'ADMIN',
+        color: 'bg-teal-500',
+      },
+      {
+        title: '사용자 도움말',
+        description: '시스템 사용 방법 안내',
+        icon: <HelpCircle className="h-6 w-6" />,
+        path: '/help',
+        roles: ['ADMIN', 'TEAM_LEADER'],
+        color: 'bg-emerald-500',
       },
     ],
   },
