@@ -6746,10 +6746,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 4. 민감한 정보(비밀번호, 개인정보 등)는 절대 제공하지 마세요`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt + "\n\n사용자 질문: " + question }] }
-        ],
+        model: "gemini-1.5-flash",  // 무료 티어에서 안정적으로 작동
+        contents: systemPrompt + "\n\n사용자 질문: " + question,
         config: {
           maxOutputTokens: 500,
           temperature: 0.7,
