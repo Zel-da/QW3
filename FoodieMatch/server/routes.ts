@@ -6745,8 +6745,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 3. 시스템 관련 질문이 아니면 "안전관리 시스템 관련 질문에 답변드리고 있습니다"라고 안내하세요
 4. 민감한 정보(비밀번호, 개인정보 등)는 절대 제공하지 마세요`;
 
+      // 모델: 환경변수로 설정 가능, 기본값은 gemini-2.5-flash-lite (무료 일 1,000회)
+      const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",  // 무료 티어에서 안정적으로 작동
+        model: modelName,
         contents: systemPrompt + "\n\n사용자 질문: " + question,
         config: {
           maxOutputTokens: 500,
