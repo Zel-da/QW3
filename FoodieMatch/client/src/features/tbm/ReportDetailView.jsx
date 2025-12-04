@@ -1,17 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import apiClient from './apiConfig';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Terminal, ArrowLeft, X } from "lucide-react";
+import { Terminal, ArrowLeft, X, Lock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify }) => {
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+
+    // 당일 수정 가능 여부 체크
+    const isToday = useMemo(() => {
+        if (!report) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const reportDate = new Date(report.reportDate);
+        reportDate.setHours(0, 0, 0, 0);
+        return today.getTime() === reportDate.getTime();
+    }, [report]);
 
     useEffect(() => {
         if (reportId) {
@@ -44,10 +55,43 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify })
             <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={onBackToList}><ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기</Button>
                 <div className="flex gap-2">
-                    <Button onClick={() => onModify(report.id)} disabled={isLoadingModify}>
-                        {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
-                    </Button>
-                    <Button variant="destructive" onClick={handleDelete}>삭제</Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span>
+                                    <Button
+                                        onClick={() => onModify(report.id)}
+                                        disabled={isLoadingModify || !isToday}
+                                    >
+                                        {!isToday && <Lock className="mr-2 h-4 w-4" />}
+                                        {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            {!isToday && (
+                                <TooltipContent>
+                                    <p>당일 작성한 TBM만 수정할 수 있습니다</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span>
+                                    <Button variant="destructive" onClick={handleDelete} disabled={!isToday}>
+                                        {!isToday && <Lock className="mr-2 h-4 w-4" />}
+                                        삭제
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            {!isToday && (
+                                <TooltipContent>
+                                    <p>당일 작성한 TBM만 삭제할 수 있습니다</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
             <Card>

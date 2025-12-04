@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { ArrowLeft, X, ChevronLeft, ChevronRight, ZoomIn, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
@@ -70,6 +71,30 @@ const postComment = async ({ noticeId, content, imageUrl, attachments }: { notic
   return res.json();
 }
 
+const updateComment = async ({ noticeId, commentId, content }: { noticeId: string; commentId: string; content: string }) => {
+  const res = await fetch(`/api/notices/${noticeId}/comments/${commentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || 'Failed to update comment');
+  }
+  return res.json();
+}
+
+const deleteComment = async ({ noticeId, commentId }: { noticeId: string; commentId: string }) => {
+  const res = await fetch(`/api/notices/${noticeId}/comments/${commentId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || 'Failed to delete comment');
+  }
+  return res.json();
+}
+
 export default function NoticeDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -80,6 +105,10 @@ export default function NoticeDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<Array<{url: string, name: string, type: string, size: number}>>([]);
+
+  // 댓글 수정 상태
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
 
   // 이미지 뷰어 상태
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -179,6 +208,57 @@ export default function NoticeDetailPage() {
       clearSaved();
     }
   });
+
+  // 댓글 수정 mutation
+  const updateCommentMutation = useMutation({
+    mutationFn: updateComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', noticeId] });
+      setEditingCommentId(null);
+      setEditingContent('');
+      toast({ title: '성공', description: '댓글이 수정되었습니다.' });
+    },
+    onError: (err: Error) => {
+      toast({ title: '오류', description: err.message, variant: 'destructive' });
+    }
+  });
+
+  // 댓글 삭제 mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: deleteComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', noticeId] });
+      toast({ title: '성공', description: '댓글이 삭제되었습니다.' });
+    },
+    onError: (err: Error) => {
+      toast({ title: '오류', description: err.message, variant: 'destructive' });
+    }
+  });
+
+  // 댓글 수정 시작
+  const handleStartEdit = (comment: CommentType) => {
+    setEditingCommentId(comment.id);
+    setEditingContent(comment.content);
+  };
+
+  // 댓글 수정 취소
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingContent('');
+  };
+
+  // 댓글 수정 저장
+  const handleSaveEdit = (commentId: string) => {
+    if (!editingContent.trim() || !noticeId) return;
+    updateCommentMutation.mutate({ noticeId, commentId, content: editingContent });
+  };
+
+  // 댓글 삭제
+  const handleDeleteComment = (commentId: string) => {
+    if (!noticeId) return;
+    if (!window.confirm('정말 이 댓글을 삭제하시겠습니까?')) return;
+    deleteCommentMutation.mutate({ noticeId, commentId });
+  };
 
   // 공지사항 읽음 처리
   const markAsReadMutation = useMutation({
@@ -507,11 +587,69 @@ export default function NoticeDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {comments.map(comment => (
+              {comments.map(comment => {
+                const isAuthor = user?.id === comment.authorId;
+                const isAdmin = user?.role === 'ADMIN';
+                const canModify = isAuthor || isAdmin;
+                const isEditing = editingCommentId === comment.id;
+
+                return (
                 <div key={comment.id} className="flex items-start gap-4">
                   <div className="flex-1 space-y-2">
-                    <p className="font-semibold">{sanitizeText(comment.author?.name || comment.author?.username || '익명')}</p>
-                    <p className="whitespace-pre-wrap">{sanitizeText(comment.content)}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{sanitizeText(comment.author?.name || comment.author?.username || '익명')}</p>
+                      {canModify && !isEditing && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleStartEdit(comment)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              수정
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              삭제
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(comment.id)}
+                            disabled={updateCommentMutation.isPending}
+                          >
+                            {updateCommentMutation.isPending ? '저장 중...' : '저장'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                          >
+                            취소
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{sanitizeText(comment.content)}</p>
+                    )}
+
                     {comment.imageUrl && <img src={comment.imageUrl} alt="comment image" className="mt-2 w-full max-w-xs rounded-md border" />}
 
                     {/* Display multi-file attachments */}
@@ -545,10 +683,16 @@ export default function NoticeDetailPage() {
                       </div>
                     )}
 
-                    <p className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(comment.createdAt).toLocaleString()}
+                      {(comment as any).updatedAt && new Date((comment as any).updatedAt).getTime() !== new Date(comment.createdAt).getTime() && (
+                        <span className="ml-2 text-muted-foreground">(수정됨)</span>
+                      )}
+                    </p>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             {user && user.role === 'PENDING' && (

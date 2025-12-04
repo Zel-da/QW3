@@ -105,7 +105,7 @@ export default function LoginPage() {
                 {isLoading ? '로그인 중...' : '로그인'}
               </Button>
               <div className="text-center text-sm text-muted-foreground">
-                
+                <p><a href="/forgot-password" className="text-primary hover:underline">아이디/비밀번호를 잊으셨나요?</a></p>
                 <p className="mt-2">계정이 없으신가요? <a href="/register" className="text-primary hover:underline">회원가입</a></p>
               </div>
             </form>

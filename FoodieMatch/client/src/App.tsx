@@ -22,6 +22,8 @@ const DashboardHomePage = lazy(() => import("@/pages/DashboardHomePage"));
 const HomePage = lazy(() => import("@/pages/HomePage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 
 // TBM 관련
 const TbmPage = lazy(() => import("@/pages/TbmPage"));
@@ -81,6 +83,8 @@ function App() {
               {/* 공개 페이지 */}
               <Route path="/login" component={LoginPage} />
               <Route path="/register" component={RegisterPage} />
+              <Route path="/forgot-password" component={ForgotPasswordPage} />
+              <Route path="/reset-password/:token" component={ResetPasswordPage} />
 
               {/* PENDING 포함 - 모든 로그인 사용자 접근 가능 */}
               <Route path="/">

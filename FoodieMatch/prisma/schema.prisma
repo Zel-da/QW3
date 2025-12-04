@@ -32,12 +32,29 @@ model User {
   userAssessments        UserAssessment[]  // 사용자의 평가 기록
   certificates           Certificate[]     // 사용자의 수료증
   noticeReads            NoticeRead[]      // 사용자가 읽은 공지사항
+  failedLoginAttempts    Int               @default(0)   // 로그인 실패 횟수
+  lockedUntil            DateTime?                       // 계정 잠금 해제 시간
+  passwordResetTokens    PasswordResetToken[]            // 비밀번호 재설정 토큰
 
   @@index([teamId])
   @@index([role])
   @@index([site])
   @@index([role, site])
   @@map("User")
+}
+
+// 비밀번호 재설정 토큰
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
 
 model Notice {
@@ -164,14 +181,17 @@ model UserAssessment {
 }
 
 model Certificate {
-  id             String   @id @default(uuid())
-  userId         String
-  courseId       String
-  certificateUrl String
-  issuedAt       DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  userId            String
+  courseId          String
+  certificateNumber String   @unique  // 수료증 번호: CERT-YYYYMMDD-courseId-index
+  certificateUrl    String
+  score             Int?              // 평가 점수
+  issuedAt          DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, courseId])  // 사용자당 과정별 수료증 1개만
   @@index([userId])
   @@index([courseId])
 }

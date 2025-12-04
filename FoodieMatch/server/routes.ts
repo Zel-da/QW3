@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { prisma } from "./db";
@@ -220,13 +221,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !password) {
         return res.status(400).json({ message: "사용자명과 비밀번호를 입력해주세요" });
       }
+
       const user = await prisma.user.findUnique({ where: { username } });
       if (!user || !user.password) {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
+
+      // 계정 잠금 상태 확인
+      if (user.lockedUntil && user.lockedUntil > new Date()) {
+        const remainingMinutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+        return res.status(423).json({
+          message: `계정이 잠겼습니다. ${remainingMinutes}분 후에 다시 시도해주세요.`,
+          lockedUntil: user.lockedUntil
+        });
+      }
+
       const validPassword = await bcrypt.compare(password, user.password);
+
       if (!validPassword) {
-        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
+        // 로그인 실패 횟수 증가
+        const newFailedAttempts = (user.failedLoginAttempts || 0) + 1;
+        const MAX_ATTEMPTS = 5;
+        const LOCK_DURATION_MINUTES = 15;
+
+        if (newFailedAttempts >= MAX_ATTEMPTS) {
+          // 5회 실패 시 15분 잠금
+          const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: newFailedAttempts,
+              lockedUntil
+            }
+          });
+          console.log(`계정 잠금: ${username}, 해제 시간: ${lockedUntil}`);
+          return res.status(423).json({
+            message: `로그인 ${MAX_ATTEMPTS}회 실패로 계정이 ${LOCK_DURATION_MINUTES}분간 잠겼습니다.`,
+            lockedUntil
+          });
+        } else {
+          // 실패 횟수만 증가
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: newFailedAttempts }
+          });
+          const remainingAttempts = MAX_ATTEMPTS - newFailedAttempts;
+          return res.status(401).json({
+            message: `잘못된 비밀번호입니다. ${remainingAttempts}회 더 실패하면 계정이 잠깁니다.`,
+            remainingAttempts
+          });
+        }
+      }
+
+      // 로그인 성공: 실패 횟수 초기화
+      if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: 0,
+            lockedUntil: null
+          }
+        });
       }
 
       // Set session user data
@@ -263,6 +318,276 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.clearCookie('sessionId');
       res.json({ message: "로그아웃 성공" });
     });
+  });
+
+  // PASSWORD RESET ROUTES
+
+  // 관리자용: 사용자 비밀번호 리셋 (임시 비밀번호 발급)
+  app.put("/api/users/:userId/reset-password", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { newPassword, sendEmail } = req.body;
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+
+      // 임시 비밀번호 생성 또는 제공된 비밀번호 사용
+      const tempPassword = newPassword || crypto.randomBytes(4).toString('hex'); // 8자리 랜덤
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashedPassword,
+          failedLoginAttempts: 0,
+          lockedUntil: null
+        }
+      });
+
+      // 이메일 발송 옵션이 활성화된 경우
+      if (sendEmail && user.email) {
+        try {
+          const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
+          const smtpConfig = await loadSmtpConfig();
+          if (smtpConfig) {
+            await sendEmailWithTemplate(
+              smtpConfig,
+              user.email,
+              '비밀번호가 재설정되었습니다',
+              `
+                <h2>비밀번호 재설정 안내</h2>
+                <p>${user.name || user.username}님의 비밀번호가 관리자에 의해 재설정되었습니다.</p>
+                <p><strong>임시 비밀번호:</strong> ${tempPassword}</p>
+                <p>로그인 후 반드시 비밀번호를 변경해주세요.</p>
+              `
+            );
+          }
+        } catch (emailError) {
+          console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
+          // 이메일 실패해도 비밀번호 재설정은 완료됨
+        }
+      }
+
+      console.log(`관리자가 ${user.username}의 비밀번호를 재설정함`);
+      res.json({
+        message: "비밀번호가 재설정되었습니다",
+        tempPassword // 관리자가 확인할 수 있도록 반환
+      });
+    } catch (error) {
+      console.error('비밀번호 재설정 오류:', error);
+      res.status(500).json({ message: "비밀번호 재설정 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 사용자용: 비밀번호 찾기 요청 (이메일로 재설정 링크 발송)
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+    try {
+      const { email, username } = req.body;
+
+      if (!email && !username) {
+        return res.status(400).json({ message: "이메일 또는 아이디를 입력해주세요" });
+      }
+
+      // 사용자 찾기
+      const user = await prisma.user.findFirst({
+        where: email ? { email } : { username }
+      });
+
+      // 보안상 사용자 존재 여부와 무관하게 동일한 응답
+      if (!user || !user.email) {
+        // 약간의 딜레이를 주어 타이밍 공격 방지
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return res.json({ message: "등록된 이메일이 있다면 비밀번호 재설정 링크가 발송됩니다" });
+      }
+
+      // 기존 미사용 토큰 만료 처리
+      await prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true }
+      });
+
+      // 새 토큰 생성 (1시간 유효)
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1시간 후
+
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token,
+          expiresAt
+        }
+      });
+
+      // 재설정 링크 이메일 발송
+      try {
+        const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
+        const smtpConfig = await loadSmtpConfig();
+        if (smtpConfig) {
+          const resetUrl = `${req.headers.origin || 'http://localhost:5173'}/reset-password/${token}`;
+          await sendEmailWithTemplate(
+            smtpConfig,
+            user.email,
+            '비밀번호 재설정 요청',
+            `
+              <h2>비밀번호 재설정</h2>
+              <p>${user.name || user.username}님, 비밀번호 재설정 요청이 접수되었습니다.</p>
+              <p>아래 링크를 클릭하여 새 비밀번호를 설정해주세요:</p>
+              <p><a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">비밀번호 재설정</a></p>
+              <p style="color: #666; font-size: 14px;">이 링크는 1시간 동안만 유효합니다.</p>
+              <p style="color: #666; font-size: 14px;">본인이 요청하지 않았다면 이 이메일을 무시해주세요.</p>
+            `
+          );
+          console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
+        }
+      } catch (emailError) {
+        console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
+      }
+
+      res.json({ message: "등록된 이메일이 있다면 비밀번호 재설정 링크가 발송됩니다" });
+    } catch (error) {
+      console.error('비밀번호 찾기 오류:', error);
+      res.status(500).json({ message: "비밀번호 찾기 요청 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 토큰 유효성 확인
+  app.get("/api/auth/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      const resetToken = await prisma.passwordResetToken.findUnique({
+        where: { token },
+        include: { user: { select: { username: true, name: true } } }
+      });
+
+      if (!resetToken) {
+        return res.status(404).json({ valid: false, message: "유효하지 않은 링크입니다" });
+      }
+
+      if (resetToken.used) {
+        return res.status(400).json({ valid: false, message: "이미 사용된 링크입니다" });
+      }
+
+      if (resetToken.expiresAt < new Date()) {
+        return res.status(400).json({ valid: false, message: "만료된 링크입니다. 다시 요청해주세요." });
+      }
+
+      res.json({
+        valid: true,
+        username: resetToken.user.username,
+        name: resetToken.user.name
+      });
+    } catch (error) {
+      console.error('토큰 확인 오류:', error);
+      res.status(500).json({ valid: false, message: "토큰 확인 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 새 비밀번호 설정
+  app.post("/api/auth/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({ message: "비밀번호는 8자 이상이어야 합니다" });
+      }
+
+      const resetToken = await prisma.passwordResetToken.findUnique({
+        where: { token },
+        include: { user: true }
+      });
+
+      if (!resetToken) {
+        return res.status(404).json({ message: "유효하지 않은 링크입니다" });
+      }
+
+      if (resetToken.used) {
+        return res.status(400).json({ message: "이미 사용된 링크입니다" });
+      }
+
+      if (resetToken.expiresAt < new Date()) {
+        return res.status(400).json({ message: "만료된 링크입니다. 다시 요청해주세요." });
+      }
+
+      // 비밀번호 업데이트 및 토큰 사용 처리
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: resetToken.userId },
+          data: {
+            password: hashedPassword,
+            failedLoginAttempts: 0,
+            lockedUntil: null
+          }
+        }),
+        prisma.passwordResetToken.update({
+          where: { id: resetToken.id },
+          data: { used: true }
+        })
+      ]);
+
+      console.log(`비밀번호 재설정 완료: ${resetToken.user.username}`);
+      res.json({ message: "비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요." });
+    } catch (error) {
+      console.error('비밀번호 재설정 오류:', error);
+      res.status(500).json({ message: "비밀번호 재설정 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 아이디 찾기 (이메일로 발송)
+  app.post("/api/auth/find-username", authLimiter, async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "이메일을 입력해주세요" });
+      }
+
+      const user = await prisma.user.findFirst({
+        where: { email }
+      });
+
+      // 보안상 사용자 존재 여부와 무관하게 동일한 응답
+      if (!user) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return res.json({ message: "등록된 이메일이 있다면 아이디 정보가 발송됩니다" });
+      }
+
+      // 아이디 마스킹 (앞 3자리만 표시)
+      const maskedUsername = user.username.length > 3
+        ? user.username.substring(0, 3) + '*'.repeat(user.username.length - 3)
+        : user.username;
+
+      // 이메일 발송
+      try {
+        const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
+        const smtpConfig = await loadSmtpConfig();
+        if (smtpConfig) {
+          await sendEmailWithTemplate(
+            smtpConfig,
+            email,
+            '아이디 찾기 결과',
+            `
+              <h2>아이디 찾기 결과</h2>
+              <p>${user.name || '회원'}님의 아이디는 <strong>${user.username}</strong>입니다.</p>
+              <p><a href="${req.headers.origin || 'http://localhost:5173'}/login" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">로그인하기</a></p>
+            `
+          );
+          console.log(`아이디 찾기 이메일 발송: ${email}`);
+        }
+      } catch (emailError) {
+        console.error('아이디 찾기 이메일 발송 실패:', emailError);
+      }
+
+      res.json({ message: "등록된 이메일이 있다면 아이디 정보가 발송됩니다" });
+    } catch (error) {
+      console.error('아이디 찾기 오류:', error);
+      res.status(500).json({ message: "아이디 찾기 요청 중 오류가 발생했습니다" });
+    }
   });
 
   // USER MANAGEMENT
@@ -377,6 +702,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await prisma.user.delete({ where: { id: req.params.userId } });
       res.status(204).send();
     } catch (error) { res.status(500).json({ message: "Failed to delete user" }); }
+  });
+
+  // Admin-only: Get PENDING users list
+  app.get("/api/users/pending", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const pendingUsers = await prisma.user.findMany({
+        where: { role: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          team: { select: { id: true, name: true } }
+        }
+      });
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error('Failed to fetch pending users:', error);
+      res.status(500).json({ message: "Failed to fetch pending users" });
+    }
+  });
+
+  // Admin-only: Approve PENDING user (assign role, team, site)
+  app.put("/api/users/:userId/approve", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { role, teamId, site } = req.body;
+
+      if (!role || role === 'PENDING') {
+        return res.status(400).json({ message: "유효한 역할을 선택해주세요" });
+      }
+
+      // 사용자 존재 및 PENDING 상태 확인
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+      if (user.role !== 'PENDING') {
+        return res.status(400).json({ message: "이미 승인된 사용자입니다" });
+      }
+
+      // 사용자 승인 (역할, 팀, 현장 할당)
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          role,
+          teamId: teamId ? parseInt(teamId, 10) : null,
+          site: site || null
+        }
+      });
+
+      res.json({
+        message: "사용자가 승인되었습니다",
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error('Failed to approve user:', error);
+      res.status(500).json({ message: "사용자 승인 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Admin-only: Reject PENDING user (delete account)
+  app.delete("/api/users/:userId/reject", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // 사용자 존재 및 PENDING 상태 확인
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+      if (user.role !== 'PENDING') {
+        return res.status(400).json({ message: "PENDING 상태의 사용자만 거절할 수 있습니다" });
+      }
+
+      // 사용자 삭제
+      await prisma.user.delete({ where: { id: userId } });
+
+      res.json({ message: "가입 요청이 거절되었습니다" });
+    } catch (error) {
+      console.error('Failed to reject user:', error);
+      res.status(500).json({ message: "가입 거절 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Admin-only: Reset user password
+  app.put("/api/users/:userId/reset-password", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { newPassword } = req.body;
+
+      // 사용자 확인
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+
+      // 임시 비밀번호 생성 또는 제공된 비밀번호 사용
+      const tempPassword = newPassword || Math.random().toString(36).slice(-8) + 'A1!';
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword }
+      });
+
+      res.json({
+        message: "비밀번호가 초기화되었습니다",
+        tempPassword: tempPassword
+      });
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      res.status(500).json({ message: "비밀번호 초기화 중 오류가 발생했습니다" });
+    }
   });
 
   // EDUCATION MONITORING
@@ -566,6 +1002,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!team) return res.status(404).json({ message: "Team not found" });
       res.json(team);
     } catch (error) { res.status(500).json({ message: "Failed to fetch team" }); }
+  });
+
+  // 팀 생성 (ADMIN만)
+  app.post("/api/teams", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { name, site } = req.body;
+
+      if (!name || !site) {
+        return res.status(400).json({ message: "팀 이름과 현장(site)을 입력해주세요." });
+      }
+
+      // 이름 중복 확인
+      const existingTeam = await prisma.team.findFirst({
+        where: { name, site }
+      });
+
+      if (existingTeam) {
+        return res.status(409).json({ message: "동일한 이름의 팀이 해당 현장에 이미 존재합니다." });
+      }
+
+      const newTeam = await prisma.team.create({
+        data: { name, site },
+        include: { leader: true, approver: true }
+      });
+
+      console.log(`팀 생성: ${name} (${site})`);
+      res.status(201).json(newTeam);
+    } catch (error) {
+      console.error('Failed to create team:', error);
+      res.status(500).json({ message: "팀 생성에 실패했습니다." });
+    }
+  });
+
+  // 팀 수정 (ADMIN만)
+  app.put("/api/teams/:teamId", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const { name, site } = req.body;
+
+      const team = await prisma.team.findUnique({
+        where: { id: parseInt(teamId) }
+      });
+
+      if (!team) {
+        return res.status(404).json({ message: "팀을 찾을 수 없습니다." });
+      }
+
+      // 이름 중복 확인 (자기 자신 제외)
+      if (name) {
+        const existingTeam = await prisma.team.findFirst({
+          where: {
+            name,
+            site: site || team.site,
+            id: { not: parseInt(teamId) }
+          }
+        });
+
+        if (existingTeam) {
+          return res.status(409).json({ message: "동일한 이름의 팀이 해당 현장에 이미 존재합니다." });
+        }
+      }
+
+      const updatedTeam = await prisma.team.update({
+        where: { id: parseInt(teamId) },
+        data: {
+          ...(name && { name }),
+          ...(site && { site })
+        },
+        include: { leader: true, approver: true }
+      });
+
+      console.log(`팀 수정: ${updatedTeam.name}`);
+      res.json(updatedTeam);
+    } catch (error) {
+      console.error('Failed to update team:', error);
+      res.status(500).json({ message: "팀 수정에 실패했습니다." });
+    }
+  });
+
+  // 팀 삭제 (ADMIN만) - 팀원이 있으면 삭제 불가
+  app.delete("/api/teams/:teamId", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const teamIdNum = parseInt(teamId);
+
+      const team = await prisma.team.findUnique({
+        where: { id: teamIdNum },
+        include: {
+          members: { where: { teamId: teamIdNum } },
+          teamMembers: { where: { isActive: true } }
+        }
+      });
+
+      if (!team) {
+        return res.status(404).json({ message: "팀을 찾을 수 없습니다." });
+      }
+
+      // User 연결된 팀원 확인
+      const usersInTeam = await prisma.user.count({
+        where: { teamId: teamIdNum }
+      });
+
+      // TeamMember 확인 (활성 팀원)
+      const activeTeamMembers = await prisma.teamMember.count({
+        where: { teamId: teamIdNum, isActive: true }
+      });
+
+      if (usersInTeam > 0 || activeTeamMembers > 0) {
+        return res.status(400).json({
+          message: `팀에 소속된 팀원이 ${usersInTeam + activeTeamMembers}명 있습니다. 팀원을 먼저 이동시켜 주세요.`
+        });
+      }
+
+      // 관련 데이터 정리 (비활성 팀원, 템플릿 등)
+      await prisma.teamMember.deleteMany({ where: { teamId: teamIdNum, isActive: false } });
+      await prisma.checklistTemplate.deleteMany({ where: { teamId: teamIdNum } });
+      await prisma.teamEquipment.deleteMany({ where: { teamId: teamIdNum } });
+
+      await prisma.team.delete({
+        where: { id: teamIdNum }
+      });
+
+      console.log(`팀 삭제: ${team.name}`);
+      res.json({ message: "팀이 삭제되었습니다." });
+    } catch (error) {
+      console.error('Failed to delete team:', error);
+      res.status(500).json({ message: "팀 삭제에 실패했습니다." });
+    }
   });
 
   app.get("/api/teams/:teamId/template", requireAuth, async (req, res) => {
@@ -1597,6 +2161,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thisMonthCompleted = inspection?.isCompleted || false;
       }
 
+      // 결재 대기 통계
+      let pendingReceivedApprovals = 0;
+      let pendingSentApprovals = 0;
+
+      // APPROVER나 ADMIN은 받은 결재 대기 건수 조회
+      if (user.role === 'APPROVER' || user.role === 'ADMIN') {
+        pendingReceivedApprovals = await prisma.monthlyApproval.count({
+          where: {
+            approverId: userId,
+            status: 'PENDING'
+          }
+        });
+      }
+
+      // TEAM_LEADER나 ADMIN은 보낸 결재 대기 건수 조회
+      if (user.role === 'TEAM_LEADER' || user.role === 'ADMIN') {
+        pendingSentApprovals = await prisma.monthlyApproval.count({
+          where: {
+            requesterId: userId,
+            status: 'PENDING'
+          }
+        });
+      }
+
       res.json({
         notices: {
           total: recentNotices.length,
@@ -1614,6 +2202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inspection: {
           thisMonthCompleted,
           dueDate
+        },
+        approvals: {
+          pendingReceived: pendingReceivedApprovals,
+          pendingSent: pendingSentApprovals
         }
       });
     } catch (error) {
@@ -2037,6 +2629,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to create comment:', error);
       res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  // 댓글 수정 (작성자 또는 ADMIN만)
+  app.put("/api/notices/:noticeId/comments/:commentId", requireAuth, async (req, res) => {
+    try {
+      const { commentId } = req.params;
+      const { content } = req.body;
+      const userId = req.session.user!.id;
+      const userRole = req.session.user!.role;
+
+      // 댓글 조회
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId }
+      });
+
+      if (!comment) {
+        return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
+      }
+
+      // 권한 확인: 작성자 또는 ADMIN만 수정 가능
+      if (comment.authorId !== userId && userRole !== 'ADMIN') {
+        return res.status(403).json({ message: "댓글 수정 권한이 없습니다." });
+      }
+
+      // 댓글 수정
+      const updatedComment = await prisma.comment.update({
+        where: { id: commentId },
+        data: {
+          content,
+          updatedAt: new Date()
+        },
+        include: { author: true, attachments: true }
+      });
+
+      res.json(updatedComment);
+    } catch (error) {
+      console.error('Failed to update comment:', error);
+      res.status(500).json({ message: "댓글 수정에 실패했습니다." });
+    }
+  });
+
+  // 댓글 삭제 (작성자 또는 ADMIN만)
+  app.delete("/api/notices/:noticeId/comments/:commentId", requireAuth, async (req, res) => {
+    try {
+      const { commentId } = req.params;
+      const userId = req.session.user!.id;
+      const userRole = req.session.user!.role;
+
+      // 댓글 조회
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId }
+      });
+
+      if (!comment) {
+        return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
+      }
+
+      // 권한 확인: 작성자 또는 ADMIN만 삭제 가능
+      if (comment.authorId !== userId && userRole !== 'ADMIN') {
+        return res.status(403).json({ message: "댓글 삭제 권한이 없습니다." });
+      }
+
+      // 댓글 첨부파일 먼저 삭제
+      await prisma.commentAttachment.deleteMany({
+        where: { commentId }
+      });
+
+      // 댓글 삭제
+      await prisma.comment.delete({
+        where: { id: commentId }
+      });
+
+      res.json({ message: "댓글이 삭제되었습니다." });
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      res.status(500).json({ message: "댓글 삭제에 실패했습니다." });
     }
   });
 
@@ -4022,6 +4691,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
+
+      // 기존 TBM 조회하여 날짜 확인
+      const existingReport = await prisma.dailyReport.findUnique({
+        where: { id: parseInt(reportId) }
+      });
+
+      if (!existingReport) {
+        return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
+      }
+
+      // 당일 수정 제한 체크
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const reportDateOnly = new Date(existingReport.reportDate);
+      reportDateOnly.setHours(0, 0, 0, 0);
+
+      if (reportDateOnly.getTime() !== today.getTime()) {
+        return res.status(403).json({
+          message: "당일 작성한 TBM만 수정할 수 있습니다.",
+          reportDate: existingReport.reportDate,
+          today: today
+        });
+      }
+
       const reportData = tbmReportSchema.partial().parse(req.body);
       const { results, signatures, remarks, reportDate } = reportData;
       await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
@@ -4505,12 +5198,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId, courseId } = req.params;
       const { score, totalQuestions, passed, attemptNumber } = req.body;
-      const newAssessment = await prisma.userAssessment.create({ data: { userId, courseId, score, totalQuestions, passed, attemptNumber } });
+
+      // 평가 결과 저장
+      const newAssessment = await prisma.userAssessment.create({
+        data: { userId, courseId, score, totalQuestions, passed, attemptNumber }
+      });
+
+      let certificate = null;
+
+      // 합격 시 수료증 자동 발급
       if (passed) {
-        await prisma.certificate.create({ data: { userId, courseId, certificateUrl: `/certs/${userId}-${courseId}.pdf` } });
+        // 이미 수료증이 있는지 확인
+        const existingCert = await prisma.certificate.findUnique({
+          where: { userId_courseId: { userId, courseId } }
+        });
+
+        if (!existingCert) {
+          // 수료증 번호 생성: CERT-YYYYMMDD-courseId-index
+          const today = new Date();
+          const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+
+          // 오늘 발급된 수료증 수 조회하여 index 생성
+          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const todayEnd = new Date(todayStart);
+          todayEnd.setDate(todayEnd.getDate() + 1);
+
+          const todayCertCount = await prisma.certificate.count({
+            where: {
+              issuedAt: {
+                gte: todayStart,
+                lt: todayEnd
+              }
+            }
+          });
+
+          const index = String(todayCertCount + 1).padStart(3, '0');
+          const certificateNumber = `CERT-${dateStr}-${courseId.slice(0, 8)}-${index}`;
+
+          // 수료증 생성
+          certificate = await prisma.certificate.create({
+            data: {
+              userId,
+              courseId,
+              certificateNumber,
+              certificateUrl: `/certs/${certificateNumber}.pdf`,
+              score
+            }
+          });
+
+          console.log(`수료증 발급 완료: ${certificateNumber} (사용자: ${userId}, 과정: ${courseId})`);
+        } else {
+          certificate = existingCert;
+          console.log(`이미 수료증 존재: ${existingCert.certificateNumber}`);
+        }
       }
-      res.status(201).json(newAssessment);
-    } catch (error) { res.status(500).json({ message: "Failed to create user assessment" }); }
+
+      res.status(201).json({
+        assessment: newAssessment,
+        certificate: certificate
+      });
+    } catch (error) {
+      console.error('Failed to create user assessment:', error);
+      res.status(500).json({ message: "Failed to create user assessment" });
+    }
   });
 
   app.get("/api/users/:userId/certificates", requireAuth, async (req, res) => {
