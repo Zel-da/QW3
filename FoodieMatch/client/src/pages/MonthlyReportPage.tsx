@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History } from 'lucide-react';
+import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 import { SignatureDialog } from '@/components/SignatureDialog';
@@ -183,6 +183,7 @@ export default function MonthlyReportPage() {
   const [approverSignatureData, setApproverSignatureData] = useState(''); // 승인 서명 데이터
   const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
 
   // ==================== Queries ====================
 
@@ -1384,15 +1385,13 @@ export default function MonthlyReportPage() {
                                 {item.attachments.length > 0 ? (
                                   <div className="flex gap-1 flex-wrap">
                                     {item.attachments.map((att: any, idx: number) => (
-                                      <a
+                                      <img
                                         key={idx}
-                                        href={att.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:underline text-sm"
-                                      >
-                                        📎{idx + 1}
-                                      </a>
+                                        src={att.url}
+                                        alt={`첨부${idx + 1}`}
+                                        className="w-12 h-12 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => setEnlargedImage(att.url)}
+                                      />
                                     ))}
                                   </div>
                                 ) : (
@@ -1828,82 +1827,6 @@ export default function MonthlyReportPage() {
                     </CardContent>
                   </Card>
                 )}
-
-                {/* Problematic Items Detail */}
-                {problematicItems.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl text-red-600 flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5" />
-                        상세 내역 ({problematicItems.length}건)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[120px]">날짜</TableHead>
-                            <TableHead className="w-[100px]">구분</TableHead>
-                            <TableHead>점검항목</TableHead>
-                            <TableHead className="w-[80px] text-center">결과</TableHead>
-                            <TableHead>조치 내용</TableHead>
-                            <TableHead className="w-[100px]">첨부</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {problematicItems.map((item, index) => (
-                            <TableRow
-                              key={index}
-                              className={item.checkState === 'X' ? 'bg-red-50' : 'bg-yellow-50'}
-                            >
-                              <TableCell>
-                                <a
-                                  href={`/tbm?reportId=${item.reportId}`}
-                                  className="text-blue-600 hover:underline cursor-pointer"
-                                  title="해당 TBM 일지로 이동"
-                                >
-                                  {item.date}
-                                </a>
-                              </TableCell>
-                              <TableCell>{item.category}</TableCell>
-                              <TableCell>{item.description}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge
-                                  variant={item.checkState === 'X' ? 'destructive' : 'secondary'}
-                                  className={item.checkState === '△' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-                                >
-                                  {item.checkState}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="whitespace-pre-wrap">
-                                {item.actionDescription}
-                              </TableCell>
-                              <TableCell>
-                                {item.attachments.length > 0 ? (
-                                  <div className="flex gap-1 flex-wrap">
-                                    {item.attachments.map((att: any, idx: number) => (
-                                      <a
-                                        key={idx}
-                                        href={att.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:underline text-sm"
-                                      >
-                                        📎{idx + 1}
-                                      </a>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  '-'
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             )}
           </TabsContent>
@@ -2147,6 +2070,27 @@ export default function MonthlyReportPage() {
           managerName={educationManager || '담당자'}
           approverName={educationApprover || '승인자'}
         />
+
+        {/* Image Viewer Dialog */}
+        <Dialog open={!!enlargedImage} onOpenChange={(open) => !open && setEnlargedImage(null)}>
+          <DialogContent className="max-w-4xl w-full p-0">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                onClick={() => setEnlargedImage(null)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+              <img
+                src={enlargedImage || ''}
+                alt="확대된 이미지"
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
