@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Bot, User } from 'lucide-react';
+import { ExternalLink, Bot, User, ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -24,12 +24,16 @@ export interface ChatMessageType {
   content: string;
   actions?: { label: string; path: string }[];
   chart?: ChartData;
+  suggestedQuestions?: string[];
+  feedback?: 'like' | 'dislike' | null;
   timestamp: Date;
 }
 
 interface ChatMessageProps {
   message: ChatMessageType;
   onNavigate: (path: string) => void;
+  onFeedback?: (messageId: string, feedback: 'like' | 'dislike') => void;
+  onSuggestedQuestion?: (question: string) => void;
 }
 
 // 차트 색상
@@ -128,8 +132,9 @@ function ChatChart({ chart }: { chart: ChartData }) {
   );
 }
 
-export function ChatMessage({ message, onNavigate }: ChatMessageProps) {
+export function ChatMessage({ message, onNavigate, onFeedback, onSuggestedQuestion }: ChatMessageProps) {
   const isBot = message.type === 'bot' || message.type === 'system';
+  const [localFeedback, setLocalFeedback] = useState<'like' | 'dislike' | null>(message.feedback || null);
 
   // 마크다운 컨텐츠 메모이제이션
   const renderedContent = useMemo(() => {
@@ -149,6 +154,16 @@ export function ChatMessage({ message, onNavigate }: ChatMessageProps) {
     );
   }, [message.content, isBot]);
 
+  // 피드백 핸들러
+  const handleFeedback = (feedback: 'like' | 'dislike') => {
+    if (localFeedback === feedback) {
+      setLocalFeedback(null);
+    } else {
+      setLocalFeedback(feedback);
+      onFeedback?.(message.id, feedback);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -162,33 +177,86 @@ export function ChatMessage({ message, onNavigate }: ChatMessageProps) {
         </div>
       )}
 
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-2.5",
-          isBot
-            ? "bg-muted text-foreground rounded-tl-sm"
-            : "bg-primary text-primary-foreground rounded-tr-sm"
+      <div className="max-w-[85%]">
+        <div
+          className={cn(
+            "rounded-2xl px-4 py-2.5",
+            isBot
+              ? "bg-muted text-foreground rounded-tl-sm"
+              : "bg-primary text-primary-foreground rounded-tr-sm"
+          )}
+        >
+          {renderedContent}
+
+          {/* 차트 렌더링 */}
+          {message.chart && <ChatChart chart={message.chart} />}
+
+          {/* 액션 버튼 */}
+          {message.actions && message.actions.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {message.actions.map((action, idx) => (
+                <Button
+                  key={idx}
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  onClick={() => onNavigate(action.path)}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 피드백 버튼 (봇 메시지만, 내용이 있을 때만) */}
+        {isBot && message.content && message.id !== 'welcome' && (
+          <div className="flex items-center gap-1 mt-1 ml-1">
+            <button
+              onClick={() => handleFeedback('like')}
+              className={cn(
+                "p-1 rounded-full transition-colors",
+                localFeedback === 'like'
+                  ? "text-green-500 bg-green-100"
+                  : "text-muted-foreground hover:text-green-500 hover:bg-green-50"
+              )}
+              title="도움이 됐어요"
+            >
+              <ThumbsUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => handleFeedback('dislike')}
+              className={cn(
+                "p-1 rounded-full transition-colors",
+                localFeedback === 'dislike'
+                  ? "text-red-500 bg-red-100"
+                  : "text-muted-foreground hover:text-red-500 hover:bg-red-50"
+              )}
+              title="도움이 안됐어요"
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />
+            </button>
+            {localFeedback && (
+              <span className="text-xs text-muted-foreground ml-1">
+                {localFeedback === 'like' ? '감사합니다!' : '개선하겠습니다'}
+              </span>
+            )}
+          </div>
         )}
-      >
-        {renderedContent}
 
-        {/* 차트 렌더링 */}
-        {message.chart && <ChatChart chart={message.chart} />}
-
-        {/* 액션 버튼 */}
-        {message.actions && message.actions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {message.actions.map((action, idx) => (
-              <Button
+        {/* 관련 질문 추천 */}
+        {isBot && message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {message.suggestedQuestions.map((question, idx) => (
+              <button
                 key={idx}
-                size="sm"
-                variant="secondary"
-                className="h-8 text-xs"
-                onClick={() => onNavigate(action.path)}
+                onClick={() => onSuggestedQuestion?.(question)}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-background border border-border rounded-full hover:bg-muted transition-colors"
               >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                {action.label}
-              </Button>
+                <MessageCircle className="h-3 w-3" />
+                {question}
+              </button>
             ))}
           </div>
         )}

@@ -236,6 +236,21 @@ export function ChatBot() {
     handleSend(question);
   }, [handleSend]);
 
+  // 피드백 처리 (서버에 저장 가능)
+  const handleFeedback = useCallback((messageId: string, feedback: 'like' | 'dislike') => {
+    // 로컬 상태 업데이트
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, feedback } : msg
+    ));
+    // TODO: 서버에 피드백 저장 (향후 AI 개선용)
+    console.log(`Feedback for ${messageId}: ${feedback}`);
+  }, []);
+
+  // 관련 질문 클릭 처리
+  const handleSuggestedQuestion = useCallback((question: string) => {
+    handleSend(question);
+  }, [handleSend]);
+
   // 대화 초기화 (서버 히스토리도 함께)
   const resetChat = useCallback(async () => {
     // 진행 중인 스트리밍 중단
@@ -284,6 +299,8 @@ export function ChatBot() {
               key={message.id}
               message={message}
               onNavigate={handleNavigate}
+              onFeedback={handleFeedback}
+              onSuggestedQuestion={handleSuggestedQuestion}
             />
           ))}
 
