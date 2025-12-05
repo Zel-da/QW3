@@ -5,13 +5,42 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Terminal, ArrowLeft, X } from "lucide-react";
+import { Terminal, ArrowLeft, X, FileAudio, Play, Pause, FileText, Clock, Copy } from "lucide-react";
+
+// 시간 포맷팅 함수
+const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '00:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+// 파일 크기 포맷팅
+const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify }) => {
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+    const [audioPlaybackTime, setAudioPlaybackTime] = useState(0);
+    const audioRef = React.useRef(null);
+
+    // Parse remarks JSON
+    const parsedRemarks = React.useMemo(() => {
+        if (!report?.remarks) return null;
+        try {
+            return JSON.parse(report.remarks);
+        } catch {
+            return { text: report.remarks };
+        }
+    }, [report?.remarks]);
 
     useEffect(() => {
         if (reportId) {
@@ -129,6 +158,109 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify })
                             );
                         })}
                     </div>
+
+                    {/* 음성 녹음 섹션 */}
+                    {parsedRemarks?.audioRecording && (
+                        <div className="mt-8">
+                            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                <FileAudio className="h-5 w-5 text-primary" />
+                                TBM 음성 녹음
+                            </h3>
+                            <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                                {/* 오디오 플레이어 */}
+                                <div className="flex items-center gap-4 bg-background rounded-lg p-3 border">
+                                    <audio
+                                        ref={audioRef}
+                                        src={parsedRemarks.audioRecording.url}
+                                        onTimeUpdate={() => setAudioPlaybackTime(audioRef.current?.currentTime || 0)}
+                                        onEnded={() => {
+                                            setIsAudioPlaying(false);
+                                            setAudioPlaybackTime(0);
+                                            if (audioRef.current) audioRef.current.currentTime = 0;
+                                        }}
+                                    />
+                                    <Button
+                                        size="icon"
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!audioRef.current) return;
+                                            if (isAudioPlaying) {
+                                                audioRef.current.pause();
+                                            } else {
+                                                audioRef.current.play();
+                                            }
+                                            setIsAudioPlaying(!isAudioPlaying);
+                                        }}
+                                    >
+                                        {isAudioPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                                    </Button>
+                                    <div className="flex-1">
+                                        <input
+                                            type="range"
+                                            min={0}
+                                            max={parsedRemarks.audioRecording.duration || 100}
+                                            value={audioPlaybackTime}
+                                            onChange={(e) => {
+                                                const time = Number(e.target.value);
+                                                if (audioRef.current) {
+                                                    audioRef.current.currentTime = time;
+                                                    setAudioPlaybackTime(time);
+                                                }
+                                            }}
+                                            className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                    <span className="text-sm font-mono min-w-[100px] text-right">
+                                        {formatTime(audioPlaybackTime)} / {formatTime(parsedRemarks.audioRecording.duration)}
+                                    </span>
+                                </div>
+
+                                {/* 파일 정보 */}
+                                <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                                    <span className="flex items-center gap-1">
+                                        <FileAudio className="h-3 w-3" />
+                                        {parsedRemarks.audioRecording.name}
+                                    </span>
+                                    <span>{formatFileSize(parsedRemarks.audioRecording.size)}</span>
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {new Date(parsedRemarks.audioRecording.recordedAt).toLocaleString('ko-KR')}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STT 변환 결과 섹션 */}
+                    {parsedRemarks?.transcription && parsedRemarks.transcription.status === 'completed' && (
+                        <div className="mt-6">
+                            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                음성 → 텍스트 변환 결과
+                                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">완료</span>
+                            </h3>
+                            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+                                <div className="bg-background border rounded p-4 text-sm max-h-60 overflow-y-auto whitespace-pre-wrap">
+                                    {parsedRemarks.transcription.text}
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>변환 시간: {new Date(parsedRemarks.transcription.processedAt).toLocaleString('ko-KR')}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="gap-1"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(parsedRemarks.transcription.text);
+                                            alert('텍스트가 클립보드에 복사되었습니다.');
+                                        }}
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                        복사
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

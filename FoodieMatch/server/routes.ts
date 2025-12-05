@@ -20,6 +20,11 @@ import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
 // Google Gemini AI
 import { GoogleGenAI, Type } from "@google/genai";
 import { chatbotTools, executeTool } from "./chatbotFunctions";
+// OpenAI for Whisper STT
+import OpenAI from "openai";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execPromise = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -86,14 +91,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'video/x-ms-wmv', // .wmv
         'video/x-flv' // .flv
       ];
+      const allowedAudioTypes = [
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',      // .mp3
+        'audio/ogg',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/x-m4a',
+        'audio/mp4',       // .m4a
+        'audio/aac'
+      ];
 
-      const allowed = [...allowedImageTypes, ...allowedDocTypes, ...allowedVideoTypes];
+      const allowed = [...allowedImageTypes, ...allowedDocTypes, ...allowedVideoTypes, ...allowedAudioTypes];
 
       if (allowed.includes(file.mimetype)) {
         // octet-stream의 경우 확장자로 추가 검증
         if (file.mimetype === 'application/octet-stream') {
           const ext = path.extname(file.originalname).toLowerCase();
-          const allowedExtensions = ['.hwp', '.hwpx', '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', '.pdf', '.mp4', '.mov', '.avi'];
+          const allowedExtensions = ['.hwp', '.hwpx', '.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', '.pdf', '.mp4', '.mov', '.avi', '.webm', '.mp3', '.wav', '.m4a', '.ogg', '.aac'];
           if (allowedExtensions.includes(ext)) {
             cb(null, true);
           } else {
@@ -7133,6 +7149,115 @@ ${JSON.stringify(toolResults, null, 2)}
       res.json({ success: true, message: "대화 기록이 초기화되었습니다." });
     } catch (error) {
       res.status(500).json({ message: "초기화 실패" });
+    }
+  });
+
+  // ============================================
+  // STT (Speech-to-Text) API - OpenAI Whisper
+  // ============================================
+
+  // OpenAI 클라이언트 초기화
+  const openaiClient = process.env.OPENAI_API_KEY
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
+
+  // STT Rate Limiter
+  const sttLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1분
+    max: 10, // 분당 10회
+    message: { message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }
+  });
+
+  // STT 변환 엔드포인트
+  app.post("/api/stt/transcribe", requireAuth, sttLimiter, upload.single('audio'), async (req, res) => {
+    if (!openaiClient) {
+      return res.status(503).json({
+        message: "STT 서비스가 설정되지 않았습니다. 관리자에게 OPENAI_API_KEY 설정을 요청하세요."
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "오디오 파일이 필요합니다." });
+    }
+
+    let audioPath = req.file.path;
+    let compressedPath: string | null = null;
+
+    try {
+      console.log(`[STT] 파일 수신: ${req.file.originalname}, 크기: ${(req.file.size / 1024 / 1024).toFixed(2)}MB`);
+
+      // 25MB 초과 시 ffmpeg로 압축 (Whisper API 제한)
+      if (req.file.size > 25 * 1024 * 1024) {
+        console.log('[STT] 파일 크기 초과, 압축 시작...');
+        compressedPath = `${audioPath}_compressed.mp3`;
+
+        try {
+          // ffmpeg로 압축 (비트레이트 64k로 낮춤)
+          await execPromise(`ffmpeg -i "${audioPath}" -b:a 64k -y "${compressedPath}"`);
+
+          // 원본 삭제하고 압축본 사용
+          fs.unlinkSync(audioPath);
+          audioPath = compressedPath;
+
+          const compressedSize = fs.statSync(audioPath).size;
+          console.log(`[STT] 압축 완료: ${(compressedSize / 1024 / 1024).toFixed(2)}MB`);
+
+          // 압축 후에도 25MB 초과 시 에러
+          if (compressedSize > 25 * 1024 * 1024) {
+            throw new Error("압축 후에도 파일이 25MB를 초과합니다. 더 짧은 녹음을 사용해주세요.");
+          }
+        } catch (ffmpegError: any) {
+          // ffmpeg 없거나 실패 시
+          console.error('[STT] ffmpeg 압축 실패:', ffmpegError.message);
+          return res.status(400).json({
+            message: "파일이 25MB를 초과합니다. 더 짧은 녹음을 사용하거나, 서버에 ffmpeg 설치가 필요합니다."
+          });
+        }
+      }
+
+      // OpenAI Whisper API 호출
+      console.log('[STT] Whisper API 호출 중...');
+      const transcription = await openaiClient.audio.transcriptions.create({
+        file: fs.createReadStream(audioPath),
+        model: 'whisper-1',
+        language: 'ko', // 한국어
+        response_format: 'verbose_json', // 상세 정보 포함
+      });
+
+      console.log(`[STT] 변환 완료: ${transcription.text.length}자`);
+
+      // 임시 파일 삭제
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+
+      res.json({
+        text: transcription.text,
+        duration: transcription.duration,
+        language: transcription.language,
+      });
+    } catch (error: any) {
+      console.error('[STT] 오류:', error);
+
+      // 임시 파일 정리
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+      if (compressedPath && fs.existsSync(compressedPath)) {
+        fs.unlinkSync(compressedPath);
+      }
+
+      // OpenAI API 에러 처리
+      if (error.status === 400) {
+        return res.status(400).json({ message: "오디오 파일 형식이 올바르지 않습니다." });
+      }
+      if (error.status === 401) {
+        return res.status(503).json({ message: "STT API 인증 실패. 관리자에게 문의하세요." });
+      }
+
+      res.status(500).json({
+        message: error.message || "음성 변환 중 오류가 발생했습니다."
+      });
     }
   });
 

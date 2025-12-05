@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Terminal, Camera, X } from "lucide-react";
+import { Terminal, Camera, X, Mic, FileText, Loader2 } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
 import { FileDropzone } from '@/components/FileDropzone';
 import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
+import { AudioRecorder } from '@/components/AudioRecorder';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
@@ -43,6 +44,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [existingReport, setExistingReport] = useState(null);
   const [isViewMode, setIsViewMode] = useState(false);
+  // 음성 녹음 관련 state
+  const [audioRecording, setAudioRecording] = useState(null);
+  const [transcription, setTranscription] = useState(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   useEffect(() => {
     if (site) {
@@ -127,6 +132,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         const remarksData = JSON.parse(report.remarks);
         setRemarks(remarksData.text || '');
         setRemarksImages(remarksData.images || []);
+        // 음성 녹음 데이터 로드
+        if (remarksData.audioRecording) {
+          setAudioRecording(remarksData.audioRecording);
+        }
+        if (remarksData.transcription) {
+          setTranscription(remarksData.transcription);
+        }
       } catch {
         setRemarks(report.remarks);
         setRemarksImages([]);
@@ -203,6 +215,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       remarks,
       remarksImages,
       absentUsers,
+      audioRecording,
+      transcription,
     },
     enabled: !!selectedTeam && !reportForEdit, // 팀이 선택되고 수정 모드가 아닐 때만 자동저장
     onRestore: (restored) => {
@@ -211,6 +225,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (restored.remarks) setRemarks(restored.remarks);
       if (restored.remarksImages) setRemarksImages(restored.remarksImages);
       if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
+      if (restored.audioRecording) setAudioRecording(restored.audioRecording);
+      if (restored.transcription) setTranscription(restored.transcription);
     },
   });
 
@@ -266,6 +282,66 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   const removeRemarksImage = (imageIndex) => {
     setRemarksImages(prev => prev.filter((_, idx) => idx !== imageIndex));
+  };
+
+  // 음성 녹음 완료 핸들러
+  const handleAudioRecordingComplete = (data) => {
+    setAudioRecording(data);
+    toast({ title: "음성이 저장되었습니다.", description: `녹음 시간: ${Math.floor(data.duration / 60)}분 ${Math.floor(data.duration % 60)}초` });
+  };
+
+  // 음성 녹음 삭제 핸들러
+  const handleAudioDelete = () => {
+    setAudioRecording(null);
+    setTranscription(null);
+  };
+
+  // STT 변환 함수
+  const handleTranscribe = async () => {
+    if (!audioRecording?.url) {
+      toast({ title: "음성 파일이 없습니다.", variant: "destructive" });
+      return;
+    }
+
+    setIsTranscribing(true);
+    try {
+      // 음성 파일을 Blob으로 가져오기
+      const response = await fetch(audioRecording.url);
+      const blob = await response.blob();
+
+      const formData = new FormData();
+      formData.append('audio', blob, audioRecording.name || 'recording.webm');
+
+      const sttResponse = await axios.post('/api/stt/transcribe', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000, // 5분 타임아웃
+      });
+
+      const transcriptionResult = {
+        text: sttResponse.data.text,
+        processedAt: new Date().toISOString(),
+        status: 'completed'
+      };
+
+      setTranscription(transcriptionResult);
+      toast({ title: "음성 변환 완료", description: "텍스트로 변환되었습니다." });
+    } catch (err) {
+      console.error('STT 변환 오류:', err);
+      const errorMessage = err.response?.data?.message || err.message || '변환 중 오류가 발생했습니다.';
+      setTranscription({
+        text: '',
+        processedAt: new Date().toISOString(),
+        status: 'failed',
+        error: errorMessage
+      });
+      toast({
+        title: "음성 변환 실패",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const handleAbsentChange = (userId, absenceType) => {
@@ -343,11 +419,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       .map(([type, names]) => `${type}: ${names.join(', ')}`)
       .join(' / ');
 
-    // remarks를 JSON 형식으로 저장 (텍스트, 이미지, 결근자 정보)
+    // remarks를 JSON 형식으로 저장 (텍스트, 이미지, 결근자 정보, 음성 녹음, STT 변환)
     const remarksData = {
       text: remarks || '',
       images: remarksImages || [],
-      absenceInfo: remarksText || '결근자 없음'
+      absenceInfo: remarksText || '결근자 없음',
+      audioRecording: audioRecording || null,
+      transcription: transcription || null
     };
 
     const reportData = {
@@ -803,6 +881,89 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* TBM 음성 녹음 섹션 */}
+          <div className="border-t-2 border-gray-300 pt-6 mt-8">
+            <AudioRecorder
+              onRecordingComplete={handleAudioRecordingComplete}
+              onDelete={handleAudioDelete}
+              existingAudio={audioRecording}
+              maxDurationSeconds={1800}
+              disabled={isViewMode}
+            />
+
+            {/* 녹음이 있을 때 STT 변환 버튼 (선택) */}
+            {audioRecording && !isViewMode && (
+              <div className="mt-4 p-3 bg-muted/20 rounded-lg border border-dashed">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTranscribe}
+                    disabled={isTranscribing}
+                    className="gap-2"
+                  >
+                    {isTranscribing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        변환 중...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        텍스트 변환
+                      </>
+                    )}
+                  </Button>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium text-primary">(선택)</span> 음성을 텍스트로 변환합니다
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STT 변환 결과 표시 */}
+            {transcription && (
+              <div className="mt-4 border rounded-lg p-4 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">음성 → 텍스트 변환 결과</span>
+                  {transcription.status === 'completed' && (
+                    <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">완료</span>
+                  )}
+                  {transcription.status === 'failed' && (
+                    <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">실패</span>
+                  )}
+                </div>
+                {transcription.status === 'completed' && transcription.text ? (
+                  <div className="space-y-2">
+                    <div className="bg-background border rounded p-3 text-sm max-h-60 overflow-y-auto whitespace-pre-wrap">
+                      {transcription.text}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        변환 시간: {new Date(transcription.processedAt).toLocaleString('ko-KR')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(transcription.text);
+                          toast({ title: "복사 완료", description: "텍스트가 클립보드에 복사되었습니다." });
+                        }}
+                      >
+                        복사
+                      </Button>
+                    </div>
+                  </div>
+                ) : transcription.status === 'failed' ? (
+                  <div className="text-sm text-red-600">
+                    변환 실패: {transcription.error || '알 수 없는 오류'}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           {/* 참석자 서명 섹션 */}
