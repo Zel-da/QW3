@@ -66,7 +66,7 @@ function getYouTubeEmbedUrl(url: string): string {
     videoId = embedMatch[1];
   }
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
 }
 
 interface DashboardStats {

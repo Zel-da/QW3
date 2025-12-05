@@ -39,7 +39,7 @@ const getYouTubeEmbedUrl = (url: string): string => {
   const embedMatch = url.match(/\/embed\/([^?]+)/);
   if (embedMatch) videoId = embedMatch[1];
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
 };
 
 export default function CourseContentPage() {
@@ -268,7 +268,7 @@ export default function CourseContentPage() {
                       <iframe
                         key={videoId}
                         className="absolute inset-0 w-full h-full"
-                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&origin=${encodeURIComponent(window.location.origin)}`}
                         title="YouTube video player"
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

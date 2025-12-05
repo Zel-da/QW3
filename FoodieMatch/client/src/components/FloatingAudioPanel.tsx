@@ -36,6 +36,8 @@ interface FloatingAudioPanelProps {
 type RecordingState = 'idle' | 'recording' | 'recorded' | 'uploading';
 
 function formatTime(seconds: number): string {
+  // Infinity, NaN, 음수 처리
+  if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return '00:00';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -476,8 +478,21 @@ export function FloatingAudioPanel({
                       if (audioRef.current) audioRef.current.currentTime = 0;
                     }}
                     onLoadedMetadata={() => {
-                      if (audioRef.current && !duration) {
-                        setDuration(audioRef.current.duration);
+                      if (audioRef.current) {
+                        const dur = audioRef.current.duration;
+                        // 유효한 duration 값만 설정 (Infinity, NaN 제외)
+                        if (isFinite(dur) && dur > 0) {
+                          setDuration(dur);
+                        }
+                      }
+                    }}
+                    onDurationChange={() => {
+                      // Blob URL의 경우 duration이 나중에 유효해질 수 있음
+                      if (audioRef.current) {
+                        const dur = audioRef.current.duration;
+                        if (isFinite(dur) && dur > 0 && duration === 0) {
+                          setDuration(dur);
+                        }
                       }
                     }}
                   />

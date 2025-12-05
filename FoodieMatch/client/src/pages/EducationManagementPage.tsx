@@ -38,7 +38,7 @@ const getYouTubeEmbedUrl = (url: string): string => {
   const embedMatch = url.match(/\/embed\/([^?]+)/);
   if (embedMatch) videoId = embedMatch[1];
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
 };
 
 const fetchCourses = async () => {
