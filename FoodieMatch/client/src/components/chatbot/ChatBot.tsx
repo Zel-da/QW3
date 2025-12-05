@@ -13,18 +13,24 @@ import { findFAQMatch, getQuickQuestions, FAQItem } from './faqData';
 const WELCOME_MESSAGE: ChatMessageType = {
   id: 'welcome',
   type: 'bot',
-  content: '안녕하세요! 안전관리 시스템 도우미입니다.\n궁금한 점을 물어보시거나, 아래 자주 묻는 질문을 선택해주세요.',
+  content: '안녕하세요! 저는 "안전이"입니다. 🦺\n안전관리 시스템에 대해 무엇이든 물어보세요!\n이전 대화 내용도 기억하고 있어요.',
   timestamp: new Date(),
 };
 
-// AI 폴백 사용 여부 (Gemini API)
-const USE_AI_FALLBACK = true;
+// 스트리밍 사용 여부
+const USE_STREAMING = true;
+
+// 세션 ID 생성
+const generateSessionId = () => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessageType[]>([WELCOME_MESSAGE]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState<string>(() => generateSessionId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
 
@@ -40,15 +46,87 @@ export function ChatBot() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // AI API 호출 함수
-  interface AIResponse {
-    answer: string;
-    chart?: ChartData;
-  }
+  // 스트리밍 AI API 호출
+  const askAIStream = async (question: string, botMessageId: string): Promise<ChartData | undefined> => {
+    abortControllerRef.current = new AbortController();
 
-  const askAI = async (question: string): Promise<AIResponse> => {
     try {
-      const response = await axios.post('/api/chatbot/ask', { question });
+      const response = await fetch('/api/chatbot/ask-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, sessionId }),
+        credentials: 'include',
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader available');
+
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+      let chart: ChartData | undefined;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+
+              if (parsed.text) {
+                accumulatedText += parsed.text;
+                // 메시지 업데이트 (스트리밍 중)
+                setMessages(prev => prev.map(msg =>
+                  msg.id === botMessageId
+                    ? { ...msg, content: accumulatedText }
+                    : msg
+                ));
+              }
+
+              if (parsed.done && parsed.chart) {
+                chart = parsed.chart;
+              }
+
+              if (parsed.sessionId) {
+                setSessionId(parsed.sessionId);
+              }
+            } catch (e) {
+              // JSON 파싱 실패 무시
+            }
+          }
+        }
+      }
+
+      return chart;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Stream aborted');
+        return undefined;
+      }
+      console.error('Stream error:', error);
+      throw error;
+    }
+  };
+
+  // 일반 AI API 호출 (폴백용)
+  const askAI = async (question: string): Promise<{ answer: string; chart?: ChartData }> => {
+    try {
+      const response = await axios.post('/api/chatbot/ask', { question, sessionId });
+      if (response.data.sessionId) {
+        setSessionId(response.data.sessionId);
+      }
       return {
         answer: response.data.answer,
         chart: response.data.chart || undefined
@@ -72,19 +150,14 @@ export function ChatBot() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // 타이핑 표시
-    setIsTyping(true);
-
     // FAQ 매칭 시도
-    await new Promise((resolve) => setTimeout(resolve, 300)); // 자연스러운 딜레이
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const match = findFAQMatch(text, user?.role);
 
-    let botResponse: ChatMessageType;
-
     if (match) {
-      // FAQ 매칭 성공
-      botResponse = {
+      // FAQ 매칭 성공 - 즉시 응답
+      const botResponse: ChatMessageType = {
         id: `bot-${Date.now()}`,
         type: 'bot',
         content: match.answer,
@@ -93,29 +166,64 @@ export function ChatBot() {
           : undefined,
         timestamp: new Date(),
       };
-    } else if (USE_AI_FALLBACK) {
-      // FAQ 매칭 실패 → AI 폴백
+      setMessages((prev) => [...prev, botResponse]);
+      return;
+    }
+
+    // AI 응답 처리
+    const botMessageId = `bot-${Date.now()}`;
+
+    if (USE_STREAMING) {
+      // 스트리밍 모드
+      setIsStreaming(true);
+
+      // 빈 봇 메시지 먼저 추가
+      const initialBotMessage: ChatMessageType = {
+        id: botMessageId,
+        type: 'bot',
+        content: '',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, initialBotMessage]);
+
+      try {
+        const chart = await askAIStream(text, botMessageId);
+
+        // 차트가 있으면 최종 메시지에 추가
+        if (chart) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === botMessageId
+              ? { ...msg, chart }
+              : msg
+          ));
+        }
+      } catch (error) {
+        // 스트리밍 실패 시 에러 메시지
+        setMessages(prev => prev.map(msg =>
+          msg.id === botMessageId
+            ? { ...msg, content: '죄송합니다. 응답 중 오류가 발생했습니다. 다시 시도해주세요.' }
+            : msg
+        ));
+      }
+
+      setIsStreaming(false);
+    } else {
+      // 일반 모드 (폴백)
+      setIsTyping(true);
+
       const aiResult = await askAI(text);
-      botResponse = {
-        id: `bot-${Date.now()}`,
+      const botResponse: ChatMessageType = {
+        id: botMessageId,
         type: 'bot',
         content: aiResult.answer,
         chart: aiResult.chart,
         timestamp: new Date(),
       };
-    } else {
-      // AI 폴백 비활성화 시 기본 응답
-      botResponse = {
-        id: `bot-${Date.now()}`,
-        type: 'bot',
-        content: '죄송합니다. 해당 질문에 대한 답변을 찾지 못했습니다.\n다른 키워드로 다시 질문해주시거나, 자주 묻는 질문을 선택해주세요.',
-        timestamp: new Date(),
-      };
-    }
 
-    setIsTyping(false);
-    setMessages((prev) => [...prev, botResponse]);
-  }, [user?.role]);
+      setIsTyping(false);
+      setMessages((prev) => [...prev, botResponse]);
+    }
+  }, [user?.role, sessionId]);
 
   // 페이지 네비게이션
   const handleNavigate = useCallback((path: string) => {
@@ -128,15 +236,41 @@ export function ChatBot() {
     handleSend(question);
   }, [handleSend]);
 
-  // 대화 초기화
-  const resetChat = useCallback(() => {
+  // 대화 초기화 (서버 히스토리도 함께)
+  const resetChat = useCallback(async () => {
+    // 진행 중인 스트리밍 중단
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // 서버 측 히스토리 초기화
+    try {
+      await axios.post('/api/chatbot/reset', { sessionId });
+    } catch (e) {
+      // 실패해도 클라이언트는 초기화
+    }
+
+    // 새 세션 ID 생성
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
     setMessages([WELCOME_MESSAGE]);
-  }, []);
+    setIsTyping(false);
+    setIsStreaming(false);
+  }, [sessionId]);
 
   // 로그인 상태 변경 시 대화 초기화
   useEffect(() => {
     resetChat();
-  }, [user?.id, resetChat]);
+  }, [user?.id]);
+
+  // 컴포넌트 언마운트 시 스트림 정리
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -181,7 +315,7 @@ export function ChatBot() {
         )}
 
         {/* 입력 영역 */}
-        <ChatInput onSend={handleSend} disabled={isTyping} />
+        <ChatInput onSend={handleSend} disabled={isTyping || isStreaming} />
       </ChatWindow>
     </>
   );

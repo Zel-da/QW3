@@ -495,128 +495,258 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <h3 className="font-semibold text-lg">작성자: {user?.name}</h3>
           </div>
           <h3 className="font-semibold text-xl mt-6">점검항목</h3>
-          <Table className="border-collapse">
-            <TableHeader>
-              <TableRow className="border-b-2 border-gray-300">
-                <TableHead className="border-r border-gray-200">구분</TableHead>
-                <TableHead className="border-r border-gray-200">점검항목</TableHead>
-                <TableHead className="text-center border-r border-gray-200">점검결과</TableHead>
-                <TableHead className="text-center">사진/내용</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {checklist.templateItems
-                .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-                .map((item, index, items) => {
-                const currentItemState = formState[item.id] || {};
 
-                // 이전 항목과 같은 카테고리인지 확인
-                const prevItem = index > 0 ? items[index - 1] : null;
-                const showCategory = !prevItem || prevItem.category !== item.category;
+          {/* 데스크톱: 기존 테이블 */}
+          <div className="hidden md:block">
+            <Table className="border-collapse">
+              <TableHeader>
+                <TableRow className="border-b-2 border-gray-300">
+                  <TableHead className="border-r border-gray-200">구분</TableHead>
+                  <TableHead className="border-r border-gray-200">점검항목</TableHead>
+                  <TableHead className="text-center border-r border-gray-200">점검결과</TableHead>
+                  <TableHead className="text-center">사진/내용</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {checklist.templateItems
+                  .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                  .map((item, index, items) => {
+                  const currentItemState = formState[item.id] || {};
 
-                // 다음 항목과 다른 카테고리인지 확인 (마지막 행인지)
-                const nextItem = index < items.length - 1 ? items[index + 1] : null;
-                const isLastInCategory = !nextItem || nextItem.category !== item.category;
+                  // 이전 항목과 같은 카테고리인지 확인
+                  const prevItem = index > 0 ? items[index - 1] : null;
+                  const showCategory = !prevItem || prevItem.category !== item.category;
 
-                // 같은 카테고리의 항목 수 계산 (rowSpan용)
-                let rowSpan = 1;
-                if (showCategory) {
-                  for (let i = index + 1; i < items.length; i++) {
-                    if (items[i].category === item.category) {
-                      rowSpan++;
-                    } else {
-                      break;
+                  // 다음 항목과 다른 카테고리인지 확인 (마지막 행인지)
+                  const nextItem = index < items.length - 1 ? items[index + 1] : null;
+                  const isLastInCategory = !nextItem || nextItem.category !== item.category;
+
+                  // 같은 카테고리의 항목 수 계산 (rowSpan용)
+                  let rowSpan = 1;
+                  if (showCategory) {
+                    for (let i = index + 1; i < items.length; i++) {
+                      if (items[i].category === item.category) {
+                        rowSpan++;
+                      } else {
+                        break;
+                      }
                     }
                   }
-                }
 
-                return (
-                  <TableRow
-                    key={item.id}
-                    className={`
-                      border-b border-gray-200
-                      ${showCategory && index > 0 ? "border-t-2 border-t-gray-400" : ""}
-                      ${isLastInCategory ? "border-b-2 border-b-gray-400" : ""}
-                    `}
-                  >
-                    {showCategory && (
-                      <TableCell
-                        className="align-top font-medium bg-muted/30 border-r border-gray-200"
-                        rowSpan={rowSpan}
-                      >
-                        {item.category}
-                      </TableCell>
-                    )}
-                    <TableCell className="border-r border-gray-200">{item.description}</TableCell>
-                    <TableCell className="border-r border-gray-200">
-                      <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode}>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
-                      </RadioGroup>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
-                        <div className="flex flex-col items-center justify-center gap-2 w-full">
-                          <div className="w-full">
-                            <Label className="font-medium">사진 업로드 <span className="text-red-600">*</span></Label>
-                            {!isViewMode && (
-                              <FileDropzone
-                                onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
-                                accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                                maxFiles={50}
-                                maxSize={10 * 1024 * 1024}
-                              />
-                            )}
-
-                            {/* Display uploaded images */}
-                            {currentItemState.attachments && currentItemState.attachments.length > 0 && (
-                              <div className="grid grid-cols-2 gap-2 mt-3">
-                                {currentItemState.attachments.map((file, idx) => (
-                                  <div key={idx} className="relative border rounded-lg p-2">
-                                    <img
-                                      src={file.url}
-                                      alt={file.name}
-                                      className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                      onClick={() => setEnlargedImage(file.url)}
-                                    />
-                                    <p className="text-xs truncate mt-1">{file.name}</p>
-                                    <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                                    {!isViewMode && (
-                                      <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        className="absolute top-1 right-1 h-6 w-6 p-0"
-                                        onClick={() => removeAttachment(item.id, idx)}
-                                      >
-                                        ✕
-                                      </Button>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="w-full">
-                            <Label className="text-xs text-red-600 font-medium">비고 (필수 *)</Label>
-                            <Textarea
-                              placeholder="조치 내용을 상세히 작성해주세요..."
-                              value={currentItemState.description || ''}
-                              onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
-                              className="mt-1 w-full border-2 border-red-300"
-                              rows={3}
-                              disabled={isViewMode}
-                            />
-                          </div>
-                        </div>
+                  return (
+                    <TableRow
+                      key={item.id}
+                      className={`
+                        border-b border-gray-200
+                        ${showCategory && index > 0 ? "border-t-2 border-t-gray-400" : ""}
+                        ${isLastInCategory ? "border-b-2 border-b-gray-400" : ""}
+                      `}
+                    >
+                      {showCategory && (
+                        <TableCell
+                          className="align-top font-medium bg-muted/30 border-r border-gray-200"
+                          rowSpan={rowSpan}
+                        >
+                          {item.category}
+                        </TableCell>
                       )}
-                    </TableCell>
-                  </TableRow>
+                      <TableCell className="border-r border-gray-200">{item.description}</TableCell>
+                      <TableCell className="border-r border-gray-200">
+                        <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode}>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                        </RadioGroup>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
+                          <div className="flex flex-col items-center justify-center gap-2 w-full">
+                            <div className="w-full">
+                              <Label className="font-medium">사진 업로드 <span className="text-red-600">*</span></Label>
+                              {!isViewMode && (
+                                <FileDropzone
+                                  onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
+                                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                                  maxFiles={50}
+                                  maxSize={10 * 1024 * 1024}
+                                />
+                              )}
+
+                              {/* Display uploaded images */}
+                              {currentItemState.attachments && currentItemState.attachments.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mt-3">
+                                  {currentItemState.attachments.map((file, idx) => (
+                                    <div key={idx} className="relative border rounded-lg p-2">
+                                      <img
+                                        src={file.url}
+                                        alt={file.name}
+                                        className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => setEnlargedImage(file.url)}
+                                      />
+                                      <p className="text-xs truncate mt-1">{file.name}</p>
+                                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                                      {!isViewMode && (
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                                          onClick={() => removeAttachment(item.id, idx)}
+                                        >
+                                          ✕
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-full">
+                              <Label className="text-xs text-red-600 font-medium">비고 (필수 *)</Label>
+                              <Textarea
+                                placeholder="조치 내용을 상세히 작성해주세요..."
+                                value={currentItemState.description || ''}
+                                onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
+                                className="mt-1 w-full border-2 border-red-300"
+                                rows={3}
+                                disabled={isViewMode}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )}
                 )}
-              )}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* 모바일: 2줄 카드 레이아웃 */}
+          <div className="md:hidden space-y-3">
+            {checklist.templateItems
+              .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+              .map((item, index, items) => {
+              const currentItemState = formState[item.id] || {};
+              const prevItem = index > 0 ? items[index - 1] : null;
+              const showCategoryHeader = !prevItem || prevItem.category !== item.category;
+
+              return (
+                <React.Fragment key={item.id}>
+                  {/* 카테고리 헤더 */}
+                  {showCategoryHeader && (
+                    <div className="bg-primary/10 px-3 py-2 rounded-t-lg font-semibold text-sm text-primary mt-4 first:mt-0">
+                      {item.category}
+                    </div>
+                  )}
+
+                  {/* 점검 항목 카드 */}
+                  <div className={`border rounded-lg overflow-hidden ${showCategoryHeader ? 'rounded-t-none border-t-0' : ''}`}>
+                    {/* 1줄: 구분 | 점검항목 */}
+                    <div className="flex border-b bg-muted/30">
+                      <div className="w-16 flex-shrink-0 px-2 py-2 text-xs font-medium text-muted-foreground border-r flex items-center justify-center">
+                        {item.category}
+                      </div>
+                      <div className="flex-1 px-3 py-2 text-sm font-medium">
+                        {item.description}
+                      </div>
+                    </div>
+
+                    {/* 2줄: O △ X | 사진/내용 */}
+                    <div className="flex">
+                      {/* 점검결과 (O △ X) */}
+                      <div className="w-28 flex-shrink-0 px-2 py-3 border-r flex items-start justify-center">
+                        <RadioGroup
+                          value={currentItemState.checkState || null}
+                          onValueChange={(value) => updateFormState(item.id, 'checkState', value)}
+                          className="flex gap-3"
+                          disabled={isViewMode}
+                        >
+                          <div className="flex flex-col items-center">
+                            <RadioGroupItem value="O" id={`m-${item.id}-o`} disabled={isViewMode} className="h-6 w-6" />
+                            <Label htmlFor={`m-${item.id}-o`} className="text-xs mt-1 text-green-600 font-medium">O</Label>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <RadioGroupItem value="△" id={`m-${item.id}-d`} disabled={isViewMode} className="h-6 w-6" />
+                            <Label htmlFor={`m-${item.id}-d`} className="text-xs mt-1 text-yellow-600 font-medium">△</Label>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <RadioGroupItem value="X" id={`m-${item.id}-x`} disabled={isViewMode} className="h-6 w-6" />
+                            <Label htmlFor={`m-${item.id}-x`} className="text-xs mt-1 text-red-600 font-medium">X</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {/* 사진/내용 */}
+                      <div className="flex-1 px-3 py-2">
+                        {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') ? (
+                          <div className="space-y-3">
+                            {/* 사진 업로드 */}
+                            <div>
+                              <Label className="text-xs font-medium">사진 <span className="text-red-600">*</span></Label>
+                              {!isViewMode && (
+                                <FileDropzone
+                                  onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
+                                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                                  maxFiles={50}
+                                  maxSize={10 * 1024 * 1024}
+                                />
+                              )}
+                              {currentItemState.attachments && currentItemState.attachments.length > 0 && (
+                                <div className="grid grid-cols-3 gap-1 mt-2">
+                                  {currentItemState.attachments.map((file, idx) => (
+                                    <div key={idx} className="relative">
+                                      <img
+                                        src={file.url}
+                                        alt={file.name}
+                                        className="w-full h-16 object-cover rounded cursor-pointer"
+                                        onClick={() => setEnlargedImage(file.url)}
+                                      />
+                                      {!isViewMode && (
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full"
+                                          onClick={() => removeAttachment(item.id, idx)}
+                                        >
+                                          ✕
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {/* 비고 */}
+                            <div>
+                              <Label className="text-xs text-red-600 font-medium">비고 *</Label>
+                              <Textarea
+                                placeholder="조치 내용..."
+                                value={currentItemState.description || ''}
+                                onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
+                                className="mt-1 w-full border-red-300 text-sm"
+                                rows={2}
+                                disabled={isViewMode}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground py-2">
+                            {currentItemState.checkState === 'O' ? (
+                              <span className="text-green-600 font-medium">양호</span>
+                            ) : (
+                              <span>점검결과를 선택하세요</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
 
           {/* 특이사항 섹션 */}
           <div className="border-t-2 border-gray-300 pt-6 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

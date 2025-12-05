@@ -6702,6 +6702,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 챗봇 API (Gemini AI)
   // ============================================
 
+  // 세션별 대화 히스토리 저장 (메모리 기반)
+  interface ChatMessage {
+    role: 'user' | 'model';
+    content: string;
+    timestamp: Date;
+  }
+  const chatHistories = new Map<string, ChatMessage[]>();
+  const MAX_HISTORY = 10; // 세션당 최대 10개 대화 유지
+  const HISTORY_TTL = 30 * 60 * 1000; // 30분 후 자동 삭제
+
+  // 히스토리 정리 함수
+  function cleanupHistory(sessionId: string) {
+    const history = chatHistories.get(sessionId);
+    if (!history) return;
+
+    const now = new Date();
+    const filtered = history.filter(msg =>
+      now.getTime() - msg.timestamp.getTime() < HISTORY_TTL
+    );
+
+    if (filtered.length === 0) {
+      chatHistories.delete(sessionId);
+    } else if (filtered.length > MAX_HISTORY * 2) {
+      // 최근 MAX_HISTORY개만 유지
+      chatHistories.set(sessionId, filtered.slice(-MAX_HISTORY * 2));
+    }
+  }
+
+  // 주기적 히스토리 정리 (5분마다)
+  setInterval(() => {
+    for (const sessionId of chatHistories.keys()) {
+      cleanupHistory(sessionId);
+    }
+  }, 5 * 60 * 1000);
+
   // Gemini AI 챗봇 Rate Limiter (분당 10회 제한)
   const chatbotLimiter = rateLimit({
     windowMs: 60 * 1000, // 1분
@@ -6711,9 +6746,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
   });
 
+  // 강화된 시스템 프롬프트 (안전이 페르소나)
+  const getSystemPrompt = (userRole?: string, userName?: string) => `## 역할
+당신은 "안전이"라는 이름의 안전관리 시스템 전문 AI 도우미입니다.
+20년 경력의 산업안전 전문가처럼 친절하고 전문적으로 답변합니다.
+${userName ? `현재 대화 상대: ${userName}님` : ''}
+${userRole === 'ADMIN' ? '(관리자 권한으로 모든 데이터에 접근 가능)' : ''}
+
+## 시스템 기능
+- TBM(Tool Box Meeting): 일일 안전점검 보고서 작성 및 서명
+- 안전교육: 온라인 안전교육 수강, 평가, 수료증 발급
+- 안전점검: 정기/수시 안전점검 수행 및 결과 기록
+- 결재: TBM 및 월간 보고서 결재 처리
+- 공지사항: 안전 관련 공지 확인
+
+## 데이터베이스 접근
+실시간 데이터를 조회할 수 있습니다. 현황, 통계, 목록 요청 시 적절한 도구를 사용하세요.
+
+## 답변 스타일
+- 핵심 먼저, 부연 설명은 간결하게
+- 3줄 이내로 요약 (상세 요청 시 확장)
+- 통계는 표나 차트로 시각화
+- 액션 가능한 조언 포함
+- 이전 대화 맥락을 기억하여 자연스럽게 대화
+
+## 차트 형식
+통계 데이터 시각화 시 답변 마지막에:
+[CHART]{"type":"bar|pie|line","title":"제목","data":[{"name":"항목","value":숫자}]}[/CHART]
+
+## 제약 사항
+- 비밀번호, 개인정보 절대 노출 금지
+- 불확실한 정보는 "확인이 필요합니다" 명시
+- 안전 관련 위험한 조언 절대 금지
+- 법규 인용 시 출처 명시 (예: 산업안전보건법 제XX조)`;
+
   app.post("/api/chatbot/ask", requireAuth, chatbotLimiter, async (req, res) => {
     try {
-      const { question } = req.body;
+      const { question, sessionId } = req.body;
 
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ message: "질문이 필요합니다." });
@@ -6728,32 +6797,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // 세션 ID 생성 (클라이언트에서 제공하지 않으면 사용자 ID 기반)
+      const userId = req.session.user?.id || 'anonymous';
+      const userRole = req.session.user?.role;
+      const userName = req.session.user?.name;
+      const effectiveSessionId = sessionId || `user-${userId}`;
+
+      // 히스토리 가져오기
+      let history = chatHistories.get(effectiveSessionId) || [];
+      cleanupHistory(effectiveSessionId);
+
       const ai = new GoogleGenAI({ apiKey });
 
-      // 시스템 프롬프트: 안전관리 시스템 도우미 역할
-      const systemPrompt = `당신은 안전관리 시스템의 AI 도우미입니다.
-사용자들의 질문에 친절하고 정확하게 답변해주세요.
-
-이 시스템의 주요 기능:
-- TBM(Tool Box Meeting): 일일 안전점검 보고서 작성
-- 안전교육: 온라인 안전교육 수강 및 평가
-- 안전점검: 정기/수시 안전점검 수행
-- 결재: TBM 및 안전점검 결재 처리
-
-당신은 데이터베이스에 접근하여 실시간 데이터를 조회할 수 있습니다.
-사용자가 현황, 통계, 목록 등을 요청하면 적절한 도구를 사용하세요.
-
-답변 규칙:
-1. 데이터 조회 결과를 보기 쉽게 정리해서 답변하세요
-2. 한국어로 답변하세요
-3. 숫자와 통계는 명확하게 표시하세요
-4. 민감한 정보(비밀번호 등)는 절대 포함하지 마세요
-5. 표 형식이 적합한 데이터는 마크다운 표(|로 구분)를 사용하세요
-6. 사용자가 차트/그래프를 요청하거나, 통계 데이터가 시각화에 적합한 경우:
-   답변 마지막에 아래 형식으로 차트 데이터를 추가하세요:
-   [CHART]{"type":"bar","title":"제목","data":[{"name":"항목","value":숫자}]}[/CHART]
-   - type: "bar"(막대), "pie"(원형), "line"(꺾은선)
-   - 비율/구성은 pie, 추세는 line, 비교는 bar`;
+      // 강화된 시스템 프롬프트 사용
+      const systemPrompt = getSystemPrompt(userRole, userName);
 
       // 모델: 환경변수로 설정 가능, 기본값은 gemini-2.5-flash-lite (무료 일 1,000회)
       const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
@@ -6765,10 +6822,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parameters: tool.parameters
       }));
 
+      // 히스토리를 포함한 대화 컨텍스트 생성
+      const historyContext = history.length > 0
+        ? "\n\n## 이전 대화 기록:\n" + history.map(h =>
+            `${h.role === 'user' ? '사용자' : '안전이'}: ${h.content}`
+          ).join('\n')
+        : "";
+
       // 첫 번째 호출: 도구 사용 여부 결정
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: systemPrompt + "\n\n사용자 질문: " + question,
+        contents: systemPrompt + historyContext + "\n\n사용자 질문: " + question,
         config: {
           maxOutputTokens: 1000,
           temperature: 0.3,
@@ -6835,7 +6899,12 @@ ${JSON.stringify(toolResults, null, 2)}
           }
         }
 
-        res.json({ answer, hasData: true, chart });
+        // 히스토리에 저장
+        history.push({ role: 'user', content: question, timestamp: new Date() });
+        history.push({ role: 'model', content: answer, timestamp: new Date() });
+        chatHistories.set(effectiveSessionId, history.slice(-MAX_HISTORY * 2));
+
+        res.json({ answer, hasData: true, chart, sessionId: effectiveSessionId });
       } else {
         // 도구 호출 없이 일반 응답
         const rawAnswer = response.text || "죄송합니다. 응답을 생성하지 못했습니다.";
@@ -6854,7 +6923,12 @@ ${JSON.stringify(toolResults, null, 2)}
           }
         }
 
-        res.json({ answer, hasData: false, chart });
+        // 히스토리에 저장
+        history.push({ role: 'user', content: question, timestamp: new Date() });
+        history.push({ role: 'model', content: answer, timestamp: new Date() });
+        chatHistories.set(effectiveSessionId, history.slice(-MAX_HISTORY * 2));
+
+        res.json({ answer, hasData: false, chart, sessionId: effectiveSessionId });
       }
     } catch (error: any) {
       console.error("Chatbot API error:", error);
@@ -6878,6 +6952,187 @@ ${JSON.stringify(toolResults, null, 2)}
         message: "AI 응답 생성 실패",
         answer: "죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
       });
+    }
+  });
+
+  // 스트리밍 응답 API (SSE)
+  app.post("/api/chatbot/ask-stream", requireAuth, chatbotLimiter, async (req, res) => {
+    try {
+      const { question, sessionId } = req.body;
+
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ message: "질문이 필요합니다." });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({
+          message: "AI 서비스가 설정되지 않았습니다."
+        });
+      }
+
+      // SSE 헤더 설정
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Nginx 버퍼링 비활성화
+
+      const userId = req.session.user?.id || 'anonymous';
+      const userRole = req.session.user?.role;
+      const userName = req.session.user?.name;
+      const effectiveSessionId = sessionId || `user-${userId}`;
+
+      // 히스토리 가져오기
+      let history = chatHistories.get(effectiveSessionId) || [];
+      cleanupHistory(effectiveSessionId);
+
+      const ai = new GoogleGenAI({ apiKey });
+      const systemPrompt = getSystemPrompt(userRole, userName);
+      const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+
+      const tools = chatbotTools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }));
+
+      const historyContext = history.length > 0
+        ? "\n\n## 이전 대화 기록:\n" + history.map(h =>
+            `${h.role === 'user' ? '사용자' : '안전이'}: ${h.content}`
+          ).join('\n')
+        : "";
+
+      // 먼저 Function Call 필요 여부 확인 (non-streaming)
+      const checkResponse = await ai.models.generateContent({
+        model: modelName,
+        contents: systemPrompt + historyContext + "\n\n사용자 질문: " + question,
+        config: { maxOutputTokens: 100, temperature: 0.1 },
+        tools: [{ functionDeclarations: tools }]
+      });
+
+      const functionCalls = checkResponse.functionCalls;
+
+      if (functionCalls && functionCalls.length > 0) {
+        // Function Call이 필요한 경우 - 도구 실행 후 스트리밍 응답
+        const toolResults: any[] = [];
+
+        for (const fc of functionCalls) {
+          try {
+            const result = await executeTool(fc.name, fc.args || {});
+            toolResults.push({ name: fc.name, result });
+          } catch (err) {
+            console.error(`Tool execution error (${fc.name}):`, err);
+            toolResults.push({ name: fc.name, error: "조회 중 오류가 발생했습니다." });
+          }
+        }
+
+        // 도구 결과를 포함한 스트리밍 응답
+        const finalPrompt = `${systemPrompt}${historyContext}
+
+사용자 질문: ${question}
+
+조회된 데이터:
+${JSON.stringify(toolResults, null, 2)}
+
+위 데이터를 바탕으로 사용자에게 친절하게 답변해주세요.`;
+
+        try {
+          const stream = await ai.models.generateContentStream({
+            model: modelName,
+            contents: finalPrompt,
+            config: { maxOutputTokens: 1500, temperature: 0.5 }
+          });
+
+          let fullText = '';
+          for await (const chunk of stream) {
+            const text = chunk.text || '';
+            fullText += text;
+            res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+          }
+
+          // 차트 데이터 파싱
+          const chartMatch = fullText.match(/\[CHART\](.*?)\[\/CHART\]/s);
+          let chart = null;
+          if (chartMatch) {
+            try {
+              chart = JSON.parse(chartMatch[1]);
+            } catch (e) { /* ignore */ }
+          }
+
+          // 히스토리 저장
+          const cleanAnswer = fullText.replace(/\[CHART\].*?\[\/CHART\]/s, '').trim();
+          history.push({ role: 'user', content: question, timestamp: new Date() });
+          history.push({ role: 'model', content: cleanAnswer, timestamp: new Date() });
+          chatHistories.set(effectiveSessionId, history.slice(-MAX_HISTORY * 2));
+
+          res.write(`data: ${JSON.stringify({ done: true, chart, sessionId: effectiveSessionId })}\n\n`);
+          res.end();
+        } catch (streamError) {
+          console.error("Streaming error:", streamError);
+          res.write(`data: ${JSON.stringify({ error: "스트리밍 오류가 발생했습니다.", done: true })}\n\n`);
+          res.end();
+        }
+      } else {
+        // Function Call 없이 직접 스트리밍 응답
+        try {
+          const stream = await ai.models.generateContentStream({
+            model: modelName,
+            contents: systemPrompt + historyContext + "\n\n사용자 질문: " + question,
+            config: { maxOutputTokens: 1500, temperature: 0.5 }
+          });
+
+          let fullText = '';
+          for await (const chunk of stream) {
+            const text = chunk.text || '';
+            fullText += text;
+            res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+          }
+
+          // 차트 데이터 파싱
+          const chartMatch = fullText.match(/\[CHART\](.*?)\[\/CHART\]/s);
+          let chart = null;
+          if (chartMatch) {
+            try {
+              chart = JSON.parse(chartMatch[1]);
+            } catch (e) { /* ignore */ }
+          }
+
+          // 히스토리 저장
+          const cleanAnswer = fullText.replace(/\[CHART\].*?\[\/CHART\]/s, '').trim();
+          history.push({ role: 'user', content: question, timestamp: new Date() });
+          history.push({ role: 'model', content: cleanAnswer, timestamp: new Date() });
+          chatHistories.set(effectiveSessionId, history.slice(-MAX_HISTORY * 2));
+
+          res.write(`data: ${JSON.stringify({ done: true, chart, sessionId: effectiveSessionId })}\n\n`);
+          res.end();
+        } catch (streamError) {
+          console.error("Streaming error:", streamError);
+          res.write(`data: ${JSON.stringify({ error: "스트리밍 오류가 발생했습니다.", done: true })}\n\n`);
+          res.end();
+        }
+      }
+    } catch (error: any) {
+      console.error("Chatbot stream API error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "AI 응답 생성 실패" });
+      } else {
+        res.write(`data: ${JSON.stringify({ error: "오류가 발생했습니다.", done: true })}\n\n`);
+        res.end();
+      }
+    }
+  });
+
+  // 대화 히스토리 초기화 API
+  app.post("/api/chatbot/reset", requireAuth, async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      const userId = req.session.user?.id || 'anonymous';
+      const effectiveSessionId = sessionId || `user-${userId}`;
+
+      chatHistories.delete(effectiveSessionId);
+      res.json({ success: true, message: "대화 기록이 초기화되었습니다." });
+    } catch (error) {
+      res.status(500).json({ message: "초기화 실패" });
     }
   });
 
