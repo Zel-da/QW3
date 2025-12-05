@@ -12,7 +12,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Terminal, Camera, X, Mic, FileText, Loader2 } from "lucide-react";
+import { Badge } from '@/components/ui/badge';
+import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,7 +21,8 @@ import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
 import { FileDropzone } from '@/components/FileDropzone';
 import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
-import { AudioRecorder } from '@/components/AudioRecorder';
+import { FloatingAudioPanel } from '@/components/FloatingAudioPanel';
+import { IssueDetailModal } from '@/components/IssueDetailModal';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
@@ -48,6 +50,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [audioRecording, setAudioRecording] = useState(null);
   const [transcription, setTranscription] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  // 이슈 상세 입력 모달 state
+  const [issueModalOpen, setIssueModalOpen] = useState(false);
+  const [selectedIssueItem, setSelectedIssueItem] = useState(null);
 
   useEffect(() => {
     if (site) {
@@ -637,61 +642,59 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                         </RadioGroup>
                       </TableCell>
                       <TableCell className="text-center">
-                        {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') && (
-                          <div className="flex flex-col items-center justify-center gap-2 w-full">
-                            <div className="w-full">
-                              <Label className="font-medium">사진 업로드 <span className="text-red-600">*</span></Label>
-                              {!isViewMode && (
-                                <FileDropzone
-                                  onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
-                                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                                  maxFiles={50}
-                                  maxSize={10 * 1024 * 1024}
-                                />
-                              )}
-
-                              {/* Display uploaded images */}
-                              {currentItemState.attachments && currentItemState.attachments.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-3">
-                                  {currentItemState.attachments.map((file, idx) => (
-                                    <div key={idx} className="relative border rounded-lg p-2">
-                                      <img
-                                        src={file.url}
-                                        alt={file.name}
-                                        className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                        onClick={() => setEnlargedImage(file.url)}
-                                      />
-                                      <p className="text-xs truncate mt-1">{file.name}</p>
-                                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                                      {!isViewMode && (
-                                        <Button
-                                          type="button"
-                                          variant="destructive"
-                                          size="sm"
-                                          className="absolute top-1 right-1 h-6 w-6 p-0"
-                                          onClick={() => removeAttachment(item.id, idx)}
-                                        >
-                                          ✕
-                                        </Button>
-                                      )}
-                                    </div>
+                        {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') ? (
+                          <div className="flex flex-col items-center gap-2">
+                            {/* 입력 완료 상태 표시 */}
+                            {currentItemState.attachments?.length > 0 && currentItemState.description ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex -space-x-2">
+                                  {currentItemState.attachments.slice(0, 3).map((file, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={file.url}
+                                      alt=""
+                                      className="w-8 h-8 object-cover rounded border-2 border-white cursor-pointer"
+                                      onClick={() => setEnlargedImage(file.url)}
+                                    />
                                   ))}
+                                  {currentItemState.attachments.length > 3 && (
+                                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs border-2 border-white">
+                                      +{currentItemState.attachments.length - 3}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="w-full">
-                              <Label className="text-xs text-red-600 font-medium">비고 (필수 *)</Label>
-                              <Textarea
-                                placeholder="조치 내용을 상세히 작성해주세요..."
-                                value={currentItemState.description || ''}
-                                onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
-                                className="mt-1 w-full border-2 border-red-300"
-                                rows={3}
-                                disabled={isViewMode}
-                              />
-                            </div>
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  입력완료
+                                </Badge>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-red-600 border-red-600">
+                                입력필요
+                              </Badge>
+                            )}
+                            {!isViewMode && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                onClick={() => {
+                                  setSelectedIssueItem({
+                                    id: item.id,
+                                    category: item.category,
+                                    description: item.description,
+                                    checkState: currentItemState.checkState
+                                  });
+                                  setIssueModalOpen(true);
+                                }}
+                              >
+                                <Edit3 className="h-3 w-3" />
+                                {currentItemState.attachments?.length > 0 ? '수정' : '입력'}
+                              </Button>
+                            )}
                           </div>
-                        )}
+                        ) : currentItemState.checkState === 'O' ? (
+                          <span className="text-green-600 text-sm">양호</span>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   )}
@@ -758,56 +761,47 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       {/* 사진/내용 */}
                       <div className="flex-1 px-3 py-2">
                         {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') ? (
-                          <div className="space-y-3">
-                            {/* 사진 업로드 */}
-                            <div>
-                              <Label className="text-xs font-medium">사진 <span className="text-red-600">*</span></Label>
-                              {!isViewMode && (
-                                <FileDropzone
-                                  onFilesSelected={(files) => handlePhotoUpload(item.id, files)}
-                                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                                  maxFiles={50}
-                                  maxSize={10 * 1024 * 1024}
-                                />
-                              )}
-                              {currentItemState.attachments && currentItemState.attachments.length > 0 && (
-                                <div className="grid grid-cols-3 gap-1 mt-2">
-                                  {currentItemState.attachments.map((file, idx) => (
-                                    <div key={idx} className="relative">
-                                      <img
-                                        src={file.url}
-                                        alt={file.name}
-                                        className="w-full h-16 object-cover rounded cursor-pointer"
-                                        onClick={() => setEnlargedImage(file.url)}
-                                      />
-                                      {!isViewMode && (
-                                        <Button
-                                          type="button"
-                                          variant="destructive"
-                                          size="sm"
-                                          className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full"
-                                          onClick={() => removeAttachment(item.id, idx)}
-                                        >
-                                          ✕
-                                        </Button>
-                                      )}
-                                    </div>
+                          <div className="flex items-center gap-2">
+                            {/* 입력 완료 상태 */}
+                            {currentItemState.attachments?.length > 0 && currentItemState.description ? (
+                              <div className="flex items-center gap-2 flex-1">
+                                <div className="flex -space-x-1">
+                                  {currentItemState.attachments.slice(0, 2).map((file, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={file.url}
+                                      alt=""
+                                      className="w-6 h-6 object-cover rounded border border-white"
+                                      onClick={() => setEnlargedImage(file.url)}
+                                    />
                                   ))}
+                                  {currentItemState.attachments.length > 2 && (
+                                    <span className="text-xs text-muted-foreground ml-1">+{currentItemState.attachments.length - 2}</span>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            {/* 비고 */}
-                            <div>
-                              <Label className="text-xs text-red-600 font-medium">비고 *</Label>
-                              <Textarea
-                                placeholder="조치 내용..."
-                                value={currentItemState.description || ''}
-                                onChange={(e) => updateFormState(item.id, 'description', e.target.value)}
-                                className="mt-1 w-full border-red-300 text-sm"
-                                rows={2}
-                                disabled={isViewMode}
-                              />
-                            </div>
+                                <span className="text-xs text-green-600">완료</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-red-600 flex-1">입력필요</span>
+                            )}
+                            {!isViewMode && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  setSelectedIssueItem({
+                                    id: item.id,
+                                    category: item.category,
+                                    description: item.description,
+                                    checkState: currentItemState.checkState
+                                  });
+                                  setIssueModalOpen(true);
+                                }}
+                              >
+                                {currentItemState.attachments?.length > 0 ? '수정' : '입력'}
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="text-xs text-muted-foreground py-2">
@@ -881,89 +875,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* TBM 음성 녹음 섹션 */}
-          <div className="border-t-2 border-gray-300 pt-6 mt-8">
-            <AudioRecorder
-              onRecordingComplete={handleAudioRecordingComplete}
-              onDelete={handleAudioDelete}
-              existingAudio={audioRecording}
-              maxDurationSeconds={1800}
-              disabled={isViewMode}
-            />
-
-            {/* 녹음이 있을 때 STT 변환 버튼 (선택) */}
-            {audioRecording && !isViewMode && (
-              <div className="mt-4 p-3 bg-muted/20 rounded-lg border border-dashed">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTranscribe}
-                    disabled={isTranscribing}
-                    className="gap-2"
-                  >
-                    {isTranscribing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        변환 중...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        텍스트 변환
-                      </>
-                    )}
-                  </Button>
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium text-primary">(선택)</span> 음성을 텍스트로 변환합니다
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STT 변환 결과 표시 */}
-            {transcription && (
-              <div className="mt-4 border rounded-lg p-4 bg-muted/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-sm">음성 → 텍스트 변환 결과</span>
-                  {transcription.status === 'completed' && (
-                    <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">완료</span>
-                  )}
-                  {transcription.status === 'failed' && (
-                    <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">실패</span>
-                  )}
-                </div>
-                {transcription.status === 'completed' && transcription.text ? (
-                  <div className="space-y-2">
-                    <div className="bg-background border rounded p-3 text-sm max-h-60 overflow-y-auto whitespace-pre-wrap">
-                      {transcription.text}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        변환 시간: {new Date(transcription.processedAt).toLocaleString('ko-KR')}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(transcription.text);
-                          toast({ title: "복사 완료", description: "텍스트가 클립보드에 복사되었습니다." });
-                        }}
-                      >
-                        복사
-                      </Button>
-                    </div>
-                  </div>
-                ) : transcription.status === 'failed' ? (
-                  <div className="text-sm text-red-600">
-                    변환 실패: {transcription.error || '알 수 없는 오류'}
-                  </div>
-                ) : null}
-              </div>
-            )}
           </div>
 
           {/* 참석자 서명 섹션 */}
@@ -1057,6 +968,42 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 플로팅 오디오 패널 */}
+      {checklist && !isViewMode && (
+        <FloatingAudioPanel
+          onRecordingComplete={(data) => setAudioRecording(data)}
+          onTranscriptionComplete={(data) => setTranscription(data)}
+          onDelete={() => {
+            setAudioRecording(null);
+            setTranscription(null);
+          }}
+          existingAudio={audioRecording}
+          existingTranscription={transcription}
+          maxDurationSeconds={1800}
+          disabled={isViewMode}
+        />
+      )}
+
+      {/* 이슈 상세 입력 모달 (△/X 항목) */}
+      <IssueDetailModal
+        isOpen={issueModalOpen}
+        onClose={() => {
+          setIssueModalOpen(false);
+          setSelectedIssueItem(null);
+        }}
+        onSave={(data) => {
+          if (selectedIssueItem) {
+            updateFormState(selectedIssueItem.id, 'description', data.description);
+            updateFormState(selectedIssueItem.id, 'attachments', data.attachments);
+          }
+        }}
+        item={selectedIssueItem}
+        initialData={selectedIssueItem ? {
+          description: formState[selectedIssueItem.id]?.description || '',
+          attachments: formState[selectedIssueItem.id]?.attachments || []
+        } : undefined}
+      />
 
       <div className="flex justify-end mt-6 gap-3">
         {isViewMode ? (
