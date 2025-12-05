@@ -668,6 +668,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only: Get PENDING users list (MUST be before /api/users/:userId to avoid matching "pending" as userId)
+  app.get("/api/users/pending", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const pendingUsers = await prisma.user.findMany({
+        where: { role: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          team: { select: { id: true, name: true } }
+        }
+      });
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error('Failed to fetch pending users:', error);
+      res.status(500).json({ message: "Failed to fetch pending users" });
+    }
+  });
+
   // Users can view their own profile, admins can view any
   app.get("/api/users/:userId", requireAuth, requireOwnership(), async (req, res) => {
     try {
@@ -721,23 +738,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await prisma.user.delete({ where: { id: req.params.userId } });
       res.status(204).send();
     } catch (error) { res.status(500).json({ message: "Failed to delete user" }); }
-  });
-
-  // Admin-only: Get PENDING users list
-  app.get("/api/users/pending", requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const pendingUsers = await prisma.user.findMany({
-        where: { role: 'PENDING' },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          team: { select: { id: true, name: true } }
-        }
-      });
-      res.json(pendingUsers);
-    } catch (error) {
-      console.error('Failed to fetch pending users:', error);
-      res.status(500).json({ message: "Failed to fetch pending users" });
-    }
   });
 
   // Admin-only: Approve PENDING user (assign role, team, site)
@@ -1173,6 +1173,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const users = await prisma.user.findMany({ where: { teamId: parseInt(teamId) }, orderBy: { name: 'asc' } });
       res.json(users);
     } catch (error) { res.status(500).json({ message: "Failed to fetch team users" }); }
+  });
+
+  // GET /api/teams/:teamId/members - 팀 멤버 목록 조회 (월별 보고서에서 사용)
+  app.get("/api/teams/:teamId/members", requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const users = await prisma.user.findMany({
+        where: { teamId: parseInt(teamId) },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        }
+      });
+      res.json(users);
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
   });
 
   app.post("/api/teams/:teamId/members", requireAuth, async (req, res) => {

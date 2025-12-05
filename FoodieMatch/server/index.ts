@@ -4,7 +4,7 @@ import pgSimple from "connect-pg-simple";
 import pg from "pg";
 import helmet from "helmet";
 import compression from "compression";
-import { prisma } from "./db";
+import { prisma, startConnectionHealthCheck } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
@@ -146,6 +146,9 @@ app.use((req, res, next) => {
   // Start email schedulers
   await startAllSchedulers();
   log('✅ Email service initialized with schedulers');
+
+  // Start database connection health check (prevents idle connection drops)
+  startConnectionHealthCheck(5 * 60 * 1000); // 5분마다 체크
 
   const port = parseInt(process.env.PORT || '5000', 10);
 
