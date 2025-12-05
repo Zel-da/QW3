@@ -2800,7 +2800,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lt: new Date(yearNum, monthNum, 1),
           },
         },
-        include: { reportDetails: true },
+        include: {
+          reportDetails: {
+            include: { attachments: true }
+          }
+        },
         orderBy: { reportDate: 'asc' },
       });
 
