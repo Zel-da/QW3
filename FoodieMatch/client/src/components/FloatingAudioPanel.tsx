@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Square, Play, Pause, ChevronDown, ChevronUp, X, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, ChevronDown, ChevronUp, X, Upload, Trash2, FileText, Loader2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+interface Position {
+  x: number;
+  y: number;
+}
 
 export interface AudioRecordingData {
   url: string;
@@ -55,6 +60,11 @@ export function FloatingAudioPanel({
   const [duration, setDuration] = useState(existingAudio?.duration || 0);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcription, setTranscription] = useState<TranscriptionData | null>(existingTranscription || null);
+
+  // 드래그 관련 state
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -275,32 +285,123 @@ export function FloatingAudioPanel({
     }
   }, [audioUrl, onTranscriptionComplete]);
 
+  // 드래그 이벤트 핸들러
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // 가장 가까운 fixed 부모 요소를 찾아서 offset 계산
+    const target = e.currentTarget as HTMLElement;
+    const panel = target.closest('.fixed') as HTMLElement;
+    if (panel) {
+      const rect = panel.getBoundingClientRect();
+      setDragOffset({
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      });
+    }
+  }, []);
+
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    // 화면 경계 내에서만 이동
+    const maxX = window.innerWidth - 280; // 패널 너비 고려
+    const maxY = window.innerHeight - 100;
+
+    const newX = Math.max(0, Math.min(clientX - dragOffset.x, maxX));
+    const newY = Math.max(0, Math.min(clientY - dragOffset.y, maxY));
+
+    setPosition({ x: newX, y: newY });
+  }, [isDragging, dragOffset]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // 드래그 이벤트 리스너 등록
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
   if (disabled) return null;
+
+  // position이 0,0이면 기본 위치 사용 (right-4, top-1/3)
+  const hasCustomPosition = position.x !== 0 || position.y !== 0;
 
   return (
     <>
       {/* Desktop: 오른쪽 플로팅 */}
-      <div className="hidden md:block fixed right-4 top-1/3 z-50 w-64">
+      <div
+        className={cn(
+          "hidden md:block fixed z-50 w-64",
+          isDragging && "select-none"
+        )}
+        style={hasCustomPosition ? {
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+        } : {
+          right: '16px',
+          top: '33%',
+        }}
+      >
         <div className={cn(
           "bg-background border-2 rounded-lg shadow-lg transition-all",
-          state === 'recording' && "border-red-500"
+          state === 'recording' && "border-red-500",
+          isDragging && "shadow-2xl"
         )}>
-          {/* 헤더 */}
+          {/* 헤더 - 드래그 핸들 포함 */}
           <div
             className={cn(
-              "flex items-center justify-between px-3 py-2 cursor-pointer rounded-t-lg",
+              "flex items-center justify-between px-2 py-2 rounded-t-lg",
               state === 'recording' ? "bg-red-500 text-white" : "bg-primary/10"
             )}
-            onClick={() => setIsExpanded(!isExpanded)}
           >
-            <div className="flex items-center gap-2">
+            {/* 드래그 핸들 */}
+            <div
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-black/10 rounded touch-none"
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
+              onDoubleClick={() => setPosition({ x: 0, y: 0 })}
+              title="드래그하여 이동 (더블클릭: 원위치)"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+            <div
+              className="flex items-center gap-2 flex-1 cursor-pointer px-1"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
               <Mic className="h-4 w-4" />
               <span className="font-medium text-sm">TBM 녹음</span>
               {state === 'recording' && (
                 <span className="text-xs font-mono">{formatTime(recordingTime)}</span>
               )}
             </div>
-            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            <div
+              className="cursor-pointer p-1 hover:bg-black/10 rounded"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </div>
           </div>
 
           {/* 컨텐츠 */}
@@ -446,20 +547,47 @@ export function FloatingAudioPanel({
         </div>
       </div>
 
-      {/* Mobile: 하단 플로팅 */}
-      <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
+      {/* Mobile: 하단 플로팅 (드래그 가능) */}
+      <div
+        className={cn(
+          "md:hidden fixed z-50",
+          isDragging && "select-none"
+        )}
+        style={hasCustomPosition ? {
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          width: 'calc(100% - 32px)',
+          maxWidth: '400px',
+        } : {
+          bottom: '16px',
+          left: '16px',
+          right: '16px',
+        }}
+      >
         <div className={cn(
           "bg-background border-2 rounded-lg shadow-lg",
-          state === 'recording' && "border-red-500"
+          state === 'recording' && "border-red-500",
+          isDragging && "shadow-2xl"
         )}>
           <div
             className={cn(
-              "flex items-center justify-between px-3 py-2 cursor-pointer",
+              "flex items-center justify-between px-2 py-2",
               state === 'recording' ? "bg-red-500 text-white" : "bg-primary/10"
             )}
-            onClick={() => setIsExpanded(!isExpanded)}
           >
-            <div className="flex items-center gap-2">
+            {/* 드래그 핸들 */}
+            <div
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-black/10 rounded touch-none"
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
+              onDoubleClick={() => setPosition({ x: 0, y: 0 })}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+            <div
+              className="flex items-center gap-2 flex-1 cursor-pointer px-1"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
               <Mic className="h-4 w-4" />
               <span className="font-medium text-sm">TBM 녹음</span>
               {state === 'recording' && (
@@ -469,7 +597,12 @@ export function FloatingAudioPanel({
                 <span className="text-xs text-green-600">녹음완료</span>
               )}
             </div>
-            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            <div
+              className="cursor-pointer p-1 hover:bg-black/10 rounded"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </div>
           </div>
 
           {isExpanded && (

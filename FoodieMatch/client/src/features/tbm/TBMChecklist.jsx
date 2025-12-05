@@ -723,14 +723,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
                   {/* 점검 항목 카드 */}
                   <div className={`border rounded-lg overflow-hidden ${showCategoryHeader ? 'rounded-t-none border-t-0' : ''}`}>
-                    {/* 1줄: 구분 | 점검항목 */}
-                    <div className="flex border-b bg-muted/30">
-                      <div className="w-16 flex-shrink-0 px-2 py-2 text-xs font-medium text-muted-foreground border-r flex items-center justify-center">
-                        {item.category}
-                      </div>
-                      <div className="flex-1 px-3 py-2 text-sm font-medium">
-                        {item.description}
-                      </div>
+                    {/* 1줄: 점검항목 */}
+                    <div className="px-3 py-2 border-b bg-muted/30">
+                      <span className="text-sm font-medium">{item.description}</span>
                     </div>
 
                     {/* 2줄: O △ X | 사진/내용 */}
