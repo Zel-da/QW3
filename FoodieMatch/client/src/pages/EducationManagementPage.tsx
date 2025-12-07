@@ -19,26 +19,31 @@ import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
 import { FileDropzone } from '@/components/FileDropzone';
 
-// YouTube URL을 임베드 URL로 변환하는 헬퍼 함수
+// YouTube URL을 임베드 URL로 변환 (youtube-nocookie.com 사용)
 const getYouTubeEmbedUrl = (url: string): string => {
   if (!url) return '';
-  if (url.includes('/embed/')) return url;
 
   let videoId = '';
 
-  // watch?v= 형식 (타임스탬프 등 다른 파라미터 무시)
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) videoId = watchMatch[1];
+  // 이미 embed URL인 경우 videoId 추출
+  if (url.includes('/embed/')) {
+    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
+    if (embedMatch) videoId = embedMatch[1];
+  }
+
+  // watch?v= 형식
+  if (!videoId) {
+    const watchMatch = url.match(/[?&]v=([^&]+)/);
+    if (watchMatch) videoId = watchMatch[1];
+  }
 
   // youtu.be/ID 형식
-  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-  if (shortMatch) videoId = shortMatch[1];
+  if (!videoId) {
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) videoId = shortMatch[1];
+  }
 
-  // embed/ID 형식
-  const embedMatch = url.match(/\/embed\/([^?]+)/);
-  if (embedMatch) videoId = embedMatch[1];
-
-  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
 };
 
 const fetchCourses = async () => {
@@ -460,6 +465,10 @@ export default function EducationManagementPage() {
                                 <iframe
                                   src={getYouTubeEmbedUrl(item.url)}
                                   className="w-full h-full rounded"
+                                  title="YouTube video preview"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  referrerPolicy="strict-origin-when-cross-origin"
                                   allowFullScreen
                                 />
                               </div>

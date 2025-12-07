@@ -24,22 +24,32 @@ const getYouTubeId = (url: string): string | null => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-// YouTube URL을 embed URL로 변환
+// YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
 const getYouTubeEmbedUrl = (url: string): string => {
   if (!url) return '';
-  if (url.includes('/embed/')) return url;
 
   let videoId = '';
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) videoId = watchMatch[1];
 
-  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-  if (shortMatch) videoId = shortMatch[1];
+  // 이미 embed URL인 경우 videoId 추출
+  if (url.includes('/embed/')) {
+    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
+    if (embedMatch) videoId = embedMatch[1];
+  }
 
-  const embedMatch = url.match(/\/embed\/([^?]+)/);
-  if (embedMatch) videoId = embedMatch[1];
+  // watch?v= 형식
+  if (!videoId) {
+    const watchMatch = url.match(/[?&]v=([^&]+)/);
+    if (watchMatch) videoId = watchMatch[1];
+  }
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
+  // youtu.be/ID 형식
+  if (!videoId) {
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) videoId = shortMatch[1];
+  }
+
+  // youtube-nocookie.com 사용 (프라이버시 강화 + CORS 이슈 해결)
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
 };
 
 export default function CourseContentPage() {
@@ -268,10 +278,11 @@ export default function CourseContentPage() {
                       <iframe
                         key={videoId}
                         className="absolute inset-0 w-full h-full"
-                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&origin=${encodeURIComponent(window.location.origin)}`}
+                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`}
                         title="YouTube video player"
                         frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
                         allowFullScreen
                       ></iframe>
                     ) : (
@@ -320,7 +331,15 @@ export default function CourseContentPage() {
                       {course.attachments.filter(a => a.type === 'youtube').map((file, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <div className="aspect-video">
-                            <iframe src={getYouTubeEmbedUrl(file.url)} className="w-full h-full rounded" allowFullScreen />
+                            <iframe
+                              src={getYouTubeEmbedUrl(file.url)}
+                              className="w-full h-full rounded"
+                              title={`YouTube video ${idx + 1}`}
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              referrerPolicy="strict-origin-when-cross-origin"
+                              allowFullScreen
+                            />
                           </div>
                         </div>
                       ))}

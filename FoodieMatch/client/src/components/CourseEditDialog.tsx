@@ -45,22 +45,29 @@ const updateAssessments = async ({ courseId, questions }: { courseId: string; qu
     return res.json();
 };
 
-// YouTube URL을 embed URL로 변환
+// YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
 function getYouTubeEmbedUrl(url: string): string {
   if (!url) return '';
-  if (url.includes('/embed/')) return url;
 
   let videoId = '';
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) videoId = watchMatch[1];
 
-  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-  if (shortMatch) videoId = shortMatch[1];
+  // 이미 embed URL인 경우 videoId 추출
+  if (url.includes('/embed/')) {
+    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
+    if (embedMatch) videoId = embedMatch[1];
+  }
 
-  const embedMatch = url.match(/\/embed\/([^?]+)/);
-  if (embedMatch) videoId = embedMatch[1];
+  if (!videoId) {
+    const watchMatch = url.match(/[?&]v=([^&]+)/);
+    if (watchMatch) videoId = watchMatch[1];
+  }
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
+  if (!videoId) {
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) videoId = shortMatch[1];
+  }
+
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
 }
 
 export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogProps) {
@@ -332,8 +339,11 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                               <iframe
                                 src={getYouTubeEmbedUrl(item.url)}
                                 className="w-full h-full rounded"
+                                title="YouTube video preview"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerPolicy="strict-origin-when-cross-origin"
                                 allowFullScreen
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               />
                             </div>
                           )}

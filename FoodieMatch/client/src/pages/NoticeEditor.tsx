@@ -14,35 +14,31 @@ import { Badge } from "@/components/ui/badge";
 import { FileDropzone } from "@/components/FileDropzone";
 import { useAutoSave } from "@/hooks/useAutoSave";
 
-// YouTube URL을 embed URL로 변환
+// YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
 function getYouTubeEmbedUrl(url: string): string {
   if (!url) return '';
 
-  // 이미 embed URL인 경우
-  if (url.includes('/embed/')) return url;
-
-  // 다양한 YouTube URL 형식 처리
   let videoId = '';
 
+  // 이미 embed URL인 경우 videoId 추출
+  if (url.includes('/embed/')) {
+    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
+    if (embedMatch) videoId = embedMatch[1];
+  }
+
   // https://www.youtube.com/watch?v=VIDEO_ID
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) {
-    videoId = watchMatch[1];
+  if (!videoId) {
+    const watchMatch = url.match(/[?&]v=([^&]+)/);
+    if (watchMatch) videoId = watchMatch[1];
   }
 
   // https://youtu.be/VIDEO_ID
-  const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-  if (shortMatch) {
-    videoId = shortMatch[1];
+  if (!videoId) {
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) videoId = shortMatch[1];
   }
 
-  // https://www.youtube.com/embed/VIDEO_ID
-  const embedMatch = url.match(/\/embed\/([^?]+)/);
-  if (embedMatch) {
-    videoId = embedMatch[1];
-  }
-
-  return videoId ? `https://www.youtube.com/embed/${videoId}?origin=${encodeURIComponent(window.location.origin)}` : url;
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
 }
 
 export default function NoticeEditor() {
@@ -700,8 +696,11 @@ export default function NoticeEditor() {
                                   <iframe
                                     src={getYouTubeEmbedUrl(item.url)}
                                     className="w-full h-full rounded"
+                                    title="YouTube video preview"
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    referrerPolicy="strict-origin-when-cross-origin"
                                     allowFullScreen
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                   />
                                 </div>
                               )}
