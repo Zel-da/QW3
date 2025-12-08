@@ -6675,6 +6675,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(holiday);
     } catch (error: any) {
       console.error("Error creating holiday:", error);
+
+      // id 시퀀스 중복 에러 처리 (PostgreSQL 시퀀스 문제)
+      if (error.code === 'P2002' && error.meta?.target?.includes('id')) {
+        console.log("🔧 Fixing Holiday id sequence...");
+        try {
+          // 시퀀스 재설정 후 재시도
+          await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('"Holiday"', 'id'), COALESCE((SELECT MAX(id) FROM "Holiday"), 0) + 1, false)`;
+
+          // 재시도
+          const retryHoliday = await prisma.holiday.create({
+            data: {
+              date: parseHolidayDate(date),
+              name,
+              isRecurring: isRecurring || false,
+              site: site || null
+            }
+          });
+          console.log("✅ Holiday created after sequence fix");
+          return res.status(201).json(retryHoliday);
+        } catch (retryError: any) {
+          console.error("Retry failed:", retryError);
+          if (retryError.code === 'P2002') {
+            return res.status(400).json({ message: "이미 동일한 날짜에 공휴일이 등록되어 있습니다." });
+          }
+        }
+      }
+
       if (error.code === 'P2002') {
         return res.status(400).json({ message: "이미 동일한 날짜에 공휴일이 등록되어 있습니다." });
       }
