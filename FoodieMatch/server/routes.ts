@@ -6655,9 +6655,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 공휴일 추가
   app.post("/api/holidays", requireAuth, async (req, res) => {
     try {
+      console.log("🗓️ Holiday POST request body:", JSON.stringify(req.body));
       const { date, name, isRecurring, site } = req.body;
 
       if (!date || !name) {
+        console.log("❌ Holiday validation failed - date:", date, "name:", name);
         return res.status(400).json({ message: "날짜와 이름은 필수입니다." });
       }
 
