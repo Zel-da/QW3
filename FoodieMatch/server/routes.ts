@@ -6680,8 +6680,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.code === 'P2002' && error.meta?.target?.includes('id')) {
         console.log("🔧 Fixing Holiday id sequence...");
         try {
-          // 시퀀스 재설정 후 재시도
-          await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('"Holiday"', 'id'), COALESCE((SELECT MAX(id) FROM "Holiday"), 0) + 1, false)`;
+          // 시퀀스 재설정 후 재시도 (테이블명: holidays)
+          await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('holidays', 'id'), COALESCE((SELECT MAX(id) FROM holidays), 0) + 1, false)`;
 
           // 재시도
           const retryHoliday = await prisma.holiday.create({
