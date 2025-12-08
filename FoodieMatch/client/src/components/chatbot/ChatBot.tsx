@@ -7,7 +7,7 @@ import { ChatWindow } from './ChatWindow';
 import { ChatMessage, ChatMessageType, ChartData } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { QuickActions } from './QuickActions';
-import { findFAQMatch, getQuickQuestions, FAQItem } from './faqData';
+import { getQuickQuestions, FAQItem } from './faqData';
 
 // 초기 인사 메시지
 const WELCOME_MESSAGE: ChatMessageType = {
@@ -150,27 +150,7 @@ export function ChatBot() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // FAQ 매칭 시도
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const match = findFAQMatch(text, user?.role);
-
-    if (match) {
-      // FAQ 매칭 성공 - 즉시 응답
-      const botResponse: ChatMessageType = {
-        id: `bot-${Date.now()}`,
-        type: 'bot',
-        content: match.answer,
-        actions: match.navigateTo
-          ? [{ label: '해당 페이지로 이동', path: match.navigateTo }]
-          : undefined,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botResponse]);
-      return;
-    }
-
-    // AI 응답 처리
+    // AI 응답 처리 (FAQ는 서버 AI가 참고하여 문맥에 맞게 답변)
     const botMessageId = `bot-${Date.now()}`;
 
     if (USE_STREAMING) {
