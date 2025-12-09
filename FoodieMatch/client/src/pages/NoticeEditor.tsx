@@ -4,11 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Notice } from "@shared/schema";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
-import { Plus, X, Video, Music, Youtube, Trash2, CheckSquare, Square, ZoomIn, RotateCw } from "lucide-react";
+import { Plus, X, Video, Music, Youtube, Trash2, CheckSquare, Square, ZoomIn, RotateCw, Clock } from "lucide-react";
 import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import { Badge } from "@/components/ui/badge";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -103,7 +111,13 @@ export default function NoticeEditor() {
 
   // 자동 임시저장 기능
   const autoSaveKey = isEditing ? `notice_draft_${noticeId}` : 'notice_draft_new';
-  const { clearSaved } = useAutoSave({
+  const {
+    clearSaved,
+    showRestoreDialog,
+    savedTimestamp,
+    restoreSaved,
+    discardSaved
+  } = useAutoSave({
     key: autoSaveKey,
     data: { formData, attachments },
     enabled: !isEditing, // 새 글 작성 시에만 자동저장 (수정 시에는 비활성화)
@@ -762,6 +776,36 @@ export default function NoticeEditor() {
           onRotate={handleViewerRotate}
           readOnly={false}
         />
+
+        {/* 임시저장 복원 다이얼로그 */}
+        <Dialog open={showRestoreDialog} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-500" />
+                임시저장된 내용이 있습니다
+              </DialogTitle>
+              <DialogDescription>
+                {savedTimestamp && (
+                  <span className="block mt-2 text-sm">
+                    저장 시간: {new Date(savedTimestamp).toLocaleString('ko-KR')}
+                  </span>
+                )}
+                <span className="block mt-1">
+                  이전에 작성하던 내용을 불러오시겠습니까?
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button variant="outline" onClick={discardSaved}>
+                새로 작성
+              </Button>
+              <Button onClick={restoreSaved}>
+                불러오기
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

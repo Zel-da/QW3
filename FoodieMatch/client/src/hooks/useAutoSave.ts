@@ -1,5 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+
+interface SavedData<T> {
+  data: T;
+  timestamp: string;
+}
 
 interface UseAutoSaveOptions<T> {
   key: string;
@@ -9,18 +14,36 @@ interface UseAutoSaveOptions<T> {
   onRestore?: (data: T) => void;
 }
 
+interface UseAutoSaveReturn {
+  clearSaved: () => void;
+  hasSavedData: boolean;
+  savedTimestamp: string | null;
+  restoreSaved: () => void;
+  discardSaved: () => void;
+  showRestoreDialog: boolean;
+}
+
 /**
  * 자동 임시저장 훅
  *
- * 폼 데이터를 localStorage에 자동으로 저장하고, 페이지 로드 시 복원합니다.
+ * 폼 데이터를 localStorage에 자동으로 저장하고, 페이지 로드 시 복원 여부를 묻습니다.
  *
  * @example
  * ```tsx
- * const { clearSaved } = useAutoSave({
+ * const { clearSaved, hasSavedData, savedTimestamp, restoreSaved, discardSaved, showRestoreDialog } = useAutoSave({
  *   key: 'notice_draft_new',
  *   data: formData,
  *   onRestore: (restored) => setFormData(restored)
  * });
+ *
+ * // 복원 다이얼로그 표시
+ * {showRestoreDialog && (
+ *   <Dialog>
+ *     <p>임시저장 데이터가 있습니다. 복원하시겠습니까?</p>
+ *     <Button onClick={restoreSaved}>복원</Button>
+ *     <Button onClick={discardSaved}>삭제</Button>
+ *   </Dialog>
+ * )}
  *
  * // 제출 완료 시
  * clearSaved();
@@ -32,35 +55,72 @@ export function useAutoSave<T>({
   interval = 3000,
   enabled = true,
   onRestore,
-}: UseAutoSaveOptions<T>) {
+}: UseAutoSaveOptions<T>): UseAutoSaveReturn {
   const { toast } = useToast();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>('');
-  const isRestoredRef = useRef(false);
+  const onRestoreRef = useRef(onRestore);
 
-  // 초기 로드 시 복원 (한 번만 실행)
+  // 저장된 데이터 상태
+  const [hasSavedData, setHasSavedData] = useState(false);
+  const [savedTimestamp, setSavedTimestamp] = useState<string | null>(null);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingData, setPendingData] = useState<T | null>(null);
+
+  // onRestore 참조 업데이트
   useEffect(() => {
-    if (!enabled || isRestoredRef.current) return;
+    onRestoreRef.current = onRestore;
+  }, [onRestore]);
+
+  // 초기 로드 시 저장된 데이터 확인 (복원은 사용자 선택 후)
+  useEffect(() => {
+    if (!enabled) return;
 
     try {
       const saved = localStorage.getItem(key);
-      if (saved && onRestore) {
-        const parsed = JSON.parse(saved);
-        onRestore(parsed.data);
-        isRestoredRef.current = true;
-
-        toast({
-          title: '임시저장 복원',
-          description: `마지막 저장: ${new Date(parsed.timestamp).toLocaleString('ko-KR')}`,
-          duration: 3000,
-        });
+      if (saved) {
+        const parsed: SavedData<T> = JSON.parse(saved);
+        setHasSavedData(true);
+        setSavedTimestamp(parsed.timestamp);
+        setPendingData(parsed.data);
+        setShowRestoreDialog(true);
       }
     } catch (err) {
-      console.error('Failed to restore auto-save:', err);
-      // 손상된 데이터 삭제
+      console.error('Failed to check auto-save:', err);
       localStorage.removeItem(key);
     }
-  }, [key, enabled]); // onRestore는 의존성에서 제외 (무한 루프 방지)
+  }, [key, enabled]);
+
+  // 복원 실행
+  const restoreSaved = useCallback(() => {
+    if (pendingData && onRestoreRef.current) {
+      onRestoreRef.current(pendingData);
+      toast({
+        title: '임시저장 복원 완료',
+        description: `${savedTimestamp ? new Date(savedTimestamp).toLocaleString('ko-KR') : ''} 에 저장된 내용을 불러왔습니다.`,
+        duration: 3000,
+      });
+    }
+    setShowRestoreDialog(false);
+  }, [pendingData, savedTimestamp, toast]);
+
+  // 저장된 데이터 삭제 (복원 안 함)
+  const discardSaved = useCallback(() => {
+    try {
+      localStorage.removeItem(key);
+      setHasSavedData(false);
+      setSavedTimestamp(null);
+      setPendingData(null);
+      setShowRestoreDialog(false);
+      toast({
+        title: '임시저장 삭제',
+        description: '이전 임시저장 데이터가 삭제되었습니다.',
+        duration: 3000,
+      });
+    } catch (err) {
+      console.error('Failed to discard auto-save:', err);
+    }
+  }, [key, toast]);
 
   // 자동 저장
   useEffect(() => {
@@ -119,15 +179,26 @@ export function useAutoSave<T>({
    * 저장된 임시 데이터 삭제
    * 제출 완료 시 호출하여 localStorage 정리
    */
-  const clearSaved = () => {
+  const clearSaved = useCallback(() => {
     try {
       localStorage.removeItem(key);
       lastSavedRef.current = '';
+      setHasSavedData(false);
+      setSavedTimestamp(null);
+      setPendingData(null);
+      setShowRestoreDialog(false);
       console.log(`[Auto-Save] Cleared: ${key}`);
     } catch (err) {
       console.error('Failed to clear auto-save:', err);
     }
-  };
+  }, [key]);
 
-  return { clearSaved };
+  return {
+    clearSaved,
+    hasSavedData,
+    savedTimestamp,
+    restoreSaved,
+    discardSaved,
+    showRestoreDialog
+  };
 }

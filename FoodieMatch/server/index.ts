@@ -19,13 +19,13 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // React/Vite 필요
-      styleSrc: ["'self'", "'unsafe-inline'"], // TailwindCSS 필요
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // TailwindCSS + Google Fonts
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "wss:", "ws:"], // Gemini API + WebSocket
-      fontSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts 폰트 파일
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "blob:", "data:"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"], // YouTube 임베드
+      frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"], // YouTube 임베드 (privacy-enhanced)
       frameAncestors: ["'self'"],
       formAction: ["'self'"],
       upgradeInsecureRequests: null, // 내부망 HTTP 허용
