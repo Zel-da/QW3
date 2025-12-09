@@ -29,6 +29,8 @@ const execPromise = promisify(exec);
 import { isHoliday, getMonthlyHolidayDays, getBusinessDays } from "./utils/holidayUtils";
 // Audit logging
 import { logAudit, logLoginSuccess, logLoginFailed, logLogout, logPasswordChange, logExport } from "./auditLogger";
+// File utilities - Path traversal prevention
+import { validateFilePath, safeDeleteFile, safeReadFile, safeFileExists } from "./utils/fileUtils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1597,11 +1599,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "항목을 찾을 수 없습니다" });
       }
 
-      // 파일 삭제
-      if (item.photoUrl) {
-        const filePath = path.join(__dirname, item.photoUrl);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+      // 파일 삭제 (Path traversal 방지)
+      // InspectionItem은 photos (JSON array) 필드를 사용
+      if (item.photos && Array.isArray(item.photos)) {
+        for (const photo of item.photos as { url?: string }[]) {
+          if (photo.url) {
+            safeDeleteFile(photo.url);
+          }
         }
       }
 
@@ -2972,27 +2976,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 각 팀별 출석 현황 계산
-      const attendanceData = await Promise.all(teams.map(async (team) => {
+      // N+1 쿼리 최적화: 모든 데이터를 배치로 한 번에 조회
+      const teamIds = teams.map(t => t.id);
+      const leaderIds = teams.map(t => t.leaderId).filter((id): id is string => id !== null);
+
+      // 1. 해당 월의 모든 리포트를 한 번에 조회
+      const allReports = await prisma.dailyReport.findMany({
+        where: {
+          teamId: { in: teamIds },
+          reportDate: { gte: monthStart, lte: monthEnd }
+        },
+        include: { reportDetails: true }
+      });
+
+      // 2. 리포트를 팀ID와 날짜로 매핑
+      const reportMap = new Map<string, typeof allReports[0]>();
+      allReports.forEach(r => {
+        // UTC 기준 날짜를 로컬 시간으로 변환
+        const reportDate = new Date(r.reportDate);
+        const day = reportDate.getDate();
+        const key = `${r.teamId}-${day}`;
+        reportMap.set(key, r);
+      });
+
+      // 3. 모든 월별 승인 정보 한 번에 조회
+      const allApprovals = await prisma.monthlyApproval.findMany({
+        where: {
+          teamId: { in: teamIds },
+          year: yearNum,
+          month: monthNum
+        },
+        include: { approvalRequest: true }
+      });
+      const approvalMap = new Map(allApprovals.map(a => [a.teamId, a]));
+
+      // 4. 활성화된 코스 수 조회 (한 번만)
+      const activeCourseCount = await prisma.course.count({ where: { isActive: true } });
+
+      // 5. 팀장들의 완료된 교육 수 조회
+      const leaderProgressCounts = leaderIds.length > 0 ? await prisma.userProgress.groupBy({
+        by: ['userId'],
+        where: {
+          userId: { in: leaderIds },
+          completed: true
+        },
+        _count: { userId: true }
+      }) : [];
+      const progressMap = new Map(leaderProgressCounts.map(p => [p.userId, p._count.userId]));
+
+      // 6. 각 팀별 출석 현황 계산 (Map 조회로 O(1))
+      const attendanceData = teams.map(team => {
         const dailyStatuses: { [day: number]: { status: 'not-submitted' | 'completed' | 'has-issues', reportId: number | null } } = {};
 
         for (let day = 1; day <= daysInMonth; day++) {
-          const reportDate = new Date(parseInt(year as string), parseInt(month as string) - 1, day);
-          const startOfDay = new Date(reportDate);
-          startOfDay.setHours(0, 0, 0, 0);
-          const endOfDay = new Date(reportDate);
-          endOfDay.setHours(23, 59, 59, 999);
-
-          const report = await prisma.dailyReport.findFirst({
-            where: {
-              teamId: team.id,
-              reportDate: {
-                gte: startOfDay,
-                lt: endOfDay
-              }
-            },
-            include: { reportDetails: true }
-          });
+          const key = `${team.id}-${day}`;
+          const report = reportMap.get(key);
 
           if (!report) {
             dailyStatuses[day] = { status: 'not-submitted', reportId: null };
@@ -3008,32 +3046,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // 결재 상태 확인
-        const monthlyApproval = await prisma.monthlyApproval.findUnique({
-          where: {
-            teamId_year_month: {
-              teamId: team.id,
-              year: parseInt(year as string),
-              month: parseInt(month as string)
-            }
-          },
-          include: {
-            approvalRequest: true
-          }
-        });
-
+        const monthlyApproval = approvalMap.get(team.id);
         const hasApproval = monthlyApproval?.approvalRequest?.status === 'APPROVED';
 
         // 안전교육 완료 여부 확인 (팀장 기준)
         let educationCompleted = false;
-        if (team.leaderId) {
-          const allCourses = await prisma.course.findMany({ where: { isActive: true } });
-          const completedProgress = await prisma.userProgress.count({
-            where: {
-              userId: team.leaderId,
-              completed: true
-            }
-          });
-          educationCompleted = completedProgress >= allCourses.length && allCourses.length > 0;
+        if (team.leaderId && activeCourseCount > 0) {
+          const completedCount = progressMap.get(team.leaderId) || 0;
+          educationCompleted = completedCount >= activeCourseCount;
         }
 
         return {
@@ -3043,7 +3063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasApproval,
           educationCompleted
         };
-      }));
+      });
 
       res.json({ teams: attendanceData, daysInMonth, nonWorkdays });
     } catch (error) {
@@ -4421,26 +4441,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (tbmPhotoUrl) {
               try {
-                // URL에서 파일 경로 추출 (예: "/uploads/abc.jpg" -> "uploads/abc.jpg")
-                let photoPath = tbmPhotoUrl;
-                if (photoPath.startsWith('/')) {
-                  photoPath = photoPath.substring(1); // 앞의 / 제거
-                }
-                // URL 디코딩 (한글 파일명 처리)
-                photoPath = decodeURIComponent(photoPath);
-                // __dirname은 server 폴더이므로 그대로 path.join 사용
-                const fullPath = path.join(__dirname, photoPath);
+                // Path traversal 방지를 위한 안전한 파일 경로 검증
+                const fullPath = validateFilePath(tbmPhotoUrl);
                 console.log(`    📸 팀 ${team.name} TBM 사진 삽입: ${fullPath}`);
 
-                // 파일 존재 확인
-                if (!fs.existsSync(fullPath)) {
+                // 파일 읽기 (안전한 방식)
+                const imageBuffer = safeReadFile(tbmPhotoUrl);
+                if (!imageBuffer) {
                   console.error(`    ❌ 파일 없음: ${fullPath}`);
                   photoCell.value = '사진 파일 없음';
                   photoCell.alignment = centerAlignment;
                   photoCell.font = { ...font, color: { argb: '808080' } };
                 } else {
-                  // 파일 읽기
-                  const imageBuffer = fs.readFileSync(fullPath);
 
                   // 확장자 추출
                   const ext = tbmPhotoUrl.split('.').pop()?.toLowerCase() || 'jpg';

@@ -4,12 +4,15 @@ import pgSimple from "connect-pg-simple";
 import pg from "pg";
 import helmet from "helmet";
 import compression from "compression";
+import cookieParser from "cookie-parser";
+import { doubleCsrf } from "csrf-csrf";
 import { prisma, startConnectionHealthCheck } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
 import { verifyEmailConnection } from "./simpleEmailService";
 import { startAllSchedulers } from "./scheduler";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -75,6 +78,60 @@ app.use(session({
   rolling: true, // Reset maxAge on every response (keep active sessions alive)
 }));
 
+// Cookie parser for CSRF
+app.use(cookieParser());
+
+// CSRF Protection Configuration
+const csrfSecret = process.env.CSRF_SECRET || 'csrf-secret-dev-only-change-in-production';
+const isSecure = process.env.NODE_ENV === 'production' && process.env.RENDER === 'true';
+
+const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => csrfSecret,
+  getSessionIdentifier: (req) => (req.session as any)?.id || req.ip || 'anonymous',
+  cookieName: '__csrf',
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecure,
+    path: '/',
+  },
+  size: 64,
+  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
+});
+
+// CSRF token endpoint - 클라이언트가 토큰을 요청할 수 있는 엔드포인트
+app.get('/api/csrf-token', (req, res) => {
+  try {
+    const token = generateCsrfToken(req, res);
+    res.json({ token });
+  } catch (error) {
+    logger.error('CSRF token generation error:', error);
+    res.status(500).json({ message: 'Failed to generate CSRF token' });
+  }
+});
+
+// CSRF protection middleware - 상태 변경 요청에 적용
+// 단, 파일 업로드와 일부 API는 제외 (multipart/form-data 처리 이슈)
+app.use('/api', (req, res, next) => {
+  // GET, HEAD, OPTIONS 요청은 CSRF 검증 스킵
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  // 파일 업로드 경로는 CSRF 검증 제외 (multipart/form-data 이슈)
+  const excludedPaths = [
+    '/api/upload',
+    '/api/upload-multiple',
+    '/api/voice-input',
+  ];
+  if (excludedPaths.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+
+  // CSRF 토큰 검증
+  return doubleCsrfProtection(req, res, next);
+});
+
 // HTTP request logging middleware with Winston
 app.use((req, res, next) => {
   const start = Date.now();
@@ -125,22 +182,8 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    // 에러 로깅 (스택 트레이스 포함)
-    logger.error('Express error handler:', {
-      status,
-      message,
-      stack: err.stack,
-      url: _req.url,
-      method: _req.method
-    });
-
-    res.status(status).json({ message });
-    // throw err 제거: 이미 응답을 보냈으므로 서버 크래시 방지
-  });
+  // 통합 에러 핸들러 사용 (ApiError, Multer, Prisma 에러 자동 처리)
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
