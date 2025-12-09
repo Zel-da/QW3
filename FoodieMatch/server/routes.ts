@@ -1574,8 +1574,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: {
           inspectionId,
           equipmentName: equipmentName || '기타',
-          photoUrl,
-          remarks: remarks || null
+          requiredPhotoCount: 1,
+          photos: [{ url: photoUrl, uploadedAt: new Date().toISOString() }],
+          remarks: remarks || null,
+          isCompleted: true
         }
       });
 
@@ -3112,14 +3114,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           },
           include: {
-            approvalRequests: {
-              where: { status: 'APPROVED' },
+            approvalRequest: {
               include: {
                 requester: true,
                 approver: true
-              },
-              orderBy: { approvedAt: 'desc' },
-              take: 1
+              }
             }
           }
         })
@@ -3146,8 +3145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sheet1.mergeCells('T3:Z4'); sheet1.mergeCells('AA3:AG4');
 
       // 서명 이미지 추가 (승인된 경우)
-      if (monthlyApproval?.approvalRequests?.[0]?.status === 'APPROVED') {
-        const approvalRequest = monthlyApproval.approvalRequests[0];
+      if (monthlyApproval?.approvalRequest?.status === 'APPROVED') {
+        const approvalRequest = monthlyApproval.approvalRequest;
         const approverName = approvalRequest.approver?.name || approvalRequest.approver?.username || '';
         const approvedDate = approvalRequest.approvedAt
           ? new Date(approvalRequest.approvedAt).toLocaleDateString('ko-KR')
@@ -6827,13 +6826,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // 시퀀스 재설정 후 재시도 (테이블명: holidays)
           await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('holidays', 'id'), COALESCE((SELECT MAX(id) FROM holidays), 0) + 1, false)`;
 
-          // 재시도
+          // 재시도 - req.body에서 다시 추출
+          const { date: retryDate, name: retryName, isRecurring: retryIsRecurring, site: retrySite } = req.body;
           const retryHoliday = await prisma.holiday.create({
             data: {
-              date: parseHolidayDate(date),
-              name,
-              isRecurring: isRecurring || false,
-              site: site || null
+              date: parseHolidayDate(retryDate),
+              name: retryName,
+              isRecurring: retryIsRecurring || false,
+              site: retrySite || null
             }
           });
           console.log("✅ Holiday created after sequence fix");
