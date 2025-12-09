@@ -27,6 +27,8 @@ import { promisify } from "util";
 const execPromise = promisify(exec);
 // Holiday utilities
 import { isHoliday, getMonthlyHolidayDays, getBusinessDays } from "./utils/holidayUtils";
+// Audit logging
+import { logAudit, logLoginSuccess, logLoginFailed, logLogout, logPasswordChange, logExport } from "./auditLogger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -7799,6 +7801,308 @@ ${JSON.stringify(toolResults, null, 2)}
     } catch (error) {
       console.error("Error during cleanup:", error);
       res.status(500).json({ message: "데이터 정리에 실패했습니다." });
+    }
+  });
+
+  // ==================== 감사 로그 API ====================
+
+  // 감사 로그 목록 조회 (관리자 전용)
+  app.get("/api/audit-logs", requireAuth, async (req, res) => {
+    try {
+      // ADMIN 또는 MANAGER 권한 확인
+      if (!['ADMIN', 'MANAGER'].includes(req.session.user?.role || '')) {
+        return res.status(403).json({ message: "권한이 없습니다." });
+      }
+
+      const {
+        page = '1',
+        limit = '50',
+        action,
+        entityType,
+        userId,
+        startDate,
+        endDate,
+        search,
+      } = req.query;
+
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = Math.min(parseInt(limit as string) || 50, 100);
+      const skip = (pageNum - 1) * limitNum;
+
+      // 필터 조건 구성
+      const where: any = {};
+
+      if (action) {
+        where.action = action;
+      }
+
+      if (entityType) {
+        where.entityType = entityType;
+      }
+
+      if (userId) {
+        where.userId = userId;
+      }
+
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) {
+          where.createdAt.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          const end = new Date(endDate as string);
+          end.setHours(23, 59, 59, 999);
+          where.createdAt.lte = end;
+        }
+      }
+
+      // 검색어가 있으면 entityId 또는 ipAddress에서 검색
+      if (search) {
+        where.OR = [
+          { entityId: { contains: search as string, mode: 'insensitive' } },
+          { ipAddress: { contains: search as string } },
+        ];
+      }
+
+      // 총 개수와 데이터 조회
+      const [total, logs] = await Promise.all([
+        prisma.auditLog.count({ where }),
+        prisma.auditLog.findMany({
+          where,
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum,
+        }),
+      ]);
+
+      res.json({
+        logs,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "감사 로그 조회에 실패했습니다." });
+    }
+  });
+
+  // 감사 로그 상세 조회
+  app.get("/api/audit-logs/:id", requireAuth, async (req, res) => {
+    try {
+      if (!['ADMIN', 'MANAGER'].includes(req.session.user?.role || '')) {
+        return res.status(403).json({ message: "권한이 없습니다." });
+      }
+
+      const log = await prisma.auditLog.findUnique({
+        where: { id: req.params.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!log) {
+        return res.status(404).json({ message: "감사 로그를 찾을 수 없습니다." });
+      }
+
+      res.json(log);
+    } catch (error) {
+      console.error("Error fetching audit log:", error);
+      res.status(500).json({ message: "감사 로그 조회에 실패했습니다." });
+    }
+  });
+
+  // 특정 엔티티의 변경 이력 조회
+  app.get("/api/audit-logs/entity/:entityType/:entityId", requireAuth, async (req, res) => {
+    try {
+      if (!['ADMIN', 'MANAGER'].includes(req.session.user?.role || '')) {
+        return res.status(403).json({ message: "권한이 없습니다." });
+      }
+
+      const { entityType, entityId } = req.params;
+      const { limit = '50' } = req.query;
+
+      const logs = await prisma.auditLog.findMany({
+        where: {
+          entityType,
+          entityId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(parseInt(limit as string) || 50, 100),
+      });
+
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching entity audit logs:", error);
+      res.status(500).json({ message: "변경 이력 조회에 실패했습니다." });
+    }
+  });
+
+  // 감사 로그 통계 조회 (대시보드용)
+  app.get("/api/audit-logs/stats", requireAuth, async (req, res) => {
+    try {
+      if (!['ADMIN', 'MANAGER'].includes(req.session.user?.role || '')) {
+        return res.status(403).json({ message: "권한이 없습니다." });
+      }
+
+      const { days = '7' } = req.query;
+      const daysNum = parseInt(days as string) || 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysNum);
+
+      // 액션별 통계
+      const actionStats = await prisma.auditLog.groupBy({
+        by: ['action'],
+        where: { createdAt: { gte: startDate } },
+        _count: true,
+      });
+
+      // 엔티티 타입별 통계
+      const entityStats = await prisma.auditLog.groupBy({
+        by: ['entityType'],
+        where: { createdAt: { gte: startDate } },
+        _count: true,
+      });
+
+      // 일별 활동 추이
+      const dailyActivity = await prisma.$queryRaw`
+        SELECT
+          DATE("createdAt") as date,
+          COUNT(*)::int as count
+        FROM "AuditLogs"
+        WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")
+        ORDER BY date DESC
+      `;
+
+      // 로그인 실패 횟수 (보안 모니터링)
+      const loginFailures = await prisma.auditLog.count({
+        where: {
+          action: 'LOGIN_FAILED',
+          createdAt: { gte: startDate },
+        },
+      });
+
+      res.json({
+        period: `${daysNum}일`,
+        actionStats: actionStats.map(s => ({
+          action: s.action,
+          count: s._count,
+        })),
+        entityStats: entityStats.map(s => ({
+          entityType: s.entityType,
+          count: s._count,
+        })),
+        dailyActivity,
+        securityAlerts: {
+          loginFailures,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching audit stats:", error);
+      res.status(500).json({ message: "통계 조회에 실패했습니다." });
+    }
+  });
+
+  // 감사 로그 Excel 내보내기
+  app.get("/api/audit-logs/export", requireAuth, async (req, res) => {
+    try {
+      if (req.session.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
+      }
+
+      const { startDate, endDate, action, entityType } = req.query;
+
+      const where: any = {};
+
+      if (action) where.action = action;
+      if (entityType) where.entityType = entityType;
+
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate as string);
+        if (endDate) {
+          const end = new Date(endDate as string);
+          end.setHours(23, 59, 59, 999);
+          where.createdAt.lte = end;
+        }
+      }
+
+      const logs = await prisma.auditLog.findMany({
+        where,
+        include: {
+          user: {
+            select: { username: true, name: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10000, // 최대 1만건
+      });
+
+      // Excel 생성
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('감사 로그');
+
+      worksheet.columns = [
+        { header: '일시', key: 'createdAt', width: 20 },
+        { header: '액션', key: 'action', width: 15 },
+        { header: '대상 유형', key: 'entityType', width: 15 },
+        { header: '대상 ID', key: 'entityId', width: 25 },
+        { header: '사용자', key: 'username', width: 15 },
+        { header: '사용자명', key: 'userName', width: 15 },
+        { header: 'IP 주소', key: 'ipAddress', width: 15 },
+      ];
+
+      logs.forEach(log => {
+        worksheet.addRow({
+          createdAt: new Date(log.createdAt).toLocaleString('ko-KR'),
+          action: log.action,
+          entityType: log.entityType,
+          entityId: log.entityId || '-',
+          username: log.user?.username || '-',
+          userName: log.user?.name || '-',
+          ipAddress: log.ipAddress || '-',
+        });
+      });
+
+      // 감사 로그 내보내기 기록
+      await logExport(req, 'SESSION', 'xlsx', logs.length, { startDate, endDate, action, entityType });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=audit_logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Error exporting audit logs:", error);
+      res.status(500).json({ message: "감사 로그 내보내기에 실패했습니다." });
     }
   });
 

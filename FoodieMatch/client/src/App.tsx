@@ -63,6 +63,7 @@ const TeamEquipmentManagementPage = lazy(() => import("./pages/TeamEquipmentMana
 const InspectionSchedulePage = lazy(() => import("./pages/InspectionSchedulePage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const DbManagementPage = lazy(() => import("./pages/DbManagementPage"));
+const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
 
 // 기타
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
@@ -265,6 +266,11 @@ function App() {
               <Route path="/db-management">
                 <ProtectedRoute roles={[Role.ADMIN]}>
                   <DbManagementPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/audit-logs">
+                <ProtectedRoute roles={[Role.ADMIN]}>
+                  <AuditLogPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/admin-help">

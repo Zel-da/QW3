@@ -15,7 +15,22 @@ const app = express();
 
 // Security middleware - HTTP 헤더 보안
 app.use(helmet({
-  contentSecurityPolicy: false, // SPA 호환성을 위해 비활성화
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // React/Vite 필요
+      styleSrc: ["'self'", "'unsafe-inline'"], // TailwindCSS 필요
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "wss:", "ws:"], // Gemini API + WebSocket
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "blob:", "data:"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"], // YouTube 임베드
+      frameAncestors: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: null, // 내부망 HTTP 허용
+    }
+  },
   crossOriginEmbedderPolicy: false, // 외부 리소스 로드 허용
 }));
 

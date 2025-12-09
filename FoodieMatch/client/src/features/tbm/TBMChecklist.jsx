@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -55,6 +57,36 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [selectedIssueItem, setSelectedIssueItem] = useState(null);
   // 공휴일/휴무일 관련 state
   const [holidayInfo, setHolidayInfo] = useState(null);
+  // 저장 중 상태
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
+  const hasUnsavedChanges = React.useMemo(() => {
+    // 뷰 모드이거나 로딩 중이면 변경사항 없음으로 처리
+    if (isViewMode || loading) return false;
+
+    // 체크리스트 항목에 입력이 있는지 확인
+    const hasFormData = Object.keys(formState).length > 0;
+    // 서명이 있는지 확인
+    const hasSignatures = Object.keys(signatures).length > 0;
+    // 비고란에 내용이 있는지 확인
+    const hasRemarks = remarks.trim().length > 0;
+    // 비고란 이미지가 있는지 확인
+    const hasImages = remarksImages.length > 0;
+
+    return hasFormData || hasSignatures || hasRemarks || hasImages;
+  }, [formState, signatures, remarks, remarksImages, isViewMode, loading]);
+
+  // 저장하지 않은 변경사항 경고 훅
+  const {
+    showDialog: showUnsavedDialog,
+    confirmNavigation,
+    cancelNavigation,
+    resetChanges,
+  } = useUnsavedChanges({
+    hasChanges: hasUnsavedChanges,
+    disabled: isViewMode,
+  });
 
   useEffect(() => {
     if (site) {
@@ -508,6 +540,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
       setShowSuccessDialog(true);
+      resetChanges(); // 저장 후 변경사항 리셋 (페이지 이탈 경고 비활성화)
     } catch (err) {
       console.error('TBM 제출 오류:', err);
       console.error('오류 상세:', {
@@ -1099,6 +1132,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 저장하지 않은 변경사항 경고 다이얼로그 */}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onSaveAndLeave={async () => {
+          try {
+            setIsSaving(true);
+            await handleSubmit();
+            confirmNavigation();
+          } catch (error) {
+            // 저장 실패 시 다이얼로그 유지
+            console.error('저장 실패:', error);
+          } finally {
+            setIsSaving(false);
+          }
+        }}
+        onLeaveWithoutSaving={confirmNavigation}
+        onCancel={cancelNavigation}
+        showSaveOption={!isViewMode && checklist && Object.keys(formState).length > 0}
+        isSaving={isSaving}
+      />
     </div>
   );
 };

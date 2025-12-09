@@ -35,6 +35,7 @@ model User {
   failedLoginAttempts    Int               @default(0)   // 로그인 실패 횟수
   lockedUntil            DateTime?                       // 계정 잠금 해제 시간
   passwordResetTokens    PasswordResetToken[]            // 비밀번호 재설정 토큰
+  auditLogs              AuditLog[]        @relation("AuditLogUser") // 감사 로그
 
   @@index([teamId])
   @@index([role])
@@ -611,4 +612,32 @@ model UserSession {
 
   @@index([expire], name: "IDX_session_expire")
   @@map("user_sessions")
+}
+
+// ========== 감사 로그 (Audit Log) ==========
+
+// 모든 주요 작업의 추적 기록
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, APPROVE, REJECT, VIEW, EXPORT
+  entityType String   // USER, TEAM, TBM_REPORT, INSPECTION, COURSE, APPROVAL, HOLIDAY, NOTICE
+  entityId   String?  // 대상 엔티티 ID
+  userId     String?  // 작업 수행 사용자 ID
+  user       User?    @relation("AuditLogUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  oldValue   Json?    // 변경 전 값 (UPDATE, DELETE 시)
+  newValue   Json?    // 변경 후 값 (CREATE, UPDATE 시)
+  metadata   Json?    // 추가 메타데이터 (예: 필터 조건, 검색어 등)
+
+  ipAddress  String?  // 클라이언트 IP
+  userAgent  String?  // 브라우저/클라이언트 정보
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, createdAt])
+  @@map("AuditLogs")
 }
