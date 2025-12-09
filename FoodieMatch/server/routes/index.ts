@@ -4,18 +4,20 @@
  * 분리된 라우트 모듈들을 통합하여 Express 앱에 등록합니다.
  *
  * 구조:
- * - routes/auth.ts      - 인증 관련 (로그인, 회원가입, 비밀번호 재설정)
- * - routes/users.ts     - 사용자 관리 (CRUD, 승인, 교육 모니터링)
- * - routes/teams.ts     - 팀 관리 (CRUD, 팀원 관리)
- * - routes/inspection.ts - 안전점검 관리 (향후 분리)
- * - routes/approval.ts  - 결재 시스템 (향후 분리)
- * - routes/tbm.ts       - TBM 일지 관리 (향후 분리)
- * - routes/education.ts - 교육/코스 관리 (향후 분리)
- * - routes/notices.ts   - 공지사항 관리 (향후 분리)
- * - routes/holidays.ts  - 공휴일 관리 (향후 분리)
- * - routes/upload.ts    - 파일 업로드 (향후 분리)
- * - routes/chatbot.ts   - 챗봇/STT (향후 분리)
- * - routes/dashboard.ts - 대시보드 통계 (향후 분리)
+ * - routes/auth.ts       - 인증 관련 (로그인, 회원가입, 비밀번호 재설정)
+ * - routes/users.ts      - 사용자 관리 (CRUD, 승인, 교육 모니터링)
+ * - routes/teams.ts      - 팀 관리 (CRUD, 팀원 관리)
+ * - routes/inspection.ts - 안전점검 관리
+ * - routes/approval.ts   - 결재 시스템
+ * - routes/tbm.ts        - TBM 일지 관리
+ * - routes/education.ts  - 교육/코스 관리
+ * - routes/notices.ts    - 공지사항 관리
+ * - routes/holidays.ts   - 공휴일 관리
+ * - routes/dashboard.ts  - 대시보드 통계
+ *
+ * 향후 분리 예정:
+ * - routes/upload.ts     - 파일 업로드
+ * - routes/chatbot.ts    - 챗봇/STT
  */
 
 import type { Express } from "express";
@@ -24,6 +26,13 @@ import type { Express } from "express";
 import { registerAuthRoutes } from "./auth";
 import { registerUserRoutes } from "./users";
 import { registerTeamRoutes } from "./teams";
+import { registerInspectionRoutes } from "./inspection";
+import { registerApprovalRoutes } from "./approval";
+import { registerTbmRoutes } from "./tbm";
+import { registerEducationRoutes } from "./education";
+import { registerNoticeRoutes } from "./notices";
+import { registerHolidayRoutes } from "./holidays";
+import { registerDashboardRoutes } from "./dashboard";
 
 /**
  * 모든 라우트를 Express 앱에 등록
@@ -49,18 +58,28 @@ export function registerAllRoutes(app: Express): void {
   // 3. 팀 관리 라우트
   registerTeamRoutes(app);
 
-  // 향후 추가될 라우트들:
-  // registerInspectionRoutes(app);  // 안전점검
-  // registerApprovalRoutes(app);    // 결재 시스템
-  // registerTbmRoutes(app);         // TBM 일지
-  // registerEducationRoutes(app);   // 교육/코스
-  // registerNoticeRoutes(app);      // 공지사항
-  // registerHolidayRoutes(app);     // 공휴일
-  // registerUploadRoutes(app);      // 파일 업로드
-  // registerChatbotRoutes(app);     // 챗봇/STT
-  // registerDashboardRoutes(app);   // 대시보드
+  // 4. 안전점검 관리 라우트
+  registerInspectionRoutes(app);
 
-  console.log('[Routes] All modular routes registered');
+  // 5. 결재 시스템 라우트
+  registerApprovalRoutes(app);
+
+  // 6. TBM 일지 라우트
+  registerTbmRoutes(app);
+
+  // 7. 교육/코스 관리 라우트
+  registerEducationRoutes(app);
+
+  // 8. 공지사항 관리 라우트
+  registerNoticeRoutes(app);
+
+  // 9. 공휴일 관리 라우트
+  registerHolidayRoutes(app);
+
+  // 10. 대시보드 통계 라우트
+  registerDashboardRoutes(app);
+
+  console.log('[Routes] All modular routes registered (10 modules)');
 }
 
 /**
@@ -70,4 +89,11 @@ export const routeModules = {
   auth: 'routes/auth.ts',
   users: 'routes/users.ts',
   teams: 'routes/teams.ts',
+  inspection: 'routes/inspection.ts',
+  approval: 'routes/approval.ts',
+  tbm: 'routes/tbm.ts',
+  education: 'routes/education.ts',
+  notices: 'routes/notices.ts',
+  holidays: 'routes/holidays.ts',
+  dashboard: 'routes/dashboard.ts',
 } as const;
