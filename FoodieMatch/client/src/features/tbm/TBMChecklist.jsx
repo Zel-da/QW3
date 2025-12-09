@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon } from "lucide-react";
+import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -53,6 +53,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 이슈 상세 입력 모달 state
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [selectedIssueItem, setSelectedIssueItem] = useState(null);
+  // 공휴일/휴무일 관련 state
+  const [holidayInfo, setHolidayInfo] = useState(null);
 
   useEffect(() => {
     if (site) {
@@ -67,6 +69,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       });
     }
   }, [user, site, reportForEdit]);
+
+  // 날짜가 변경되면 공휴일 여부 체크
+  useEffect(() => {
+    if (date) {
+      const d = new Date(date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+      axios.get(`/api/holidays/check?date=${dateStr}${site ? `&site=${site}` : ''}`)
+        .then(res => {
+          setHolidayInfo(res.data);
+        })
+        .catch(err => {
+          console.error('Failed to check holiday:', err);
+          setHolidayInfo(null);
+        });
+    } else {
+      setHolidayInfo(null);
+    }
+  }, [date, site]);
 
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {
@@ -538,6 +559,23 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       </Select>
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+
+      {/* 공휴일/휴무일 알림 */}
+      {holidayInfo?.isNonWorkday && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <CalendarOff className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">
+            {holidayInfo.isHoliday
+              ? `🗓️ 오늘은 공휴일입니다: ${holidayInfo.holidayInfo?.name || '휴무일'}`
+              : '📅 오늘은 주말입니다'}
+          </AlertTitle>
+          <AlertDescription className="text-amber-700">
+            {holidayInfo.isHoliday
+              ? 'TBM 작성이 필요 없는 날입니다. 필요한 경우에만 작성해주세요.'
+              : '주말에는 TBM 작성이 필요 없습니다. 필요한 경우에만 작성해주세요.'}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* 기존 TBM 발견 시 알림 */}
       {isViewMode && existingReport && (

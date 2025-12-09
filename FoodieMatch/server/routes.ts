@@ -25,6 +25,8 @@ import OpenAI from "openai";
 import { exec } from "child_process";
 import { promisify } from "util";
 const execPromise = promisify(exec);
+// Holiday utilities
+import { isHoliday, getMonthlyHolidayDays, getBusinessDays } from "./utils/holidayUtils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -950,6 +952,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      // TBM 작성률 계산 (공휴일 제외 영업일 기준)
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const today = now.getDate();
+
+      // 공휴일 조회
+      const monthStartDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+      const monthEndDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+      const holidays = await prisma.holiday.findMany({
+        where: {
+          date: { gte: monthStartDate, lte: monthEndDate },
+          OR: [{ site: null }] // 전체 적용 공휴일
+        }
+      });
+      const holidayDays = new Set(holidays.map(h => new Date(h.date).getUTCDate()));
+
+      // 영업일 계산 (오늘까지)
+      let businessDays = 0;
+      for (let day = 1; day <= today; day++) {
+        const date = new Date(year, month - 1, day);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDays.has(day)) {
+          businessDays++;
+        }
+      }
+
+      // TBM 작성률 = 작성된 TBM 수 / (팀 수 * 영업일)
+      const tbmExpected = totalTeams * businessDays;
+      const tbmCompletionRate = tbmExpected > 0 ? Math.round((thisMonthTbmCount / tbmExpected) * 100) : 0;
+
       // Inspection stats (SafetyInspection)
       const pendingInspections = await prisma.safetyInspection.count({
         where: { isCompleted: false }
@@ -978,7 +1010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tbm: {
           todayCount: todayTbmCount,
           thisMonthCount: thisMonthTbmCount,
-          completionRate: 0 // 계산 로직 추가 가능
+          completionRate: tbmCompletionRate,
+          businessDays: businessDays,
+          expected: tbmExpected
         },
         inspection: {
           pendingCount: pendingInspections,
@@ -6486,6 +6520,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating range holidays:", error);
       res.status(500).json({ message: "기간 공휴일 추가에 실패했습니다." });
+    }
+  });
+
+  // 특정 날짜가 공휴일인지 체크 API
+  app.get("/api/holidays/check", requireAuth, async (req, res) => {
+    try {
+      const { date, site } = req.query;
+
+      if (!date) {
+        return res.status(400).json({ message: "날짜가 필요합니다." });
+      }
+
+      // 날짜 문자열 파싱 (YYYY-MM-DD)
+      const dateStr = date as string;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const targetDate = new Date(year, month - 1, day);
+
+      // 공휴일 체크
+      const isHolidayResult = await isHoliday(targetDate, site as string | null);
+
+      // 공휴일이면 해당 공휴일 정보도 가져오기
+      let holidayInfo = null;
+      if (isHolidayResult) {
+        const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+        const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+        const holiday = await prisma.holiday.findFirst({
+          where: {
+            date: { gte: startOfDay, lte: endOfDay },
+            OR: [
+              { site: null },
+              ...(site ? [{ site: site as string }] : [])
+            ]
+          }
+        });
+        holidayInfo = holiday;
+      }
+
+      // 주말 체크
+      const dayOfWeek = targetDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      res.json({
+        date: dateStr,
+        isHoliday: isHolidayResult,
+        isWeekend,
+        isNonWorkday: isHolidayResult || isWeekend,
+        holidayInfo
+      });
+    } catch (error) {
+      console.error("Error checking holiday:", error);
+      res.status(500).json({ message: "공휴일 체크에 실패했습니다." });
     }
   });
 
