@@ -2918,13 +2918,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "year, month, and site are required" });
       }
 
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+
       // 해당 현장의 모든 팀 가져오기
       const teams = await prisma.team.findMany({
         where: { site: site as string },
         orderBy: { name: 'asc' }
       });
 
-      const daysInMonth = new Date(parseInt(year as string), parseInt(month as string), 0).getDate();
+      const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+
+      // 해당 월의 공휴일 목록 조회
+      const holidayDays = await getMonthlyHolidayDays(yearNum, monthNum, site as string);
+
+      // 주말 + 공휴일 목록 생성
+      const nonWorkdays: { [day: number]: { isWeekend: boolean; isHoliday: boolean; holidayName?: string } } = {};
+
+      // 공휴일 상세 정보 조회
+      const monthStart = new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0));
+      const monthEnd = new Date(Date.UTC(yearNum, monthNum, 0, 23, 59, 59, 999));
+      const holidays = await prisma.holiday.findMany({
+        where: {
+          date: { gte: monthStart, lte: monthEnd },
+          OR: [
+            { site: null },
+            { site: site as string }
+          ]
+        }
+      });
+
+      // 공휴일 맵 생성
+      const holidayMap = new Map<number, string>();
+      holidays.forEach(h => {
+        const day = new Date(h.date).getUTCDate();
+        holidayMap.set(day, h.name);
+      });
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(yearNum, monthNum - 1, day);
+        const dayOfWeek = date.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isHoliday = holidayDays.has(day);
+
+        if (isWeekend || isHoliday) {
+          nonWorkdays[day] = {
+            isWeekend,
+            isHoliday,
+            holidayName: holidayMap.get(day)
+          };
+        }
+      }
 
       // 각 팀별 출석 현황 계산
       const attendanceData = await Promise.all(teams.map(async (team) => {
@@ -2999,7 +3043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
-      res.json({ teams: attendanceData, daysInMonth });
+      res.json({ teams: attendanceData, daysInMonth, nonWorkdays });
     } catch (error) {
       console.error('Failed to fetch attendance overview:', error);
       res.status(500).json({ message: "Failed to fetch attendance overview" });

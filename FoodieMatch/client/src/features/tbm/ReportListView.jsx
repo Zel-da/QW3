@@ -235,26 +235,48 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead className="border border-slate-300 bg-slate-100 sticky left-0 z-10 min-w-[150px]">팀명</TableHead>
-                                                    {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => (
-                                                        <TableHead key={day} className="border border-slate-300 text-center w-8 p-1 bg-slate-100">
-                                                            {day}
-                                                        </TableHead>
-                                                    ))}
+                                                    {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
+                                                        const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                                                        const isWknd = nonWorkday?.isWeekend || isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+                                                        const isHoliday = nonWorkday?.isHoliday;
+
+                                                        let bgClass = 'bg-slate-100';
+                                                        let title = '';
+                                                        if (isHoliday) {
+                                                            bgClass = 'bg-red-100';
+                                                            title = nonWorkday?.holidayName || '공휴일';
+                                                        } else if (isWknd) {
+                                                            bgClass = 'bg-blue-100';
+                                                            title = '주말';
+                                                        }
+
+                                                        return (
+                                                            <TableHead
+                                                                key={day}
+                                                                className={`border border-slate-300 text-center w-8 p-1 ${bgClass}`}
+                                                                title={title}
+                                                            >
+                                                                {day}
+                                                            </TableHead>
+                                                        );
+                                                    })}
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {attendanceOverview.teams.map(team => {
                                                     // 팀의 TBM 완료 여부 확인
                                                     const hasIncomplete = Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).some(day => {
-                                                        const isWeekendDay = isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+                                                        const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                                                        const isWeekendDay = nonWorkday?.isWeekend || isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+                                                        const isHoliday = nonWorkday?.isHoliday;
 
                                                         const today = new Date();
                                                         today.setHours(0, 0, 0, 0);
                                                         const cellDate = new Date(attendanceMonth.year, attendanceMonth.month - 1, day);
                                                         const isFuture = cellDate > today;
 
-                                                        // 주말이나 미래 날짜는 제외
-                                                        if (isWeekendDay || isFuture) return false;
+                                                        // 주말, 공휴일, 미래 날짜는 제외
+                                                        if (isWeekendDay || isHoliday || isFuture) return false;
 
                                                         const statusData = team.dailyStatuses[day];
                                                         const status = statusData?.status;
@@ -280,14 +302,42 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     )}
                                                 </TableCell>
                                                 {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
-                                                    // 주말 체크
-                                                    const isWeekendDay = isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+                                                    // 휴무일 체크 (API에서 받은 정보 사용)
+                                                    const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                                                    const isWeekendDay = nonWorkday?.isWeekend || isWeekend(attendanceMonth.year, attendanceMonth.month, day);
+                                                    const isHoliday = nonWorkday?.isHoliday;
 
                                                     // 미래 날짜 체크
                                                     const today = new Date();
                                                     today.setHours(0, 0, 0, 0);
                                                     const cellDate = new Date(attendanceMonth.year, attendanceMonth.month - 1, day);
                                                     const isFuture = cellDate > today;
+
+                                                    // 미래 날짜는 빈칸으로 표시
+                                                    if (isFuture) {
+                                                        return (
+                                                            <TableCell
+                                                                key={day}
+                                                                className="border border-slate-300 text-center p-1 bg-gray-50 text-gray-400"
+                                                                title="미래 날짜"
+                                                            >
+                                                                -
+                                                            </TableCell>
+                                                        );
+                                                    }
+
+                                                    // 공휴일은 빨간색 배경으로 표시 (주말보다 우선)
+                                                    if (isHoliday) {
+                                                        return (
+                                                            <TableCell
+                                                                key={day}
+                                                                className="border border-slate-300 text-center p-1 bg-red-50 text-red-500"
+                                                                title={nonWorkday?.holidayName || '공휴일'}
+                                                            >
+                                                                -
+                                                            </TableCell>
+                                                        );
+                                                    }
 
                                                     // 주말은 파란색 배경으로 표시
                                                     if (isWeekendDay) {
@@ -305,19 +355,6 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                     const statusData = team.dailyStatuses[day];
                                                     const status = statusData?.status;
                                                     const reportId = statusData?.reportId;
-
-                                                    // 미래 날짜는 빈칸으로 표시
-                                                    if (isFuture) {
-                                                        return (
-                                                            <TableCell
-                                                                key={day}
-                                                                className="border border-slate-300 text-center p-1 bg-gray-50 text-gray-400"
-                                                                title="미래 날짜"
-                                                            >
-                                                                -
-                                                            </TableCell>
-                                                        );
-                                                    }
 
                                                     const bgColor =
                                                         status === 'not-submitted' ? 'bg-red-200' :

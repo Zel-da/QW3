@@ -63,9 +63,16 @@ interface AttendanceOverviewTeam {
   educationCompleted: boolean;
 }
 
+interface NonWorkdayInfo {
+  isWeekend: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
+}
+
 interface AttendanceOverviewData {
   teams: AttendanceOverviewTeam[];
   daysInMonth: number;
+  nonWorkdays?: { [day: number]: NonWorkdayInfo };
 }
 
 const fetchAttendanceOverview = async (year: number, month: number, site: Site): Promise<AttendanceOverviewData | null> => {
@@ -1059,13 +1066,25 @@ export default function MonthlyReportPage() {
                           교육
                         </TableHead>
                         {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
-                          const isWknd = isWeekend(date.year, date.month, day);
+                          const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                          const isWknd = nonWorkday?.isWeekend || isWeekend(date.year, date.month, day);
+                          const isHoliday = nonWorkday?.isHoliday;
+
+                          let bgClass = 'bg-slate-100';
+                          let title = '';
+                          if (isHoliday) {
+                            bgClass = 'bg-red-100';
+                            title = nonWorkday?.holidayName || '공휴일';
+                          } else if (isWknd) {
+                            bgClass = 'bg-blue-100';
+                            title = '주말';
+                          }
+
                           return (
                             <TableHead
                               key={day}
-                              className={`border border-slate-300 text-center w-8 p-1 ${
-                                isWknd ? 'bg-blue-100' : 'bg-slate-100'
-                              }`}
+                              className={`border border-slate-300 text-center w-8 p-1 ${bgClass}`}
+                              title={title}
                             >
                               {day}
                             </TableHead>
@@ -1077,11 +1096,13 @@ export default function MonthlyReportPage() {
                       {filteredTeams.map(team => {
                         // 팀의 TBM 완료 여부 확인
                         const hasIncomplete = Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).some(day => {
-                          const isWknd = isWeekend(date.year, date.month, day);
+                          const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                          const isWknd = nonWorkday?.isWeekend || isWeekend(date.year, date.month, day);
+                          const isHoliday = nonWorkday?.isHoliday;
                           const isFuture = isFutureDate(date.year, date.month, day);
 
-                          // 주말이나 미래 날짜는 제외
-                          if (isWknd || isFuture) return false;
+                          // 주말, 공휴일, 미래 날짜는 제외
+                          if (isWknd || isHoliday || isFuture) return false;
 
                           const statusData = team.dailyStatuses[day];
                           const status = statusData?.status;
@@ -1121,7 +1142,9 @@ export default function MonthlyReportPage() {
                             )}
                           </TableCell>
                           {Array.from({ length: attendanceOverview.daysInMonth }, (_, i) => i + 1).map(day => {
-                            const isWknd = isWeekend(date.year, date.month, day);
+                            const nonWorkday = attendanceOverview.nonWorkdays?.[day];
+                            const isWknd = nonWorkday?.isWeekend || isWeekend(date.year, date.month, day);
+                            const isHoliday = nonWorkday?.isHoliday;
                             const isFuture = isFutureDate(date.year, date.month, day);
 
                             if (isFuture) {
@@ -1130,6 +1153,19 @@ export default function MonthlyReportPage() {
                                   key={day}
                                   className="border border-slate-300 text-center p-1 bg-gray-50 text-gray-400"
                                   title="미래 날짜"
+                                >
+                                  -
+                                </TableCell>
+                              );
+                            }
+
+                            // 공휴일 표시 (주말보다 우선)
+                            if (isHoliday) {
+                              return (
+                                <TableCell
+                                  key={day}
+                                  className="border border-slate-300 text-center p-1 bg-red-50 text-red-500"
+                                  title={nonWorkday?.holidayName || '공휴일'}
                                 >
                                   -
                                 </TableCell>
@@ -1199,6 +1235,10 @@ export default function MonthlyReportPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-blue-50 border border-slate-300 flex items-center justify-center text-blue-500">-</div>
                       <span>주말</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-red-50 border border-slate-300 flex items-center justify-center text-red-500">-</div>
+                      <span>공휴일</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
