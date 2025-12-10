@@ -353,27 +353,37 @@
             font-size: 0.85rem;
         }
 
-        /* 중첩된 ul/ol 스타일 (steps 내부) */
+        /* 중첩된 ul/ol 스타일 (steps 내부) - 명확한 구분 */
         .steps li ul,
         .steps li ol {
-            margin: 10px 0 5px 0;
-            padding-left: 20px;
+            margin: 12px 0 8px 0;
+            padding: 12px 15px 12px 30px;
+            background: #f1f5f9;
+            border-left: 3px solid #94a3b8;
+            border-radius: 0 8px 8px 0;
         }
 
         .steps li ul li,
         .steps li ol li {
             counter-increment: none;
-            padding: 5px 0 5px 10px;
-            margin: 3px 0;
+            padding: 6px 0;
+            margin: 4px 0;
             background: transparent;
             border-radius: 0;
             border-left: none;
             list-style: disc;
+            color: #475569;
+            font-size: 0.92em;
         }
 
         .steps li ul li::before,
         .steps li ol li::before {
             display: none;
+        }
+
+        .steps li ul li::marker,
+        .steps li ol li::marker {
+            color: #64748b;
         }
 
         /* Warning/Info boxes */
@@ -514,14 +524,10 @@
             border-radius: 10px;
             padding: 20px;
             text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
         }
 
         .quick-ref-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-            transform: translateY(-2px);
+            background: #f8fafc;
         }
 
         .quick-ref-card .icon {
@@ -837,11 +843,6 @@
 
             <p>회원가입 신청자는 <strong>PENDING(대기)</strong> 상태로 등록됩니다. 관리자 승인 후 시스템 사용이 가능합니다.</p>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/admin')">사용자 관리 페이지</button>
-            </div>
-
             <h3>승인 대상 확인</h3>
             <div class="menu-path">
                 더보기 <span>&rarr;</span> 사용자 관리 <span>&rarr;</span> 역할 필터: PENDING
@@ -925,11 +926,6 @@
         <section id="user-management" class="section">
             <h2>2. 사용자 정보 관리</h2>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/admin')">사용자 관리 페이지</button>
-            </div>
-
             <h3>사용자 검색</h3>
             <p>검색창에서 다음 정보로 사용자를 검색할 수 있습니다:</p>
             <ul>
@@ -991,11 +987,6 @@
 
             <p>사용자가 비밀번호를 분실했을 때 관리자가 임시 비밀번호를 발급할 수 있습니다.</p>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/admin')">사용자 관리 페이지</button>
-            </div>
-
             <h3>비밀번호 초기화 절차</h3>
             <ol class="steps">
                 <li>
@@ -1051,11 +1042,6 @@
         <!-- Section 4: Team Management -->
         <section id="team-management" class="section">
             <h2>4. 팀/팀원 관리</h2>
-
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/team-management')">팀원 관리 페이지</button>
-            </div>
 
             <h3>팀원 관리 개요</h3>
             <p>TBM 서명을 위해 시스템 계정이 없는 팀원도 등록할 수 있습니다.
@@ -1138,11 +1124,6 @@
         <!-- Section 5: Education Management -->
         <section id="education-management" class="section">
             <h2>5. 교육 과정 관리</h2>
-
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/education-management')">교육 관리 페이지</button>
-            </div>
 
             <h3>새 교육 과정 등록</h3>
             <ol class="steps">
@@ -1266,11 +1247,6 @@
         <section id="education-monitoring" class="section">
             <h2>6. 교육 이수 모니터링</h2>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/education-monitoring')">교육 현황 페이지</button>
-            </div>
-
             <h3>교육 현황 확인</h3>
             <p>팀별, 사용자별 교육 이수 현황을 실시간으로 확인할 수 있습니다.</p>
 
@@ -1328,11 +1304,6 @@
             <h2>7. TBM 체크리스트 관리</h2>
 
             <p>TBM(Tool Box Meeting) 일일점검에서 사용하는 체크리스트 항목을 팀별로 관리합니다.</p>
-
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/checklist-editor')">체크리스트 편집</button>
-            </div>
 
             <h3>체크리스트 구조</h3>
             <table>
@@ -1411,12 +1382,6 @@
             <h2>8. 안전점검 템플릿 관리</h2>
 
             <p>월별 안전점검에서 사용하는 장비 및 점검 항목을 관리합니다.</p>
-
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/inspection-schedule')">점검 일정 관리</button>
-                <button class="action-btn" onclick="navigateTo('/team-equipment-management')">팀별 장비 관리</button>
-            </div>
 
             <h3>팀별 장비 등록</h3>
             <ol class="steps">
@@ -1502,12 +1467,6 @@
 
             <p>팀장이 요청한 월별 보고서를 검토하고 승인/반려합니다.</p>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/approval-history')">결재 이력</button>
-                <button class="action-btn" onclick="navigateTo('/monthly-report')">월별 보고서</button>
-            </div>
-
             <h3>결재 흐름</h3>
             <div class="flowchart">
                 <div class="flow-container">
@@ -1591,12 +1550,6 @@
         <section id="notice-management" class="section">
             <h2>10. 공지사항 관리</h2>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/notices')">공지사항 목록</button>
-                <button class="action-btn" onclick="navigateTo('/notices/new')">새 공지 작성</button>
-            </div>
-
             <h3>공지사항 작성</h3>
             <ol class="steps">
                 <li>
@@ -1666,11 +1619,6 @@
 
             <p>TBM 작성 제외일(공휴일, 휴무일)을 관리합니다. 등록된 공휴일은 TBM 영업일 계산에서 제외됩니다.</p>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/holiday-management')">공휴일 관리</button>
-            </div>
-
             <h3>공휴일 자동 가져오기</h3>
             <ol class="steps">
                 <li>
@@ -1733,11 +1681,6 @@
         <section id="email-settings" class="section">
             <h2>12. 이메일 템플릿 관리</h2>
 
-            <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/email-settings')">이메일 설정</button>
-            </div>
-
             <h3>이메일 템플릿 종류</h3>
             <table>
                 <thead>
@@ -1785,9 +1728,8 @@
             <h2>13. 데이터베이스 관리</h2>
 
             <div class="btn-group">
-                <div class="btn-group-title">바로가기</div>
-                <button class="action-btn" onclick="navigateTo('/db-management')">DB 관리</button>
-                <button class="action-btn action-btn-external" onclick="openExternal('https://console.neon.tech')">Neon Console</button>
+                <div class="btn-group-title">외부 링크</div>
+                <button class="action-btn action-btn-external" onclick="openExternal('https://console.neon.tech')">Neon Console ↗</button>
             </div>
 
             <h3>데이터 현황 확인</h3>
@@ -2034,64 +1976,64 @@ GROUP BY c.id, c.title;</pre>
         <section class="section">
             <h2>빠른 참조</h2>
 
-            <h3>관리 페이지 바로가기</h3>
+            <h3>관리 페이지 목록</h3>
             <div class="quick-ref">
-                <div class="quick-ref-card" onclick="navigateTo('/admin')">
+                <div class="quick-ref-card">
                     <div class="icon">1</div>
                     <h4>사용자 관리</h4>
                     <p>계정, 역할, 팀</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/team-management')">
+                <div class="quick-ref-card">
                     <div class="icon">2</div>
                     <h4>팀원 관리</h4>
                     <p>팀원 추가, 팀장 지정</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/education-management')">
+                <div class="quick-ref-card">
                     <div class="icon">3</div>
                     <h4>교육 관리</h4>
                     <p>과정, 문제 관리</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/education-monitoring')">
+                <div class="quick-ref-card">
                     <div class="icon">4</div>
                     <h4>교육 현황</h4>
                     <p>이수 현황</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/checklist-editor')">
+                <div class="quick-ref-card">
                     <div class="icon">5</div>
                     <h4>체크리스트</h4>
                     <p>TBM 템플릿</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/inspection-schedule')">
+                <div class="quick-ref-card">
                     <div class="icon">6</div>
                     <h4>점검 일정</h4>
                     <p>월별 점검일</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/team-equipment-management')">
+                <div class="quick-ref-card">
                     <div class="icon">7</div>
                     <h4>장비 관리</h4>
                     <p>팀별 장비</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/holiday-management')">
+                <div class="quick-ref-card">
                     <div class="icon">8</div>
                     <h4>공휴일 관리</h4>
                     <p>휴무일 설정</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/email-settings')">
+                <div class="quick-ref-card">
                     <div class="icon">9</div>
                     <h4>이메일 설정</h4>
                     <p>템플릿 편집</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/db-management')">
+                <div class="quick-ref-card">
                     <div class="icon">10</div>
                     <h4>DB 관리</h4>
                     <p>데이터 정리</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/approval-history')">
+                <div class="quick-ref-card">
                     <div class="icon">11</div>
                     <h4>결재 이력</h4>
                     <p>결재 현황</p>
                 </div>
-                <div class="quick-ref-card" onclick="navigateTo('/notices')">
+                <div class="quick-ref-card">
                     <div class="icon">12</div>
                     <h4>공지사항</h4>
                     <p>공지 관리</p>
@@ -2129,17 +2071,6 @@ GROUP BY c.id, c.title;</pre>
     </div><!-- /.main-wrapper -->
 
     <script>
-        // 페이지 내부 이동 (iframe에서 부모로 postMessage 사용)
-        function navigateTo(path) {
-            if (window.top !== window.self) {
-                // iframe 안에서 실행 중 - 부모에게 메시지 전송
-                window.top.postMessage({ type: 'navigate', path: path }, '*');
-            } else {
-                // 직접 접근 - 바로 이동
-                window.location.href = path;
-            }
-        }
-
         // 외부 링크 새 탭에서 열기
         function openExternal(url) {
             window.open(url, '_blank');
