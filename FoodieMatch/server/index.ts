@@ -179,49 +179,54 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+// Server initialization - using top-level await for proper ESM handling
+async function startServer() {
+  try {
+    const server = await registerRoutes(app);
 
-  // 통합 에러 핸들러 사용 (ApiError, Multer, Prisma 에러 자동 처리)
-  app.use(errorHandler);
+    // 통합 에러 핸들러 사용 (ApiError, Multer, Prisma 에러 자동 처리)
+    app.use(errorHandler);
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  // Initialize email service
-  await verifyEmailConnection();
-
-  // Start email schedulers
-  await startAllSchedulers();
-  log('✅ Email service initialized with schedulers');
-
-  // Start database connection health check (prevents idle connection drops)
-  startConnectionHealthCheck(5 * 60 * 1000); // 5분마다 체크
-
-  const port = parseInt(process.env.PORT || '5000', 10);
-
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-
-  server.on('error', (err: any) => {
-    console.error(`❌ Server error:`, err);
-    if (err.code === 'EADDRINUSE') {
-      console.error(`❌ Port ${port} is already in use. Please stop the conflicting process and try again.`);
-      process.exit(1);
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
     }
-  });
-})();
+
+    // Initialize email service
+    await verifyEmailConnection();
+
+    // Start email schedulers
+    await startAllSchedulers();
+    log('✅ Email service initialized with schedulers');
+
+    // Start database connection health check (prevents idle connection drops)
+    startConnectionHealthCheck(5 * 60 * 1000); // 5분마다 체크
+
+    const port = parseInt(process.env.PORT || '5000', 10);
+
+    server.listen({
+      port,
+      host: "0.0.0.0",
+    }, () => {
+      log(`serving on port ${port}`);
+    });
+
+    server.on('error', (err: any) => {
+      console.error(`❌ Server error:`, err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use. Please stop the conflicting process and try again.`);
+        process.exit(1);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Use top-level await for proper ESM module initialization
+await startServer();

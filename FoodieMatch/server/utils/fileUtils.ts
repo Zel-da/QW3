@@ -1,7 +1,13 @@
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// uploads 디렉토리 절대 경로
+// ESM에서 __dirname 대체
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// uploads 디렉토리 절대 경로 (server/utils에서 server/uploads로)
 const uploadDir = path.resolve(__dirname, '../uploads');
 
 /**
