@@ -127,6 +127,7 @@ app.use('/api', (req, res, next) => {
     '/upload-multiple',
     '/voice-input',
     '/auth/login',
+    '/auth/logout',
     '/auth/register',
     '/auth/forgot-password',
     '/auth/reset-password',
