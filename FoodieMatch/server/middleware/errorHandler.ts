@@ -64,6 +64,22 @@ export function errorHandler(
     return;
   }
 
+  // CSRF 에러 처리 (csrf-csrf 라이브러리)
+  if (error.name === 'ForbiddenError' && error.message.includes('csrf')) {
+    // CSRF 토큰 오류는 info 레벨로 로깅 (빈번하게 발생할 수 있음)
+    logger.info('CSRF token validation failed:', {
+      url: req.url,
+      method: req.method,
+      ip: req.ip
+    });
+
+    res.status(403).json({
+      message: 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침 해주세요.',
+      code: 'INVALID_CSRF_TOKEN'
+    });
+    return;
+  }
+
   // Prisma 에러 처리
   if (error.name === 'PrismaClientKnownRequestError') {
     const prismaError = error as any;
