@@ -131,6 +131,7 @@ app.use('/api', (req, res, next) => {
     '/auth/register',
     '/auth/forgot-password',
     '/auth/reset-password',
+    '/auth/find-username',
     '/chatbot',
   ];
   if (excludedPaths.some(path => req.path.startsWith(path))) {
