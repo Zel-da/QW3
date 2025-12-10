@@ -1,9 +1,29 @@
-import { useLocation } from 'wouter';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
 export default function AdminHelpPage() {
-  const [, setLocation] = useLocation();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // iframe 내부에서 navigateTo 호출 시 부모 창에서 처리
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'navigate' && event.data?.path) {
+        window.location.href = event.data.path;
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleGoBack = () => {
+    // 브라우저 히스토리가 있으면 뒤로가기, 없으면 더보기로
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/more';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -13,7 +33,7 @@ export default function AdminHelpPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setLocation('/more')}
+            onClick={handleGoBack}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -25,6 +45,7 @@ export default function AdminHelpPage() {
 
       {/* Admin guide content iframe */}
       <iframe
+        ref={iframeRef}
         src="/admin-guide.html"
         title="관리자 업무 절차서"
         className="w-full border-0"

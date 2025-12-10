@@ -2107,11 +2107,13 @@ GROUP BY c.id, c.title;</pre>
     </div><!-- /.main-wrapper -->
 
     <script>
-        // 페이지 내부 이동 (iframe에서 부모로)
+        // 페이지 내부 이동 (iframe에서 부모로 postMessage 사용)
         function navigateTo(path) {
             if (window.top !== window.self) {
-                window.top.location.href = path;
+                // iframe 안에서 실행 중 - 부모에게 메시지 전송
+                window.top.postMessage({ type: 'navigate', path: path }, '*');
             } else {
+                // 직접 접근 - 바로 이동
                 window.location.href = path;
             }
         }
