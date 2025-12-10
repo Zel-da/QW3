@@ -2409,7 +2409,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         });
-        return res.json(notice);
+
+        if (!notice) {
+          return res.json(null);
+        }
+
+        // 읽음 상태 확인
+        let isRead = false;
+        if (userId) {
+          const readRecord = await prisma.noticeRead.findUnique({
+            where: {
+              noticeId_userId: {
+                noticeId: notice.id,
+                userId
+              }
+            }
+          });
+          isRead = !!readRecord;
+        }
+
+        return res.json({ ...notice, isRead });
       }
 
       // Build where clause

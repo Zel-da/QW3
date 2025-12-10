@@ -169,6 +169,11 @@ export default function DashboardHomePage() {
   useEffect(() => {
     if (!latestNotice) return;
 
+    // 이미 읽은 공지는 팝업 표시하지 않음
+    if ((latestNotice as any).isRead) {
+      return;
+    }
+
     const popupKey = `notice-popup-${latestNotice.id}`;
     const hideUntil = localStorage.getItem(popupKey);
 
