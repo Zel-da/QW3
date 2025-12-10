@@ -118,19 +118,19 @@ app.use('/api', (req, res, next) => {
     return next();
   }
 
-  // CSRF 검증 제외 경로
+  // CSRF 검증 제외 경로 (app.use('/api', ...) 기준이므로 /api 제외)
   // - 파일 업로드: multipart/form-data 이슈
   // - 인증 관련: 세션 생성 전 호출됨
   // - 챗봇: 로그인 전 사용 가능
   const excludedPaths = [
-    '/api/upload',
-    '/api/upload-multiple',
-    '/api/voice-input',
-    '/api/auth/login',
-    '/api/auth/register',
-    '/api/auth/forgot-password',
-    '/api/auth/reset-password',
-    '/api/chatbot',
+    '/upload',
+    '/upload-multiple',
+    '/voice-input',
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/chatbot',
   ];
   if (excludedPaths.some(path => req.path.startsWith(path))) {
     return next();
