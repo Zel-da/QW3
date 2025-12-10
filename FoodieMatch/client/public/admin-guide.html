@@ -181,14 +181,26 @@
         }
 
         .section h2 {
-            color: #1e40af;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #3b82f6;
+            color: white;
+            font-size: 1.3rem;
+            margin: -30px -30px 25px -30px;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            border-radius: 12px 12px 0 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #fbbf24;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
         .section h3 {
@@ -265,59 +277,125 @@
             overflow-x: auto;
         }
 
-        .flow-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
+        /* 프로세스 플로우 - 깔끔한 타임라인 스타일 */
+        .process-flow {
+            position: relative;
+            padding: 20px 0;
         }
 
-        .flow-row {
+        .process-flow::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%);
+            border-radius: 3px;
+        }
+
+        .flow-step {
+            position: relative;
+            padding-left: 60px;
+            padding-bottom: 25px;
+        }
+
+        .flow-step:last-child {
+            padding-bottom: 0;
+        }
+
+        .flow-step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 10px;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
             justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+            z-index: 1;
         }
 
-        .flow-box {
-            padding: 12px 20px;
+        .flow-step.flow-decision::before {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .flow-step.flow-end::before {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+        }
+
+        .flow-step-content {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px 20px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .flow-step.flow-decision .flow-step-content {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .flow-step.flow-end .flow-step-content {
+            border-left-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .flow-step-title {
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 5px;
+        }
+
+        .flow-step-desc {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        /* 분기 표시 */
+        .flow-branches {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .flow-branch {
+            padding: 12px 15px;
             border-radius: 8px;
             text-align: center;
-            font-size: 0.9rem;
-            min-width: 120px;
+            font-size: 0.85rem;
         }
 
-        .flow-start {
-            background: #22c55e;
-            color: white;
-            border-radius: 25px;
+        .flow-branch.approve {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            color: #166534;
         }
 
-        .flow-end {
-            background: #ef4444;
-            color: white;
-            border-radius: 25px;
+        .flow-branch.reject {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
         }
 
-        .flow-process {
-            background: #3b82f6;
-            color: white;
+        .flow-branch-label {
+            font-weight: 600;
+            margin-bottom: 3px;
         }
 
-        .flow-decision-box {
-            background: #fef3c7;
-            border: 2px solid #f59e0b;
-            color: #92400e;
-        }
-
-        .flow-arrow {
-            color: #64748b;
-            font-size: 1.2rem;
-        }
-
-        .flow-arrow-down {
-            font-size: 1.5rem;
+        .flow-branch-action {
+            font-size: 0.8rem;
+            opacity: 0.8;
         }
 
         /* Steps */
@@ -852,22 +930,15 @@
         <section id="user-approval" class="section">
             <h2>1. 신규 사용자 승인</h2>
 
-            <p>회원가입 신청자는 <strong>PENDING(대기)</strong> 상태로 등록됩니다. 관리자 승인 후 시스템 사용이 가능합니다.</p>
-
-            <h3>승인 대상 확인</h3>
-            <div class="menu-path">
-                더보기 <span>&rarr;</span> 사용자 관리 <span>&rarr;</span> 역할 필터: PENDING
-            </div>
-
-            <h3>상세 승인 절차</h3>
+            <h3>승인 절차</h3>
             <ol class="steps">
                 <li>
                     <strong>사용자 관리 페이지 접속</strong><br>
                     상단 메뉴 "더보기" &rarr; "사용자 관리" 클릭
                 </li>
                 <li>
-                    <strong>PENDING 사용자 필터링</strong><br>
-                    역할 필터 드롭다운에서 "PENDING" 선택. 대기 중인 사용자 목록 표시됨
+                    <strong>대기 중인 사용자 필터링</strong><br>
+                    역할 필터에서 "대기(PENDING)" 선택
                 </li>
                 <li>
                     <strong>신청 정보 확인</strong><br>
@@ -875,20 +946,20 @@
                 </li>
                 <li>
                     <strong>역할 지정</strong><br>
-                    "역할 변경" 버튼 클릭 &rarr; 적절한 역할 선택
+                    "역할 변경" 버튼 클릭 → 역할 선택
                     <ul style="margin-top: 10px;">
-                        <li><strong>TEAM_LEADER</strong>: 팀장 - TBM 작성, 안전점검, 결재 요청</li>
-                        <li><strong>APPROVER</strong>: 결재자(임원) - 월별 보고서 승인/반려</li>
-                        <li><strong>ADMIN</strong>: 관리자 - 모든 시스템 관리 권한</li>
+                        <li><strong>팀장</strong>: TBM 작성, 안전점검, 결재 요청</li>
+                        <li><strong>결재자</strong>: 월별 보고서 승인/반려</li>
+                        <li><strong>관리자</strong>: 모든 시스템 관리 권한</li>
                     </ul>
                 </li>
                 <li>
                     <strong>소속 현장 및 팀 지정</strong><br>
-                    현장(Site) 선택 &rarr; 팀(Team) 선택. 팀이 없으면 "팀 관리"에서 먼저 생성
+                    현장 선택 → 팀 선택
                 </li>
                 <li>
-                    <strong>저장 및 완료</strong><br>
-                    "저장" 버튼 클릭. 사용자 상태가 PENDING에서 지정한 역할로 변경됨
+                    <strong>저장</strong><br>
+                    "저장" 버튼 클릭 → 승인 완료
                 </li>
             </ol>
 
@@ -1455,19 +1526,42 @@
             </div>
 
             <h3>안전점검 수행 흐름</h3>
-            <div class="flowchart">
-                <div class="flow-container">
-                    <div class="flow-box flow-start">점검일 도래</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">팀장: 점검 페이지 접속</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">장비별 점검 수행</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">사진 촬영/업로드</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">이상 시 비고 입력</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-end">점검 완료 저장</div>
+            <div class="process-flow">
+                <div class="flow-step" data-step="1">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">점검일 도래</div>
+                        <div class="flow-step-desc">월별 점검 일정에 따라 알림</div>
+                    </div>
+                </div>
+                <div class="flow-step" data-step="2">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">팀장: 점검 페이지 접속</div>
+                        <div class="flow-step-desc">해당 월의 장비 점검 화면으로 이동</div>
+                    </div>
+                </div>
+                <div class="flow-step" data-step="3">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">장비별 점검 수행</div>
+                        <div class="flow-step-desc">체크리스트 항목 확인 및 점검</div>
+                    </div>
+                </div>
+                <div class="flow-step" data-step="4">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">사진 촬영 및 업로드</div>
+                        <div class="flow-step-desc">점검 현황 사진 첨부 (선택)</div>
+                    </div>
+                </div>
+                <div class="flow-step" data-step="5">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">이상 발견 시 비고 입력</div>
+                        <div class="flow-step-desc">이상 내용 및 조치 사항 기록</div>
+                    </div>
+                </div>
+                <div class="flow-step flow-end" data-step="✓">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">점검 완료 저장</div>
+                        <div class="flow-step-desc">월별 보고서에 자동 반영됨</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1476,31 +1570,51 @@
         <section id="approval-management" class="section">
             <h2>9. 결재 처리</h2>
 
-            <p>팀장이 요청한 월별 보고서를 검토하고 승인/반려합니다.</p>
-
             <h3>결재 흐름</h3>
-            <div class="flowchart">
-                <div class="flow-container">
-                    <div class="flow-box flow-start">팀장: 월별 보고서 작성</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">팀장: 결재 요청</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-process">결재자: 이메일 알림 수신</div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-decision-box">결재자: 검토</div>
-                    <div class="flow-row">
-                        <div class="flow-arrow">&larr; 반려</div>
-                        <div class="flow-box flow-end">팀장: 수정 후 재요청</div>
-                        <div style="width: 30px"></div>
-                        <div class="flow-box flow-process">서명 후 승인</div>
-                        <div class="flow-arrow">승인 &rarr;</div>
+            <div class="process-flow">
+                <div class="flow-step" data-step="1">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">팀장: 월별 보고서 작성</div>
+                        <div class="flow-step-desc">TBM, 안전점검, 교육 현황 취합</div>
                     </div>
-                    <div class="flow-arrow flow-arrow-down">&darr;</div>
-                    <div class="flow-box flow-end">결재 완료</div>
+                </div>
+                <div class="flow-step" data-step="2">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">팀장: 결재 요청</div>
+                        <div class="flow-step-desc">결재자(임원)에게 승인 요청</div>
+                    </div>
+                </div>
+                <div class="flow-step" data-step="3">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">결재자: 이메일 알림 수신</div>
+                        <div class="flow-step-desc">결재 대기 건 알림 메일 발송됨</div>
+                    </div>
+                </div>
+                <div class="flow-step flow-decision" data-step="?">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">결재자: 검토</div>
+                        <div class="flow-step-desc">보고서 내용 확인 후 결정</div>
+                        <div class="flow-branches">
+                            <div class="flow-branch approve">
+                                <div class="flow-branch-label">✓ 승인</div>
+                                <div class="flow-branch-action">서명 후 완료</div>
+                            </div>
+                            <div class="flow-branch reject">
+                                <div class="flow-branch-label">✕ 반려</div>
+                                <div class="flow-branch-action">사유 입력 → 팀장 수정</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flow-step flow-end" data-step="✓">
+                    <div class="flow-step-content">
+                        <div class="flow-step-title">결재 완료</div>
+                        <div class="flow-step-desc">팀장에게 결과 알림 발송</div>
+                    </div>
                 </div>
             </div>
 
-            <h3>결재 처리 절차 (APPROVER/ADMIN)</h3>
+            <h3>결재 처리 절차 (결재자/관리자)</h3>
             <ol class="steps">
                 <li>
                     <strong>결재 대기 확인</strong><br>
