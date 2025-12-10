@@ -24,7 +24,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // React/Vite 필요
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // TailwindCSS + Google Fonts
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "wss:", "ws:"], // Gemini API + WebSocket
+      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:"], // Gemini API + WebSocket + Google Fonts
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts 폰트 파일
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "blob:", "data:"],
