@@ -238,11 +238,13 @@ export function ChatBot() {
       abortControllerRef.current.abort();
     }
 
-    // 서버 측 히스토리 초기화
-    try {
-      await axios.post('/api/chatbot/reset', { sessionId });
-    } catch (e) {
-      // 실패해도 클라이언트는 초기화
+    // 서버 측 히스토리 초기화 (로그인 상태에서만)
+    if (user) {
+      try {
+        await axios.post('/api/chatbot/reset', { sessionId });
+      } catch (e) {
+        // 실패해도 클라이언트는 초기화
+      }
     }
 
     // 새 세션 ID 생성
@@ -251,7 +253,7 @@ export function ChatBot() {
     setMessages([WELCOME_MESSAGE]);
     setIsTyping(false);
     setIsStreaming(false);
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   // 로그인 상태 변경 시 대화 초기화
   useEffect(() => {
