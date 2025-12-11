@@ -69,6 +69,7 @@
             text-decoration: none;
             color: #475569;
             font-size: 0.9rem;
+            font-weight: 600;
             transition: all 0.2s;
             cursor: pointer;
         }
@@ -165,11 +166,26 @@
         }
 
         .section h2 {
-            color: #2563eb;
-            font-size: 1.4rem;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #3b82f6;
+            color: white;
+            font-size: 1.3rem;
+            margin: -25px -25px 20px -25px;
+            padding: 18px 25px;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #fbbf24;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
         .section h3 {

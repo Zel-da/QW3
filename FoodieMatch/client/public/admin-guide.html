@@ -721,6 +721,17 @@
             text-decoration: line-through;
         }
 
+        /* 체크리스트 날짜 표시 */
+        .checklist-date {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 2px 10px;
+            border-radius: 12px;
+            margin-left: 8px;
+        }
+
         /* Print styles */
         @media print {
             body {
@@ -2101,11 +2112,8 @@ GROUP BY c.id, c.title;</pre>
         <!-- 업무 체크리스트 -->
         <section id="work-checklist" class="section">
             <h2>16. 업무 체크리스트</h2>
-            <p class="info-box" style="margin-bottom: 20px;">
-                ✅ 체크박스를 클릭하면 완료 표시됩니다. (새로고침 시 초기화)
-            </p>
 
-            <h3>📋 일일 업무</h3>
+            <h3>📋 일일 업무 <span class="checklist-date" id="daily-date"></span></h3>
             <ul class="interactive-checklist" id="daily-checklist">
                 <li>
                     <input type="checkbox" id="daily-1">
@@ -2121,7 +2129,7 @@ GROUP BY c.id, c.title;</pre>
                 </li>
             </ul>
 
-            <h3>📅 월간 업무</h3>
+            <h3>📅 월간 업무 <span class="checklist-date" id="monthly-date"></span></h3>
             <ul class="interactive-checklist" id="monthly-checklist">
                 <li>
                     <input type="checkbox" id="monthly-1">
@@ -2141,7 +2149,7 @@ GROUP BY c.id, c.title;</pre>
                 </li>
             </ul>
 
-            <h3>📆 연간 업무</h3>
+            <h3>📆 연간 업무 <span class="checklist-date" id="yearly-date"></span></h3>
             <ul class="interactive-checklist" id="yearly-checklist">
                 <li>
                     <input type="checkbox" id="yearly-1">
@@ -2244,19 +2252,85 @@ GROUP BY c.id, c.title;</pre>
                 });
             }
 
-            // 체크박스 기능 - 체크 시 완료 표시
+            // 업무 체크리스트 - 날짜 기반 저장
+            initWorkChecklist();
+        });
+
+        // 업무 체크리스트 초기화 및 날짜 기반 저장
+        function initWorkChecklist() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+            const monthStr = todayStr.substring(0, 7); // YYYY-MM
+            const yearStr = todayStr.substring(0, 4); // YYYY
+
+            // 날짜 표시
+            document.getElementById('daily-date').textContent = formatDate(today, 'daily');
+            document.getElementById('monthly-date').textContent = formatDate(today, 'monthly');
+            document.getElementById('yearly-date').textContent = formatDate(today, 'yearly');
+
+            // 저장된 체크 상태 불러오기
+            const storageKey = 'admin-checklist';
+            let savedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+            // 날짜가 바뀌면 해당 체크리스트 초기화
+            if (savedData.dailyDate !== todayStr) {
+                savedData.daily = {};
+                savedData.dailyDate = todayStr;
+            }
+            if (savedData.monthlyDate !== monthStr) {
+                savedData.monthly = {};
+                savedData.monthlyDate = monthStr;
+            }
+            if (savedData.yearlyDate !== yearStr) {
+                savedData.yearly = {};
+                savedData.yearlyDate = yearStr;
+            }
+
+            // 체크박스 상태 복원 및 이벤트 바인딩
             const checkboxes = document.querySelectorAll('.interactive-checklist input[type="checkbox"]');
             checkboxes.forEach(checkbox => {
+                const id = checkbox.id;
+                const type = id.split('-')[0]; // daily, monthly, yearly
+
+                // 저장된 상태 복원
+                if (savedData[type] && savedData[type][id]) {
+                    checkbox.checked = true;
+                    checkbox.closest('li').classList.add('checked');
+                }
+
+                // 변경 이벤트
                 checkbox.addEventListener('change', function() {
                     const li = this.closest('li');
                     if (this.checked) {
                         li.classList.add('checked');
+                        if (!savedData[type]) savedData[type] = {};
+                        savedData[type][id] = true;
                     } else {
                         li.classList.remove('checked');
+                        if (savedData[type]) delete savedData[type][id];
                     }
+                    localStorage.setItem(storageKey, JSON.stringify(savedData));
                 });
             });
-        });
+
+            // 초기 상태 저장
+            localStorage.setItem(storageKey, JSON.stringify(savedData));
+        }
+
+        // 날짜 포맷
+        function formatDate(date, type) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+
+            if (type === 'daily') {
+                return `${month}월 ${day}일`;
+            } else if (type === 'monthly') {
+                return `${year}년 ${month}월`;
+            } else {
+                return `${year}년`;
+            }
+        }
     </script>
 </body>
 </html>
