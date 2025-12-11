@@ -6,7 +6,7 @@ import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import { doubleCsrf } from "csrf-csrf";
-import { prisma, startConnectionHealthCheck } from "./db";
+import { prisma, startConnectionHealthCheck, syncSequences } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
@@ -16,6 +16,9 @@ import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
+// R2 Storage URL (Cloudflare R2)
+const R2_STORAGE_URL = "https://pub-1a48d08cdc484562bf1ba171b1a2c139.r2.dev";
+
 // Security middleware - HTTP 헤더 보안
 app.use(helmet({
   contentSecurityPolicy: {
@@ -23,11 +26,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // React/Vite 필요
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // TailwindCSS + Google Fonts
-      imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:"], // Gemini API + WebSocket + Google Fonts
+      imgSrc: ["'self'", "data:", "https:", "blob:", R2_STORAGE_URL], // R2 이미지 허용
+      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:", R2_STORAGE_URL], // Gemini API + WebSocket + Google Fonts + R2
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts 폰트 파일
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'", "blob:", "data:"],
+      mediaSrc: ["'self'", "blob:", "data:", R2_STORAGE_URL], // R2 미디어(오디오/비디오) 허용
       frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"], // YouTube 임베드 (privacy-enhanced)
       frameAncestors: ["'self'"],
       formAction: ["'self'"],
@@ -215,6 +218,9 @@ async function startServer() {
 
     // Start database connection health check (prevents idle connection drops)
     startConnectionHealthCheck(5 * 60 * 1000); // 5분마다 체크
+
+    // Sync database sequences to prevent ID conflicts
+    await syncSequences();
 
     const port = parseInt(process.env.PORT || '5000', 10);
 

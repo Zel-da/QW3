@@ -241,10 +241,7 @@ export default function NoticeDetailPage() {
   // 공지사항 읽음 처리
   const markAsReadMutation = useMutation({
     mutationFn: async (noticeId: string) => {
-      const res = await fetch(`/api/notices/${noticeId}/mark-read`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const res = await apiRequest('POST', `/api/notices/${noticeId}/mark-read`);
       if (!res.ok) throw new Error('Failed to mark as read');
       return res.json();
     },
