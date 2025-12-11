@@ -5964,18 +5964,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { teamId } = req.params;
       const { equipmentName, quantity } = req.body;
 
+      if (!equipmentName || equipmentName.trim() === '') {
+        return res.status(400).json({ message: '장비명을 입력해주세요.' });
+      }
+
+      if (!quantity || quantity < 1) {
+        return res.status(400).json({ message: '수량은 1 이상이어야 합니다.' });
+      }
+
+      // 중복 체크
+      const existing = await prisma.teamEquipment.findUnique({
+        where: {
+          teamId_equipmentName: {
+            teamId: parseInt(teamId),
+            equipmentName: equipmentName.trim()
+          }
+        }
+      });
+
+      if (existing) {
+        return res.status(400).json({ message: `'${equipmentName}' 장비가 이미 등록되어 있습니다.` });
+      }
+
       const equipment = await prisma.teamEquipment.create({
         data: {
           teamId: parseInt(teamId),
-          equipmentName,
+          equipmentName: equipmentName.trim(),
           quantity
         }
       });
 
       res.json(equipment);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding team equipment:', error);
-      res.status(500).json({ message: 'Failed to add team equipment' });
+      // Prisma unique constraint violation
+      if (error.code === 'P2002') {
+        return res.status(400).json({ message: '이미 등록된 장비입니다.' });
+      }
+      res.status(500).json({ message: error.message || 'Failed to add team equipment' });
     }
   });
 

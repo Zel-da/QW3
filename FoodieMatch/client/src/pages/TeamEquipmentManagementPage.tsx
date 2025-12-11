@@ -257,7 +257,8 @@ export default function TeamEquipmentManagementPage() {
       setShowAddForm(false);
     },
     onError: (error: any) => {
-      toast({ title: '장비 추가 실패', description: error.message, variant: 'destructive' });
+      const message = error.response?.data?.message || error.message || '장비 추가에 실패했습니다.';
+      toast({ title: '장비 추가 실패', description: message, variant: 'destructive' });
     },
   });
 
