@@ -16,7 +16,7 @@ interface Team {
 }
 
 const fetchTeams = async (site: string): Promise<Team[]> => {
-  const res = await fetch(`/api/teams?site=${site}`);
+  const res = await fetch(`/api/teams?site=${site}`, { credentials: 'include' });
   if (!res.ok) {
     throw new Error('Failed to fetch teams');
   }

@@ -47,6 +47,20 @@ export function clearCsrfToken(): void {
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    // 401 인증 만료 시 로그인 페이지로 리다이렉트
+    if (res.status === 401) {
+      const currentPath = window.location.pathname;
+      // 로그인 페이지가 아닌 경우에만 리다이렉트
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        console.warn('Session expired, redirecting to login...');
+        // 현재 경로 저장 (로그인 후 돌아오기 위해)
+        sessionStorage.setItem('redirectAfterLogin', currentPath);
+        window.location.href = '/login';
+        return;
+      }
+      throw new Error('401: 인증이 필요합니다');
+    }
+
     // CSRF 토큰 오류 시 토큰 갱신 후 재시도할 수 있도록 초기화
     if (res.status === 403) {
       const text = await res.text();

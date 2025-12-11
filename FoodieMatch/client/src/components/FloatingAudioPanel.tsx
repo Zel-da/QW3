@@ -182,7 +182,7 @@ export function FloatingAudioPanel({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await fetch('/api/upload', { method: 'POST', body: formData, credentials: 'include' });
       if (!response.ok) throw new Error('업로드 실패');
       const result = await response.json();
 
@@ -218,7 +218,7 @@ export function FloatingAudioPanel({
       const formData = new FormData();
       const fileName = `TBM_녹음_${new Date().toISOString().slice(0, 10)}.webm`;
       formData.append('file', audioBlob, fileName);
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await fetch('/api/upload', { method: 'POST', body: formData, credentials: 'include' });
       if (!response.ok) throw new Error('업로드 실패');
       const result = await response.json();
 

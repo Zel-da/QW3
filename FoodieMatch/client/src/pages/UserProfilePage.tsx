@@ -16,13 +16,13 @@ import { SITES } from '@/lib/constants';
 import { apiRequest } from '@/lib/queryClient';
 
 const fetchUser = async (userId: string): Promise<User> => {
-  const res = await fetch(`/api/users/${userId}`);
+  const res = await fetch(`/api/users/${userId}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch user data');
   return res.json();
 };
 
 const fetchTeam = async (teamId: number): Promise<Team> => {
-    const res = await fetch(`/api/teams/${teamId}`);
+    const res = await fetch(`/api/teams/${teamId}`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch team data');
     return res.json();
 }

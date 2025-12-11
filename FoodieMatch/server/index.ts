@@ -86,6 +86,9 @@ app.use(cookieParser());
 
 // CSRF Protection Configuration
 const csrfSecret = process.env.CSRF_SECRET || 'csrf-secret-dev-only-change-in-production';
+if (!process.env.CSRF_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: CSRF_SECRET environment variable should be set in production');
+}
 const isSecure = process.env.NODE_ENV === 'production' && process.env.RENDER === 'true';
 
 const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({

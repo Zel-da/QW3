@@ -19,8 +19,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { SafetyInspectionSkeleton } from '@/components/skeletons/SafetyInspectionSkeleton';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import axios from 'axios';
 import { getInspectionYearRange, cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
 import { FileDropzone } from '@/components/FileDropzone';
 import { MonthPicker } from '@/components/MonthPicker';
 
@@ -130,8 +130,8 @@ export default function SafetyInspectionPage() {
   const { data: factories = [], isLoading: factoriesLoading } = useQuery<Factory[]>({
     queryKey: ['factories'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/factories');
-      return data;
+      const res = await apiRequest('GET', '/api/factories');
+      return res.json();
     },
   });
 
@@ -139,8 +139,8 @@ export default function SafetyInspectionPage() {
   const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/teams');
-      return data;
+      const res = await apiRequest('GET', '/api/teams');
+      return res.json();
     },
   });
 
@@ -171,8 +171,8 @@ export default function SafetyInspectionPage() {
   const { data: requiredItemsData, isLoading: itemsLoading } = useQuery<RequiredItemsResponse>({
     queryKey: ['required-inspection-items', selectedTeam, selectedYear, selectedMonth],
     queryFn: async () => {
-      const { data } = await axios.get(`/api/inspections/${selectedTeam}/${selectedYear}/${selectedMonth}/required-items`);
-      return data;
+      const res = await apiRequest('GET', `/api/inspections/${selectedTeam}/${selectedYear}/${selectedMonth}/required-items`);
+      return res.json();
     },
     enabled: !!selectedTeam && !!selectedYear && !!selectedMonth,
   });
@@ -183,8 +183,8 @@ export default function SafetyInspectionPage() {
   const { data: overviewData, isLoading: overviewLoading } = useQuery<InspectionOverview>({
     queryKey: ['inspection-overview', selectedFactory, selectedYear, selectedMonth],
     queryFn: async () => {
-      const { data } = await axios.get(`/api/inspections/overview/${selectedFactory}/${selectedYear}/${selectedMonth}`);
-      return data;
+      const res = await apiRequest('GET', `/api/inspections/overview/${selectedFactory}/${selectedYear}/${selectedMonth}`);
+      return res.json();
     },
     enabled: !!selectedFactory && !!selectedYear && !!selectedMonth,
   });
@@ -194,10 +194,10 @@ export default function SafetyInspectionPage() {
     queryKey: ['safety-inspection', selectedTeam, selectedYear, selectedMonth],
     queryFn: async () => {
       try {
-        const { data } = await axios.get(`/api/inspection/${selectedTeam}/${selectedYear}/${selectedMonth}`);
-        return data;
+        const res = await apiRequest('GET', `/api/inspection/${selectedTeam}/${selectedYear}/${selectedMonth}`);
+        return res.json();
       } catch (err: any) {
-        if (err.response?.status === 404) {
+        if (err.message?.includes('404') || err.status === 404) {
           return null;
         }
         throw err;
@@ -275,11 +275,15 @@ export default function SafetyInspectionPage() {
       const formData = new FormData();
       formData.append('files', file);
 
-      const res = await axios.post('/api/upload-multiple', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const res = await fetch('/api/upload-multiple', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
 
-      const uploadedFile = res.data.files[0];
+      const uploadedFile = data.files[0];
       const newPhoto: UploadedPhoto = {
         url: uploadedFile.url,
         uploadedAt: new Date().toISOString(),
@@ -345,11 +349,15 @@ export default function SafetyInspectionPage() {
       const formData = new FormData();
       filesToUpload.forEach(file => formData.append('files', file));
 
-      const res = await axios.post('/api/upload-multiple', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const res = await fetch('/api/upload-multiple', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
 
-      const newPhotos: UploadedPhoto[] = res.data.files.map((file: any) => ({
+      const newPhotos: UploadedPhoto[] = data.files.map((file: any) => ({
         url: file.url,
         uploadedAt: new Date().toISOString(),
       }));
@@ -502,8 +510,8 @@ export default function SafetyInspectionPage() {
         items,
       };
 
-      const { data } = await axios.post('/api/inspection', payload);
-      return data;
+      const res = await apiRequest('POST', '/api/inspection', payload);
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: '성공', description: '안전점검 기록이 저장되었습니다.' });

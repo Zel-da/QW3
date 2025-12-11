@@ -201,7 +201,8 @@ export default function EducationManagementPage() {
     try {
       const res = await fetch('/api/upload-multiple', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.files && data.files.length > 0) {
@@ -370,7 +371,8 @@ export default function EducationManagementPage() {
                     try {
                       const res = await fetch('/api/upload-multiple', {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        credentials: 'include'
                       });
                       const data = await res.json();
                       if (data.files && data.files.length > 0) {

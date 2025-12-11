@@ -141,7 +141,7 @@ export default function NoticeEditor() {
 
     try {
       setIsUploading(true);
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
 
@@ -170,7 +170,7 @@ export default function NoticeEditor() {
 
     try {
       setIsUploading(true);
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
 
@@ -286,7 +286,7 @@ export default function NoticeEditor() {
 
     try {
       setUploadingIndex(index);
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Upload failed');
 
@@ -320,7 +320,7 @@ export default function NoticeEditor() {
     files.forEach(file => uploadFormData.append('files', file));
 
     try {
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Video upload failed');
 

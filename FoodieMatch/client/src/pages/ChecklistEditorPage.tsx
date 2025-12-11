@@ -33,13 +33,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const fetchTeams = async () => {
-  const res = await fetch('/api/teams');
+  const res = await fetch('/api/teams', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch teams');
   return res.json();
 };
 
 const fetchTemplate = async (teamId: number) => {
-  const res = await fetch(`/api/teams/${teamId}/template`);
+  const res = await fetch(`/api/teams/${teamId}/template`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch template');
   return res.json();
 };

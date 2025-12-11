@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import axios from 'axios';
+import { apiRequest } from '@/lib/queryClient';
 
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
@@ -28,14 +28,14 @@ import { DualSignatureDialog } from '@/components/DualSignatureDialog';
 
 const fetchMonthlyReport = async (teamId: number | null, year: number, month: number) => {
   if (!teamId) return null;
-  const { data } = await axios.get(`/api/tbm/monthly?teamId=${teamId}&year=${year}&month=${month}`);
-  return data;
+  const res = await apiRequest('GET', `/api/tbm/monthly?teamId=${teamId}&year=${year}&month=${month}`);
+  return res.json();
 };
 
 const fetchTeams = async (site: Site) => {
   if (!site) return [];
-  const { data } = await axios.get(`/api/teams?site=${site}`);
-  return data;
+  const res = await apiRequest('GET', `/api/teams?site=${site}`);
+  return res.json();
 };
 
 interface EducationOverviewData {
@@ -46,8 +46,8 @@ interface EducationOverviewData {
 }
 
 const fetchEducationOverview = async (): Promise<EducationOverviewData> => {
-  const { data } = await axios.get('/api/admin/education-overview');
-  return data;
+  const res = await apiRequest('GET', '/api/admin/education-overview');
+  return res.json();
 };
 
 interface AttendanceOverviewTeam {
@@ -77,13 +77,13 @@ interface AttendanceOverviewData {
 
 const fetchAttendanceOverview = async (year: number, month: number, site: Site): Promise<AttendanceOverviewData | null> => {
   if (!site) return null;
-  const { data } = await axios.get(`/api/tbm/attendance-overview?year=${year}&month=${month}&site=${site}`);
-  return data;
+  const res = await apiRequest('GET', `/api/tbm/attendance-overview?year=${year}&month=${month}&site=${site}`);
+  return res.json();
 };
 
 const fetchTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
-  const { data } = await axios.get(`/api/teams/${teamId}/members`);
-  return data;
+  const res = await apiRequest('GET', `/api/teams/${teamId}/members`);
+  return res.json();
 };
 
 const createApprovalRequest = async (payload: {
@@ -93,14 +93,13 @@ const createApprovalRequest = async (payload: {
 }) => {
   console.log('[createApprovalRequest] 함수 시작', payload);
   try {
-    console.log('[createApprovalRequest] axios.post 호출 중...');
-    const { data } = await axios.post('/api/monthly-approvals/request', payload);
+    console.log('[createApprovalRequest] apiRequest 호출 중...');
+    const res = await apiRequest('POST', '/api/monthly-approvals/request', payload);
+    const data = await res.json();
     console.log('[createApprovalRequest] 성공 응답:', data);
     return data;
   } catch (error: any) {
     console.error('[createApprovalRequest] 에러 발생:', error);
-    console.error('[createApprovalRequest] 에러 응답:', error.response?.data);
-    console.error('[createApprovalRequest] 에러 상태:', error.response?.status);
     throw error;
   }
 };
@@ -531,17 +530,19 @@ export default function MonthlyReportPage() {
     });
 
     try {
-      const response = await axios.get(`/api/tbm/monthly-excel`, {
-        params: {
-          teamId: selectedTeam,
-          year: date.year,
-          month: date.month,
-          site: site,
-        },
-        responseType: 'blob',
+      const params = new URLSearchParams({
+        teamId: String(selectedTeam),
+        year: String(date.year),
+        month: String(date.month),
+        site: site || '',
       });
+      const response = await fetch(`/api/tbm/monthly-excel?${params}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       const teamName = teams?.find(t => t.id === selectedTeam)?.name || 'Unknown';
@@ -589,16 +590,18 @@ export default function MonthlyReportPage() {
     });
 
     try {
-      const response = await axios.get(`/api/tbm/comprehensive-excel`, {
-        params: {
-          year: downloadYear,
-          month: downloadMonth,
-          site: site,
-        },
-        responseType: 'blob',
+      const params = new URLSearchParams({
+        year: String(downloadYear),
+        month: String(downloadMonth),
+        site: site || '',
       });
+      const response = await fetch(`/api/tbm/comprehensive-excel?${params}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       const fileName = `TBM_Comprehensive_${site}_${downloadYear}_${String(downloadMonth).padStart(2, '0')}.xlsx`;
@@ -679,22 +682,25 @@ export default function MonthlyReportPage() {
       // 팀별 날짜 데이터 준비
       const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
 
-      const response = await axios.get(`/api/tbm/safety-education-excel`, {
-        params: {
-          site,
-          year: downloadYear,
-          month: downloadMonth,
-          date: downloadDay,
-          manager: educationManager,
-          approver: educationApprover,
-          managerSignature: managerSignature,
-          approverSignature: approverSignature,
-          teamDates: teamDatesParam // 팀별 날짜 데이터 추가
-        },
-        responseType: 'blob',
+      const params = new URLSearchParams({
+        site: site || '',
+        year: String(downloadYear),
+        month: String(downloadMonth),
+        date: String(downloadDay),
+        manager: educationManager,
+        approver: educationApprover,
+        managerSignature: managerSignature,
+        approverSignature: approverSignature,
       });
+      if (teamDatesParam) params.append('teamDates', teamDatesParam);
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const response = await fetch(`/api/tbm/safety-education-excel?${params}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;

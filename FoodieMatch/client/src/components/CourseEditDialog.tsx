@@ -20,7 +20,7 @@ interface CourseEditDialogProps {
 
 // API Functions
 const fetchAssessments = async (courseId: string): Promise<Assessment[]> => {
-    const res = await fetch(`/api/courses/${courseId}/assessments`);
+    const res = await fetch(`/api/courses/${courseId}/assessments`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch assessments');
     return res.json();
 };
@@ -129,7 +129,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
     uploadFormData.append('files', file);
 
     try {
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Upload failed');
 
@@ -245,7 +245,8 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                 try {
                   const res = await fetch('/api/upload-multiple', {
                     method: 'POST',
-                    body: formDataUpload
+                    body: formDataUpload,
+                    credentials: 'include'
                   });
                   const data = await res.json();
                   if (data.files && data.files.length > 0) {

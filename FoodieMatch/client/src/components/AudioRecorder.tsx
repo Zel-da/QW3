@@ -195,6 +195,7 @@ export function AudioRecorder({
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
+          credentials: 'include',
         });
 
         if (!response.ok) throw new Error('업로드 실패');
@@ -244,6 +245,7 @@ export function AudioRecorder({
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) throw new Error('업로드 실패');

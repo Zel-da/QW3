@@ -86,20 +86,41 @@ export function stopConnectionHealthCheck() {
 // 시퀀스 동기화 함수 - autoincrement ID 충돌 방지
 // PostgreSQL의 시퀀스가 실제 데이터의 최대 ID보다 작을 때 발생하는 문제 해결
 export async function syncSequences() {
-  try {
-    // TeamEquipments 테이블 시퀀스 동기화
-    await prisma.$executeRaw`
-      SELECT setval(
-        pg_get_serial_sequence('"TeamEquipments"', 'id'),
-        COALESCE((SELECT MAX(id) FROM "TeamEquipments"), 0) + 1,
-        false
-      )
-    `;
-    console.log('Database sequences synchronized successfully');
-  } catch (error) {
-    console.error('Failed to sync sequences:', error);
-    // 실패해도 서버는 계속 실행 (시퀀스가 이미 정상일 수 있음)
+  // 동기화할 모든 autoincrement 테이블 목록
+  const tables = [
+    'Factories',
+    'Team',
+    'TeamMembers',
+    'TeamEquipments',
+    'AbsenceRecords',
+    'ChecklistTemplates',
+    'TemplateItems',
+    'DailyReports',
+    'ReportDetails',
+    'ReportSignatures',
+    'InspectionTemplates',
+    'InspectionScheduleTemplates',
+    'MonthlyInspectionDays',
+    'Holidays',
+  ];
+
+  let syncedCount = 0;
+  for (const table of tables) {
+    try {
+      await prisma.$executeRawUnsafe(`
+        SELECT setval(
+          pg_get_serial_sequence('"${table}"', 'id'),
+          COALESCE((SELECT MAX(id) FROM "${table}"), 0) + 1,
+          false
+        )
+      `);
+      syncedCount++;
+    } catch (error) {
+      // 테이블이 없거나 시퀀스가 없는 경우 무시 (정상 상황일 수 있음)
+      console.debug(`Sequence sync skipped for ${table}:`, (error as Error).message);
+    }
   }
+  console.log(`Database sequences synchronized: ${syncedCount}/${tables.length} tables`);
 }
 
 // Gracefully shutdown Prisma Client on application termination

@@ -267,7 +267,7 @@ export default function NoticeDetailPage() {
     files.forEach(file => uploadFormData.append('files', file));
 
     try {
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
 
@@ -291,7 +291,7 @@ export default function NoticeDetailPage() {
     files.forEach(file => uploadFormData.append('files', file));
 
     try {
-      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData });
+      const response = await fetch('/api/upload-multiple', { method: 'POST', body: uploadFormData, credentials: 'include' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'File upload failed');
 
@@ -320,7 +320,7 @@ export default function NoticeDetailPage() {
     if (commentImage) {
       const formData = new FormData();
       formData.append('file', commentImage);
-      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData, credentials: 'include' });
       const uploadData = await uploadRes.json();
       imageUrl = uploadData.url;
     }

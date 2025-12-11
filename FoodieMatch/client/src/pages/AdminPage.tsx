@@ -19,19 +19,19 @@ import { EmptyState } from '@/components/EmptyState';
 import { apiRequest } from '@/lib/queryClient';
 
 const fetchUsers = async (): Promise<User[]> => {
-  const res = await fetch('/api/users');
+  const res = await fetch('/api/users', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch users');
   return res.json();
 };
 
 const fetchPendingUsers = async (): Promise<User[]> => {
-  const res = await fetch('/api/users/pending');
+  const res = await fetch('/api/users/pending', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch pending users');
   return res.json();
 };
 
 const fetchTeams = async (): Promise<Team[]> => {
-  const res = await fetch('/api/teams');
+  const res = await fetch('/api/teams', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch teams');
   return res.json();
 };

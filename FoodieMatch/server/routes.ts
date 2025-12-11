@@ -1234,25 +1234,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/teams/:teamId/members", requireAuth, async (req, res) => {
+  app.post("/api/teams/:teamId/members", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
     try {
       const { userId } = req.body;
-      const updatedUser = await prisma.user.update({ where: { id: userId }, data: { teamId: parseInt(req.params.teamId) } });
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+      const updatedUser = await prisma.user.update({ where: { id: userId }, data: { teamId } });
       res.status(201).json(updatedUser);
     } catch (error) { res.status(500).json({ message: "Failed to add member" }); }
   });
 
-  app.delete("/api/teams/:teamId/members/:userId", requireAuth, async (req, res) => {
+  app.delete("/api/teams/:teamId/members/:userId", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
     try {
       await prisma.user.update({ where: { id: req.params.userId }, data: { teamId: null } });
       res.status(204).send();
     } catch (error) { res.status(500).json({ message: "Failed to remove member" }); }
   });
 
-  app.put("/api/teams/:teamId/leader", requireAuth, async (req, res) => {
+  app.put("/api/teams/:teamId/leader", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { userId } = req.body;
-      const updatedTeam = await prisma.team.update({ where: { id: parseInt(req.params.teamId) }, data: { leaderId: userId } });
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+      const updatedTeam = await prisma.team.update({ where: { id: teamId }, data: { leaderId: userId } });
       res.json(updatedTeam);
     } catch (error) { res.status(500).json({ message: "Failed to set team leader" }); }
   });
@@ -5609,7 +5617,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ files: uploadedFiles });
     } catch (error) {
       console.error('Multiple files upload error:', error);
-      res.status(500).json({ message: '파일 업로드 실패', error: error instanceof Error ? error.message : 'Unknown error' });
+      // 프로덕션에서는 상세 에러 메시지를 숨김
+      const errorDetail = process.env.NODE_ENV === 'production'
+        ? '서버 오류가 발생했습니다'
+        : (error instanceof Error ? error.message : 'Unknown error');
+      res.status(500).json({ message: '파일 업로드 실패', error: errorDetail });
     }
   });
 
@@ -7671,12 +7683,8 @@ ${JSON.stringify(toolResults, null, 2)}
   });
 
   // 전체 백업 다운로드
-  app.post("/api/admin/backup", requireAuth, async (req, res) => {
+  app.post("/api/admin/backup", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      // ADMIN 권한 확인
-      if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
-      }
 
       console.log("Starting full database backup...");
 
@@ -7772,12 +7780,8 @@ ${JSON.stringify(toolResults, null, 2)}
   });
 
   // 오래된 데이터 정리
-  app.post("/api/admin/cleanup", requireAuth, async (req, res) => {
+  app.post("/api/admin/cleanup", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      // ADMIN 권한 확인
-      if (req.session.user?.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자 권한이 필요합니다." });
-      }
 
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
