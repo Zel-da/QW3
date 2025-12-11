@@ -268,9 +268,9 @@ export default function ApprovalPage() {
 
   if (error || !approvalRequest) {
     // Check if it's a 401 error (not logged in)
-    const isUnauthorized = error && 'response' in error && error.response?.status === 401;
+    const isUnauthorized = error && 'response' in error && (error as any).response?.status === 401;
     // Check if it's a 403 error (no permission)
-    const isForbidden = error && 'response' in error && error.response?.status === 403;
+    const isForbidden = error && 'response' in error && (error as any).response?.status === 403;
 
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

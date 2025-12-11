@@ -197,7 +197,7 @@ export async function getUnsyncedTbmDrafts(): Promise<TbmDraft[]> {
     const transaction = db.transaction(STORES.TBM_DRAFTS, 'readonly');
     const store = transaction.objectStore(STORES.TBM_DRAFTS);
     const index = store.index('synced');
-    const request = index.getAll(false);
+    const request = index.getAll(IDBKeyRange.only(0)); // 0 = false (boolean stored as 0/1)
 
     request.onsuccess = () => {
       resolve(request.result || []);

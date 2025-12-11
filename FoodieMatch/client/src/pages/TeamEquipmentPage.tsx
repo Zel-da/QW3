@@ -73,8 +73,8 @@ export default function TeamEquipmentPage() {
   const { data: factories = [] } = useQuery<Factory[]>({
     queryKey: ['factories'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/factories');
-      return data;
+      const res = await apiRequest('GET', '/api/factories');
+      return res.json();
     },
   });
 
@@ -82,8 +82,8 @@ export default function TeamEquipmentPage() {
   const { data: allTeams = [] } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: async () => {
-      const { data } = await axios.get('/api/teams');
-      return data;
+      const res = await apiRequest('GET', '/api/teams');
+      return res.json();
     },
   });
 
@@ -288,7 +288,7 @@ export default function TeamEquipmentPage() {
 
             {!selectedTeam ? (
               <EmptyState
-                message="팀을 선택하세요"
+                title="팀을 선택하세요"
                 description="공장과 팀을 선택하면 해당 팀의 장비 목록이 표시됩니다."
               />
             ) : isLoading ? (
@@ -369,7 +369,7 @@ export default function TeamEquipmentPage() {
                 {/* 장비 목록 테이블 */}
                 {displayEquipments.length === 0 ? (
                   <EmptyState
-                    message="등록된 장비가 없습니다"
+                    title="등록된 장비가 없습니다"
                     description="장비 추가 버튼을 눌러 장비를 등록하세요."
                   />
                 ) : (

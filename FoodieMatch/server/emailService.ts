@@ -1,7 +1,5 @@
 import nodemailer from 'nodemailer';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './db';
 
 // Email configuration
 const smtpPort = parseInt(process.env.SMTP_PORT || '25');
@@ -52,21 +50,20 @@ export function renderTemplate(template: string, variables: Record<string, any>)
   return rendered;
 }
 
-// Get template from database and render it
+// Get template from database and render it (using SimpleEmailConfig)
 export async function getRenderedEmailTemplate(
   templateType: string,
   variables: Record<string, any>
 ): Promise<{ subject: string; html: string } | null> {
   try {
-    const template = await prisma.emailTemplate.findFirst({
+    const config = await prisma.simpleEmailConfig.findUnique({
       where: {
-        type: templateType,
-        isActive: true
+        emailType: templateType
       }
     });
 
-    if (!template) {
-      console.error(`Template not found: ${templateType}`);
+    if (!config || !config.enabled) {
+      console.error(`Email config not found or disabled: ${templateType}`);
       return null;
     }
 
@@ -76,8 +73,8 @@ export async function getRenderedEmailTemplate(
     }
 
     return {
-      subject: renderTemplate(template.subject, variables),
-      html: renderTemplate(template.htmlContent, variables)
+      subject: renderTemplate(config.subject, variables),
+      html: renderTemplate(config.content, variables)
     };
   } catch (error) {
     console.error('Error rendering email template:', error);

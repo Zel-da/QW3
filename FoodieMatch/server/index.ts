@@ -16,8 +16,9 @@ import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
-// R2 Storage URL (Cloudflare R2)
+// R2 Storage URLs (Cloudflare R2)
 const R2_STORAGE_URL = "https://pub-1a48d08cdc484562bf1ba171b1a2c139.r2.dev";
+const R2_STORAGE_URL_2 = "https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev";
 
 // Security middleware - HTTP 헤더 보안
 app.use(helmet({
@@ -26,11 +27,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // React/Vite 필요
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // TailwindCSS + Google Fonts
-      imgSrc: ["'self'", "data:", "https:", "blob:", R2_STORAGE_URL], // R2 이미지 허용
-      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:", R2_STORAGE_URL], // Gemini API + WebSocket + Google Fonts + R2
+      imgSrc: ["'self'", "data:", "https:", "blob:", R2_STORAGE_URL, R2_STORAGE_URL_2], // R2 이미지 허용
+      connectSrc: ["'self'", "https://generativelanguage.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:", R2_STORAGE_URL, R2_STORAGE_URL_2], // Gemini API + WebSocket + Google Fonts + R2
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts 폰트 파일
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'", "blob:", "data:", R2_STORAGE_URL], // R2 미디어(오디오/비디오) 허용
+      mediaSrc: ["'self'", "blob:", "data:", R2_STORAGE_URL, R2_STORAGE_URL_2], // R2 미디어(오디오/비디오) 허용
       frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"], // YouTube 임베드 (privacy-enhanced)
       frameAncestors: ["'self'"],
       formAction: ["'self'"],

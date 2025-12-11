@@ -856,7 +856,7 @@ export default function MonthlyReportPage() {
                     !report ||
                     !report.dailyReports ||
                     report.dailyReports.length === 0 ||
-                    (teamLeaderEducationStat && teamLeaderEducationStat.status !== 'completed')
+                    !!(teamLeaderEducationStat && teamLeaderEducationStat.status !== 'completed')
                   }
                   variant="default"
                   size="sm"

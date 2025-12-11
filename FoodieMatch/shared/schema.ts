@@ -16,6 +16,7 @@ export interface User {
   role: Role;
   teamId?: number | null;
   site?: string | null;
+  createdAt?: Date | string | null;
 }
 
 export interface Notice {
@@ -201,6 +202,7 @@ export interface TeamMember {
   teamId: number;
   name: string;
   position?: string | null;
+  userId?: string | null;        // 연결된 User 계정 ID
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

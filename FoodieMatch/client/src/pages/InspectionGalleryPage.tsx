@@ -117,7 +117,7 @@ export default function InspectionGalleryPage() {
   });
 
   // Fetch teams for selected site
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ['teams', site],
     queryFn: async () => {
       const res = await fetch(`/api/teams?site=${site}`);

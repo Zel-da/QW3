@@ -5630,9 +5630,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { templateId } = req.params;
       const { items } = req.body;
 
+      // Validate input
+      const parsedTemplateId = parseInt(templateId);
+      if (isNaN(parsedTemplateId)) {
+        return res.status(400).json({ message: 'Invalid template ID' });
+      }
+
+      if (!items || !Array.isArray(items)) {
+        return res.status(400).json({ message: 'Items must be an array' });
+      }
+
       const updatePromises = items.map((item: any, index: number) => {
         const itemData = {
-          templateId: parseInt(templateId),
+          templateId: parsedTemplateId,
           category: item.category,
           subCategory: item.subCategory || null,
           description: item.description,
@@ -5655,19 +5665,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Also, find and delete items that are no longer in the list
       const incomingItemIds = items.map((item: any) => item.id).filter(Boolean);
-      await prisma.templateItem.deleteMany({
-        where: {
-          templateId: parseInt(templateId),
-          id: { notIn: incomingItemIds },
-        },
-      });
+      // Only delete if there are existing items to preserve (avoid deleting all when empty)
+      if (incomingItemIds.length > 0) {
+        await prisma.templateItem.deleteMany({
+          where: {
+            templateId: parsedTemplateId,
+            id: { notIn: incomingItemIds },
+          },
+        });
+      } else if (items.length === 0) {
+        // If items array is empty, delete all items for this template
+        await prisma.templateItem.deleteMany({
+          where: { templateId: parsedTemplateId },
+        });
+      }
 
       await Promise.all(updatePromises);
 
       res.json({ message: "Template updated successfully" });
-    } catch (error) { 
+    } catch (error) {
       console.error("Error updating template:", error);
-      res.status(500).json({ message: 'Failed to update checklist template' }); 
+      res.status(500).json({ message: 'Failed to update checklist template' });
     }
   });
 

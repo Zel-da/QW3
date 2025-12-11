@@ -80,7 +80,7 @@ export default function AdminPage() {
   // 승인 다이얼로그 상태
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [selectedUserForApproval, setSelectedUserForApproval] = useState<User | null>(null);
-  const [approvalRole, setApprovalRole] = useState<Role>('TEAM_LEADER');
+  const [approvalRole, setApprovalRole] = useState<Role>(Role.TEAM_LEADER);
   const [approvalTeamId, setApprovalTeamId] = useState<string>('');
   const [approvalSite, setApprovalSite] = useState<string>('');
 
@@ -187,7 +187,7 @@ export default function AdminPage() {
 
   const openApproveDialog = (user: User) => {
     setSelectedUserForApproval(user);
-    setApprovalRole('TEAM_LEADER');
+    setApprovalRole(Role.TEAM_LEADER);
     setApprovalTeamId('');
     setApprovalSite('');
     setApproveDialogOpen(true);

@@ -335,8 +335,8 @@ export default function InspectionTemplateEditorPage() {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = equipmentItems.findIndex((_, idx) => (item.equipmentName + idx) === active.id);
-      const newIndex = equipmentItems.findIndex((_, idx) => (item.equipmentName + idx) === over.id);
+      const oldIndex = equipmentItems.findIndex((eq, idx) => (eq.equipmentName + idx) === active.id);
+      const newIndex = equipmentItems.findIndex((eq, idx) => (eq.equipmentName + idx) === over.id);
 
       const reordered = arrayMove(equipmentItems, oldIndex, newIndex);
       // 순서 재정렬

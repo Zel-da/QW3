@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Site = '아산' | '화성';
+export type Site = '아산' | '화성' | '전체';
 
 interface SiteState {
   site: Site;

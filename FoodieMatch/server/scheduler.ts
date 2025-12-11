@@ -1,5 +1,5 @@
-import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
+import * as cron from 'node-cron';
+import { prisma } from './db';
 import {
   sendEmail,
   getEducationReminderTemplate,
@@ -8,9 +8,6 @@ import {
   sendEmailFromTemplate
 } from './emailService';
 import { executeAllConditions } from './conditionExecutor';
-
-// Create dedicated prisma instance for scheduler to avoid circular dependency issues
-const prisma = new PrismaClient();
 
 // Store active cron jobs for management
 const activeCronJobs = new Map<string, cron.ScheduledTask>();
@@ -113,7 +110,7 @@ export function scheduleTBMReminders() {
       // 모든 팀 가져오기
       const teams = await prisma.team.findMany({
         include: {
-          users: {
+          members: {
             where: {
               role: 'TEAM_LEADER',
               email: { not: null }
@@ -135,7 +132,7 @@ export function scheduleTBMReminders() {
 
         // 작성하지 않았으면 알림 전송
         if (!todayTBM) {
-          for (const user of team.users) {
+          for (const user of team.members) {
             if (!user.email) continue;
 
             // Use template from database
@@ -150,7 +147,7 @@ export function scheduleTBMReminders() {
             );
           }
 
-          console.log(`✅ ${team.name} - ${team.users.length}명에게 알림 전송`);
+          console.log(`✅ ${team.name} - ${team.members.length}명에게 알림 전송`);
         }
       }
     } catch (error) {
@@ -370,7 +367,7 @@ async function sendTBMReminders() {
 
   const teams = await prisma.team.findMany({
     include: {
-      users: {
+      members: {
         where: {
           role: 'TEAM_LEADER',
           email: { not: null }
@@ -390,7 +387,7 @@ async function sendTBMReminders() {
     });
 
     if (!todayTBM) {
-      for (const user of team.users) {
+      for (const user of team.members) {
         if (!user.email) continue;
 
         await sendEmailFromTemplate(
@@ -404,7 +401,7 @@ async function sendTBMReminders() {
         );
       }
 
-      console.log(`✅ ${team.name} - ${team.users.length}명에게 알림 전송`);
+      console.log(`✅ ${team.name} - ${team.members.length}명에게 알림 전송`);
     }
   }
 }
@@ -444,53 +441,18 @@ async function sendSafetyInspectionReminders() {
 
 /**
  * 특정 스케줄 재로드 (스케줄 수정 시 사용)
+ * Note: EmailSchedule 모델이 삭제되어 SimpleEmailConfig 기반으로 변경됨
  */
 export async function reloadSchedule(scheduleId: string) {
-  try {
-    // 기존 작업 중지
-    const existingTask = activeCronJobs.get(scheduleId);
-    if (existingTask) {
-      existingTask.stop();
-      activeCronJobs.delete(scheduleId);
-    }
-
-    // 스케줄 다시 로드
-    const schedule = await prisma.emailSchedule.findUnique({
-      where: { id: scheduleId },
-      include: { template: true }
-    });
-
-    if (!schedule) {
-      console.log(`스케줄을 찾을 수 없습니다: ${scheduleId}`);
-      return;
-    }
-
-    if (!schedule.isEnabled) {
-      console.log(`스케줄이 비활성화되어 있습니다: ${schedule.name}`);
-      return;
-    }
-
-    // 새 작업 생성
-    const task = cron.schedule(schedule.cronExpression, async () => {
-      console.log(`📧 스케줄 실행: ${schedule.name}`);
-
-      try {
-        await prisma.emailSchedule.update({
-          where: { id: schedule.id },
-          data: { lastRun: new Date() }
-        });
-
-        await executeScheduledEmail(schedule);
-      } catch (error) {
-        console.error(`❌ 스케줄 실행 실패 (${schedule.name}):`, error);
-      }
-    });
-
-    activeCronJobs.set(schedule.id, task);
-    console.log(`✅ 스케줄 재로드 완료: ${schedule.name}`);
-  } catch (error) {
-    console.error(`❌ 스케줄 재로드 실패 (${scheduleId}):`, error);
+  // 기존 작업 중지
+  const existingTask = activeCronJobs.get(scheduleId);
+  if (existingTask) {
+    existingTask.stop();
+    activeCronJobs.delete(scheduleId);
+    console.log(`✅ 스케줄 중지: ${scheduleId}`);
   }
+  // SimpleEmailConfig 기반 시스템에서는 cron 표현식이 없으므로 재로드 불필요
+  console.log(`ℹ️  스케줄 재로드 요청 (${scheduleId}) - SimpleEmailConfig 사용`);
 }
 
 /**
