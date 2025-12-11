@@ -16,6 +16,7 @@ import { User, Role, Team } from '@shared/schema';
 import { SITES, ROLE_LABELS } from '@/lib/constants';
 import { Search, Users, UserCheck, UserX, Key, Copy, Clock } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
+import { apiRequest } from '@/lib/queryClient';
 
 const fetchUsers = async (): Promise<User[]> => {
   const res = await fetch('/api/users');
@@ -36,67 +37,32 @@ const fetchTeams = async (): Promise<Team[]> => {
 };
 
 const updateUserRole = async ({ userId, role }: { userId: string; role: Role }) => {
-  const res = await fetch(`/api/users/${userId}/role`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role }),
-  });
-  if (!res.ok) throw new Error('Failed to update user role');
+  const res = await apiRequest('PUT', `/api/users/${userId}/role`, { role });
   return res.json();
 };
 
 const updateUserSite = async ({ userId, site }: { userId: string; site: string }) => {
-  const res = await fetch(`/api/users/${userId}/site`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ site }),
-  });
-  if (!res.ok) throw new Error('Failed to update user site');
+  const res = await apiRequest('PUT', `/api/users/${userId}/site`, { site });
   return res.json();
 };
 
 const deleteUser = async (userId: string) => {
-  const res = await fetch(`/api/users/${userId}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete user');
+  const res = await apiRequest('DELETE', `/api/users/${userId}`);
   return res.json();
 };
 
 const approveUser = async ({ userId, role, teamId, site }: { userId: string; role: Role; teamId?: number; site?: string }) => {
-  const res = await fetch(`/api/users/${userId}/approve`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role, teamId, site }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || 'Failed to approve user');
-  }
+  const res = await apiRequest('PUT', `/api/users/${userId}/approve`, { role, teamId, site });
   return res.json();
 };
 
 const rejectUser = async (userId: string) => {
-  const res = await fetch(`/api/users/${userId}/reject`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || 'Failed to reject user');
-  }
+  const res = await apiRequest('DELETE', `/api/users/${userId}/reject`);
   return res.json();
 };
 
 const resetPassword = async (userId: string) => {
-  const res = await fetch(`/api/users/${userId}/reset-password`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || 'Failed to reset password');
-  }
+  const res = await apiRequest('PUT', `/api/users/${userId}/reset-password`, {});
   return res.json();
 };
 

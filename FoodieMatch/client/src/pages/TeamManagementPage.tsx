@@ -14,6 +14,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import type { User, Team } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { apiRequest } from '@/lib/queryClient';
 
 const fetchAllTeams = async (): Promise<Team[]> => {
   const res = await fetch('/api/teams');
@@ -46,97 +47,49 @@ const fetchTeamMembers = async (teamId: number) => {
 };
 
 const addTeamMember = async ({ teamId, name, position }: { teamId: number; name: string; position?: string }) => {
-  const res = await fetch(`/api/teams/${teamId}/team-members`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, position }),
-  });
-  if (!res.ok) throw new Error('Failed to add team member');
+  const res = await apiRequest('POST', `/api/teams/${teamId}/team-members`, { name, position });
   return res.json();
 };
 
 const deleteTeamMember = async ({ teamId, memberId }: { teamId: number; memberId: string }) => {
-  await fetch(`/api/teams/${teamId}/team-members/${memberId}`, { method: 'DELETE' });
+  await apiRequest('DELETE', `/api/teams/${teamId}/team-members/${memberId}`);
 };
 
 const createTeam = async ({ name, site }: { name: string; site: string }) => {
-  const res = await fetch('/api/teams', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, site }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to create team');
-  }
+  const res = await apiRequest('POST', '/api/teams', { name, site });
   return res.json();
 };
 
 const createTeamsBulk = async ({ site, teamNames }: { site: string; teamNames: string[] }) => {
-  const res = await fetch('/api/teams/bulk', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ site, teamNames }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to create teams in bulk');
-  }
+  const res = await apiRequest('POST', '/api/teams/bulk', { site, teamNames });
   return res.json();
 };
 
 const updateTeam = async ({ teamId, name, site }: { teamId: number; name?: string; site?: string }) => {
-  const res = await fetch(`/api/teams/${teamId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, site }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update team');
-  }
+  const res = await apiRequest('PUT', `/api/teams/${teamId}`, { name, site });
   return res.json();
 };
 
 const deleteTeam = async (teamId: number) => {
-  const res = await fetch(`/api/teams/${teamId}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to delete team');
-  }
+  await apiRequest('DELETE', `/api/teams/${teamId}`);
 };
 
 const addUserToTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
-  const res = await fetch(`/api/teams/${teamId}/members`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
-  if (!res.ok) throw new Error('Failed to add user');
+  const res = await apiRequest('POST', `/api/teams/${teamId}/members`, { userId });
   return res.json();
 };
 
 const removeUserFromTeam = async ({ teamId, userId }: { teamId: number; userId: string }) => {
-  await fetch(`/api/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
+  await apiRequest('DELETE', `/api/teams/${teamId}/members/${userId}`);
 };
 
 const setTeamLeader = async ({ teamId, userId }: { teamId: number; userId: string }) => {
-  const res = await fetch(`/api/teams/${teamId}/leader`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
-  if (!res.ok) throw new Error('Failed to set team leader');
+  const res = await apiRequest('PUT', `/api/teams/${teamId}/leader`, { userId });
   return res.json();
 };
 
 const setTeamApprover = async ({ teamId, userId }: { teamId: number; userId: string | null }) => {
-  const res = await fetch(`/api/teams/${teamId}/approver`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
-  if (!res.ok) throw new Error('Failed to set team approver');
+  const res = await apiRequest('PUT', `/api/teams/${teamId}/approver`, { userId });
   return res.json();
 };
 

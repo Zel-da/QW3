@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileDropzone } from '@/components/FileDropzone';
 import { X, Camera, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import apiClient from '@/features/tbm/apiConfig';
 
 interface Attachment {
   url: string;
@@ -60,7 +60,7 @@ export function IssueDetailModal({
     Array.from(files).forEach(file => formData.append('files', file));
 
     try {
-      const res = await axios.post('/api/upload-multiple', formData, {
+      const res = await apiClient.post('/api/upload-multiple', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       const newAttachments = res.data.files.map((f: any) => ({

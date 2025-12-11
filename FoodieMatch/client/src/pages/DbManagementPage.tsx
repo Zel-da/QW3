@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Database, Download, Trash2, AlertTriangle, HardDrive, FileText, Mail, Users, ClipboardCheck, Shield } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { apiRequest } from '@/lib/queryClient';
 
 interface DbStats {
   current: {
@@ -55,8 +56,7 @@ export default function DbManagementPage() {
   const handleBackup = async () => {
     setIsBackingUp(true);
     try {
-      const res = await fetch('/api/admin/backup', { method: 'POST' });
-      if (!res.ok) throw new Error('Backup failed');
+      const res = await apiRequest('POST', '/api/admin/backup');
 
       // 파일 다운로드
       const blob = await res.blob();
@@ -81,8 +81,7 @@ export default function DbManagementPage() {
   const handleCleanup = async () => {
     setIsCleaning(true);
     try {
-      const res = await fetch('/api/admin/cleanup', { method: 'POST' });
-      if (!res.ok) throw new Error('Cleanup failed');
+      const res = await apiRequest('POST', '/api/admin/cleanup');
 
       const result = await res.json();
       toast({ title: '성공', description: result.message });

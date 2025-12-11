@@ -21,6 +21,7 @@ import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import { Badge } from "@/components/ui/badge";
 import { FileDropzone } from "@/components/FileDropzone";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { apiRequest } from "@/lib/queryClient";
 
 // YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
 function getYouTubeEmbedUrl(url: string): string {
@@ -352,14 +353,8 @@ export default function NoticeEditor() {
     console.log('📹 Video Type:', submitData.videoType);
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData),
-      });
-
+      const response = await apiRequest(method, url, submitData);
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '저장에 실패했습니다.');
 
       queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
       if (isEditing) {

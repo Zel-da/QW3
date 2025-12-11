@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSite, Site } from "@/hooks/use-site";
 import { SITES } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
+import { apiRequest } from '@/lib/queryClient';
 import {
   DndContext,
   closestCenter,
@@ -44,12 +45,7 @@ const fetchTemplate = async (teamId: number) => {
 };
 
 const updateTemplate = async ({ templateId, items }: { templateId: number; items: any[] }) => {
-  const res = await fetch(`/api/checklist-templates/${templateId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items }),
-  });
-  if (!res.ok) throw new Error('Failed to update template');
+  const res = await apiRequest('PUT', `/api/checklist-templates/${templateId}`, { items });
   return res.json();
 };
 

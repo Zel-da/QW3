@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Mail, Send, Settings, BarChart3, CheckCircle2, XCircle, Clock, Server, Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SimpleEmailConfig {
   id: string;
@@ -95,13 +96,7 @@ export default function EmailSettingsPage() {
   // Update email configuration
   const updateMutation = useMutation({
     mutationFn: async (data: { emailType: string; updates: Partial<SimpleEmailConfig> }) => {
-      const res = await fetch(`/api/email/configs/${data.emailType}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data.updates),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await apiRequest("PUT", `/api/email/configs/${data.emailType}`, data.updates);
       return res.json();
     },
     onSuccess: () => {
@@ -121,35 +116,29 @@ export default function EmailSettingsPage() {
   // Send test email
   const testMutation = useMutation({
     mutationFn: async (data: { emailType: string; recipientEmail: string }) => {
-      const res = await fetch("/api/email/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          emailType: data.emailType,
-          recipientEmail: data.recipientEmail,
-          variables: {
-            USER_NAME: "테스트 사용자",
-            COURSE_NAME: "샘플 교육",
-            TEAM_NAME: "샘플 팀",
-            MONTH: "12",
-            DATE: "2024-12-01",
-            DAYS_OVERDUE: 3,
-            DUE_DATE: "2024-12-31",
-            PROGRESS: 50,
-            REPORT_NAME: "샘플 보고서",
-            CREATED_DATE: "2024-12-01",
-            SIGNER_NAME: "홍길동",
-            SIGNER_ROLE: "임원",
-            SIGNED_DATE: "2024-12-01",
-            REPORT_URL: "http://192.68.10.249:5001",
-            TBM_URL: "http://192.68.10.249:5001/tbm",
-            COURSE_URL: "http://192.68.10.249:5001/courses",
-            INSPECTION_URL: "http://192.68.10.249:5001/safety-inspection",
-          }
-        }),
+      const res = await apiRequest("POST", "/api/email/test", {
+        emailType: data.emailType,
+        recipientEmail: data.recipientEmail,
+        variables: {
+          USER_NAME: "테스트 사용자",
+          COURSE_NAME: "샘플 교육",
+          TEAM_NAME: "샘플 팀",
+          MONTH: "12",
+          DATE: "2024-12-01",
+          DAYS_OVERDUE: 3,
+          DUE_DATE: "2024-12-31",
+          PROGRESS: 50,
+          REPORT_NAME: "샘플 보고서",
+          CREATED_DATE: "2024-12-01",
+          SIGNER_NAME: "홍길동",
+          SIGNER_ROLE: "임원",
+          SIGNED_DATE: "2024-12-01",
+          REPORT_URL: "http://192.68.10.249:5001",
+          TBM_URL: "http://192.68.10.249:5001/tbm",
+          COURSE_URL: "http://192.68.10.249:5001/courses",
+          INSPECTION_URL: "http://192.68.10.249:5001/safety-inspection",
+        }
       });
-      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     onSuccess: () => {

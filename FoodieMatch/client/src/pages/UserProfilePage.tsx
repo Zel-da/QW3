@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HelpCircle } from 'lucide-react';
 import type { User, Team } from '@shared/schema';
 import { SITES } from '@/lib/constants';
+import { apiRequest } from '@/lib/queryClient';
 
 const fetchUser = async (userId: string): Promise<User> => {
   const res = await fetch(`/api/users/${userId}`);
@@ -27,15 +28,7 @@ const fetchTeam = async (teamId: number): Promise<Team> => {
 }
 
 const updateUser = async ({ userId, userData }: { userId: string; userData: Partial<User> }) => {
-  const res = await fetch(`/api/users/${userId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userData),
-  });
-  if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Failed to update user data');
-  }
+  const res = await apiRequest('PUT', `/api/users/${userId}`, userData);
   return res.json();
 };
 

@@ -9,6 +9,7 @@ import { ChartLine, Shield, BookOpen, MessageSquare, ClipboardList, Clock, Tag, 
 import { Course, UserProgress } from "@shared/schema";
 import { PROGRESS_STEPS } from "@/lib/constants";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function DashboardWithTBM() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -30,14 +31,10 @@ export default function DashboardWithTBM() {
       if (!userId) {
         // Create a demo user for this session
         try {
-          const response = await fetch("/api/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              username: "데모 사용자",
-              email: "demo@example.com",
-              department: "안전관리팀",
-            }),
+          const response = await apiRequest("POST", "/api/users", {
+            username: "데모 사용자",
+            email: "demo@example.com",
+            department: "안전관리팀",
           });
           
           if (response.ok) {

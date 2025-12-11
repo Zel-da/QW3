@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { ChatButton } from './ChatButton';
 import { ChatWindow } from './ChatWindow';

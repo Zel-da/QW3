@@ -17,6 +17,7 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileDropzone } from "@/components/FileDropzone";
 import { NoticeDetailSkeleton } from "@/components/skeletons/NoticeListSkeleton";
+import { apiRequest } from "@/lib/queryClient";
 
 // YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
 function getYouTubeEmbedUrl(url: string): string {
@@ -58,36 +59,17 @@ const fetchComments = async (noticeId: string) => {
 }
 
 const postComment = async ({ noticeId, content, imageUrl, attachments }: { noticeId: string; content: string; imageUrl: string | null; attachments?: any[] }) => {
-  const res = await fetch(`/api/notices/${noticeId}/comments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, imageUrl, attachments }),
-  });
-  if (!res.ok) throw new Error('Failed to post comment');
+  const res = await apiRequest('POST', `/api/notices/${noticeId}/comments`, { content, imageUrl, attachments });
   return res.json();
 }
 
 const updateComment = async ({ noticeId, commentId, content }: { noticeId: string; commentId: string; content: string }) => {
-  const res = await fetch(`/api/notices/${noticeId}/comments/${commentId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || 'Failed to update comment');
-  }
+  const res = await apiRequest('PUT', `/api/notices/${noticeId}/comments/${commentId}`, { content });
   return res.json();
 }
 
 const deleteComment = async ({ noticeId, commentId }: { noticeId: string; commentId: string }) => {
-  const res = await fetch(`/api/notices/${noticeId}/comments/${commentId}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || 'Failed to delete comment');
-  }
+  const res = await apiRequest('DELETE', `/api/notices/${noticeId}/comments/${commentId}`);
   return res.json();
 }
 

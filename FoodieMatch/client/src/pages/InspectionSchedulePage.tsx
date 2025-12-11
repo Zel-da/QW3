@@ -13,6 +13,7 @@ import { Pencil, Save, X, Plus, Trash2, Calendar, ArrowLeft } from 'lucide-react
 import { Link } from 'wouter';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Factory {
   id: number;
@@ -89,28 +90,12 @@ const fetchAvailableEquipments = async (factoryCode: string): Promise<string[]> 
 };
 
 const updateSchedule = async ({ factoryCode, month, schedules }: { factoryCode: string; month: number; schedules: InspectionScheduleItem[] }) => {
-  const res = await fetch(`/api/inspection-schedules/${factoryCode}/${month}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ schedules }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update schedule');
-  }
+  const res = await apiRequest('PUT', `/api/inspection-schedules/${factoryCode}/${month}`, { schedules });
   return res.json();
 };
 
 const updateMonthlyInspectionDay = async ({ factoryCode, month, inspectionDay }: { factoryCode: string; month: number; inspectionDay: number }) => {
-  const res = await fetch(`/api/monthly-inspection-days/${factoryCode}/${month}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inspectionDay }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update monthly inspection day');
-  }
+  const res = await apiRequest('PUT', `/api/monthly-inspection-days/${factoryCode}/${month}`, { inspectionDay });
   return res.json();
 };
 

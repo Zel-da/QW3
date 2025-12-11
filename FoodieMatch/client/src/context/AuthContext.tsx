@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface AuthUser {
   id: string;
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await apiRequest('POST', '/api/auth/logout');
       setUser(null);
       localStorage.removeItem('currentUserId');
       // Redirect to homepage after logout

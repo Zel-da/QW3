@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { Pencil, Trash2, Plus, Save, X, ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Factory {
   id: number;
@@ -44,36 +44,17 @@ const fetchTeamEquipments = async (teamId: number): Promise<TeamEquipment[]> => 
 };
 
 const addTeamEquipment = async ({ teamId, equipmentName, quantity }: { teamId: number; equipmentName: string; quantity: number }) => {
-  const res = await fetch(`/api/teams/${teamId}/equipments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ equipmentName, quantity }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to add equipment');
-  }
+  const res = await apiRequest('POST', `/api/teams/${teamId}/equipments`, { equipmentName, quantity });
   return res.json();
 };
 
 const updateTeamEquipments = async ({ teamId, equipments }: { teamId: number; equipments: TeamEquipment[] }) => {
-  const res = await fetch(`/api/teams/${teamId}/equipments`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ equipments }),
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to update equipments');
-  }
+  const res = await apiRequest('PUT', `/api/teams/${teamId}/equipments`, { equipments });
   return res.json();
 };
 
 const deleteTeamEquipment = async ({ teamId, equipmentId }: { teamId: number; equipmentId: number }) => {
-  const res = await fetch(`/api/teams/${teamId}/equipments/${equipmentId}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete equipment');
+  await apiRequest('DELETE', `/api/teams/${teamId}/equipments/${equipmentId}`);
 };
 
 export default function TeamEquipmentPage() {

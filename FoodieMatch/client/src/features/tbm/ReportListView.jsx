@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import apiClient from './apiConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
@@ -74,7 +73,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
         queryKey: ['attendance-overview', attendanceMonth.year, attendanceMonth.month, site],
         queryFn: async () => {
             if (!site) return null;
-            const { data } = await axios.get(`/api/tbm/attendance-overview?year=${attendanceMonth.year}&month=${attendanceMonth.month}&site=${site}`);
+            const { data } = await apiClient.get(`/api/tbm/attendance-overview?year=${attendanceMonth.year}&month=${attendanceMonth.month}&site=${site}`);
             return data;
         },
         enabled: !!site,

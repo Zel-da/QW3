@@ -10,6 +10,7 @@ import { Plus, X, Video, Music, Youtube } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Course, Assessment } from '@shared/schema';
 import { FileDropzone } from '@/components/FileDropzone';
+import { apiRequest } from '@/lib/queryClient';
 
 interface CourseEditDialogProps {
   isOpen: boolean;
@@ -25,23 +26,12 @@ const fetchAssessments = async (courseId: string): Promise<Assessment[]> => {
 };
 
 const updateCourse = async (courseData: Partial<Course> & { id: string }) => {
-    const res = await fetch(`/api/courses/${courseData.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(courseData),
-    });
-    if (!res.ok) throw new Error('Failed to update course');
+    const res = await apiRequest('PUT', `/api/courses/${courseData.id}`, courseData);
     return res.json();
 };
 
 const updateAssessments = async ({ courseId, questions }: { courseId: string; questions: any[] }) => {
-    const res = await fetch(`/api/courses/${courseId}/assessments`,
-    {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions }),
-    });
-    if (!res.ok) throw new Error('Failed to update assessments');
+    const res = await apiRequest('PUT', `/api/courses/${courseId}/assessments`, { questions });
     return res.json();
 };
 

@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
 import { FileDropzone } from '@/components/FileDropzone';
+import { apiRequest } from '@/lib/queryClient';
 
 // YouTube URL을 임베드 URL로 변환 (youtube-nocookie.com 사용)
 const getYouTubeEmbedUrl = (url: string): string => {
@@ -53,30 +54,16 @@ const fetchCourses = async () => {
 }
 
 const createCourse = async (courseData: Partial<Course>) => {
-    const res = await fetch('/api/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(courseData),
-    });
-    if (!res.ok) throw new Error('Failed to create course');
+    const res = await apiRequest('POST', '/api/courses', courseData);
     return res.json();
 }
 
 const deleteCourse = async (courseId: string) => {
-    const res = await fetch(`/api/courses/${courseId}`, {
-        method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Failed to delete course');
-    // No need to return JSON for a 204 response
+    await apiRequest('DELETE', `/api/courses/${courseId}`);
 }
 
 const createAssessments = async ({ courseId, questions }: { courseId: string; questions: any[] }) => {
-    const res = await fetch(`/api/courses/${courseId}/assessments-bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions }),
-    });
-    if (!res.ok) throw new Error('Failed to create assessments');
+    const res = await apiRequest('POST', `/api/courses/${courseId}/assessments-bulk`, { questions });
     return res.json();
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from "date-fns";
-import axios from 'axios';
+import apiClient from '../features/tbm/apiConfig';
 import { Header } from "@/components/header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
@@ -52,7 +52,7 @@ export default function TbmPage() {
     const reportId = params.get('reportId');
 
     if (reportId) {
-      axios.get(`/api/tbm/${reportId}`).then(res => {
+      apiClient.get(`/api/tbm/${reportId}`).then(res => {
         const report = res.data;
         setReportForEdit(report);
         setDate(new Date(report.reportDate));
@@ -77,7 +77,7 @@ export default function TbmPage() {
 
   const handleModifyReport = useCallback((reportId: number) => {
     setIsLoadingModify(true);
-    axios.get(`/api/tbm/${reportId}`).then(res => {
+    apiClient.get(`/api/tbm/${reportId}`).then(res => {
       const report = res.data;
       setReportForEdit(report);
       setDate(new Date(report.reportDate));

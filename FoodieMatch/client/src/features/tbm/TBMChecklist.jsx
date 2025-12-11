@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -90,7 +90,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   useEffect(() => {
     if (site) {
-      axios.get(`/api/teams?site=${site}`).then(res => {
+      apiClient.get(`/api/teams?site=${site}`).then(res => {
         setTeams(res.data);
         const userTeamInList = res.data.some(team => team.id === user?.teamId);
         if (user?.teamId && userTeamInList && !reportForEdit) {
@@ -108,7 +108,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       const d = new Date(date);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-      axios.get(`/api/holidays/check?date=${dateStr}${site ? `&site=${site}` : ''}`)
+      apiClient.get(`/api/holidays/check?date=${dateStr}${site ? `&site=${site}` : ''}`)
         .then(res => {
           setHolidayInfo(res.data);
         })
@@ -127,7 +127,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       // 로컬 시간대 기준 날짜 문자열 생성 (UTC 변환 시 날짜가 바뀌는 문제 방지)
       const d = new Date(date);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      axios.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
+      apiClient.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
         .then(res => {
           if (res.data.exists && res.data.report) {
             setExistingReport(res.data.report);
@@ -222,9 +222,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     if (selectedTeam) {
       setLoading(true);
       setError(null);
-      const templatePromise = axios.get(`/api/teams/${selectedTeam}/template`);
-      const usersPromise = axios.get(`/api/teams/${selectedTeam}/users`);
-      const teamMembersPromise = axios.get(`/api/teams/${selectedTeam}/team-members`);
+      const templatePromise = apiClient.get(`/api/teams/${selectedTeam}/template`);
+      const usersPromise = apiClient.get(`/api/teams/${selectedTeam}/users`);
+      const teamMembersPromise = apiClient.get(`/api/teams/${selectedTeam}/team-members`);
 
       Promise.all([templatePromise, usersPromise, teamMembersPromise])
         .then(([templateResponse, usersResponse, teamMembersResponse]) => {
@@ -303,7 +303,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     Array.from(files).forEach(file => formData.append('files', file));
 
     try {
-      const res = await axios.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await apiClient.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const newAttachments = res.data.files.map(f => ({
         url: f.url,
         name: f.name,
@@ -329,7 +329,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     Array.from(files).forEach(file => formData.append('files', file));
 
     try {
-      const res = await axios.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await apiClient.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const newImages = res.data.files.map(f => f.url);
       setRemarksImages(prev => [...prev, ...newImages]);
       toast({ title: `${files.length}개의 사진이 업로드되었습니다.` });
@@ -370,7 +370,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       const formData = new FormData();
       formData.append('audio', blob, audioRecording.name || 'recording.webm');
 
-      const sttResponse = await axios.post('/api/stt/transcribe', formData, {
+      const sttResponse = await apiClient.post('/api/stt/transcribe', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 300000, // 5분 타임아웃
       });
@@ -530,10 +530,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       const reportIdToUpdate = reportForEdit?.id || existingReport?.id;
 
       if (reportIdToUpdate) {
-        await axios.put(`/api/tbm/${reportIdToUpdate}`, reportData);
+        await apiClient.put(`/api/tbm/${reportIdToUpdate}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
       } else {
-        await axios.post('/api/reports', reportData);
+        await apiClient.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
         // 제출 성공 시 임시저장 데이터 삭제
         clearSaved();
