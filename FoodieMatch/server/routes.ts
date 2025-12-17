@@ -1266,7 +1266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀 결재자 설정 API
-  app.put("/api/teams/:teamId/approver", requireAuth, requireRole('ADMIN'), async (req, res) => {
+  app.put("/api/teams/:teamId/approver", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
     try {
       const { userId } = req.body;
 
@@ -1283,10 +1283,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // 결재자는 ADMIN 또는 TEAM_LEADER 역할만 가능
-        if (user.role !== 'ADMIN' && user.role !== 'TEAM_LEADER') {
+        // 결재자는 ADMIN, TEAM_LEADER, APPROVER, EXECUTIVE 역할 가능
+        const allowedRoles = ['ADMIN', 'TEAM_LEADER', 'APPROVER', 'EXECUTIVE'];
+        if (!allowedRoles.includes(user.role)) {
           return res.status(403).json({
-            message: "결재자는 관리자(ADMIN) 또는 팀장(TEAM_LEADER) 역할을 가진 사용자만 지정할 수 있습니다.",
+            message: "결재자는 관리자, 팀장, 또는 임원 역할을 가진 사용자만 지정할 수 있습니다.",
             userRole: user.role
           });
         }
