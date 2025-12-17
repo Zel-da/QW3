@@ -679,15 +679,16 @@ export default function TeamManagementPage() {
                       </SelectItem>
                     ) : (
                       (() => {
-                        // 결재자는 ADMIN 또는 TEAM_LEADER 역할만 가능
+                        // 결재자는 ADMIN, TEAM_LEADER, APPROVER, EXECUTIVE 역할 가능
                         const eligibleApprovers = allUsers.filter(user =>
-                          user.role === 'ADMIN' || user.role === 'TEAM_LEADER'
+                          user.role === 'ADMIN' || user.role === 'TEAM_LEADER' ||
+                          user.role === 'APPROVER' || user.role === 'EXECUTIVE'
                         );
 
                         if (eligibleApprovers.length === 0) {
                           return (
                             <SelectItem value="no-approvers" disabled>
-                              결재 가능한 사용자가 없습니다 (ADMIN 또는 TEAM_LEADER 역할 필요)
+                              결재 가능한 사용자가 없습니다
                             </SelectItem>
                           );
                         }
@@ -696,7 +697,7 @@ export default function TeamManagementPage() {
                           let roleLabel = '사용자';
                           if (user.role === 'ADMIN') roleLabel = '관리자';
                           else if (user.role === 'TEAM_LEADER') roleLabel = '팀장';
-                          else if (user.role === 'APPROVER') roleLabel = '임원';
+                          else if (user.role === 'APPROVER' || user.role === 'EXECUTIVE') roleLabel = '임원';
                           else if (user.role === 'PENDING') roleLabel = '가입대기';
 
                           return (
