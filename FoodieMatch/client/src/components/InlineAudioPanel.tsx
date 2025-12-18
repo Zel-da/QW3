@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Square, Play, Pause, X, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export interface AudioRecordingData {
@@ -274,96 +275,90 @@ export function InlineAudioPanel({
     }
   }, [audioUrl, onTranscriptionComplete]);
 
+  // 비활성화 상태
   if (disabled) {
     return (
-      <div className="border rounded-lg p-4 bg-gray-50 h-full flex items-center justify-center">
-        <p className="text-sm text-gray-500">녹음 기능 비활성화됨</p>
-      </div>
+      <Card className="border-2 border-dashed border-muted-foreground/25 p-6 flex items-center justify-center min-h-[120px]">
+        <p className="text-sm text-muted-foreground">녹음 기능 비활성화됨</p>
+      </Card>
     );
   }
 
   return (
-    <div className="border rounded-lg bg-white h-full flex flex-col">
-      {/* 헤더 */}
-      <div className={cn(
-        "px-3 py-2 rounded-t-lg flex items-center gap-2",
-        state === 'recording' ? "bg-red-500 text-white" : "bg-primary/10"
-      )}>
-        <Mic className="h-4 w-4" />
-        <span className="text-sm font-medium">TBM 녹음</span>
-        {state === 'recording' && (
-          <span className="ml-auto text-sm font-mono">{formatTime(recordingTime)}</span>
-        )}
-        {state === 'recorded' && (
-          <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">녹음완료</span>
-        )}
-      </div>
-
-      {/* 컨텐츠 */}
-      <div className="flex-1 p-3 space-y-3">
-        {/* 숨겨진 오디오 요소 */}
-        {audioUrl && (
-          <audio
-            ref={audioRef}
-            src={audioUrl}
-            onTimeUpdate={() => setPlaybackTime(audioRef.current?.currentTime || 0)}
-            onEnded={() => setIsPlaying(false)}
-            onLoadedMetadata={() => {
-              if (audioRef.current && isFinite(audioRef.current.duration)) {
-                setDuration(audioRef.current.duration);
-              }
-            }}
-          />
-        )}
-
-        {/* 숨겨진 파일 인풋 */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileUpload(file);
-            e.target.value = '';
+    <div className="space-y-3">
+      {/* 숨겨진 오디오/파일 인풋 */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onTimeUpdate={() => setPlaybackTime(audioRef.current?.currentTime || 0)}
+          onEnded={() => setIsPlaying(false)}
+          onLoadedMetadata={() => {
+            if (audioRef.current && isFinite(audioRef.current.duration)) {
+              setDuration(audioRef.current.duration);
+            }
           }}
         />
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileUpload(file);
+          e.target.value = '';
+        }}
+      />
 
-        {/* IDLE 상태 */}
-        {state === 'idle' && (
-          <div className="flex flex-col gap-2">
-            <Button
-              onClick={startRecording}
-              variant="default"
-              size="sm"
-              className="w-full bg-red-500 hover:bg-red-600"
-            >
-              <Mic className="h-4 w-4 mr-2" />
-              녹음 시작
-            </Button>
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              파일 업로드
-            </Button>
-          </div>
-        )}
-
-        {/* 녹음 중 상태 */}
-        {state === 'recording' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-lg font-mono">{formatTime(recordingTime)}</span>
+      {/* IDLE 상태 - FileDropzone 스타일 */}
+      {state === 'idle' && (
+        <Card className="border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="p-3 rounded-full bg-muted">
+              <Mic className="h-6 w-6 text-muted-foreground" />
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div className="text-center">
+              <p className="text-sm font-medium">음성 녹음</p>
+              <p className="text-xs text-muted-foreground mt-1">버튼을 눌러 녹음하거나 파일을 업로드하세요</p>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button
+                onClick={startRecording}
+                variant="destructive"
+                size="sm"
+                className="flex-1"
+              >
+                <Mic className="h-4 w-4 mr-1" />
+                녹음
+              </Button>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                업로드
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* 녹음 중 상태 */}
+      {state === 'recording' && (
+        <Card className="border-2 border-destructive bg-destructive/5 p-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
+              <span className="text-2xl font-mono font-bold text-destructive">{formatTime(recordingTime)}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
               <div
-                className="bg-red-500 h-1.5 rounded-full transition-all"
-                style={{ width: `${(recordingTime / maxDurationSeconds) * 100}%` }}
+                className="bg-destructive h-2 rounded-full transition-all"
+                style={{ width: `${Math.min((recordingTime / maxDurationSeconds) * 100, 100)}%` }}
               />
             </div>
             <Button
@@ -372,78 +367,78 @@ export function InlineAudioPanel({
               size="sm"
               className="w-full"
             >
-              <Square className="h-4 w-4 mr-2" />
+              <Square className="h-4 w-4 mr-1" />
               녹음 중지
             </Button>
           </div>
-        )}
+        </Card>
+      )}
 
-        {/* 녹음 완료 상태 */}
-        {state === 'recorded' && (
-          <div className="space-y-2">
-            {/* 재생 컨트롤 */}
-            <div className="flex items-center gap-2">
-              <Button onClick={togglePlayback} variant="outline" size="icon" className="h-8 w-8">
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <div className="flex-1">
-                <div className="text-xs text-gray-500">
-                  {formatTime(playbackTime)} / {formatTime(duration)}
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-1">
-                  <div
-                    className="bg-primary h-1 rounded-full transition-all"
-                    style={{ width: duration > 0 ? `${(playbackTime / duration) * 100}%` : '0%' }}
-                  />
-                </div>
+      {/* 녹음 완료 상태 */}
+      {state === 'recorded' && (
+        <Card className="border p-4 space-y-3">
+          {/* 재생 컨트롤 */}
+          <div className="flex items-center gap-3">
+            <Button onClick={togglePlayback} variant="outline" size="icon" className="h-10 w-10 shrink-0">
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-mono text-muted-foreground mb-1">
+                {formatTime(playbackTime)} / {formatTime(duration)}
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: duration > 0 ? `${(playbackTime / duration) * 100}%` : '0%' }}
+                />
               </div>
             </div>
+          </div>
 
-            {/* 액션 버튼들 */}
-            <div className="flex gap-1">
-              {audioBlob && (
-                <Button onClick={uploadRecording} variant="default" size="sm" className="flex-1 text-xs">
-                  <Upload className="h-3 w-3 mr-1" />
-                  저장
-                </Button>
-              )}
-              <Button
-                onClick={handleTranscribe}
-                variant="outline"
-                size="sm"
-                className="flex-1 text-xs"
-                disabled={isTranscribing}
-              >
-                {isTranscribing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <>
-                    <FileText className="h-3 w-3 mr-1" />
-                    STT
-                  </>
-                )}
+          {/* 액션 버튼들 */}
+          <div className="flex gap-2">
+            {audioBlob && (
+              <Button onClick={uploadRecording} variant="default" size="sm" className="flex-1">
+                <Upload className="h-4 w-4 mr-1" />
+                저장
               </Button>
-              <Button onClick={resetRecording} variant="ghost" size="sm" className="text-xs text-red-500">
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-
-            {/* STT 결과 */}
-            {transcription && transcription.status === 'completed' && (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-xs max-h-20 overflow-y-auto">
-                {transcription.text}
-              </div>
             )}
+            <Button
+              onClick={handleTranscribe}
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              disabled={isTranscribing}
+            >
+              {isTranscribing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-1" />
+                  STT 변환
+                </>
+              )}
+            </Button>
+            <Button onClick={resetRecording} variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0">
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-        )}
 
-        {/* 업로딩 상태 */}
-        {state === 'uploading' && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        )}
-      </div>
+          {/* STT 결과 */}
+          {transcription && transcription.status === 'completed' && (
+            <div className="p-3 bg-muted rounded-md text-sm max-h-24 overflow-y-auto">
+              {transcription.text}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* 업로딩 상태 */}
+      {state === 'uploading' && (
+        <Card className="border-2 border-dashed p-6 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </Card>
+      )}
     </div>
   );
 }

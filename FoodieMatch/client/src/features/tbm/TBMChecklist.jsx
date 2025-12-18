@@ -654,7 +654,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           <div className="hidden md:block">
             <Table className="border-collapse">
               <TableHeader>
-                <TableRow className="border-b-2 border-gray-300">
+                <TableRow className="border-b-2 border-border">
                   <TableHead className="border-r border-gray-200">구분</TableHead>
                   <TableHead className="border-r border-gray-200">점검항목</TableHead>
                   <TableHead className="text-center border-r border-gray-200">점검결과</TableHead>
@@ -887,7 +887,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </div>
 
           {/* 특이사항/녹음/사진 섹션 */}
-          <div className="border-t-2 border-gray-300 pt-6 mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="border-t-2 border-border pt-6 mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {/* 왼쪽: 특이사항 텍스트 */}
             <div className="space-y-2">
               <Label htmlFor="remarks">특이사항</Label>
@@ -897,7 +897,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
-                className="w-full"
+                className="w-full min-h-[180px]"
                 disabled={isViewMode}
               />
             </div>
@@ -934,23 +934,23 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 />
               )}
               {remarksImages.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="grid grid-cols-2 gap-2 mt-3">
                   {remarksImages.map((imageUrl, idx) => (
-                    <div key={idx} className="relative">
+                    <div key={idx} className="relative group">
                       <img
                         src={imageUrl}
                         alt={`특이사항 ${idx + 1}`}
-                        className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                        className="w-full h-24 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setEnlargedImage(imageUrl)}
                       />
                       {!isViewMode && (
                         <Button
                           size="icon"
                           variant="destructive"
-                          className="absolute top-1 right-1 h-6 w-6"
+                          className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => removeRemarksImage(idx)}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
@@ -961,12 +961,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </div>
 
           {/* 참석자 서명 섹션 */}
-          <div className="border-t-2 border-gray-300 pt-6 mt-8">
+          <div className="border-t-2 border-border pt-6 mt-8">
             <h3 className="font-semibold text-xl mb-4">참석자 서명</h3>
           </div>
           <Table className="border-collapse">
             <TableHeader>
-              <TableRow className="border-b-2 border-gray-300">
+              <TableRow className="border-b-2 border-border">
                 <TableHead className="border-r border-gray-200">이름</TableHead>
                 <TableHead className="border-r border-gray-200">출근 상태</TableHead>
                 <TableHead>서명</TableHead>
