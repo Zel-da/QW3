@@ -28,6 +28,10 @@ const NO_CACHE_PATTERNS = [
   'sockjs-node',
   '__vite',
   'hot-update',
+  // 외부 리소스 (CSP 이슈 방지)
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
+  'generativelanguage.googleapis.com',
 ];
 
 /**
