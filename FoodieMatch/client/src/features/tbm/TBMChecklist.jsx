@@ -23,7 +23,7 @@ import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
 import { FileDropzone } from '@/components/FileDropzone';
 import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
-import { FloatingAudioPanel } from '@/components/FloatingAudioPanel';
+import { InlineAudioPanel } from '@/components/InlineAudioPanel';
 import { IssueDetailModal } from '@/components/IssueDetailModal';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
@@ -886,10 +886,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             })}
           </div>
 
-          {/* 특이사항 섹션 */}
-          <div className="border-t-2 border-gray-300 pt-6 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* 특이사항/녹음/사진 섹션 */}
+          <div className="border-t-2 border-gray-300 pt-6 mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* 왼쪽: 특이사항 텍스트 */}
-            <div className="space-y-2 md:border-r md:border-gray-200 md:pr-6">
+            <div className="space-y-2">
               <Label htmlFor="remarks">특이사항</Label>
               <Textarea
                 id="remarks"
@@ -898,6 +898,23 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
                 className="w-full"
+                disabled={isViewMode}
+              />
+            </div>
+
+            {/* 중앙: TBM 녹음 */}
+            <div className="space-y-2">
+              <Label>TBM 녹음</Label>
+              <InlineAudioPanel
+                onRecordingComplete={(data) => setAudioRecording(data)}
+                onTranscriptionComplete={(data) => setTranscription(data)}
+                onDelete={() => {
+                  setAudioRecording(null);
+                  setTranscription(null);
+                }}
+                existingAudio={audioRecording}
+                existingTranscription={transcription}
+                maxDurationSeconds={1800}
                 disabled={isViewMode}
               />
             </div>
@@ -1034,22 +1051,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* 플로팅 오디오 패널 */}
-      {checklist && !isViewMode && (
-        <FloatingAudioPanel
-          onRecordingComplete={(data) => setAudioRecording(data)}
-          onTranscriptionComplete={(data) => setTranscription(data)}
-          onDelete={() => {
-            setAudioRecording(null);
-            setTranscription(null);
-          }}
-          existingAudio={audioRecording}
-          existingTranscription={transcription}
-          maxDurationSeconds={1800}
-          disabled={isViewMode}
-        />
-      )}
 
       {/* 이슈 상세 입력 모달 (△/X 항목) */}
       <IssueDetailModal
