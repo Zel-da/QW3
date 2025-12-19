@@ -444,8 +444,14 @@ export function registerTbmRoutes(app: Express) {
       const validItemIds = new Set(validTemplateItems.map(item => item.id));
       console.log(`Found ${validItemIds.size} valid template items for team ${teamId}`);
 
+      // 날짜 문자열을 로컬 시간대로 파싱 (시간대 문제 방지)
+      // "2024-12-19" 형식이면 로컬 시간 정오로 설정
+      const parsedDate = typeof reportDate === 'string' && !reportDate.includes('T')
+        ? new Date(reportDate + 'T12:00:00')
+        : new Date(reportDate);
+
       const newReport = await prisma.dailyReport.create({
-        data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
+        data: { teamId, reportDate: parsedDate, managerName, remarks, site }
       });
 
       if (results && results.length > 0) {
@@ -537,11 +543,19 @@ export function registerTbmRoutes(app: Express) {
       await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
       await prisma.reportSignature.deleteMany({ where: { reportId: parseInt(reportId) } });
 
+      // 날짜 문자열을 로컬 시간대로 파싱 (시간대 문제 방지)
+      let parsedDate = undefined;
+      if (reportDate) {
+        parsedDate = typeof reportDate === 'string' && !reportDate.includes('T')
+          ? new Date(reportDate + 'T12:00:00')
+          : new Date(reportDate);
+      }
+
       const updatedReport = await prisma.dailyReport.update({
         where: { id: parseInt(reportId) },
         data: {
           remarks,
-          reportDate: reportDate ? new Date(reportDate) : undefined,
+          reportDate: parsedDate,
         },
       });
 

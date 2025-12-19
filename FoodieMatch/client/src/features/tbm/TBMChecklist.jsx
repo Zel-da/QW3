@@ -486,9 +486,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       transcription: transcription || null
     };
 
+    // 로컬 시간대 기준으로 날짜만 추출 (시간대 문제 방지)
+    const localDateStr = getLocalDateStr(date || new Date());
+
     const reportData = {
       teamId: selectedTeam,
-      reportDate: date || new Date(),
+      reportDate: localDateStr,
       managerName: user?.name || 'N/A',
       remarks: JSON.stringify(remarksData),
       site: site,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -118,6 +118,9 @@ export function IssueDetailModal({
               <AlertTriangle className={item.checkState === 'X' ? 'text-red-500' : 'text-yellow-500'} />
               이슈 상세 입력
             </DialogTitle>
+            <DialogDescription>
+              {item.checkState === 'X' ? '불량' : '개선필요'} 항목에 대한 조치 내용과 사진을 입력해주세요.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -141,7 +144,7 @@ export function IssueDetailModal({
               <FileDropzone
                 onFilesSelected={handlePhotoUpload}
                 accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-                maxFiles={10}
+                maxFiles={20}
                 maxSize={10 * 1024 * 1024}
                 disabled={uploading}
               />

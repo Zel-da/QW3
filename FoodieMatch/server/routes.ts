@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     dest: uploadDir,
     limits: {
       fileSize: 100 * 1024 * 1024, // 100MB limit (비디오 파일 고려)
-      files: 10 // Maximum 10 files
+      files: 50 // Maximum 50 files (공지사항 등 대량 업로드 지원)
     },
     fileFilter: (req, file, cb) => {
       const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
