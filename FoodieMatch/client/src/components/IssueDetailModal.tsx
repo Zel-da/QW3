@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,12 +44,15 @@ export function IssueDetailModal({
   const [attachments, setAttachments] = useState<Attachment[]>(initialData?.attachments || []);
   const [uploading, setUploading] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const prevIsOpenRef = useRef(false);
 
+  // 모달이 열릴 때만 초기화 (isOpen이 false→true로 변경될 때)
   useEffect(() => {
-    if (isOpen && initialData) {
+    if (isOpen && !prevIsOpenRef.current && initialData) {
       setDescription(initialData.description || '');
       setAttachments(initialData.attachments || []);
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, initialData]);
 
   const handlePhotoUpload = async (files: File[]) => {
