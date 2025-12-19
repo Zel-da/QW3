@@ -60,9 +60,8 @@ export function IssueDetailModal({
     Array.from(files).forEach(file => formData.append('files', file));
 
     try {
-      const res = await apiClient.post('/api/upload-multiple', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Content-Type 헤더를 설정하지 않아야 브라우저가 자동으로 boundary를 추가함
+      const res = await apiClient.post('/api/upload-multiple', formData);
       const newAttachments = res.data.files.map((f: any) => ({
         url: f.url,
         name: f.name,
