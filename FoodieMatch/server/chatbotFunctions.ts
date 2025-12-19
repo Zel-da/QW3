@@ -131,8 +131,11 @@ export async function getIncompleteEducationUsers(courseId?: string) {
         where: { courseId }
       } : true,
       userProgress: courseId ? {
-        where: { courseId }
-      } : true
+        where: { courseId },
+        select: { progress: true }
+      } : {
+        select: { progress: true }
+      }
     }
   });
 
@@ -150,7 +153,7 @@ export async function getIncompleteEducationUsers(courseId?: string) {
     site: u.site || '미지정',
     hasCertificate: u.certificates.length > 0,
     progressPercent: u.userProgress.length > 0
-      ? (u.userProgress[0] as any).progress || 0
+      ? u.userProgress[0].progress || 0
       : 0
   }));
 }

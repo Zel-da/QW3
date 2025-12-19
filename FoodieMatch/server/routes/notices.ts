@@ -10,11 +10,11 @@ import { prisma } from "../db";
 import { requireAuth, requireRole } from "../middleware/auth";
 
 export function registerNoticeRoutes(app: Express) {
-  // 공지사항 목록 조회
-  app.get("/api/notices", async (req: Request, res: Response) => {
+  // 공지사항 목록 조회 (인증 필요)
+  app.get("/api/notices", requireAuth, async (req: Request, res: Response) => {
     try {
       const { latest, page, limit, category } = req.query;
-      const userId = (req.session.user as any)?.id;
+      const userId = req.session.user?.id;
 
       // Latest single notice
       if (latest === 'true') {
@@ -129,8 +129,8 @@ export function registerNoticeRoutes(app: Express) {
     }
   });
 
-  // 공지사항 상세 조회
-  app.get("/api/notices/:noticeId", async (req: Request, res: Response) => {
+  // 공지사항 상세 조회 (인증 필요)
+  app.get("/api/notices/:noticeId", requireAuth, async (req: Request, res: Response) => {
     try {
       const notice = await prisma.notice.findUnique({
         where: { id: req.params.noticeId },
@@ -271,8 +271,8 @@ export function registerNoticeRoutes(app: Express) {
     }
   });
 
-  // 댓글 목록 조회
-  app.get("/api/notices/:noticeId/comments", async (req: Request, res: Response) => {
+  // 댓글 목록 조회 (인증 필요)
+  app.get("/api/notices/:noticeId/comments", requireAuth, async (req: Request, res: Response) => {
     try {
       const comments = await prisma.comment.findMany({
         where: { noticeId: req.params.noticeId },

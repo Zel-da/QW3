@@ -1336,12 +1336,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user.role === 'TEAM_LEADER') {
+      if (req.session.user!.role === 'TEAM_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
 
-        if (!team || team.leaderId !== req.session.user.id) {
+        if (!team || team.leaderId !== req.session.user!.id) {
           return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
         }
       }
@@ -1373,12 +1373,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user.role === 'TEAM_LEADER') {
+      if (req.session.user!.role === 'TEAM_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
 
-        if (!team || team.leaderId !== req.session.user.id) {
+        if (!team || team.leaderId !== req.session.user!.id) {
           return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
         }
       }
@@ -1405,12 +1405,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { teamId, memberId } = req.params;
 
       // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user.role === 'TEAM_LEADER') {
+      if (req.session.user!.role === 'TEAM_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
 
-        if (!team || team.leaderId !== req.session.user.id) {
+        if (!team || team.leaderId !== req.session.user!.id) {
           return res.status(403).json({ message: "자신의 팀만 관리할 수 있습니다" });
         }
       }
@@ -2398,11 +2398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // NOTICE MANAGEMENT
-  app.get("/api/notices", async (req, res) => {
+  // NOTICE MANAGEMENT (인증 필요)
+  app.get("/api/notices", requireAuth, async (req, res) => {
     try {
       const { latest, page, limit, category } = req.query;
-      const userId = (req.session.user as any)?.id;
+      const userId = req.session.user?.id;
 
       // Latest single notice
       if (latest === 'true') {
@@ -2540,7 +2540,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/notices/:noticeId", async (req, res) => {
+  // 공지사항 상세 조회 (인증 필요)
+  app.get("/api/notices/:noticeId", requireAuth, async (req, res) => {
     try {
       const notice = await prisma.notice.findUnique({
         where: { id: req.params.noticeId },
@@ -2695,7 +2696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to delete notice" }); }
   });
 
-  app.get("/api/notices/:noticeId/comments", async (req, res) => {
+  // 댓글 목록 조회 (인증 필요)
+  app.get("/api/notices/:noticeId/comments", requireAuth, async (req, res) => {
     try {
       const comments = await prisma.comment.findMany({
         where: { noticeId: req.params.noticeId },
