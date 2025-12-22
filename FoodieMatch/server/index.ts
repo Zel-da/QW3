@@ -106,6 +106,11 @@ const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
 });
 
+// Health check endpoint - DB 조회 없음 (Cron용)
+app.get('/api/ping', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // CSRF token endpoint - 클라이언트가 토큰을 요청할 수 있는 엔드포인트
 app.get('/api/csrf-token', (req, res) => {
   try {
