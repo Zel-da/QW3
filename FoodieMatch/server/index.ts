@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import pgSimple from "connect-pg-simple";
-import pg from "pg";
+import MemoryStore from "memorystore";
 import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -52,20 +51,15 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('SESSION_SECRET environment variable must be set in production');
 }
 
-const PgSession = pgSimple(session);
-
-// Create PostgreSQL connection pool for sessions
-const pgPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// MemoryStore - DB 부하 감소 (Neon Compute 절약)
+// 주의: 서버 재시작 시 모든 세션 사라짐 (사용자 재로그인 필요)
+const MemStore = MemoryStore(session);
 
 app.set('trust proxy', 1);
 
 app.use(session({
-  store: new PgSession({
-    pool: pgPool,
-    tableName: 'user_sessions',
-    createTableIfMissing: true,
+  store: new MemStore({
+    checkPeriod: 86400000, // 24시간마다 만료된 세션 정리
   }),
   secret: sessionSecret,
   resave: false,

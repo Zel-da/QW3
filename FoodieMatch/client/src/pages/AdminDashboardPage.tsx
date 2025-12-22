@@ -290,7 +290,7 @@ export default function AdminDashboardPage() {
       }
       return res.json();
     },
-    refetchInterval: 300000, // 5분마다 갱신 (Compute 절약)
+    // refetchInterval 비활성화 - Neon Compute 절약 (수동 새로고침만)
   });
 
   // 사용자 수 가져오기
