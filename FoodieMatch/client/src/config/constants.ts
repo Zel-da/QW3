@@ -9,9 +9,9 @@
 
 /**
  * 교육 진행률 자동 저장 간격 (밀리초)
- * 기본값: 10초 (10000ms)
+ * 기본값: 30초 (30000ms) - Compute 사용량 절감
  */
-export const PROGRESS_SAVE_INTERVAL = 10000;
+export const PROGRESS_SAVE_INTERVAL = 30000;
 
 /**
  * 분을 초로 변환하는 상수

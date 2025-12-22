@@ -290,7 +290,7 @@ export default function AdminDashboardPage() {
       }
       return res.json();
     },
-    refetchInterval: 60000, // 1분마다 갱신
+    refetchInterval: 300000, // 5분마다 갱신 (Compute 절약)
   });
 
   // 사용자 수 가져오기

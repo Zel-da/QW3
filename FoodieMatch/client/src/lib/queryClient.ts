@@ -130,8 +130,8 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false, // 비활성화: 불필요한 재요청 방지
-      staleTime: 5 * 60 * 1000, // 5분 후 stale (기존: Infinity)
-      gcTime: 10 * 60 * 1000, // 10분 후 가비지 컬렉션
+      staleTime: 10 * 60 * 1000, // 10분 후 stale (Compute 절약)
+      gcTime: 15 * 60 * 1000, // 15분 후 가비지 컬렉션
       retry: false,
     },
     mutations: {
