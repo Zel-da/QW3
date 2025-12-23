@@ -19,33 +19,7 @@ import { BookOpen } from 'lucide-react';
 import { CourseEditDialog } from '@/components/CourseEditDialog';
 import { FileDropzone } from '@/components/FileDropzone';
 import { apiRequest } from '@/lib/queryClient';
-
-// YouTube URL을 임베드 URL로 변환 (youtube-nocookie.com 사용)
-const getYouTubeEmbedUrl = (url: string): string => {
-  if (!url) return '';
-
-  let videoId = '';
-
-  // 이미 embed URL인 경우 videoId 추출
-  if (url.includes('/embed/')) {
-    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
-    if (embedMatch) videoId = embedMatch[1];
-  }
-
-  // watch?v= 형식
-  if (!videoId) {
-    const watchMatch = url.match(/[?&]v=([^&]+)/);
-    if (watchMatch) videoId = watchMatch[1];
-  }
-
-  // youtu.be/ID 형식
-  if (!videoId) {
-    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-    if (shortMatch) videoId = shortMatch[1];
-  }
-
-  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
-};
+import { getYouTubeEmbedUrl } from '@/lib/youtube';
 
 const fetchCourses = async () => {
     const res = await fetch('/api/courses');

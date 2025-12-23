@@ -22,33 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileDropzone } from "@/components/FileDropzone";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { apiRequest } from "@/lib/queryClient";
-
-// YouTube URL을 embed URL로 변환 (youtube-nocookie.com 사용)
-function getYouTubeEmbedUrl(url: string): string {
-  if (!url) return '';
-
-  let videoId = '';
-
-  // 이미 embed URL인 경우 videoId 추출
-  if (url.includes('/embed/')) {
-    const embedMatch = url.match(/\/embed\/([^?&#]+)/);
-    if (embedMatch) videoId = embedMatch[1];
-  }
-
-  // https://www.youtube.com/watch?v=VIDEO_ID
-  if (!videoId) {
-    const watchMatch = url.match(/[?&]v=([^&]+)/);
-    if (watchMatch) videoId = watchMatch[1];
-  }
-
-  // https://youtu.be/VIDEO_ID
-  if (!videoId) {
-    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
-    if (shortMatch) videoId = shortMatch[1];
-  }
-
-  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
-}
+import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
 export default function NoticeEditor() {
   const [match, params] = useRoute("/notices/edit/:id");
