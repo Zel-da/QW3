@@ -137,15 +137,14 @@ export default function TeamManagementPage() {
     queryKey: ['teamData', selectedTeamId],
     queryFn: () => fetchTeamData(selectedTeamId!),
     enabled: !!selectedTeamId,
-    staleTime: 0, // 항상 최신 팀 데이터 가져오기
+    staleTime: 5 * 60 * 1000, // 5분 캐시 (Neon Compute 절약)
   });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['allUsers'],
     queryFn: fetchAllUsers,
     enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER',
-    staleTime: 0, // 항상 최신 데이터 가져오기
-    refetchOnMount: true, // 마운트 시 항상 refetch
+    staleTime: 5 * 60 * 1000, // 5분 캐시 (Neon Compute 절약)
   });
 
   const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery<any[]>({

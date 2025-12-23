@@ -46,46 +46,63 @@ export function scheduleEducationReminders() {
       console.log('📧 교육 미이수자 알림 전송 시작...');
 
       try {
-      const today = new Date();
-      const sevenDaysLater = new Date(today);
-      sevenDaysLater.setDate(today.getDate() + 7);
+        const today = new Date();
+        const sevenDaysLater = new Date(today);
+        sevenDaysLater.setDate(today.getDate() + 7);
 
-      // 활성 교육 과정 가져오기
-      const activeCourses = await prisma.course.findMany({
-        where: { isActive: true }
-      });
-
-      for (const course of activeCourses) {
-        // 해당 과정을 완료하지 않은 사용자 찾기
-        const incompleteUsers = await prisma.user.findMany({
-          where: {
-            email: { not: null },
-            userProgress: {
-              none: {
-                courseId: course.id,
-                currentStep: 3 // 완료 상태
-              }
-            }
-          }
+        // [최적화] 활성 과정과 완료된 진행률을 한 번에 조회
+        const activeCourses = await prisma.course.findMany({
+          where: { isActive: true },
+          select: { id: true, title: true }
         });
 
-        for (const user of incompleteUsers) {
-          if (!user.email) continue;
-
-          // Use template from database
-          await sendEmailFromTemplate(
-            'EDUCATION_REMINDER',
-            user.email,
-            {
-              userName: user.username,
-              courseName: course.title,
-              dueDate: sevenDaysLater.toLocaleDateString('ko-KR')
-            }
-          );
+        if (activeCourses.length === 0) {
+          console.log('✅ 활성 교육 과정이 없습니다.');
+          return;
         }
 
-        console.log(`✅ ${course.title} - ${incompleteUsers.length}명에게 알림 전송`);
-      }
+        // [최적화] 완료된 사용자-과정 조합을 한 번에 조회
+        const completedProgress = await prisma.userProgress.findMany({
+          where: {
+            courseId: { in: activeCourses.map(c => c.id) },
+            currentStep: 3 // 완료 상태
+          },
+          select: { userId: true, courseId: true }
+        });
+
+        // 완료된 조합을 Set으로 변환 (빠른 조회용)
+        const completedSet = new Set(
+          completedProgress.map(p => `${p.userId}-${p.courseId}`)
+        );
+
+        // [최적화] 이메일이 있는 모든 사용자를 한 번에 조회
+        const usersWithEmail = await prisma.user.findMany({
+          where: { email: { not: null } },
+          select: { id: true, username: true, email: true }
+        });
+
+        // 과정별로 미완료 사용자에게 알림 전송
+        for (const course of activeCourses) {
+          const incompleteUsers = usersWithEmail.filter(
+            user => !completedSet.has(`${user.id}-${course.id}`)
+          );
+
+          for (const user of incompleteUsers) {
+            if (!user.email) continue;
+
+            await sendEmailFromTemplate(
+              'EDUCATION_REMINDER',
+              user.email,
+              {
+                userName: user.username,
+                courseName: course.title,
+                dueDate: sevenDaysLater.toLocaleDateString('ko-KR')
+              }
+            );
+          }
+
+          console.log(`✅ ${course.title} - ${incompleteUsers.length}명에게 알림 전송`);
+        }
       } catch (error) {
         console.error('❌ 교육 알림 전송 실패:', error);
       }
@@ -107,7 +124,16 @@ export function scheduleTBMReminders() {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
-      // 모든 팀 가져오기
+      // [최적화] 오늘 TBM 작성한 팀 ID를 한 번에 조회
+      const todayTBMs = await prisma.dailyReport.findMany({
+        where: {
+          createdAt: { gte: new Date(todayStr) }
+        },
+        select: { teamId: true }
+      });
+      const submittedTeamIds = new Set(todayTBMs.map(t => t.teamId));
+
+      // 모든 팀 + 팀장 정보 조회
       const teams = await prisma.team.findMany({
         include: {
           members: {
@@ -119,37 +145,28 @@ export function scheduleTBMReminders() {
         }
       });
 
-      for (const team of teams) {
-        // 오늘 TBM 작성했는지 확인
-        const todayTBM = await prisma.dailyReport.findFirst({
-          where: {
-            teamId: team.id,
-            createdAt: {
-              gte: new Date(todayStr)
+      // [최적화] 이미 작성한 팀 제외 (N+1 쿼리 제거)
+      const teamsWithoutTBM = teams.filter(t => !submittedTeamIds.has(t.id));
+
+      for (const team of teamsWithoutTBM) {
+        for (const user of team.members) {
+          if (!user.email) continue;
+
+          await sendEmailFromTemplate(
+            'TBM_REMINDER',
+            user.email,
+            {
+              managerName: user.username,
+              teamName: team.name,
+              date: today.toLocaleDateString('ko-KR')
             }
-          }
-        });
-
-        // 작성하지 않았으면 알림 전송
-        if (!todayTBM) {
-          for (const user of team.members) {
-            if (!user.email) continue;
-
-            // Use template from database
-            await sendEmailFromTemplate(
-              'TBM_REMINDER',
-              user.email,
-              {
-                managerName: user.username,
-                teamName: team.name,
-                date: today.toLocaleDateString('ko-KR')
-              }
-            );
-          }
-
-          console.log(`✅ ${team.name} - ${team.members.length}명에게 알림 전송`);
+          );
         }
+
+        console.log(`✅ ${team.name} - ${team.members.length}명에게 알림 전송`);
       }
+
+      console.log(`📊 TBM 미작성 팀: ${teamsWithoutTBM.length}개 / 전체: ${teams.length}개`);
     } catch (error) {
       console.error('❌ TBM 알림 전송 실패:', error);
     }
