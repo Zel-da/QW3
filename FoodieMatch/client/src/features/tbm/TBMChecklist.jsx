@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
-import { stripSiteSuffix } from '@/lib/utils';
+import { stripSiteSuffix, sortTeams } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
@@ -584,7 +584,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
                 {site}
               </div>
-              {siteTeams.map(team => (
+              {sortTeams(siteTeams).map(team => (
                 <SelectItem key={team.id} value={team.id} className="pl-6">
                   {stripSiteSuffix(team.name)}
                 </SelectItem>

@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
-import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
+import { stripSiteSuffix, getInspectionYearRange, sortTeams } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
@@ -338,7 +338,11 @@ export default function MonthlyReportPage() {
       });
     }
 
-    return filtered;
+    // Sort teams by priority order
+    return sortTeams(filtered.map(t => ({ ...t, name: t.teamName }))).map(t => {
+      const original = filtered.find(f => f.teamName === t.name);
+      return original!;
+    });
   }, [attendanceOverview?.teams, searchQuery, filterNoApproval, filterNoEducation, filterHasIssues]);
 
   // 팀원별 교육 통계 (Team education statistics)
@@ -2065,7 +2069,7 @@ export default function MonthlyReportPage() {
                       각 팀의 교육 날짜를 개별적으로 설정합니다.
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {teams.map((team) => (
+                      {sortTeams(teams).map((team) => (
                         <div key={team.id} className="flex items-center gap-2 bg-white p-2 rounded border">
                           <span className="text-sm flex-1 truncate" title={stripSiteSuffix(team.name)}>
                             {stripSiteSuffix(team.name)}

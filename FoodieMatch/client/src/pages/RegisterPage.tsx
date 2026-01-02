@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { sortTeams } from "@/lib/utils";
 
 interface Team {
   id: number;
@@ -247,7 +248,7 @@ export default function RegisterPage() {
                     <SelectValue placeholder={isLoadingTeams ? "팀 목록 로딩 중..." : "팀을 선택하세요"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams?.map(team => (
+                    {teams && sortTeams(teams).map(team => (
                       <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>
