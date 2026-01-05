@@ -123,7 +123,7 @@ export const reportSignatureSchema = z.object({
 
 export const tbmReportSchema = z.object({
   teamId: z.number(),
-  reportDate: z.string().datetime(),
+  reportDate: z.string(),  // "YYYY-MM-DD" 또는 ISO datetime 형식 모두 허용
   managerName: z.string(),
   remarks: z.string().optional(),
   site: z.string(),
