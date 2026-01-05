@@ -566,11 +566,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 팀을 사이트별로 그룹화
   const teamsBySite = teams.reduce((acc, team) => {
-    const site = team.site || '기타';
-    if (!acc[site]) acc[site] = [];
-    acc[site].push(team);
+    const teamSite = team.site || '기타';
+    if (!acc[teamSite]) acc[teamSite] = [];
+    acc[teamSite].push(team);
     return acc;
   }, {});
+
+  // 현재 사이트를 먼저 표시하도록 그룹 정렬
+  const sortedSiteEntries = Object.entries(teamsBySite).sort(([siteA], [siteB]) => {
+    if (siteA === site) return -1;
+    if (siteB === site) return 1;
+    return siteA.localeCompare(siteB, 'ko');
+  });
 
   return (
     <div className="space-y-6">
@@ -579,12 +586,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           <SelectValue placeholder="팀을 선택하세요" />
         </SelectTrigger>
         <SelectContent className="max-h-[300px] overflow-y-auto">
-          {Object.entries(teamsBySite).map(([site, siteTeams]) => (
-            <React.Fragment key={site}>
+          {sortedSiteEntries.map(([siteGroup, siteTeams]) => (
+            <React.Fragment key={siteGroup}>
               <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                {site}
+                {siteGroup}
               </div>
-              {sortTeams(siteTeams).map(team => (
+              {sortTeams(siteTeams, site).map(team => (
                 <SelectItem key={team.id} value={team.id} className="pl-6">
                   {stripSiteSuffix(team.name)}
                 </SelectItem>

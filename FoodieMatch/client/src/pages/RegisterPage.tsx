@@ -14,6 +14,7 @@ import { sortTeams } from "@/lib/utils";
 interface Team {
   id: number;
   name: string;
+  site?: string | null;
 }
 
 const fetchTeams = async (site: string): Promise<Team[]> => {
@@ -248,7 +249,7 @@ export default function RegisterPage() {
                     <SelectValue placeholder={isLoadingTeams ? "팀 목록 로딩 중..." : "팀을 선택하세요"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams && sortTeams(teams).map(team => (
+                    {teams && sortTeams(teams, formData.site).map(team => (
                       <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>

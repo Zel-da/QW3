@@ -38,23 +38,34 @@ const TEAM_ORDER: string[] = [
 
 /**
  * 팀 목록을 지정된 순서로 정렬
- * @param teams 팀 배열 (id, name 필드 필요)
+ * @param teams 팀 배열 (name, site 필드 필요)
+ * @param currentSite 현재 선택된 사이트 (해당 사이트 팀이 먼저 표시됨)
  * @returns 정렬된 팀 배열
  */
-export function sortTeams<T extends { name: string }>(teams: T[]): T[] {
+export function sortTeams<T extends { name: string; site?: string | null }>(
+  teams: T[],
+  currentSite?: string
+): T[] {
   return [...teams].sort((a, b) => {
+    // 1. 현재 사이트 우선 정렬 (currentSite가 지정된 경우)
+    if (currentSite) {
+      const aIsCurrentSite = a.site === currentSite;
+      const bIsCurrentSite = b.site === currentSite;
+      if (aIsCurrentSite && !bIsCurrentSite) return -1;
+      if (!aIsCurrentSite && bIsCurrentSite) return 1;
+    }
+
+    // 2. TEAM_ORDER 우선순위 적용
     const indexA = TEAM_ORDER.indexOf(a.name);
     const indexB = TEAM_ORDER.indexOf(b.name);
 
-    // 둘 다 우선순위 목록에 있으면 목록 순서대로
     if (indexA !== -1 && indexB !== -1) {
       return indexA - indexB;
     }
-    // a만 우선순위 목록에 있으면 a가 앞
     if (indexA !== -1) return -1;
-    // b만 우선순위 목록에 있으면 b가 앞
     if (indexB !== -1) return 1;
-    // 둘 다 목록에 없으면 이름순
+
+    // 3. 이름순 정렬
     return a.name.localeCompare(b.name, 'ko');
   });
 }

@@ -338,12 +338,12 @@ export default function MonthlyReportPage() {
       });
     }
 
-    // Sort teams by priority order
-    return sortTeams(filtered.map(t => ({ ...t, name: t.teamName }))).map(t => {
+    // Sort teams by priority order (current site first)
+    return sortTeams(filtered.map(t => ({ ...t, name: t.teamName })), site).map(t => {
       const original = filtered.find(f => f.teamName === t.name);
       return original!;
     });
-  }, [attendanceOverview?.teams, searchQuery, filterNoApproval, filterNoEducation, filterHasIssues]);
+  }, [attendanceOverview?.teams, searchQuery, filterNoApproval, filterNoEducation, filterHasIssues, site]);
 
   // 팀원별 교육 통계 (Team education statistics)
   // TeamMember는 userId를 통해 User와 연결되며, User의 교육 진행률을 추적
@@ -2069,7 +2069,7 @@ export default function MonthlyReportPage() {
                       각 팀의 교육 날짜를 개별적으로 설정합니다.
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {sortTeams(teams).map((team) => (
+                      {sortTeams(teams, site).map((team) => (
                         <div key={team.id} className="flex items-center gap-2 bg-white p-2 rounded border">
                           <span className="text-sm flex-1 truncate" title={stripSiteSuffix(team.name)}>
                             {stripSiteSuffix(team.name)}
