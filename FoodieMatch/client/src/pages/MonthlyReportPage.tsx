@@ -148,7 +148,7 @@ function getStatusText(status: 'not-submitted' | 'completed' | 'has-issues' | un
 
 export default function MonthlyReportPage() {
   const { user } = useAuth();
-  const { site, setSite } = useSite();
+  const { site, setSite, initSiteFromUser } = useSite();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -193,13 +193,12 @@ export default function MonthlyReportPage() {
 
   // ==================== Queries ====================
 
+  // 사용자 소속 사이트로 자동 초기화
   useEffect(() => {
     if (user) {
-      if (user.role !== 'ADMIN' && user.site) {
-        setSite(user.site as Site);
-      }
+      initSiteFromUser(user.site, user.role === 'ADMIN');
     }
-  }, [user, setSite]);
+  }, [user, initSiteFromUser]);
 
   // 사이트별 담당자/승인자 기본값 불러오기
   useEffect(() => {

@@ -160,10 +160,24 @@ export default function SafetyInspectionPage() {
     }
   }, [user, teams]);
 
-  // 첫 공장 자동 선택 (관리자인 경우)
+  // 사용자 소속 사이트에 맞는 공장 자동 선택
   useEffect(() => {
-    if (user?.role === 'ADMIN' && factories.length > 0 && !selectedFactory) {
-      setSelectedFactory(factories[0].id);
+    if (factories.length > 0 && !selectedFactory) {
+      // user.site 기반으로 공장 자동 선택
+      if (user?.site) {
+        const siteCode = user.site === '아산' ? 'ASAN' : user.site === '화성' ? 'HWASEONG' : null;
+        if (siteCode) {
+          const matchingFactory = factories.find(f => f.code === siteCode);
+          if (matchingFactory) {
+            setSelectedFactory(matchingFactory.id);
+            return;
+          }
+        }
+      }
+      // user.site가 없거나 매칭 공장이 없으면 첫 번째 공장 선택 (ADMIN 등)
+      if (user?.role === 'ADMIN') {
+        setSelectedFactory(factories[0].id);
+      }
     }
   }, [user, factories, selectedFactory]);
 

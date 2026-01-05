@@ -29,22 +29,18 @@ export default function TbmPage() {
   const [view, setView] = useState('checklist');
   const [reportForEdit, setReportForEdit] = useState<any | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const { site, setSite } = useSite();
+  const { site, setSite, initSiteFromUser } = useSite();
   const { user } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
   const [isLoadingModify, setIsLoadingModify] = useState(false);
 
+  // 사용자 소속 사이트로 자동 초기화
   useEffect(() => {
     if (user) {
-      if (user.role !== 'ADMIN' && user.site) {
-        setSite(user.site as Site);
-      } else if (user.role === 'ADMIN' && !site) {
-        // ADMIN 사용자는 기본값 '아산'으로 설정
-        setSite('아산');
-      }
+      initSiteFromUser(user.site, user.role === 'ADMIN');
     }
-  }, [user, setSite, site]);
+  }, [user, initSiteFromUser]);
 
   // URL 파라미터에서 reportId를 읽어서 자동으로 해당 리포트 로드
   useEffect(() => {
