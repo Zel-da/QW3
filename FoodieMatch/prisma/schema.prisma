@@ -15,6 +15,7 @@ model User {
   password               String?
   role                   String            @default("PENDING")
   site                   String?
+  sites                  String?           // 다중 사이트 접근 ("화성,아산")
   teamId                 Int?
   createdAt              DateTime          @default(now())
   team                   Team?             @relation("TeamMembers", fields: [teamId], references: [id])

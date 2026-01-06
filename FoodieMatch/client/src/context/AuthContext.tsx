@@ -8,6 +8,7 @@ interface AuthUser {
   role: string;
   teamId?: number | null;
   site?: string | null;
+  sites?: string[]; // 다중 사이트 접근 가능 목록
 }
 
 interface AuthContextType {

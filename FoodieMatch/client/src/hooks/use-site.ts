@@ -5,20 +5,50 @@ export type Site = '아산' | '화성' | '전체';
 
 interface SiteState {
   site: Site;
+  availableSites: Site[]; // 사용자가 접근 가능한 사이트 목록
   setSite: (site: Site) => void;
-  // 사용자 로그인 시 site 초기화 (비관리자는 user.site 강제 적용)
-  initSiteFromUser: (userSite: string | null | undefined, isAdmin: boolean) => void;
+  // 사용자 로그인 시 site 초기화
+  initSiteFromUser: (userSite: string | null | undefined, userSites: string[] | null | undefined, isAdmin: boolean) => void;
 }
 
 export const useSite = create<SiteState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       site: '아산', // Default to 아산 site
-      setSite: (site) => set({ site }),
-      initSiteFromUser: (userSite, isAdmin) => {
-        // 비관리자이고 user.site가 있으면 강제로 해당 사이트로 설정
-        if (!isAdmin && userSite && (userSite === '아산' || userSite === '화성')) {
-          set({ site: userSite as Site });
+      availableSites: ['아산', '화성'], // 기본값: 모든 사이트
+      setSite: (site) => {
+        const { availableSites } = get();
+        // 접근 가능한 사이트만 선택 가능
+        if (site === '전체' || availableSites.includes(site)) {
+          set({ site });
+        }
+      },
+      initSiteFromUser: (userSite, userSites, isAdmin) => {
+        // 관리자: 모든 사이트 접근 가능
+        if (isAdmin) {
+          set({ availableSites: ['아산', '화성'] });
+          return;
+        }
+
+        // sites 배열이 있으면 해당 사이트들만 접근 가능
+        if (userSites && userSites.length > 0) {
+          const validSites = userSites.filter(s => s === '아산' || s === '화성') as Site[];
+          if (validSites.length > 0) {
+            set({
+              availableSites: validSites,
+              // 현재 선택된 사이트가 접근 불가면 첫 번째 사이트로 변경
+              site: validSites.includes(get().site) ? get().site : validSites[0]
+            });
+            return;
+          }
+        }
+
+        // 단일 site만 있으면 해당 사이트만 접근 가능
+        if (userSite && (userSite === '아산' || userSite === '화성')) {
+          set({
+            availableSites: [userSite as Site],
+            site: userSite as Site
+          });
         }
       },
     }),

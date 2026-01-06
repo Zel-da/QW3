@@ -16,6 +16,7 @@ declare module "express-session" {
       teamId?: number | null;
       name?: string | null;
       site?: string | null;
+      sites?: string[];
     };
   }
 }

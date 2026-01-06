@@ -38,7 +38,7 @@ export default function TbmPage() {
   // 사용자 소속 사이트로 자동 초기화
   useEffect(() => {
     if (user) {
-      initSiteFromUser(user.site, user.role === 'ADMIN');
+      initSiteFromUser(user.site, user.sites, user.role === 'ADMIN');
     }
   }, [user, initSiteFromUser]);
 

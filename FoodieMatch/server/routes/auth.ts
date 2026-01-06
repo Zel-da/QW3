@@ -121,8 +121,11 @@ export function registerAuthRoutes(app: Express) {
         });
       }
 
+      // sites 필드 파싱 (쉼표 구분 문자열 -> 배열)
+      const sitesArray = user.sites ? user.sites.split(',').map(s => s.trim()) : (user.site ? [user.site] : []);
+
       // Set session user data
-      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
+      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray };
 
       // 감사 로그
       await logLoginSuccess(req, user.id);
@@ -133,7 +136,7 @@ export function registerAuthRoutes(app: Express) {
           console.error('Session save error:', err);
           return res.status(500).json({ message: "세션 저장 중 오류가 발생했습니다" });
         }
-        res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
+        res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray });
       });
     } catch (error) {
       console.error('Login error:', error);
