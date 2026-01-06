@@ -49,7 +49,7 @@ export default function MorePage() {
           icon: FileText,
           label: '월별 보고서',
           description: 'TBM 월별 보고서 및 통계',
-          showTo: ['ADMIN', 'TEAM_LEADER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'APPROVER'],
         },
         {
           href: '/inspection-gallery',
