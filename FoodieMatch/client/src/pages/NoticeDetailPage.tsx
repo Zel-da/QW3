@@ -334,7 +334,7 @@ export default function NoticeDetailPage() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE' });
+      const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE', credentials: 'include' });
       if (!response.ok) throw new Error('삭제에 실패했습니다.');
 
       toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
