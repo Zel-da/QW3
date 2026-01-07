@@ -19,7 +19,7 @@ interface Attachment {
 interface IssueDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { description: string; attachments: Attachment[] }) => void;
+  onSave: (data: { description: string; actionTaken: string; attachments: Attachment[] }) => void;
   item: {
     id: number;
     category: string;
@@ -28,6 +28,7 @@ interface IssueDetailModalProps {
   } | null;
   initialData?: {
     description: string;
+    actionTaken?: string;
     attachments: Attachment[];
   };
 }
@@ -41,6 +42,7 @@ export function IssueDetailModal({
 }: IssueDetailModalProps) {
   const { toast } = useToast();
   const [description, setDescription] = useState(initialData?.description || '');
+  const [actionTaken, setActionTaken] = useState(initialData?.actionTaken || '');
   const [attachments, setAttachments] = useState<Attachment[]>(initialData?.attachments || []);
   const [uploading, setUploading] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export function IssueDetailModal({
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current && initialData) {
       setDescription(initialData.description || '');
+      setActionTaken(initialData.actionTaken || '');
       setAttachments(initialData.attachments || []);
     }
     prevIsOpenRef.current = isOpen;
@@ -91,8 +94,8 @@ export function IssueDetailModal({
   const handleSave = () => {
     if (!description.trim()) {
       toast({
-        title: "비고를 입력해주세요",
-        description: "△ 또는 X 항목은 조치 내용 입력이 필수입니다.",
+        title: "위험예측 사항을 입력해주세요",
+        description: "△ 또는 X 항목은 위험예측 사항 입력이 필수입니다.",
         variant: "destructive"
       });
       return;
@@ -105,7 +108,7 @@ export function IssueDetailModal({
       });
       return;
     }
-    onSave({ description, attachments });
+    onSave({ description, actionTaken, attachments });
     onClose();
   };
 
@@ -175,17 +178,30 @@ export function IssueDetailModal({
               )}
             </div>
 
-            {/* 비고 입력 */}
+            {/* 위험예측 사항 입력 */}
             <div className="space-y-2">
               <Label>
-                조치 내용 / 비고 <span className="text-red-500">*</span>
+                위험예측 사항 <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                placeholder="조치 내용을 상세히 작성해주세요..."
+                placeholder="위험예측 사항을 상세히 작성해주세요..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
+                rows={3}
                 className={!description.trim() ? 'border-red-300' : ''}
+              />
+            </div>
+
+            {/* 조치사항 입력 */}
+            <div className="space-y-2">
+              <Label>
+                조치사항
+              </Label>
+              <Textarea
+                placeholder="조치사항을 작성해주세요..."
+                value={actionTaken}
+                onChange={(e) => setActionTaken(e.target.value)}
+                rows={3}
               />
             </div>
           </div>

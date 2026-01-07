@@ -91,6 +91,7 @@ export const tbmCheckItemSchema = z.object({
   itemId: z.number().int().positive(),
   checkState: z.enum(['O', '△', 'X']),
   actionDescription: z.string().nullable().optional(),
+  actionTaken: z.string().nullable().optional(),
   attachments: z.array(z.object({
     url: z.string().url(),
     name: z.string(),

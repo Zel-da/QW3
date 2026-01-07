@@ -4905,6 +4905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 itemId: r.itemId,
                 checkState: r.checkState || undefined,
                 actionDescription: r.actionDescription,
+                actionTaken: r.actionTaken,
                 authorId: r.authorId,
                 attachments: hasAttachments && r.attachments ? {
                   create: r.attachments!.map((att: any) => ({
@@ -4993,6 +4994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               itemId: r.itemId,
               checkState: r.checkState,
               actionDescription: r.actionDescription,
+              actionTaken: r.actionTaken,
               authorId: r.authorId,
               attachments: hasAttachments && r.attachments ? {
                 create: r.attachments!.map((att: any) => ({

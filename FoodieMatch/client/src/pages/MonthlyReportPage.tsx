@@ -1399,6 +1399,7 @@ export default function MonthlyReportPage() {
                             <TableHead>점검항목</TableHead>
                             <TableHead className="w-[80px] text-center">결과</TableHead>
                             <TableHead>위험예측사항</TableHead>
+                            <TableHead>조치사항</TableHead>
                             <TableHead className="w-[100px]">첨부</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1429,6 +1430,9 @@ export default function MonthlyReportPage() {
                               </TableCell>
                               <TableCell className="whitespace-pre-wrap">
                                 {item.actionDescription}
+                              </TableCell>
+                              <TableCell className="whitespace-pre-wrap">
+                                {item.actionTaken || '-'}
                               </TableCell>
                               <TableCell>
                                 {item.attachments.length > 0 ? (

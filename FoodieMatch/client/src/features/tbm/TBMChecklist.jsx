@@ -166,6 +166,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       initialFormState[detail.itemId] = {
         checkState: detail.checkState,
         description: detail.actionDescription,
+        actionTaken: detail.actionTaken,
         attachments: detail.attachments ? detail.attachments.map(att => ({
           url: att.url,
           name: att.name,
@@ -499,6 +500,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         itemId: parseInt(itemId),
         checkState: data.checkState,
         actionDescription: data.description || null,
+        actionTaken: data.actionTaken || null,
         authorId: user.id,
         attachments: data.attachments || []
       })),
@@ -1089,12 +1091,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         onSave={(data) => {
           if (selectedIssueItem) {
             updateFormState(selectedIssueItem.id, 'description', data.description);
+            updateFormState(selectedIssueItem.id, 'actionTaken', data.actionTaken);
             updateFormState(selectedIssueItem.id, 'attachments', data.attachments);
           }
         }}
         item={selectedIssueItem}
         initialData={selectedIssueItem ? {
           description: formState[selectedIssueItem.id]?.description || '',
+          actionTaken: formState[selectedIssueItem.id]?.actionTaken || '',
           attachments: formState[selectedIssueItem.id]?.attachments || []
         } : undefined}
       />
