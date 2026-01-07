@@ -465,6 +465,7 @@ export default function MonthlyReportPage() {
               description: templateItem?.description || '알 수 없음',
               checkState: detail.checkState,
               actionDescription: detail.actionDescription || '',
+              actionTaken: detail.actionTaken || '',
               attachments: detail.attachments || []
             });
           }
