@@ -89,17 +89,28 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   });
 
   useEffect(() => {
-    if (site) {
-      apiClient.get(`/api/teams?site=${site}`).then(res => {
-        setTeams(res.data);
-        const userTeamInList = res.data.some(team => team.id === user?.teamId);
-        if (user?.teamId && userTeamInList && !reportForEdit) {
+    if (!site) return;
+
+    apiClient.get(`/api/teams?site=${site}`).then(res => {
+      setTeams(res.data);
+
+      // 수정 모드: reportForEdit 팀 선택
+      if (reportForEdit) {
+        setSelectedTeam(reportForEdit.teamId);
+        return;
+      }
+
+      // 이미 팀이 선택되어 있으면 스킵
+      if (selectedTeam) return;
+
+      // 사용자 팀 자동 선택 (user 로드 확인)
+      if (user?.teamId) {
+        const userTeamInList = res.data.some(team => team.id === user.teamId);
+        if (userTeamInList) {
           setSelectedTeam(user.teamId);
-        } else if (reportForEdit) {
-          setSelectedTeam(reportForEdit.teamId);
         }
-      });
-    }
+      }
+    });
   }, [user, site, reportForEdit]);
 
   // 날짜가 변경되면 공휴일 여부 체크
