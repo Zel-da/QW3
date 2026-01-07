@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import pgSession from "connect-pg-simple";
-import pg from "pg";
+import MemoryStore from "memorystore";
 import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -52,22 +51,14 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('SESSION_SECRET environment variable must be set in production');
 }
 
-// PostgreSQL Session Store - 서버 재시작 후에도 세션 유지
-// connect-pg-simple은 자동으로 'session' 테이블 생성
-const PgStore = pgSession(session);
-const pgPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+// MemoryStore - 서버 재시작 시 세션 초기화됨
+const MemStore = MemoryStore(session);
 
 app.set('trust proxy', 1);
 
 app.use(session({
-  store: new PgStore({
-    pool: pgPool,
-    tableName: 'session', // 테이블명 (자동 생성됨)
-    createTableIfMissing: true, // 테이블 없으면 자동 생성
-    pruneSessionInterval: 60 * 15, // 15분마다 만료된 세션 정리
+  store: new MemStore({
+    checkPeriod: 86400000, // 24시간마다 만료된 세션 정리
   }),
   secret: sessionSecret,
   resave: false,
