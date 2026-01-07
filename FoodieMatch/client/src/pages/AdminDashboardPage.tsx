@@ -1,34 +1,27 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { AdminPageLayout, PageHeader } from '@/components/admin';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { AdminPageLayout } from '@/components/admin';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Users, Building2, Calendar, Package, Mail, Shield, Settings,
-  BookOpen, ClipboardCheck, GraduationCap, Cog, CalendarDays,
-  TrendingUp, AlertTriangle, CheckCircle2, Clock, FileText,
-  ArrowRight, Activity, Database, HelpCircle, FileQuestion
+  Users, Building2, Shield,
+  ClipboardCheck, TrendingUp, AlertTriangle, ArrowRight
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface MenuItem {
   title: string;
-  description: string;
-  icon: React.ReactNode;
   path: string;
   roles: string[];
   badge?: string;
-  color: string;
 }
 
 interface MenuGroup {
   groupTitle: string;
-  groupIcon: React.ReactNode;
-  groupColor: string;
   items: MenuItem[];
 }
+
+// 단순화된 메뉴 데이터
 
 // 통계 데이터 타입
 interface DashboardStats {
@@ -42,150 +35,44 @@ interface DashboardStats {
 const menuGroups: MenuGroup[] = [
   {
     groupTitle: '인사 관리',
-    groupIcon: <Users className="h-5 w-5" />,
-    groupColor: 'from-blue-500 to-blue-600',
     items: [
-      {
-        title: '사용자 관리',
-        description: '사용자 계정 생성, 수정, 삭제 및 권한 관리',
-        icon: <Users className="h-6 w-6" />,
-        path: '/admin',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-blue-500',
-      },
-      {
-        title: '팀 관리',
-        description: '팀 생성, 수정, 팀원 배정 및 팀장 지정',
-        icon: <Building2 className="h-6 w-6" />,
-        path: '/team-management',
-        roles: ['ADMIN', 'TEAM_LEADER'],
-        color: 'bg-indigo-500',
-      },
+      { title: '사용자 관리', path: '/admin', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '팀 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER'] },
     ],
   },
   {
     groupTitle: 'TBM 관리',
-    groupIcon: <ClipboardCheck className="h-5 w-5" />,
-    groupColor: 'from-green-500 to-green-600',
     items: [
-      {
-        title: 'TBM 편집',
-        description: 'TBM 체크리스트 템플릿 편집 및 항목 관리',
-        icon: <Settings className="h-6 w-6" />,
-        path: '/checklist-editor',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-green-500',
-      },
+      { title: 'TBM 편집', path: '/checklist-editor', roles: ['ADMIN'], badge: 'ADMIN' },
     ],
   },
   {
     groupTitle: '점검 관리',
-    groupIcon: <Shield className="h-5 w-5" />,
-    groupColor: 'from-amber-500 to-amber-600',
     items: [
-      {
-        title: '점검 일정 관리',
-        description: '월별 안전점검 일정 및 점검 항목 관리',
-        icon: <Calendar className="h-6 w-6" />,
-        path: '/inspection-schedule',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-amber-500',
-      },
-      {
-        title: '팀 장비/점검 관리',
-        description: '팀별 보유 장비 및 월별 점검 템플릿 통합 관리',
-        icon: <Package className="h-6 w-6" />,
-        path: '/team-equipment-management',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-orange-500',
-      },
+      { title: '점검 일정 관리', path: '/inspection-schedule', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '팀 장비/점검 관리', path: '/team-equipment-management', roles: ['ADMIN'], badge: 'ADMIN' },
     ],
   },
   {
     groupTitle: '교육 관리',
-    groupIcon: <GraduationCap className="h-5 w-5" />,
-    groupColor: 'from-purple-500 to-purple-600',
     items: [
-      {
-        title: '교육 관리',
-        description: '안전교육 과정 생성, 수정, 삭제 및 퀴즈 관리',
-        icon: <BookOpen className="h-6 w-6" />,
-        path: '/education-management',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-purple-500',
-      },
-      {
-        title: '교육 현황',
-        description: '전체 사용자 안전교육 진행 상황 모니터링',
-        icon: <TrendingUp className="h-6 w-6" />,
-        path: '/education-monitoring',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-violet-500',
-      },
+      { title: '교육 관리', path: '/education-management', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '교육 현황', path: '/education-monitoring', roles: ['ADMIN'], badge: 'ADMIN' },
     ],
   },
   {
     groupTitle: '시스템 설정',
-    groupIcon: <Cog className="h-5 w-5" />,
-    groupColor: 'from-slate-500 to-slate-600',
     items: [
-      {
-        title: '공휴일 관리',
-        description: '공휴일 등록 및 TBM 작성 제외일 설정',
-        icon: <CalendarDays className="h-6 w-6" />,
-        path: '/holiday-management',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-slate-500',
-      },
-      {
-        title: '이메일 설정',
-        description: '자동 이메일 발송 조건 및 스케줄 설정',
-        icon: <Mail className="h-6 w-6" />,
-        path: '/email-settings',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-rose-500',
-      },
-      {
-        title: '데이터베이스 관리',
-        description: '데이터 백업 및 오래된 데이터 정리',
-        icon: <Database className="h-6 w-6" />,
-        path: '/db-management',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-cyan-500',
-      },
+      { title: '공휴일 관리', path: '/holiday-management', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '이메일 설정', path: '/email-settings', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '데이터베이스 관리', path: '/db-management', roles: ['ADMIN'], badge: 'ADMIN' },
     ],
   },
   {
     groupTitle: '도움말',
-    groupIcon: <HelpCircle className="h-5 w-5" />,
-    groupColor: 'from-teal-500 to-teal-600',
     items: [
-      {
-        title: '관리자 업무 절차서',
-        description: '관리자용 상세 업무 안내 및 플로우차트',
-        icon: <FileQuestion className="h-6 w-6" />,
-        path: '/admin-help',
-        roles: ['ADMIN'],
-        badge: 'ADMIN',
-        color: 'bg-teal-500',
-      },
-      {
-        title: '사용자 도움말',
-        description: '시스템 사용 방법 안내',
-        icon: <HelpCircle className="h-6 w-6" />,
-        path: '/help',
-        roles: ['ADMIN', 'TEAM_LEADER'],
-        color: 'bg-emerald-500',
-      },
+      { title: '관리자 업무 절차서', path: '/admin-help', roles: ['ADMIN'], badge: 'ADMIN' },
+      { title: '사용자 도움말', path: '/help', roles: ['ADMIN', 'TEAM_LEADER'] },
     ],
   },
 ];
@@ -237,37 +124,6 @@ function StatCard({
   );
 }
 
-// 빠른 액션 버튼 컴포넌트
-function QuickActionButton({
-  title,
-  icon,
-  onClick,
-  variant = 'default'
-}: {
-  title: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  variant?: 'default' | 'warning' | 'success';
-}) {
-  const variants = {
-    default: 'bg-white hover:bg-gray-50 border',
-    warning: 'bg-amber-50 hover:bg-amber-100 border-amber-200',
-    success: 'bg-green-50 hover:bg-green-100 border-green-200',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-3 p-4 rounded-xl transition-all ${variants[variant]} w-full text-left`}
-    >
-      <div className="p-2 bg-primary/10 rounded-lg text-primary">
-        {icon}
-      </div>
-      <span className="font-medium">{title}</span>
-      <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
-    </button>
-  );
-}
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
@@ -379,53 +235,14 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* 빠른 액션 */}
-      {user?.role === 'ADMIN' && (
-        <Card className="mb-8">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              빠른 액션
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <QuickActionButton
-                title="사용자 추가"
-                icon={<Users className="h-5 w-5" />}
-                onClick={() => setLocation('/admin')}
-              />
-              <QuickActionButton
-                title="교육 현황 확인"
-                icon={<GraduationCap className="h-5 w-5" />}
-                onClick={() => setLocation('/education-monitoring')}
-              />
-              <QuickActionButton
-                title="TBM 편집"
-                icon={<ClipboardCheck className="h-5 w-5" />}
-                onClick={() => setLocation('/checklist-editor')}
-              />
-              <QuickActionButton
-                title="이메일 설정"
-                icon={<Mail className="h-5 w-5" />}
-                onClick={() => setLocation('/email-settings')}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* 메뉴 그룹 */}
       <div className="space-y-6">
         {accessibleGroups.map((group) => (
           <div key={group.groupTitle}>
             {/* 그룹 헤더 */}
             <div className="flex items-center gap-3 mb-4">
-              <div className={`p-2.5 rounded-xl bg-gradient-to-br ${group.groupColor} text-white shadow-sm`}>
-                {group.groupIcon}
-              </div>
-              <h2 className="text-xl font-semibold">{group.groupTitle}</h2>
-              <div className="flex-1 h-px bg-border ml-4" />
+              <h2 className="text-lg font-semibold">{group.groupTitle}</h2>
+              <div className="flex-1 h-px bg-border" />
             </div>
 
             {/* 메뉴 카드들 */}
@@ -433,29 +250,20 @@ export default function AdminDashboardPage() {
               {group.items.map((item) => (
                 <Card
                   key={item.path}
-                  className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 hover:border-l-primary"
-                  style={{ borderLeftColor: 'transparent' }}
+                  className="group cursor-pointer hover:shadow-md transition-all duration-200"
                   onClick={() => setLocation(item.path)}
                 >
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-xl ${item.color} text-white shadow-sm group-hover:scale-110 transition-transform`}>
-                        {item.icon}
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{item.title}</h3>
+                        {item.badge && (
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
+                            {item.badge}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{item.title}</h3>
-                          {item.badge && (
-                            <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {item.description}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </div>
                   </CardContent>
                 </Card>
@@ -469,32 +277,21 @@ export default function AdminDashboardPage() {
       {user?.role === 'TEAM_LEADER' && (
         <div className="mt-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-gray-400 text-white">
-              <Shield className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-500">관리자 전용 메뉴</h2>
-            <div className="flex-1 h-px bg-gray-200 ml-4" />
+            <h2 className="text-lg font-semibold text-gray-500">관리자 전용 메뉴</h2>
+            <div className="flex-1 h-px bg-gray-200" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {allMenuItems
               .filter(item => !item.roles.includes('TEAM_LEADER'))
               .map((item) => (
                 <Card key={item.path} className="opacity-50 cursor-not-allowed">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="p-3 rounded-xl bg-gray-300 text-gray-500">
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg text-gray-500">{item.title}</h3>
-                          <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-semibold rounded">
-                            ADMIN
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">
-                          {item.description}
-                        </p>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-500">{item.title}</h3>
+                        <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-semibold rounded">
+                          ADMIN
+                        </span>
                       </div>
                     </div>
                   </CardContent>

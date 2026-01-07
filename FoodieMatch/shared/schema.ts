@@ -105,6 +105,7 @@ export const reportResultSchema = z.object({
   itemId: z.number(),
   checkState: z.string().optional(),
   actionDescription: z.string().nullish(),
+  actionTaken: z.string().nullish(),
   authorId: z.string(),
   attachments: z.array(z.object({
     url: z.string(),
@@ -191,6 +192,7 @@ export interface ReportDetail {
   checkState?: string | null;
   authorId?: string | null;
   actionDescription?: string | null;
+  actionTaken?: string | null;
   actionStatus?: string | null;
 }
 
