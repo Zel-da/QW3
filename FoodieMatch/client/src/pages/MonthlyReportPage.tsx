@@ -1398,7 +1398,7 @@ export default function MonthlyReportPage() {
                             <TableHead className="w-[100px]">구분</TableHead>
                             <TableHead>점검항목</TableHead>
                             <TableHead className="w-[80px] text-center">결과</TableHead>
-                            <TableHead>조치 내용</TableHead>
+                            <TableHead>위험예측사항</TableHead>
                             <TableHead className="w-[100px]">첨부</TableHead>
                           </TableRow>
                         </TableHeader>
