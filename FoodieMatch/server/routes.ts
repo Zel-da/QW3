@@ -2689,12 +2689,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin-only: Delete notice
-  app.delete("/api/notices/:noticeId", requireAuth, requireRole('ADMIN'), async (req, res) => {
+  // Delete notice (작성자 또는 ADMIN만 가능)
+  app.delete("/api/notices/:noticeId", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.user!.id;
+      const userRole = req.session.user!.role;
+
+      // 공지사항 조회
+      const notice = await prisma.notice.findUnique({
+        where: { id: req.params.noticeId }
+      });
+
+      if (!notice) {
+        return res.status(404).json({ message: "공지사항을 찾을 수 없습니다." });
+      }
+
+      // 권한 확인: 작성자 또는 ADMIN만 삭제 가능
+      if (notice.authorId !== userId && userRole !== 'ADMIN') {
+        return res.status(403).json({ message: "삭제 권한이 없습니다." });
+      }
+
       await prisma.notice.delete({ where: { id: req.params.noticeId } });
       res.status(204).send();
-    } catch (error) { res.status(500).json({ message: "Failed to delete notice" }); }
+    } catch (error) {
+      console.error('Failed to delete notice:', error);
+      res.status(500).json({ message: "Failed to delete notice" });
+    }
   });
 
   // 댓글 목록 조회 (인증 필요)
