@@ -3293,23 +3293,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 참고사항 내용
-      const referenceNotes = [
-        '1. TBM 절차',
-        '  * 도입-점검-지시-위험성예지훈련-지적확인',
-        '  * 음주 상태 확인 후 고소작업 및 위험작업 배치 제한',
-        '    (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)',
-        '2. 아침 조회를 시작으로 TBM 진행',
-        '3. 점검은 점검항목 순서에 따라 작업전에 할 것',
-        '4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.',
-        '5. 점검자는 매일 점검항목에 따라 점검을 하여 기입하고,',
-        '   점검실시 상황을 확인하여 확인란에 서명할 것.',
-        '6. TBM 위험성 평가 실시중 기간이 필요한 사항은',
-        '   잠재위험발굴대장에 추가하여 관리 할 것.'
-      ];
+      // 참고사항 내용 (하나의 셀에 전체 내용)
+      const referenceNotesText = `1. TBM 절차
+   • 도입-점검-지시-위험성예지훈련-지적확인
+   • 음주 상태 확인 후 고소작업 및 위험작업 배치 제한
+     (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)
+2. 아침 조회를 시작으로 TBM 진행
+3. 점검은 점검항목 순서에 따라 작업전에 할 것
+4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.
+5. 점검자는 매일 점검항목에 따라 점검을 하여 기입하고, 점검실시 상황을 확인하여 확인란에 서명할 것.
+6. TBM 위험성 평가 실시중 기간이 필요한 사항은 잠재위험발굴대장에 추가하여 관리 할 것.`;
 
       const footerStartRow = currentRow1;
-      const totalFooterRows = Math.max(remarksData.length, referenceNotes.length);
+      const totalFooterRows = Math.max(remarksData.length, 10); // 최소 10행
 
       // 헤더 행
       sheet1.getRow(footerStartRow).height = 21;
@@ -3326,16 +3322,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sheet1.mergeCells(`AD${footerStartRow}:AG${footerStartRow}`);
       sheet1.getCell(footerStartRow, 30).value = '확인';
 
+      // 참고사항 열 전체 병합 (A-B, 모든 데이터 행)
+      const footerEndRow = footerStartRow + totalFooterRows;
+      sheet1.mergeCells(`A${footerStartRow + 1}:B${footerEndRow}`);
+      sheet1.getCell(footerStartRow + 1, 1).value = referenceNotesText;
+      sheet1.getCell(footerStartRow + 1, 1).alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+      sheet1.getCell(footerStartRow + 1, 1).font = { size: 9 };
+
       let footerCurrentRow = footerStartRow + 1;
       for (let i = 0; i < totalFooterRows; i++) {
         sheet1.getRow(footerCurrentRow).height = 21;
-
-        // 참고사항 열 (A-B)
-        sheet1.mergeCells(`A${footerCurrentRow}:B${footerCurrentRow}`);
-        if (i < referenceNotes.length) {
-          sheet1.getCell(footerCurrentRow, 1).value = referenceNotes[i];
-          sheet1.getCell(footerCurrentRow, 1).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-        }
 
         // 날짜 열 (C-F)
         sheet1.mergeCells(`C${footerCurrentRow}:F${footerCurrentRow}`);
@@ -3842,24 +3838,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          // 참고사항 내용
-          const referenceNotes = [
-            '1. TBM 절차',
-            '  * 도입-점검-지시-위험성예지훈련-지적확인',
-            '  * 음주 상태 확인 후 고소작업 및 위험작업 배치 제한',
-            '    (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)',
-            '2. 아침 조회를 시작으로 TBM 진행',
-            '3. 점검은 점검항목 순서에 따라 작업전에 할 것',
-            '4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.',
-            '5. 점검자는 매일 점검항목에 따라 점검을 하여 기입하고,',
-            '   점검실시 상황을 확인하여 확인란에 서명할 것.',
-            '6. TBM 위험성 평가 실시중 기간이 필요한 사항은',
-            '   잠재위험발굴대장에 추가하여 관리 할 것.'
-          ];
+          // 참고사항 내용 (하나의 셀에 전체 내용)
+          const referenceNotesText = `1. TBM 절차
+   • 도입-점검-지시-위험성예지훈련-지적확인
+   • 음주 상태 확인 후 고소작업 및 위험작업 배치 제한
+     (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)
+2. 아침 조회를 시작으로 TBM 진행
+3. 점검은 점검항목 순서에 따라 작업전에 할 것
+4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.
+5. 점검자는 매일 점검항목에 따라 점검을 하여 기입하고, 점검실시 상황을 확인하여 확인란에 서명할 것.
+6. TBM 위험성 평가 실시중 기간이 필요한 사항은 잠재위험발굴대장에 추가하여 관리 할 것.`;
 
           // 하단 문제점 테이블
           const footerStartRow = currentRow1;
-          const totalFooterRows = Math.max(remarksData.length, referenceNotes.length);
+          const totalFooterRows = Math.max(remarksData.length, 10); // 최소 10행
 
           // 헤더 행
           sheet1.getRow(footerStartRow).height = 21;
@@ -3893,17 +3885,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sheet1.getCell(footerStartRow, 30).font = boldFont;
           sheet1.getCell(footerStartRow, 30).alignment = centerAlignment;
 
+          // 참고사항 열 전체 병합 (A-B, 모든 데이터 행)
+          const footerEndRow = footerStartRow + totalFooterRows;
+          sheet1.mergeCells(`A${footerStartRow + 1}:B${footerEndRow}`);
+          sheet1.getCell(footerStartRow + 1, 1).value = referenceNotesText;
+          sheet1.getCell(footerStartRow + 1, 1).font = { size: 9 };
+          sheet1.getCell(footerStartRow + 1, 1).alignment = { vertical: 'top' as const, horizontal: 'left' as const, wrapText: true };
+
           let footerCurrentRow = footerStartRow + 1;
           for (let i = 0; i < totalFooterRows; i++) {
             sheet1.getRow(footerCurrentRow).height = 21;
-
-            // 참고사항 열 (A-B)
-            sheet1.mergeCells(`A${footerCurrentRow}:B${footerCurrentRow}`);
-            if (i < referenceNotes.length) {
-              sheet1.getCell(footerCurrentRow, 1).value = referenceNotes[i];
-              sheet1.getCell(footerCurrentRow, 1).font = font;
-              sheet1.getCell(footerCurrentRow, 1).alignment = { vertical: 'middle' as const, horizontal: 'left' as const, wrapText: true };
-            }
 
             // 날짜 열 (C-F)
             sheet1.mergeCells(`C${footerCurrentRow}:F${footerCurrentRow}`);
