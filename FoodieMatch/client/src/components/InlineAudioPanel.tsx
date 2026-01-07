@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Square, Play, Pause, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Upload, Trash2, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -54,8 +54,8 @@ export function InlineAudioPanel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [duration, setDuration] = useState(existingAudio?.duration || 0);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [transcription, setTranscription] = useState<TranscriptionData | null>(existingTranscription || null);
+  // STT 기능 제거 - 비용 절감을 위해 외부 도구(Notebook LM) 활용
+  // 녹음 파일 다운로드 후 필요시 외부에서 변환
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -69,10 +69,7 @@ export function InlineAudioPanel({
       setDuration(existingAudio.duration);
       setState('recorded');
     }
-    if (existingTranscription) {
-      setTranscription(existingTranscription);
-    }
-  }, [existingAudio, existingTranscription]);
+  }, [existingAudio]);
 
   useEffect(() => {
     return () => {
@@ -151,7 +148,6 @@ export function InlineAudioPanel({
     setDuration(0);
     setPlaybackTime(0);
     setIsPlaying(false);
-    setTranscription(null);
     setState('idle');
     onDelete?.();
   }, [audioUrl, existingAudio, onDelete]);
@@ -236,44 +232,6 @@ export function InlineAudioPanel({
     }
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
-
-  const handleTranscribe = useCallback(async () => {
-    if (!audioUrl) return;
-    setIsTranscribing(true);
-    try {
-      const response = await fetch(audioUrl);
-      const blob = await response.blob();
-      const formData = new FormData();
-      formData.append('audio', blob, 'recording.webm');
-
-      const sttResponse = await fetch('/api/stt/transcribe', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!sttResponse.ok) throw new Error('STT 변환 실패');
-      const result = await sttResponse.json();
-
-      const transcriptionData: TranscriptionData = {
-        text: result.text,
-        processedAt: new Date().toISOString(),
-        status: 'completed',
-      };
-      setTranscription(transcriptionData);
-      onTranscriptionComplete?.(transcriptionData);
-    } catch (error) {
-      console.error('STT 변환 오류:', error);
-      setTranscription({
-        text: '',
-        processedAt: new Date().toISOString(),
-        status: 'failed',
-        error: '변환 실패',
-      });
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, [audioUrl, onTranscriptionComplete]);
 
   // 비활성화 상태
   if (disabled) {
@@ -403,33 +361,28 @@ export function InlineAudioPanel({
                 저장
               </Button>
             )}
-            <Button
-              onClick={handleTranscribe}
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              disabled={isTranscribing}
-            >
-              {isTranscribing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <FileText className="h-4 w-4 mr-1" />
-                  STT 변환
-                </>
-              )}
-            </Button>
+            {audioUrl && (
+              <Button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = audioUrl;
+                  link.download = `TBM_녹음_${new Date().toISOString().slice(0, 10)}.webm`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                다운로드
+              </Button>
+            )}
             <Button onClick={resetRecording} variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-
-          {/* STT 결과 */}
-          {transcription && transcription.status === 'completed' && (
-            <div className="p-3 bg-muted rounded-md text-sm max-h-24 overflow-y-auto">
-              {transcription.text}
-            </div>
-          )}
         </Card>
       )}
 

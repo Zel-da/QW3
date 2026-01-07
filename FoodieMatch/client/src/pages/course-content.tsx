@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Header } from "@/components/header";
 import { ArrowLeft, Download } from "lucide-react";
+import { TTSButton } from "@/components/TTSButton";
 import { Course, UserProgress } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -236,9 +237,12 @@ export default function CourseContentPage() {
             {/* Course Header */}
             <Card data-testid="course-header">
               <CardHeader>
-                <CardTitle className="korean-text" data-testid="course-title">
-                  {course.title}
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <TTSButton text={course.title} showStopButton />
+                  <CardTitle className="korean-text flex-1" data-testid="course-title">
+                    {course.title}
+                  </CardTitle>
+                </div>
                 <p className="text-muted-foreground korean-text">
                   총 교육 시간: {course.duration}분
                 </p>

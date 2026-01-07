@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -9,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { TTSButton } from '@/components/TTSButton';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 interface AssessmentQuestion {
   id: string;
@@ -74,6 +76,8 @@ export default function AssessmentPage() {
 
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  // 즉시 피드백: 각 문제별 정답 여부
+  const [feedback, setFeedback] = useState<{ [questionId: string]: { isCorrect: boolean; correctAnswer: number } }>({});
 
   const { data: questions, isLoading } = useQuery<AssessmentQuestion[]>({
     queryKey: ['assessments', courseId],
@@ -94,8 +98,16 @@ export default function AssessmentPage() {
     }
   });
 
-  const handleAnswerChange = (questionId: string, value: string) => {
+  const handleAnswerChange = (questionId: string, value: string, correctAnswer: number) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
+
+    // 즉시 피드백: O/X 표시
+    const selectedIndex = parseInt(value);
+    const isCorrect = selectedIndex === correctAnswer;
+    setFeedback(prev => ({
+      ...prev,
+      [questionId]: { isCorrect, correctAnswer }
+    }));
   };
 
   const handleSubmit = () => {
@@ -128,25 +140,87 @@ export default function AssessmentPage() {
           <CardContent>
             {!result ? (
               <div className="space-y-8">
-                {questions.map((question, index) => (
-                  <div key={question.id}>
-                    <p className="font-semibold mb-4">{index + 1}. {question.question}</p>
-                    <RadioGroup onValueChange={(value) => handleAnswerChange(question.id, value)}>
-                      {question.options.split(';').map((option, i) => {
-                        // Remove quotes and trim whitespace
-                        const cleanedOption = option.trim().replace(/^["']|["']$/g, '');
-                        return (
-                          <div key={i} className="flex items-center space-x-2 mb-2">
-                            <RadioGroupItem value={String(i)} id={`q-${question.id}-o-${i}`} />
-                            <Label htmlFor={`q-${question.id}-o-${i}`} className="flex-1 cursor-pointer">{cleanedOption}</Label>
-                          </div>
-                        );
-                      })}
-                    </RadioGroup>
-                  </div>
-                ))}
-                <Button onClick={handleSubmit} disabled={mutation.isPending}>
-                  {mutation.isPending ? '제출 중...' : '제출'}
+                {questions.map((question, index) => {
+                  const options = question.options.split(';').map(opt => opt.trim().replace(/^["']|["']$/g, ''));
+                  const questionFeedback = feedback[question.id];
+                  const correctOptionText = questionFeedback ? options[questionFeedback.correctAnswer] : '';
+
+                  return (
+                    <div key={question.id} className="border-b pb-6 last:border-b-0">
+                      {/* 문제 텍스트 + TTS 버튼 */}
+                      <div className="flex items-start gap-2 mb-4">
+                        <TTSButton text={question.question} showStopButton />
+                        <p className="font-semibold flex-1 text-lg">{index + 1}. {question.question}</p>
+                      </div>
+
+                      {/* 선택지 */}
+                      <RadioGroup
+                        onValueChange={(value) => handleAnswerChange(question.id, value, question.correctAnswer)}
+                        disabled={!!questionFeedback}
+                        className="ml-10"
+                      >
+                        {options.map((cleanedOption, i) => {
+                          const isSelected = answers[question.id] === String(i);
+                          const isCorrectOption = questionFeedback && i === questionFeedback.correctAnswer;
+                          const isWrongSelected = questionFeedback && isSelected && !questionFeedback.isCorrect;
+
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-center space-x-2 mb-2 p-2 rounded-lg transition-colors ${
+                                isCorrectOption ? 'bg-green-50 border border-green-200' :
+                                isWrongSelected ? 'bg-red-50 border border-red-200' : ''
+                              }`}
+                            >
+                              <RadioGroupItem value={String(i)} id={`q-${question.id}-o-${i}`} />
+                              <Label
+                                htmlFor={`q-${question.id}-o-${i}`}
+                                className={`flex-1 cursor-pointer ${
+                                  isCorrectOption ? 'text-green-700 font-medium' :
+                                  isWrongSelected ? 'text-red-700' : ''
+                                }`}
+                              >
+                                {cleanedOption}
+                              </Label>
+                              {isCorrectOption && <CheckCircle className="h-5 w-5 text-green-600" />}
+                              {isWrongSelected && <XCircle className="h-5 w-5 text-red-600" />}
+                            </div>
+                          );
+                        })}
+                      </RadioGroup>
+
+                      {/* 즉시 피드백 메시지 */}
+                      {questionFeedback && (
+                        <div className={`mt-4 ml-10 p-4 rounded-lg border-2 ${
+                          questionFeedback.isCorrect
+                            ? 'bg-green-50 text-green-800 border-green-300'
+                            : 'bg-red-50 text-red-800 border-red-300'
+                        }`}>
+                          {questionFeedback.isCorrect ? (
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="h-6 w-6 text-green-600" />
+                              <span className="font-bold text-lg">정답입니다!</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <XCircle className="h-6 w-6 text-red-600" />
+                                <span className="font-bold text-lg">오답입니다</span>
+                              </div>
+                              <div className="ml-9 p-3 bg-green-100 rounded-lg border border-green-300">
+                                <span className="text-green-800">
+                                  <strong>정답:</strong> {correctOptionText}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button onClick={handleSubmit} disabled={mutation.isPending} size="lg" className="w-full">
+                  {mutation.isPending ? '제출 중...' : '결과 확인'}
                 </Button>
               </div>
             ) : (
