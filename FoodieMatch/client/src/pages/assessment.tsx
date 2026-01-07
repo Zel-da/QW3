@@ -145,11 +145,14 @@ export default function AssessmentPage() {
                   const questionFeedback = feedback[question.id];
                   const correctOptionText = questionFeedback ? options[questionFeedback.correctAnswer] : '';
 
+                  // TTS용 전체 텍스트: 문제 + 선택지
+                  const fullTTSText = `${index + 1}번 문제. ${question.question}. 선택지. ${options.map((opt, i) => `${i + 1}번, ${opt}`).join('. ')}.`;
+
                   return (
                     <div key={question.id} className="border-b pb-6 last:border-b-0">
-                      {/* 문제 텍스트 + TTS 버튼 */}
+                      {/* 문제 텍스트 + TTS 버튼 (문제+선택지 전체 읽기) */}
                       <div className="flex items-start gap-2 mb-4">
-                        <TTSButton text={question.question} showStopButton />
+                        <TTSButton text={fullTTSText} showStopButton />
                         <p className="font-semibold flex-1 text-lg">{index + 1}. {question.question}</p>
                       </div>
 
