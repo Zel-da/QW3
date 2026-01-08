@@ -386,7 +386,7 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
                                                             className={`border border-slate-300 text-center p-1 ${bgColor} ${textColor}`}
                                                             title={
                                                                 status === 'not-submitted' ? '미작성' :
-                                                                status === 'has-issues' ? '상세 내역' :
+                                                                status === 'has-issues' ? '문제점 및 위험예측 사항' :
                                                                 '작성완료'
                                                             }
                                                         >

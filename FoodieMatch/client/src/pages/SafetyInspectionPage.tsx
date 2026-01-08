@@ -678,6 +678,7 @@ export default function SafetyInspectionPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-32 sticky left-0 bg-white z-10 font-bold text-black">팀명</TableHead>
+                          <TableHead className="text-center min-w-20 font-bold text-black bg-blue-50">전체</TableHead>
                           {overviewData.equipmentTypes.map((equipment) => (
                             <TableHead key={equipment} className="text-center min-w-24 font-bold text-black">
                               {equipment.replace(' 점검', '')}
@@ -693,6 +694,16 @@ export default function SafetyInspectionPage() {
                             if (!status.hasEquipment) return true; // 장비 없으면 완료로 간주
                             return status.uploadedPhotoCount >= status.requiredPhotoCount;
                           });
+
+                          // 전체 등록/필요 수 계산
+                          const totalUploaded = Object.values(team.equipmentStatus)
+                            .filter(s => s.hasEquipment)
+                            .reduce((sum, s) => sum + (s.uploadedPhotoCount || 0), 0);
+                          const totalRequired = Object.values(team.equipmentStatus)
+                            .filter(s => s.hasEquipment)
+                            .reduce((sum, s) => sum + (s.requiredPhotoCount || 0), 0);
+                          const totalCompleted = totalRequired > 0 && totalUploaded >= totalRequired;
+                          const totalPartial = totalUploaded > 0 && totalUploaded < totalRequired;
 
                           return (
                           <TableRow
@@ -714,6 +725,16 @@ export default function SafetyInspectionPage() {
                                   : "bg-white"
                             )}>
                               {team.teamName}
+                            </TableCell>
+                            {/* 전체 열 */}
+                            <TableCell className={cn(
+                              "text-center font-medium",
+                              totalRequired === 0 && "bg-gray-100 text-gray-400",
+                              totalCompleted && "bg-green-100 text-green-700",
+                              totalPartial && "bg-yellow-100 text-yellow-700",
+                              !totalCompleted && !totalPartial && totalRequired > 0 && "bg-red-100 text-red-700"
+                            )}>
+                              {totalRequired === 0 ? '-' : `(${totalUploaded}/${totalRequired})`}
                             </TableCell>
                             {overviewData.equipmentTypes.map((equipment) => {
                               const status = team.equipmentStatus[equipment];
@@ -739,7 +760,7 @@ export default function SafetyInspectionPage() {
                                     !isCompleted && !isPartial && "bg-red-100 text-red-700 hover:bg-red-200"
                                   )}
                                 >
-                                  {status.requiredPhotoCount ?? 0}
+                                  ({status.uploadedPhotoCount ?? 0}/{status.requiredPhotoCount ?? 0})
                                 </TableCell>
                               );
                             })}

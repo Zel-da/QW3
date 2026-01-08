@@ -3297,7 +3297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referenceNotesText = `1. TBM 절차
    • 도입-점검-지시-위험성예지훈련-지적확인
    • 음주 상태 확인 후 고소작업 및 위험작업 배치 제한
-     (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)
+     (라인,직별 일직선 걷기 후 추가 검사가 필요한 경우 안전팀 음주측정기 활용)
 2. 아침 조회를 시작으로 TBM 진행
 3. 점검은 점검항목 순서에 따라 작업전에 할 것
 4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.
@@ -3842,7 +3842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const referenceNotesText = `1. TBM 절차
    • 도입-점검-지시-위험성예지훈련-지적확인
    • 음주 상태 확인 후 고소작업 및 위험작업 배치 제한
-     (라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)
+     (라인,직별 일직선 걷기 후 추가 검사가 필요한 경우 안전팀 음주측정기 활용)
 2. 아침 조회를 시작으로 TBM 진행
 3. 점검은 점검항목 순서에 따라 작업전에 할 것
 4. X, △의 경우는 해당 팀장에게 필히 연락하고 조치 내용을 기록할 것.

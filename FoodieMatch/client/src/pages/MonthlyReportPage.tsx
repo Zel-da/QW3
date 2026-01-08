@@ -139,7 +139,7 @@ function getStatusSymbol(status: 'not-submitted' | 'completed' | 'has-issues' | 
 
 function getStatusText(status: 'not-submitted' | 'completed' | 'has-issues' | undefined): string {
   if (!status || status === 'completed') return '작성완료';
-  if (status === 'has-issues') return '상세 내역';
+  if (status === 'has-issues') return '문제점 및 위험예측 사항';
   if (status === 'not-submitted') return '미작성';
   return '';
 }
@@ -1236,7 +1236,7 @@ export default function MonthlyReportPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-yellow-200 border border-slate-300 flex items-center justify-center text-yellow-900">△</div>
-                      <span>상세 내역</span>
+                      <span>문제점 및 위험예측 사항</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-red-200 border border-slate-300 flex items-center justify-center text-red-900">✗</div>
@@ -1388,7 +1388,7 @@ export default function MonthlyReportPage() {
                     <CardHeader>
                       <CardTitle className="text-xl text-red-600 flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5" />
-                        상세 내역 ({problematicItems.length}건)
+                        문제점 및 위험예측 사항 ({problematicItems.length}건)
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1550,7 +1550,7 @@ export default function MonthlyReportPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                         <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">상세 내역</p>
+                          <p className="text-sm text-muted-foreground">문제점 및 위험예측 사항</p>
                           <p className="text-xl font-semibold text-yellow-600">{statistics.totalIssues}건</p>
                         </div>
                         <div className="space-y-1">
@@ -1647,7 +1647,7 @@ export default function MonthlyReportPage() {
                               <TableHead className="border border-slate-300 text-center">총 일수</TableHead>
                               <TableHead className="border border-slate-300 text-center">평일</TableHead>
                               <TableHead className="border border-slate-300 text-center">작성 완료</TableHead>
-                              <TableHead className="border border-slate-300 text-center">상세 내역</TableHead>
+                              <TableHead className="border border-slate-300 text-center">문제점 및 위험예측 사항</TableHead>
                               <TableHead className="border border-slate-300 text-center">미작성</TableHead>
                               <TableHead className="border border-slate-300 text-center">출석률</TableHead>
                               <TableHead className="border border-slate-300 text-center">결재</TableHead>

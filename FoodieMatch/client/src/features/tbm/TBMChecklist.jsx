@@ -1023,7 +1023,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 <p className="font-medium text-foreground">1. TBM 절차</p>
                 <p className="pl-4">• 도입-점검-지시-위험성예지훈련-지적확인</p>
                 <p className="pl-4">• 음주 상태 확인 후 고소작업 및 위험작업 배치 제한</p>
-                <p className="pl-6 text-xs">(라인,직별 일직선 걷기 및 안전팀 음주측정기 활용)</p>
+                <p className="pl-6 text-xs">(라인,직별 일직선 걷기 후 추가 검사가 필요한 경우 안전팀 음주측정기 활용)</p>
               </div>
               <p><span className="font-medium text-foreground">2.</span> 아침 조회를 시작으로 TBM 진행</p>
               <p><span className="font-medium text-foreground">3.</span> 점검은 점검항목 순서에 따라 작업전에 할 것</p>
