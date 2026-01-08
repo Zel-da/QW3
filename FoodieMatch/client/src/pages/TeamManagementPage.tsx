@@ -718,8 +718,10 @@ export default function TeamManagementPage() {
           <div className="grid gap-8 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>팀원 목록</CardTitle>
-                {currentLeader && <CardDescription>현재 팀장: {currentLeader.name}</CardDescription>}
+                <CardTitle>팀장 설정</CardTitle>
+                <CardDescription>
+                  {currentLeader ? `현재 팀장: ${currentLeader.name}` : '팀장이 설정되지 않았습니다.'} (1명만 지정 가능)
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {teamDataLoading ? <LoadingSpinner size="md" text="팀원 정보를 불러오는 중..." className="py-8" /> : (
@@ -738,8 +740,8 @@ export default function TeamManagementPage() {
                     {!teamData || teamData.members.length === 0 ? (
                       <EmptyState
                         icon={UsersIcon}
-                        title="팀원이 없습니다"
-                        description="오른쪽 카드에서 팀원을 추가하세요."
+                        title="등록된 사용자가 없습니다"
+                        description="오른쪽 카드에서 사용자를 추가하여 팀장으로 지정할 수 있습니다."
                       />
                     ) : filteredMembers.length === 0 ? (
                       <EmptyState

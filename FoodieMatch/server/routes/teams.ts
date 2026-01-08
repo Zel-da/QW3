@@ -19,7 +19,7 @@ export function registerTeamRoutes(app: Express) {
     const whereClause = site ? { site: site as string } : {};
     const teams = await prisma.team.findMany({
       where: whereClause,
-      orderBy: { name: 'asc' },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       include: {
         leader: true,
         approver: true

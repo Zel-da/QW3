@@ -1037,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const whereClause = site ? { site: site as string } : {};
       const teams = await prisma.team.findMany({
         where: whereClause,
-        orderBy: { name: 'asc' },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         include: {
           leader: true,
           approver: true
@@ -2983,7 +2983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 해당 현장의 모든 팀 가져오기
       const teams = await prisma.team.findMany({
         where: { site: site as string },
-        orderBy: { name: 'asc' }
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
 
       const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
@@ -3576,7 +3576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           approver: true  // 팀에 지정된 결재 임원 정보
         },
-        orderBy: { name: 'asc' }
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
 
       if (teams.length === 0) {
@@ -4025,7 +4025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 사이트별 모든 팀 조회
       const teams = await prisma.team.findMany({
         where: { site: site as string },
-        orderBy: { name: 'asc' }
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
 
       if (teams.length === 0) {
@@ -6049,7 +6049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const teams = await prisma.team.findMany({
         where: { factoryId: parseInt(id) },
-        orderBy: { name: 'asc' }
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
       res.json(teams);
     } catch (error) {
@@ -6412,7 +6412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           factoryId: parseInt(factoryId),
           ...(isAsan ? { name: { in: ASAN_SAFETY_INSPECTION_TEAMS } } : {})
         },
-        orderBy: { name: 'asc' },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         include: {
           teamEquipments: true,
         }

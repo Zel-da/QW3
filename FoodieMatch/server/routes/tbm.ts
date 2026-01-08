@@ -157,7 +157,7 @@ export function registerTbmRoutes(app: Express) {
     // 해당 현장의 모든 팀 가져오기
     const teams = await prisma.team.findMany({
       where: { site: site as string },
-      orderBy: { name: 'asc' }
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
     });
 
     const daysInMonth = new Date(yearNum, monthNum, 0).getDate();

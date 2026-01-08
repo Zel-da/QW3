@@ -219,6 +219,7 @@ model Team {
   factoryId           Int?                  // 신규: 공장 ID
   leaderId            String?
   approverId          String?               // 신규: 월별보고서 결재자
+  displayOrder        Int?                  // 팀 표시 순서
   factory             Factory?              @relation(fields: [factoryId], references: [id], onDelete: SetNull)
   leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   approver            User?                 @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
