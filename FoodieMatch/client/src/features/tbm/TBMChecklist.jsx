@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix, sortTeams } from '@/lib/utils';
+import { getDepartments, getDepartmentForTeam } from '@/lib/teamDepartments';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
@@ -32,6 +33,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [checklist, setChecklist] = useState(null);
   const [teamUsers, setTeamUsers] = useState([]);
@@ -91,22 +93,32 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   useEffect(() => {
     if (!site) return;
 
+    // 사이트 변경 시 초기화 (reportForEdit가 아닌 경우)
+    if (!reportForEdit) {
+      setSelectedDepartment(null);
+      setSelectedTeam(null);
+    }
+
     apiClient.get(`/api/teams?site=${site}`).then(res => {
       setTeams(res.data);
 
       // 수정 모드: reportForEdit 팀 선택
       if (reportForEdit) {
+        const editTeam = res.data.find(t => t.id === reportForEdit.teamId);
+        if (editTeam) {
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(editTeam.name));
+          if (dept) setSelectedDepartment(dept);
+        }
         setSelectedTeam(reportForEdit.teamId);
         return;
       }
 
-      // 이미 팀이 선택되어 있으면 스킵
-      if (selectedTeam) return;
-
-      // 사용자 팀 자동 선택 (user 로드 확인)
+      // 사용자 팀 자동 선택 (user 로드 확인) + 부서도 자동 선택
       if (user?.teamId) {
-        const userTeamInList = res.data.some(team => team.id === user.teamId);
-        if (userTeamInList) {
+        const userTeam = res.data.find(t => t.id === user.teamId);
+        if (userTeam) {
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
+          if (dept) setSelectedDepartment(dept);
           setSelectedTeam(user.teamId);
         }
       }
@@ -577,42 +589,62 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   };
 
-  // 팀을 사이트별로 그룹화
-  const teamsBySite = teams.reduce((acc, team) => {
-    const teamSite = team.site || '기타';
-    if (!acc[teamSite]) acc[teamSite] = [];
-    acc[teamSite].push(team);
-    return acc;
-  }, {});
+  // 부서별 팀 필터링
+  const filteredTeams = useMemo(() => {
+    if (!selectedDepartment || !teams.length) return [];
+    const deptConfig = getDepartments(site).find(d => d.name === selectedDepartment);
+    if (!deptConfig) return [];
 
-  // 현재 사이트를 먼저 표시하도록 그룹 정렬
-  const sortedSiteEntries = Object.entries(teamsBySite).sort(([siteA], [siteB]) => {
-    if (siteA === site) return -1;
-    if (siteB === site) return 1;
-    return siteA.localeCompare(siteB, 'ko');
-  });
+    return teams.filter(team => {
+      const teamName = stripSiteSuffix(team.name);
+      return deptConfig.teams.some(t => teamName.includes(t));
+    });
+  }, [selectedDepartment, teams, site]);
+
+  // 부서 변경 시 팀 선택 초기화
+  const handleDepartmentChange = (dept) => {
+    setSelectedDepartment(dept);
+    setSelectedTeam(null);
+  };
+
+  // 사이트별 부서 목록
+  const departments = getDepartments(site);
 
   return (
     <div className="space-y-6">
-      <Select onValueChange={setSelectedTeam} value={selectedTeam || ''}>
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="팀을 선택하세요" />
-        </SelectTrigger>
-        <SelectContent className="max-h-[300px] overflow-y-auto">
-          {sortedSiteEntries.map(([siteGroup, siteTeams]) => (
-            <React.Fragment key={siteGroup}>
-              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                {siteGroup}
-              </div>
-              {sortTeams(siteTeams, site).map(team => (
-                <SelectItem key={team.id} value={team.id} className="pl-6">
-                  {stripSiteSuffix(team.name)}
-                </SelectItem>
-              ))}
-            </React.Fragment>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex gap-3 items-center flex-wrap">
+        {/* 부서 선택 */}
+        <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="부서 선택" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
+            {departments.map(dept => (
+              <SelectItem key={dept.name} value={dept.name}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* 팀 선택 */}
+        <Select
+          onValueChange={setSelectedTeam}
+          value={selectedTeam || ''}
+          disabled={!selectedDepartment}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
+            {filteredTeams.map(team => (
+              <SelectItem key={team.id} value={team.id}>
+                {stripSiteSuffix(team.name)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
