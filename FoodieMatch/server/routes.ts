@@ -2899,6 +2899,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TBM 일일 작성 현황 API (전체/아산/화성)
+  app.get("/api/tbm/daily-stats", requireAuth, async (req, res) => {
+    try {
+      const { date } = req.query;
+
+      if (!date) {
+        return res.status(400).json({ message: "date is required" });
+      }
+
+      const targetDate = new Date(date as string);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      // 사이트별 팀 수 조회
+      const teamCounts = await prisma.team.groupBy({
+        by: ['site'],
+        _count: { id: true },
+        where: { site: { in: ['아산', '화성'] } }
+      });
+
+      // 사이트별 제출된 리포트 수 조회
+      const submittedCounts = await prisma.dailyReport.groupBy({
+        by: ['teamId'],
+        where: {
+          reportDate: { gte: targetDate, lt: nextDate },
+          team: { site: { in: ['아산', '화성'] } }
+        }
+      });
+
+      // 제출된 팀 ID로 사이트별 분류
+      const submittedTeamIds = submittedCounts.map(r => r.teamId);
+      const teamsWithSite = await prisma.team.findMany({
+        where: { id: { in: submittedTeamIds } },
+        select: { id: true, site: true }
+      });
+
+      const submittedBySite: { [key: string]: number } = { '아산': 0, '화성': 0 };
+      teamsWithSite.forEach(t => {
+        if (t.site) submittedBySite[t.site] = (submittedBySite[t.site] || 0) + 1;
+      });
+
+      const teamCountBySite: { [key: string]: number } = { '아산': 0, '화성': 0 };
+      teamCounts.forEach(tc => {
+        if (tc.site) teamCountBySite[tc.site] = tc._count.id;
+      });
+
+      res.json({
+        date: date,
+        아산: { submitted: submittedBySite['아산'], required: teamCountBySite['아산'] },
+        화성: { submitted: submittedBySite['화성'], required: teamCountBySite['화성'] },
+        전체: {
+          submitted: submittedBySite['아산'] + submittedBySite['화성'],
+          required: teamCountBySite['아산'] + teamCountBySite['화성']
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch daily stats:', error);
+      res.status(500).json({ message: "Failed to fetch daily stats" });
+    }
+  });
+
   app.get("/api/tbm/monthly", requireAuth, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;

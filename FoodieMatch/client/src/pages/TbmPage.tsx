@@ -24,6 +24,13 @@ import { useAuth } from "@/context/AuthContext";
 import { stripSiteSuffix } from '@/lib/utils';
 import { SITES } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+
+interface DailyStats {
+  전체: { submitted: number; required: number };
+  아산: { submitted: number; required: number };
+  화성: { submitted: number; required: number };
+}
 
 export default function TbmPage() {
   const [view, setView] = useState('checklist');
@@ -34,6 +41,17 @@ export default function TbmPage() {
   const [location] = useLocation();
   const { toast } = useToast();
   const [isLoadingModify, setIsLoadingModify] = useState(false);
+  const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
+
+  // 일일 작성 현황 조회
+  useEffect(() => {
+    if (date) {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      apiClient.get(`/api/tbm/daily-stats?date=${dateStr}`)
+        .then(res => setDailyStats(res.data))
+        .catch(err => console.error('Failed to fetch daily stats:', err));
+    }
+  }, [date]);
 
   // 사용자 소속 사이트로 자동 초기화
   useEffect(() => {
@@ -157,6 +175,19 @@ export default function TbmPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {dailyStats && (
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <Badge variant="outline" className="h-8 px-3 text-sm font-medium">
+                    전체: {dailyStats.전체.submitted}/{dailyStats.전체.required}
+                  </Badge>
+                  <Badge variant="outline" className="h-8 px-3 text-sm font-medium">
+                    아산: {dailyStats.아산.submitted}/{dailyStats.아산.required}
+                  </Badge>
+                  <Badge variant="outline" className="h-8 px-3 text-sm font-medium">
+                    화성: {dailyStats.화성.submitted}/{dailyStats.화성.required}
+                  </Badge>
+                </div>
               )}
               {view === 'checklist' && (
                 <Button variant="outline" className="h-10 md:h-11 w-full sm:w-auto sm:ml-auto text-sm md:text-base" onClick={() => { setReportForEdit(null); setView('list'); }}>
