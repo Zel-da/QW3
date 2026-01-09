@@ -1,28 +1,35 @@
 import { useAuth } from '@/context/AuthContext';
 import { AdminPageLayout } from '@/components/admin';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import {
+  Users, Building2, ClipboardList, Calendar, Wrench,
+  GraduationCap, BarChart3, CalendarDays, Mail, Database,
+  FileText, HelpCircle
+} from 'lucide-react';
 import { useLocation } from 'wouter';
+import { LucideIcon } from 'lucide-react';
 
 interface MenuItem {
   title: string;
   path: string;
   roles: string[];
+  icon: LucideIcon;
+  color: string;
 }
 
 const menuItems: MenuItem[] = [
-  { title: '사용자 관리', path: '/admin', roles: ['ADMIN'] },
-  { title: '팀 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER'] },
-  { title: 'TBM 편집', path: '/checklist-editor', roles: ['ADMIN'] },
-  { title: '점검 일정 관리', path: '/inspection-schedule', roles: ['ADMIN'] },
-  { title: '팀 장비/점검 관리', path: '/team-equipment-management', roles: ['ADMIN'] },
-  { title: '교육 관리', path: '/education-management', roles: ['ADMIN'] },
-  { title: '교육 현황', path: '/education-monitoring', roles: ['ADMIN'] },
-  { title: '공휴일 관리', path: '/holiday-management', roles: ['ADMIN'] },
-  { title: '이메일 설정', path: '/email-settings', roles: ['ADMIN'] },
-  { title: '데이터베이스 관리', path: '/db-management', roles: ['ADMIN'] },
-  { title: '관리자 업무 절차서', path: '/admin-help', roles: ['ADMIN'] },
-  { title: '사용자 도움말', path: '/help', roles: ['ADMIN', 'TEAM_LEADER'] },
+  { title: '사용자 관리', path: '/admin', roles: ['ADMIN'], icon: Users, color: 'bg-emerald-500' },
+  { title: '팀 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER'], icon: Building2, color: 'bg-teal-600' },
+  { title: 'TBM 편집', path: '/checklist-editor', roles: ['ADMIN'], icon: ClipboardList, color: 'bg-cyan-500' },
+  { title: '점검 일정 관리', path: '/inspection-schedule', roles: ['ADMIN'], icon: Calendar, color: 'bg-emerald-600' },
+  { title: '팀 장비/점검 관리', path: '/team-equipment-management', roles: ['ADMIN'], icon: Wrench, color: 'bg-green-500' },
+  { title: '교육 관리', path: '/education-management', roles: ['ADMIN'], icon: GraduationCap, color: 'bg-teal-500' },
+  { title: '교육 현황', path: '/education-monitoring', roles: ['ADMIN'], icon: BarChart3, color: 'bg-sky-500' },
+  { title: '공휴일 관리', path: '/holiday-management', roles: ['ADMIN'], icon: CalendarDays, color: 'bg-emerald-500' },
+  { title: '이메일 설정', path: '/email-settings', roles: ['ADMIN'], icon: Mail, color: 'bg-cyan-600' },
+  { title: '데이터베이스 관리', path: '/db-management', roles: ['ADMIN'], icon: Database, color: 'bg-teal-600' },
+  { title: '관리자 업무 절차서', path: '/admin-help', roles: ['ADMIN'], icon: FileText, color: 'bg-green-600' },
+  { title: '사용자 도움말', path: '/help', roles: ['ADMIN', 'TEAM_LEADER'], icon: HelpCircle, color: 'bg-sky-600' },
 ];
 
 export default function AdminDashboardPage() {
@@ -45,21 +52,20 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminPageLayout maxWidth="wide">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accessibleItems.map((item) => (
-          <Card
-            key={item.path}
-            className="group cursor-pointer hover:shadow-md transition-all duration-200"
-            onClick={() => setLocation(item.path)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium">{item.title}</h3>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        {accessibleItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.path}
+              className={`${item.color} rounded-xl p-6 cursor-pointer hover:opacity-90 hover:scale-105 transition-all duration-200 shadow-md flex flex-col items-center justify-center min-h-[140px]`}
+              onClick={() => setLocation(item.path)}
+            >
+              <Icon className="h-10 w-10 text-white mb-3" strokeWidth={1.5} />
+              <span className="text-white text-sm font-medium text-center leading-tight">{item.title}</span>
+            </div>
+          );
+        })}
       </div>
     </AdminPageLayout>
   );
