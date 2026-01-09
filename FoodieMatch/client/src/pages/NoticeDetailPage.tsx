@@ -334,7 +334,17 @@ export default function NoticeDetailPage() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE', credentials: 'include' });
+      // CSRF 토큰 가져오기
+      const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfRes.json();
+
+      const response = await fetch(`/api/notices/${noticeId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfData.token
+        }
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `삭제에 실패했습니다. (${response.status})`);
