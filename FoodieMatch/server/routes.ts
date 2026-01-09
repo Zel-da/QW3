@@ -2913,19 +2913,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const nextDate = new Date(targetDate);
       nextDate.setDate(nextDate.getDate() + 1);
 
-      // 사이트별 팀 수 조회
+      // 사이트별 팀 수 조회 (안전환경보건팀 제외 - TBM 작성 대상 아님)
       const teamCounts = await prisma.team.groupBy({
         by: ['site'],
         _count: { id: true },
-        where: { site: { in: ['아산', '화성'] } }
+        where: {
+          site: { in: ['아산', '화성'] },
+          NOT: { name: { contains: '안전환경보건팀' } }
+        }
       });
 
-      // 사이트별 제출된 리포트 수 조회
+      // 사이트별 제출된 리포트 수 조회 (안전환경보건팀 제외)
       const submittedCounts = await prisma.dailyReport.groupBy({
         by: ['teamId'],
         where: {
           reportDate: { gte: targetDate, lt: nextDate },
-          team: { site: { in: ['아산', '화성'] } }
+          team: {
+            site: { in: ['아산', '화성'] },
+            NOT: { name: { contains: '안전환경보건팀' } }
+          }
         }
       });
 
@@ -2933,7 +2939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const submittedTeamIds = submittedCounts.map(r => r.teamId);
       const teamsWithSite = await prisma.team.findMany({
         where: { id: { in: submittedTeamIds } },
-        select: { id: true, site: true }
+        select: { id: true, site: true, name: true }
       });
 
       const submittedBySite: { [key: string]: number } = { '아산': 0, '화성': 0 };
@@ -3042,9 +3048,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string);
       const monthNum = parseInt(month as string);
 
-      // 해당 현장의 모든 팀 가져오기
+      // 해당 현장의 모든 팀 가져오기 (안전환경보건팀 제외 - TBM 작성 대상 아님)
       const teams = await prisma.team.findMany({
-        where: { site: site as string },
+        where: {
+          site: site as string,
+          NOT: { name: { contains: '안전환경보건팀' } }
+        },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
 
@@ -6469,7 +6478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAsan = factory?.code === 'ASAN';
 
       // Get teams in the factory (아산은 필터링, 화성은 전체)
-      const teams = await prisma.team.findMany({
+      const teamsRaw = await prisma.team.findMany({
         where: {
           factoryId: parseInt(factoryId),
           ...(isAsan ? { name: { in: ASAN_SAFETY_INSPECTION_TEAMS } } : {})
@@ -6478,6 +6487,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           teamEquipments: true,
         }
+      });
+
+      // 안전환경보건팀을 맨 아래로 정렬
+      const teams = teamsRaw.sort((a, b) => {
+        const aIsSafety = a.name.includes('안전환경보건팀');
+        const bIsSafety = b.name.includes('안전환경보건팀');
+        if (aIsSafety && !bIsSafety) return 1;
+        if (!aIsSafety && bIsSafety) return -1;
+        return 0;
       });
 
       // Get month schedule template for this factory
