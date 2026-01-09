@@ -163,13 +163,19 @@ export default function AdminDashboardPage() {
     enabled: user?.role === 'ADMIN',
   });
 
-  // TBM 일일 통계
+  // TBM 일일 통계 (오늘 날짜)
+  const todayStr = new Date().toISOString().split('T')[0];
   const { data: tbmDaily } = useQuery<{
     전체: { submitted: number; required: number };
     아산: { submitted: number; required: number };
     화성: { submitted: number; required: number };
   }>({
-    queryKey: ['/api/tbm/daily-stats'],
+    queryKey: ['/api/tbm/daily-stats', todayStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/tbm/daily-stats?date=${todayStr}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch TBM stats');
+      return res.json();
+    },
     enabled: user?.role === 'ADMIN',
   });
 
