@@ -52,20 +52,22 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminPageLayout maxWidth="wide">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {accessibleItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.path}
-              className={`${item.color} rounded-xl p-6 cursor-pointer hover:opacity-90 hover:scale-105 transition-all duration-200 shadow-md flex flex-col items-center justify-center min-h-[140px]`}
-              onClick={() => setLocation(item.path)}
-            >
-              <Icon className="h-10 w-10 text-white mb-3" strokeWidth={1.5} />
-              <span className="text-white text-sm font-medium text-center leading-tight">{item.title}</span>
-            </div>
-          );
-        })}
+      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 w-full max-w-6xl">
+          {accessibleItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.path}
+                className={`${item.color} rounded-xl p-6 cursor-pointer hover:opacity-90 hover:scale-105 transition-all duration-200 shadow-md flex flex-col items-center justify-center min-h-[140px]`}
+                onClick={() => setLocation(item.path)}
+              >
+                <Icon className="h-10 w-10 text-white mb-3" strokeWidth={1.5} />
+                <span className="text-white text-sm font-medium text-center leading-tight">{item.title}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </AdminPageLayout>
   );
