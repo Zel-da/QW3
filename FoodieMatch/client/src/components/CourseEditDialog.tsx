@@ -218,7 +218,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>교육 과정 수정</DialogTitle>
           <DialogDescription>선택한 교육 과정의 정보를 수정합니다.</DialogDescription>
@@ -270,7 +270,7 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
               maxSize={50 * 1024 * 1024}
               multiple={false}
             />
-            {formData.documentUrl && <p className="text-sm text-green-600">✓ 업로드 완료: {formData.documentUrl}</p>}
+            {formData.documentUrl && <p className="text-sm text-green-600 break-all">✓ 업로드 완료: {formData.documentUrl}</p>}
             <p className="text-sm text-muted-foreground">지원 형식: PDF, Word, Excel, PowerPoint, 한글 (드래그 앤 드롭 또는 클릭하여 업로드)</p>
           </div>
 
