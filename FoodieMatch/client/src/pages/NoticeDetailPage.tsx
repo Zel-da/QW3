@@ -335,12 +335,16 @@ export default function NoticeDetailPage() {
 
     try {
       const response = await fetch(`/api/notices/${noticeId}`, { method: 'DELETE', credentials: 'include' });
-      if (!response.ok) throw new Error('삭제에 실패했습니다.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `삭제에 실패했습니다. (${response.status})`);
+      }
 
       toast({ title: '성공', description: '공지사항이 삭제되었습니다.' });
       await queryClient.invalidateQueries({ queryKey: ['notices'] });
       window.location.href = '/notices';
     } catch (err) {
+      console.error('Delete notice error:', err);
       toast({ title: '오류', description: (err as Error).message, variant: 'destructive' });
     }
   };
