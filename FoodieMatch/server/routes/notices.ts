@@ -237,8 +237,18 @@ export function registerNoticeRoutes(app: Express) {
     res.json(updatedNotice);
   }));
 
-  // Admin-only: Delete notice
-  app.delete("/api/notices/:noticeId", requireAuth, requireRole('ADMIN'), asyncHandler(async (req: Request, res: Response) => {
+  // 공지사항 삭제 (작성자 또는 ADMIN만 가능)
+  app.delete("/api/notices/:noticeId", requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const notice = await prisma.notice.findUnique({ where: { id: req.params.noticeId } });
+
+    if (!notice) {
+      throw ApiError.notFound("공지사항을 찾을 수 없습니다.");
+    }
+
+    if (notice.authorId !== req.session.user!.id && req.session.user!.role !== 'ADMIN') {
+      throw ApiError.forbidden("삭제 권한이 없습니다.");
+    }
+
     await prisma.notice.delete({ where: { id: req.params.noticeId } });
     res.status(204).send();
   }));
