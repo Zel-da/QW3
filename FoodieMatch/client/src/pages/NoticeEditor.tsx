@@ -313,18 +313,28 @@ export default function NoticeEditor() {
     setError('');
     setSuccess('');
 
+    // 업로드 중이면 제출 방지
+    if (uploadingIndex !== null) {
+      setError('파일 업로드가 완료될 때까지 기다려주세요.');
+      return;
+    }
+
     const url = isEditing ? `/api/notices/${noticeId}` : '/api/notices';
     const method = isEditing ? 'PUT' : 'POST';
+
+    // 빈 URL 첨부파일 필터링 (URL이 있는 것만 포함)
+    const validAttachments = attachments.filter(att => att.url && att.url.trim() !== '');
 
     // Prepare data with attachments
     const submitData = {
       ...formData,
-      attachments: attachments.length > 0 ? attachments : undefined
+      attachments: validAttachments.length > 0 ? validAttachments : undefined
     };
 
     console.log('📤 Submitting notice data:', submitData);
     console.log('📹 Video URL:', submitData.videoUrl);
     console.log('📹 Video Type:', submitData.videoType);
+    console.log('📎 Valid attachments:', validAttachments.length);
 
     try {
       const response = await apiRequest(method, url, submitData);
@@ -697,8 +707,15 @@ export default function NoticeEditor() {
                                   const file = e.target.files?.[0];
                                   if (file) handleMediaUpload(attachments.indexOf(item), file);
                                 }}
+                                disabled={uploadingIndex === attachments.indexOf(item)}
                               />
-                              {item.url && (
+                              {uploadingIndex === attachments.indexOf(item) && (
+                                <div className="flex items-center gap-2 text-sm text-blue-600 animate-pulse">
+                                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                  <span>업로드 중... 대용량 파일은 시간이 걸릴 수 있습니다</span>
+                                </div>
+                              )}
+                              {item.url && uploadingIndex !== attachments.indexOf(item) && (
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm text-green-600">
                                     <span>✓ 업로드 완료:</span>
@@ -711,6 +728,9 @@ export default function NoticeEditor() {
                                     <audio src={item.url} controls className="w-full" />
                                   )}
                                 </div>
+                              )}
+                              {!item.url && uploadingIndex !== attachments.indexOf(item) && (
+                                <p className="text-sm text-muted-foreground">파일을 선택해주세요</p>
                               )}
                             </div>
                           )}
@@ -730,7 +750,13 @@ export default function NoticeEditor() {
                 <Button type="button" variant="outline" asChild className="text-base h-12 min-w-[100px]">
                     <Link href={isEditing ? `/notices/${noticeId}` : '/notices'}>취소</Link>
                 </Button>
-                <Button type="submit" className="text-base h-12 min-w-[100px]">저장하기</Button>
+                <Button
+                  type="submit"
+                  className="text-base h-12 min-w-[100px]"
+                  disabled={isUploading || uploadingIndex !== null}
+                >
+                  {(isUploading || uploadingIndex !== null) ? '업로드 중...' : '저장하기'}
+                </Button>
               </div>
             </form>
           </CardContent>

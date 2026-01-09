@@ -114,6 +114,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = request.url;
 
+  // GET 요청만 캐싱 (HEAD, POST 등은 캐시 불가)
+  if (request.method !== 'GET') {
+    return;
+  }
+
   // 캐싱 제외 대상은 그냥 통과
   if (shouldSkipCache(url)) {
     return;
