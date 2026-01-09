@@ -18,22 +18,24 @@ interface MenuItem {
   path: string;
   roles: string[];
   icon: LucideIcon;
-  gradient: string;
+  bgColor: string;
+  iconBg: string;
+  iconColor: string;
 }
 
 const menuItems: MenuItem[] = [
-  { title: '사용자 관리', description: '사용자 계정 및 권한 관리', path: '/admin', roles: ['ADMIN'], icon: Users, gradient: 'from-blue-200 to-blue-300' },
-  { title: '팀 관리', description: '팀 구성원 및 조직 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER'], icon: Building2, gradient: 'from-emerald-200 to-emerald-300' },
-  { title: 'TBM 편집', description: 'TBM 체크리스트 템플릿 수정', path: '/checklist-editor', roles: ['ADMIN'], icon: ClipboardList, gradient: 'from-violet-200 to-violet-300' },
-  { title: '점검 일정 관리', description: '월간 안전점검 일정 설정', path: '/inspection-schedule', roles: ['ADMIN'], icon: Calendar, gradient: 'from-orange-200 to-orange-300' },
-  { title: '팀 장비/점검 관리', description: '팀별 장비 및 점검 항목 관리', path: '/team-equipment-management', roles: ['ADMIN'], icon: Wrench, gradient: 'from-rose-200 to-rose-300' },
-  { title: '교육 관리', description: '교육 과정 생성 및 수정', path: '/education-management', roles: ['ADMIN'], icon: GraduationCap, gradient: 'from-cyan-200 to-cyan-300' },
-  { title: '교육 현황', description: '전체 교육 이수 현황 조회', path: '/education-monitoring', roles: ['ADMIN'], icon: BarChart3, gradient: 'from-teal-200 to-teal-300' },
-  { title: '공휴일 관리', description: '공휴일 및 영업일 관리', path: '/holiday-management', roles: ['ADMIN'], icon: CalendarDays, gradient: 'from-amber-200 to-amber-300' },
-  { title: '이메일 설정', description: '알림 이메일 발송 설정', path: '/email-settings', roles: ['ADMIN'], icon: Mail, gradient: 'from-indigo-200 to-indigo-300' },
-  { title: '데이터베이스 관리', description: '시스템 데이터 백업/복원', path: '/db-management', roles: ['ADMIN'], icon: Database, gradient: 'from-slate-200 to-slate-300' },
-  { title: '관리자 업무 절차서', description: '관리자 매뉴얼 및 가이드', path: '/admin-help', roles: ['ADMIN'], icon: FileText, gradient: 'from-green-200 to-green-300' },
-  { title: '사용자 도움말', description: '사용자 FAQ 및 안내', path: '/help', roles: ['ADMIN', 'TEAM_LEADER'], icon: HelpCircle, gradient: 'from-sky-200 to-sky-300' },
+  { title: '사용자 관리', description: '사용자 계정 및 권한 관리', path: '/admin', roles: ['ADMIN'], icon: Users, bgColor: 'bg-green-100', iconBg: 'bg-green-500', iconColor: 'text-white' },
+  { title: '팀 관리', description: '팀 구성원 및 조직 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER'], icon: Building2, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
+  { title: 'TBM 편집', description: 'TBM 체크리스트 템플릿 수정', path: '/checklist-editor', roles: ['ADMIN'], icon: ClipboardList, bgColor: 'bg-violet-100', iconBg: 'bg-violet-500', iconColor: 'text-white' },
+  { title: '점검 일정 관리', description: '월간 안전점검 일정 설정', path: '/inspection-schedule', roles: ['ADMIN'], icon: Calendar, bgColor: 'bg-orange-100', iconBg: 'bg-orange-500', iconColor: 'text-white' },
+  { title: '팀 장비/점검 관리', description: '팀별 장비 및 점검 항목 관리', path: '/team-equipment-management', roles: ['ADMIN'], icon: Wrench, bgColor: 'bg-rose-100', iconBg: 'bg-rose-500', iconColor: 'text-white' },
+  { title: '교육 관리', description: '교육 과정 생성 및 수정', path: '/education-management', roles: ['ADMIN'], icon: GraduationCap, bgColor: 'bg-cyan-100', iconBg: 'bg-cyan-500', iconColor: 'text-white' },
+  { title: '교육 현황', description: '전체 교육 이수 현황 조회', path: '/education-monitoring', roles: ['ADMIN'], icon: BarChart3, bgColor: 'bg-teal-100', iconBg: 'bg-teal-500', iconColor: 'text-white' },
+  { title: '공휴일 관리', description: '공휴일 및 영업일 관리', path: '/holiday-management', roles: ['ADMIN'], icon: CalendarDays, bgColor: 'bg-purple-100', iconBg: 'bg-purple-500', iconColor: 'text-white' },
+  { title: '이메일 설정', description: '알림 이메일 발송 설정', path: '/email-settings', roles: ['ADMIN'], icon: Mail, bgColor: 'bg-indigo-100', iconBg: 'bg-indigo-500', iconColor: 'text-white' },
+  { title: '데이터베이스 관리', description: '시스템 데이터 백업/복원', path: '/db-management', roles: ['ADMIN'], icon: Database, bgColor: 'bg-slate-100', iconBg: 'bg-slate-500', iconColor: 'text-white' },
+  { title: '관리자 업무 절차서', description: '관리자 매뉴얼 및 가이드', path: '/admin-help', roles: ['ADMIN'], icon: FileText, bgColor: 'bg-emerald-100', iconBg: 'bg-emerald-500', iconColor: 'text-white' },
+  { title: '사용자 도움말', description: '사용자 FAQ 및 안내', path: '/help', roles: ['ADMIN', 'TEAM_LEADER'], icon: HelpCircle, bgColor: 'bg-sky-100', iconBg: 'bg-sky-500', iconColor: 'text-white' },
 ];
 
 // 숫자 카운트업 애니메이션 훅
@@ -396,18 +398,18 @@ export default function AdminDashboardPage() {
                 return (
                   <div
                     key={item.path}
-                    className={`group relative overflow-hidden rounded-xl bg-gradient-to-br ${item.gradient} p-5 cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1`}
+                    className={`group ${item.bgColor} rounded-2xl p-5 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]`}
                     onClick={() => setLocation(item.path)}
                     style={{ animation: `slideUp 0.4s ease-out ${800 + index * 50}ms both` }}
                   >
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500" />
-
-                    <div className="relative z-10">
-                      <div className="p-2 bg-white/50 rounded-lg w-fit mb-3 backdrop-blur-sm group-hover:scale-110 transition-transform shadow-sm">
-                        <Icon className="h-6 w-6 text-gray-700" strokeWidth={1.5} />
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2.5 ${item.iconBg} rounded-full shrink-0`}>
+                        <Icon className={`h-5 w-5 ${item.iconColor}`} strokeWidth={2} />
                       </div>
-                      <h3 className="text-gray-800 font-semibold text-lg mb-1">{item.title}</h3>
-                      <p className="text-gray-600 text-sm leading-snug">{item.description}</p>
+                      <div className="min-w-0">
+                        <h3 className="text-gray-900 font-semibold text-base mb-0.5">{item.title}</h3>
+                        <p className="text-gray-500 text-sm leading-snug">{item.description}</p>
+                      </div>
                     </div>
                   </div>
                 );
