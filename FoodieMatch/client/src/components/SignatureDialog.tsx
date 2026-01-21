@@ -15,38 +15,25 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
   const containerRef = useRef<HTMLDivElement>(null);
   const [cssSize, setCssSize] = useState({ width: 300, height: 200 });
 
-  // DPR을 고려한 캔버스 설정
+  // 캔버스 크기 설정 (DPR 스케일링 제거 - react-signature-canvas가 내부 처리)
   useEffect(() => {
     if (isOpen && containerRef.current && sigCanvas.current) {
       const timer = setTimeout(() => {
         const rect = containerRef.current!.getBoundingClientRect();
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-        // CSS 크기 계산 (패딩 p-2=16px + 테두리 + 여유분)
-        const cssWidth = Math.max(rect.width - 24, 280);
-        const cssHeight = 200;
-        setCssSize({ width: cssWidth, height: cssHeight });
+        // CSS 크기 계산 (패딩 p-2=16px + 여유분)
+        const width = Math.max(rect.width - 20, 280);
+        const height = 200;
+        setCssSize({ width, height });
 
-        // 캔버스 직접 조작
+        // 캔버스 직접 조작 - CSS 크기와 동일하게 설정
         const canvas = sigCanvas.current!.getCanvas();
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
 
-        // 캔버스 실제 픽셀 크기 = CSS 크기 * DPR
-        canvas.width = cssWidth * ratio;
-        canvas.height = cssHeight * ratio;
-
-        // CSS로 표시 크기 설정
-        canvas.style.width = `${cssWidth}px`;
-        canvas.style.height = `${cssHeight}px`;
-
-        // 드로잉 컨텍스트 스케일링 (좌표계를 CSS 픽셀 기준으로)
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, cssWidth, cssHeight);
-        }
-
-        // 서명 패드 클리어 (isEmpty 정확도를 위해)
+        // 서명 패드 클리어
         sigCanvas.current!.clear();
       }, 100);
 
