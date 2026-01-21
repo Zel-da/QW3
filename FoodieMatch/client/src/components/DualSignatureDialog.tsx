@@ -24,7 +24,8 @@ const setupCanvas = (
   const rect = containerRef.current.getBoundingClientRect();
   const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-  const cssWidth = Math.max(rect.width - 16, 300);
+  // 패딩 p-2=16px + 테두리 + 여유분
+  const cssWidth = Math.max(rect.width - 24, 280);
 
   const canvas = sigCanvas.current.getCanvas();
 

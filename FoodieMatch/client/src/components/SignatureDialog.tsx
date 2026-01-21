@@ -22,8 +22,8 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
         const rect = containerRef.current!.getBoundingClientRect();
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-        // CSS 크기 계산
-        const cssWidth = Math.max(rect.width - 16, 300);
+        // CSS 크기 계산 (패딩 p-2=16px + 테두리 + 여유분)
+        const cssWidth = Math.max(rect.width - 24, 280);
         const cssHeight = 200;
         setCssSize({ width: cssWidth, height: cssHeight });
 
