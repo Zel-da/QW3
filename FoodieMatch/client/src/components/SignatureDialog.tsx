@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,31 +12,13 @@ interface SignatureDialogProps {
 
 export function SignatureDialog({ isOpen, onClose, onSave, userName }: SignatureDialogProps) {
   const sigCanvas = useRef<SignatureCanvas>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [cssSize, setCssSize] = useState({ width: 300, height: 200 });
 
-  // 캔버스 크기 설정 (DPR 스케일링 제거 - react-signature-canvas가 내부 처리)
+  // 다이얼로그 열릴 때 캔버스 초기화만 수행 (DPR 처리는 react-signature-canvas가 자동 처리)
   useEffect(() => {
-    if (isOpen && containerRef.current && sigCanvas.current) {
+    if (isOpen && sigCanvas.current) {
       const timer = setTimeout(() => {
-        const rect = containerRef.current!.getBoundingClientRect();
-
-        // CSS 크기 계산 (패딩 p-2=16px + 여유분)
-        const width = Math.max(rect.width - 20, 280);
-        const height = 200;
-        setCssSize({ width, height });
-
-        // 캔버스 직접 조작 - CSS 크기와 동일하게 설정
-        const canvas = sigCanvas.current!.getCanvas();
-        canvas.width = width;
-        canvas.height = height;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-
-        // 서명 패드 클리어
-        sigCanvas.current!.clear();
+        sigCanvas.current?.clear();
       }, 100);
-
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -62,16 +44,13 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
           <DialogTitle>{userName}님, 서명해주세요.</DialogTitle>
           <DialogDescription>아래 영역에 서명을 입력하고 저장 버튼을 누르세요.</DialogDescription>
         </DialogHeader>
-        <div ref={containerRef} className="border rounded-md bg-white p-2">
+        <div className="border rounded-md bg-white p-2">
           <SignatureCanvas
             ref={sigCanvas}
             penColor='black'
             canvasProps={{
-              className: 'touch-none',
-              style: {
-                width: `${cssSize.width}px`,
-                height: `${cssSize.height}px`
-              }
+              className: 'touch-none w-full',
+              style: { height: '200px' }
             }}
           />
         </div>

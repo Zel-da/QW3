@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,32 +13,6 @@ interface DualSignatureDialogProps {
   approverName: string;
 }
 
-// 캔버스 크기 설정 함수 (DPR 스케일링 제거 - react-signature-canvas가 내부 처리)
-const setupCanvas = (
-  containerRef: React.RefObject<HTMLDivElement>,
-  sigCanvas: React.RefObject<SignatureCanvas>,
-  height: number = 150
-): { width: number; height: number } | null => {
-  if (!containerRef.current || !sigCanvas.current) return null;
-
-  const rect = containerRef.current.getBoundingClientRect();
-
-  // 패딩 p-2=16px + 여유분
-  const width = Math.max(rect.width - 20, 280);
-
-  const canvas = sigCanvas.current.getCanvas();
-
-  // CSS 크기와 동일하게 설정
-  canvas.width = width;
-  canvas.height = height;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-
-  sigCanvas.current.clear();
-
-  return { width, height };
-};
-
 export function DualSignatureDialog({
   isOpen,
   onClose,
@@ -48,32 +22,13 @@ export function DualSignatureDialog({
 }: DualSignatureDialogProps) {
   const managerSigCanvas = useRef<SignatureCanvas>(null);
   const approverSigCanvas = useRef<SignatureCanvas>(null);
-  const managerContainerRef = useRef<HTMLDivElement>(null);
-  const approverContainerRef = useRef<HTMLDivElement>(null);
-  const [cssSize, setCssSize] = useState({ width: 300, height: 150 });
   const [activeTab, setActiveTab] = useState('manager');
   const [managerSigned, setManagerSigned] = useState(false);
   const [approverSigned, setApproverSigned] = useState(false);
   const [savedManagerSignature, setSavedManagerSignature] = useState<string>('');
   const [savedApproverSignature, setSavedApproverSignature] = useState<string>('');
 
-  // DPR을 고려한 캔버스 설정
-  useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        const containerRef = activeTab === 'manager' ? managerContainerRef : approverContainerRef;
-        const sigCanvas = activeTab === 'manager' ? managerSigCanvas : approverSigCanvas;
-
-        const size = setupCanvas(containerRef, sigCanvas, 150);
-        if (size) {
-          setCssSize(size);
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, activeTab]);
-
-  // Clear canvases when dialog opens
+  // 다이얼로그 열릴 때 캔버스 초기화 (DPR 처리는 react-signature-canvas가 자동 처리)
   useEffect(() => {
     if (isOpen) {
       setManagerSigned(false);
@@ -81,13 +36,11 @@ export function DualSignatureDialog({
       setSavedManagerSignature('');
       setSavedApproverSignature('');
       setActiveTab('manager');
-      setTimeout(() => {
-        // 두 캔버스 모두 초기 설정
-        const managerSize = setupCanvas(managerContainerRef, managerSigCanvas, 150);
-        if (managerSize) {
-          setCssSize(managerSize);
-        }
-      }, 150);
+      const timer = setTimeout(() => {
+        managerSigCanvas.current?.clear();
+        approverSigCanvas.current?.clear();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -172,16 +125,13 @@ export function DualSignatureDialog({
               <Label className="text-sm font-medium">
                 담당자: <span className="text-primary">{managerName || '미지정'}</span>
               </Label>
-              <div ref={managerContainerRef} className="border rounded-md bg-white p-2">
+              <div className="border rounded-md bg-white p-2">
                 <SignatureCanvas
                   ref={managerSigCanvas}
                   penColor='black'
                   canvasProps={{
-                    className: 'touch-none',
-                    style: {
-                      width: `${cssSize.width}px`,
-                      height: `${cssSize.height}px`
-                    }
+                    className: 'touch-none w-full',
+                    style: { height: '150px' }
                   }}
                 />
               </div>
@@ -202,16 +152,13 @@ export function DualSignatureDialog({
               <Label className="text-sm font-medium">
                 승인자: <span className="text-primary">{approverName || '미지정'}</span>
               </Label>
-              <div ref={approverContainerRef} className="border rounded-md bg-white p-2">
+              <div className="border rounded-md bg-white p-2">
                 <SignatureCanvas
                   ref={approverSigCanvas}
                   penColor='black'
                   canvasProps={{
-                    className: 'touch-none',
-                    style: {
-                      width: `${cssSize.width}px`,
-                      height: `${cssSize.height}px`
-                    }
+                    className: 'touch-none w-full',
+                    style: { height: '150px' }
                   }}
                 />
               </div>
