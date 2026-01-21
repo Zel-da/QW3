@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
-import { useRecording } from '@/context/RecordingContext';
+import { useRecording, getPendingRecording, clearPendingRecording } from '@/context/RecordingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -164,6 +164,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setCurrentTbmInfo(null);
     }
   }, [selectedTeam, date, teams, isViewMode, setCurrentTbmInfo]);
+
+  // 팀/날짜 선택 시 임시 저장된 녹음 확인
+  useEffect(() => {
+    if (selectedTeam && date && !isViewMode) {
+      const d = new Date(date);
+      const dateStr = format(d, 'yyyy-MM-dd');
+      const pending = getPendingRecording(selectedTeam, dateStr);
+      if (pending && !audioRecording) {
+        setAudioRecording(pending);
+        // 임시 저장 데이터 삭제
+        clearPendingRecording(selectedTeam, dateStr);
+        toast({
+          title: "녹음 불러옴",
+          description: "이전에 녹음한 내용이 적용되었습니다.",
+        });
+      }
+    }
+  }, [selectedTeam, date, isViewMode, audioRecording, toast]);
 
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {

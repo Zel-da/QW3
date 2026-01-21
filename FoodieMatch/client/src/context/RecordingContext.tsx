@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import type { AudioRecordingData } from '@/components/InlineAudioPanel';
 
+// 임시 저장용 키 (TBM이 없을 때)
+const PENDING_RECORDING_KEY = 'pending_tbm_recording';
+
 interface RecordingStartInfo {
   teamId: number;
   teamName: string;
@@ -244,6 +247,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     date: string,
     recordingData: AudioRecordingData
   ) => {
+    const pendingKey = `${PENDING_RECORDING_KEY}_${teamId}_${date}`;
+
     try {
       // 기존 TBM 조회
       const checkResponse = await fetch(
@@ -253,33 +258,30 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       const checkData = await checkResponse.json();
 
       if (checkData.exists && checkData.report) {
-        // 기존 TBM이 있으면 remarks 업데이트
-        const existingReport = checkData.report;
-        let remarksData: any = {};
-
-        try {
-          if (existingReport.remarks) {
-            remarksData = JSON.parse(existingReport.remarks);
-          }
-        } catch (e) {
-          remarksData = { text: existingReport.remarks || '' };
-        }
-
-        remarksData.audioRecording = recordingData;
-
-        await fetch(`/api/tbm/${existingReport.id}`, {
-          method: 'PUT',
+        // 기존 TBM이 있으면 새 PATCH 엔드포인트 사용 (안전한 업데이트)
+        const response = await fetch(`/api/tbm/${checkData.report.id}/audio`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            ...existingReport,
-            remarks: JSON.stringify(remarksData),
-          }),
+          body: JSON.stringify({ audioRecording: recordingData }),
         });
+
+        if (!response.ok) {
+          throw new Error('녹음 저장 실패');
+        }
+
+        // 성공 시 로컬스토리지에서 임시 저장 데이터 삭제
+        localStorage.removeItem(pendingKey);
+      } else {
+        // TBM이 없으면 로컬스토리지에 임시 저장
+        localStorage.setItem(pendingKey, JSON.stringify(recordingData));
+        console.log('TBM이 없어 로컬에 임시 저장:', pendingKey);
       }
-      // 기존 TBM이 없으면 녹음만 저장 (TBM 생성 없이) - 사용자가 TBM 저장할 때 함께 저장됨
     } catch (error) {
       console.error('TBM 녹음 저장 실패:', error);
+      // 실패 시에도 로컬에 백업 저장
+      localStorage.setItem(pendingKey, JSON.stringify(recordingData));
+      console.log('저장 실패, 로컬에 백업:', pendingKey);
       throw error;
     }
   };
@@ -307,6 +309,26 @@ export function useRecording() {
     throw new Error('useRecording must be used within a RecordingProvider');
   }
   return context;
+}
+
+// 임시 저장된 녹음 확인 함수
+export function getPendingRecording(teamId: number, date: string): AudioRecordingData | null {
+  const pendingKey = `${PENDING_RECORDING_KEY}_${teamId}_${date}`;
+  const data = localStorage.getItem(pendingKey);
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// 임시 저장된 녹음 삭제 함수
+export function clearPendingRecording(teamId: number, date: string): void {
+  const pendingKey = `${PENDING_RECORDING_KEY}_${teamId}_${date}`;
+  localStorage.removeItem(pendingKey);
 }
 
 export { formatTime };
