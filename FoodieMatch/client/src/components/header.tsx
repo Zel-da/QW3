@@ -146,7 +146,7 @@ export function Header() {
                   onClick={handleStopRecording}
                   variant="destructive"
                   size="icon"
-                  className="rounded-full w-10 h-10 animate-pulse shadow-lg"
+                  className="rounded-lg w-10 h-10 animate-pulse shadow-lg"
                 >
                   <Square className="h-5 w-5" />
                 </Button>
@@ -156,7 +156,7 @@ export function Header() {
                   variant={canStartRecording ? "destructive" : "outline"}
                   size="icon"
                   disabled={!canStartRecording}
-                  className="rounded-full w-10 h-10 shadow-lg"
+                  className="rounded-lg w-10 h-10 shadow-lg"
                   title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
                 >
                   <Mic className="h-5 w-5" />
