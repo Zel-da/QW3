@@ -203,21 +203,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           } else {
             setExistingReport(null);
             setIsViewMode(false);
-            // 새 작성 모드로 초기화
+            // 새 작성 모드로 초기화 (녹음/STT 포함)
             setFormState({});
             setSignatures({});
             setAbsentUsers({});
             setRemarks('');
             setRemarksImages([]);
+            setAudioRecording(null);
+            setTranscription(null);
           }
         })
         .catch(err => {
           console.error('Failed to check existing TBM:', err);
         });
     } else if (!selectedTeam) {
-      // 팀이 선택 해제되면 초기화
+      // 팀이 선택 해제되면 초기화 (녹음/STT 포함)
       setExistingReport(null);
       setIsViewMode(false);
+      setAudioRecording(null);
+      setTranscription(null);
     }
   }, [selectedTeam, date, reportForEdit, toast]);
 
@@ -646,6 +650,21 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     setSelectedTeam(null);
   };
 
+  // 팀 변경 시 녹음/폼 상태 즉시 초기화 (auto-save 오염 방지)
+  const handleTeamChange = (newTeamId) => {
+    // 다른 팀으로 변경될 때만 초기화
+    if (newTeamId !== selectedTeam) {
+      setAudioRecording(null);
+      setTranscription(null);
+      setFormState({});
+      setSignatures({});
+      setAbsentUsers({});
+      setRemarks('');
+      setRemarksImages([]);
+    }
+    setSelectedTeam(newTeamId);
+  };
+
   // 사이트별 부서 목록
   const departments = getDepartments(site);
 
@@ -668,7 +687,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
         {/* 팀 선택 */}
         <Select
-          onValueChange={setSelectedTeam}
+          onValueChange={handleTeamChange}
           value={selectedTeam || ''}
           disabled={!selectedDepartment}
         >
