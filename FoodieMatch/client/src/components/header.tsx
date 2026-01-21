@@ -74,7 +74,23 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-4">
-            {/* Mobile Navigation */}
+            <div className="hidden sm:flex items-center gap-2">
+              {user ? (
+                <>
+                  <span className="text-base font-medium whitespace-nowrap">{user.username}님</span>
+                  <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
+                    <Link href="/profile">내 정보</Link>
+                  </Button>
+                  <Button onClick={logout} variant="ghost" className="text-base font-medium whitespace-nowrap">로그아웃</Button>
+                </>
+              ) : (
+                <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
+                  <Link href="/login">로그인</Link>
+                </Button>
+              )}
+            </div>
+
+            {/* Mobile Navigation - 가장 오른쪽에 배치 */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="lg:hidden">
@@ -144,22 +160,6 @@ export function Header() {
                 )}
               </SheetContent>
             </Sheet>
-
-            <div className="hidden sm:flex items-center gap-2">
-              {user ? (
-                <>
-                  <span className="text-base font-medium whitespace-nowrap">{user.username}님</span>
-                  <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
-                    <Link href="/profile">내 정보</Link>
-                  </Button>
-                  <Button onClick={logout} variant="ghost" className="text-base font-medium whitespace-nowrap">로그아웃</Button>
-                </>
-              ) : (
-                <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
-                  <Link href="/login">로그인</Link>
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>
