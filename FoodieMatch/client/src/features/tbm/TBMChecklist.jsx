@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
+import { useRecording } from '@/context/RecordingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -26,10 +27,12 @@ import { FileDropzone } from '@/components/FileDropzone';
 import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
 import { InlineAudioPanel } from '@/components/InlineAudioPanel';
 import { IssueDetailModal } from '@/components/IssueDetailModal';
+import { format } from 'date-fns';
 
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { setCurrentTbmInfo } = useRecording();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
@@ -143,6 +146,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setHolidayInfo(null);
     }
   }, [date, site]);
+
+  // 선택된 팀 정보를 RecordingContext에 업데이트
+  useEffect(() => {
+    if (selectedTeam && date && !isViewMode) {
+      const selectedTeamData = teams.find(t => t.id === selectedTeam);
+      if (selectedTeamData) {
+        const d = new Date(date);
+        const dateStr = format(d, 'yyyy-MM-dd');
+        setCurrentTbmInfo({
+          teamId: selectedTeam,
+          teamName: stripSiteSuffix(selectedTeamData.name),
+          date: dateStr,
+        });
+      }
+    } else {
+      setCurrentTbmInfo(null);
+    }
+  }, [selectedTeam, date, teams, isViewMode, setCurrentTbmInfo]);
 
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {
@@ -957,7 +978,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               />
             </div>
 
-            {/* 중앙: TBM 녹음 */}
+            {/* 중앙: TBM 녹음 (재생 전용 - 헤더에서 녹음) */}
             <div className="space-y-2">
               <Label>TBM 녹음</Label>
               <InlineAudioPanel
@@ -971,6 +992,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 existingTranscription={transcription}
                 maxDurationSeconds={1800}
                 disabled={isViewMode}
+                playbackOnly={true}
               />
             </div>
 

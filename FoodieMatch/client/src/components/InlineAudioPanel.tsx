@@ -27,6 +27,8 @@ interface InlineAudioPanelProps {
   existingTranscription?: TranscriptionData | null;
   maxDurationSeconds?: number;
   disabled?: boolean;
+  /** 재생 전용 모드 - 녹음/업로드 버튼을 숨기고 재생만 가능 */
+  playbackOnly?: boolean;
 }
 
 type RecordingState = 'idle' | 'recording' | 'recorded' | 'uploading';
@@ -46,6 +48,7 @@ export function InlineAudioPanel({
   existingTranscription,
   maxDurationSeconds = 1800,
   disabled = false,
+  playbackOnly = false,
 }: InlineAudioPanelProps) {
   const [state, setState] = useState<RecordingState>(existingAudio ? 'recorded' : 'idle');
   const [recordingTime, setRecordingTime] = useState(0);
@@ -242,6 +245,17 @@ export function InlineAudioPanel({
     );
   }
 
+  // 재생 전용 모드 - 녹음이 없는 경우
+  if (playbackOnly && state === 'idle') {
+    return (
+      <Card className="border-2 border-dashed border-muted-foreground/25 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+        <Mic className="h-6 w-6 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">녹음 없음</p>
+        <p className="text-xs text-muted-foreground">헤더의 녹음 버튼을 사용해주세요</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {/* 숨겨진 오디오/파일 인풋 */}
@@ -355,7 +369,7 @@ export function InlineAudioPanel({
 
           {/* 액션 버튼들 */}
           <div className="flex gap-2">
-            {audioBlob && (
+            {!playbackOnly && audioBlob && (
               <Button onClick={uploadRecording} variant="default" size="sm" className="flex-1">
                 <Upload className="h-4 w-4 mr-1" />
                 저장
@@ -379,9 +393,11 @@ export function InlineAudioPanel({
                 다운로드
               </Button>
             )}
-            <Button onClick={resetRecording} variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0">
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {!playbackOnly && (
+              <Button onClick={resetRecording} variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </Card>
       )}

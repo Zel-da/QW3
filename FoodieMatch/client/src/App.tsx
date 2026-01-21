@@ -3,6 +3,7 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
+import { RecordingProvider } from "./context/RecordingContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Role } from "@shared/schema";
@@ -81,9 +82,10 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <Suspense fallback={<PageLoader />}>
-            <Switch>
+        <RecordingProvider>
+          <QueryClientProvider client={queryClient}>
+            <Suspense fallback={<PageLoader />}>
+              <Switch>
               {/* 공개 페이지 */}
               <Route path="/login" component={LoginPage} />
               <Route path="/register" component={RegisterPage} />
@@ -280,11 +282,12 @@ function App() {
               </Route>
 
               <Route component={NotFound} />
-            </Switch>
-          </Suspense>
-          {/* 챗봇 - 모든 페이지에서 표시 */}
-          <ChatBot />
-        </QueryClientProvider>
+              </Switch>
+            </Suspense>
+            {/* 챗봇 - 모든 페이지에서 표시 */}
+            <ChatBot />
+          </QueryClientProvider>
+        </RecordingProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

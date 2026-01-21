@@ -21,6 +21,7 @@ import ReportDetailView from '../features/tbm/ReportDetailView.jsx';
 import { useSite, Site } from "@/hooks/use-site";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { useRecording } from "@/context/RecordingContext";
 import { stripSiteSuffix } from '@/lib/utils';
 import { SITES } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
@@ -38,10 +39,18 @@ export default function TbmPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { site, setSite, initSiteFromUser } = useSite();
   const { user } = useAuth();
+  const { setCurrentTbmInfo } = useRecording();
   const [location] = useLocation();
   const { toast } = useToast();
   const [isLoadingModify, setIsLoadingModify] = useState(false);
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
+
+  // TBM 페이지를 벗어날 때 녹음 컨텍스트 초기화
+  useEffect(() => {
+    return () => {
+      setCurrentTbmInfo(null);
+    };
+  }, [setCurrentTbmInfo]);
 
   // 일일 작성 현황 조회
   useEffect(() => {

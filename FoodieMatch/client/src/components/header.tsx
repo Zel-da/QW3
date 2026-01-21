@@ -1,14 +1,52 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from "wouter";
-import { Shield, BookOpen, Home, Menu } from "lucide-react";
+import { Shield, BookOpen, Home, Menu, Mic, Square } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useRecording, formatTime } from "@/context/RecordingContext";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
 
 export function Header() {
   const { user, logout } = useAuth();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [location] = useLocation();
+  const { state: recordingState, startRecording, stopRecording, currentTbmInfo, canStartRecording } = useRecording();
+  const { toast } = useToast();
+
+  const handleStartRecording = async () => {
+    if (!currentTbmInfo) {
+      toast({
+        title: "녹음 시작 불가",
+        description: "TBM 체크리스트에서 팀을 먼저 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const success = await startRecording(currentTbmInfo.teamId, currentTbmInfo.teamName, currentTbmInfo.date);
+    if (success) {
+      toast({
+        title: "녹음 시작",
+        description: `${currentTbmInfo.teamName} 팀의 TBM 녹음을 시작합니다.`,
+      });
+    }
+  };
+
+  const handleStopRecording = async () => {
+    const result = await stopRecording();
+    if (result) {
+      toast({
+        title: "녹음 저장 완료",
+        description: `녹음이 ${recordingState.startedFrom?.teamName} 팀의 TBM에 저장되었습니다.`,
+      });
+    } else {
+      toast({
+        title: "녹음 저장 실패",
+        description: "녹음 저장 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // 현재 경로가 해당 링크와 일치하는지 확인 (하위 경로 포함)
   const isActive = (path: string) => {
@@ -71,7 +109,61 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-4">
             {navLinks}
+            {/* Desktop Recording Button */}
+            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+              recordingState.isRecording ? (
+                <Button
+                  onClick={handleStopRecording}
+                  variant="destructive"
+                  size="sm"
+                  className="animate-pulse flex items-center gap-2"
+                >
+                  <Square className="h-4 w-4" />
+                  <span className="font-mono">{formatTime(recordingState.duration)}</span>
+                  <span>중지</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStartRecording}
+                  variant="outline"
+                  size="sm"
+                  disabled={!canStartRecording}
+                  className="flex items-center gap-2"
+                  title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
+                >
+                  <Mic className="h-4 w-4" />
+                  녹음
+                </Button>
+              )
+            )}
           </nav>
+
+          {/* Mobile Center Recording Button */}
+          <div className="lg:hidden flex-1 flex justify-center">
+            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+              recordingState.isRecording ? (
+                <Button
+                  onClick={handleStopRecording}
+                  variant="destructive"
+                  size="icon"
+                  className="rounded-full w-10 h-10 animate-pulse shadow-lg"
+                >
+                  <Square className="h-5 w-5" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStartRecording}
+                  variant={canStartRecording ? "destructive" : "outline"}
+                  size="icon"
+                  disabled={!canStartRecording}
+                  className="rounded-full w-10 h-10 shadow-lg"
+                  title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
+              )
+            )}
+          </div>
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2">
