@@ -235,7 +235,7 @@ export default function Dashboard() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[250px]">과정명</TableHead>
-                          <TableHead>설명</TableHead>
+                          <TableHead className="min-w-[150px] max-w-[200px]">설명</TableHead>
                           <TableHead className="w-[120px] text-center">유형</TableHead>
                           <TableHead className="w-[100px] text-center">시간</TableHead>
                           <TableHead className="w-[100px] text-center">진행률</TableHead>
@@ -253,7 +253,9 @@ export default function Dashboard() {
                           return (
                             <TableRow key={course.id} className="hover:bg-muted/50">
                               <TableCell className="font-medium">{course.title}</TableCell>
-                              <TableCell className="text-muted-foreground">{course.description}</TableCell>
+                              <TableCell className="text-muted-foreground min-w-[150px] max-w-[200px]">
+                              <span className="line-clamp-2">{course.description}</span>
+                            </TableCell>
                               <TableCell className="text-center text-sm">
                                 {course.type === 'workplace-safety' ? '작업장 안전' :
                                  course.type === 'hazard-prevention' ? '위험 예방' : 'TBM 활동'}

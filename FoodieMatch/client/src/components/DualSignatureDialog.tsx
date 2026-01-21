@@ -43,8 +43,8 @@ export function DualSignatureDialog({
           const height = 150;
 
           setCanvasSize({
-            width: width * dpr,
-            height: height * dpr
+            width: width,
+            height: height
           });
         }
       }, 100);

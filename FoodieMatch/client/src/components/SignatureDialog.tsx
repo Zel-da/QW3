@@ -26,8 +26,8 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
       const height = 200; // Fixed height
 
       setCanvasSize({
-        width: width * dpr,
-        height: height * dpr
+        width: width,
+        height: height
       });
 
       // Clear canvas when dialog opens
@@ -36,7 +36,6 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
           const canvas = sigCanvas.current.getCanvas();
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.scale(dpr, dpr);
             // Fill white background
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, width, height);
