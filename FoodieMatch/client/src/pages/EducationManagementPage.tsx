@@ -524,7 +524,7 @@ export default function EducationManagementPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>제목</TableHead>
-                                <TableHead>설명</TableHead>
+                                <TableHead className="min-w-[200px]">설명</TableHead>
                                 <TableHead className="text-right">작업</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -532,7 +532,9 @@ export default function EducationManagementPage() {
                             {paginatedCourses.map(course => (
                                 <TableRow key={course.id}>
                                     <TableCell>{course.title}</TableCell>
-                                    <TableCell>{course.description}</TableCell>
+                                    <TableCell className="max-w-[300px]">
+                                        <span className="line-clamp-2">{course.description}</span>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(course)}>수정</Button>
                                         <Button variant="destructive" size="sm" onClick={() => handleDelete(course.id)}>삭제</Button>
