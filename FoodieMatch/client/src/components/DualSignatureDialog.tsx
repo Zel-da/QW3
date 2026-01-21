@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,40 @@ interface DualSignatureDialogProps {
   approverName: string;
 }
 
+// DPR을 고려한 캔버스 설정 함수
+const setupCanvas = (
+  containerRef: React.RefObject<HTMLDivElement>,
+  sigCanvas: React.RefObject<SignatureCanvas>,
+  cssHeight: number = 150
+): { width: number; height: number } | null => {
+  if (!containerRef.current || !sigCanvas.current) return null;
+
+  const rect = containerRef.current.getBoundingClientRect();
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+  const cssWidth = Math.max(rect.width - 16, 300);
+
+  const canvas = sigCanvas.current.getCanvas();
+
+  // 캔버스 실제 픽셀 크기 = CSS 크기 * DPR
+  canvas.width = cssWidth * ratio;
+  canvas.height = cssHeight * ratio;
+
+  // CSS로 표시 크기 설정
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${cssHeight}px`;
+
+  // 드로잉 컨텍스트 스케일링 (좌표계를 CSS 픽셀 기준으로)
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+
+  sigCanvas.current.clear();
+
+  return { width: cssWidth, height: cssHeight };
+};
+
 export function DualSignatureDialog({
   isOpen,
   onClose,
@@ -24,28 +58,23 @@ export function DualSignatureDialog({
   const approverSigCanvas = useRef<SignatureCanvas>(null);
   const managerContainerRef = useRef<HTMLDivElement>(null);
   const approverContainerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 500, height: 150 });
+  const [cssSize, setCssSize] = useState({ width: 300, height: 150 });
   const [activeTab, setActiveTab] = useState('manager');
   const [managerSigned, setManagerSigned] = useState(false);
   const [approverSigned, setApproverSigned] = useState(false);
   const [savedManagerSignature, setSavedManagerSignature] = useState<string>('');
   const [savedApproverSignature, setSavedApproverSignature] = useState<string>('');
 
-  // Calculate proper canvas size when dialog opens
+  // DPR을 고려한 캔버스 설정
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
-        const container = activeTab === 'manager' ? managerContainerRef.current : approverContainerRef.current;
-        if (container) {
-          const rect = container.getBoundingClientRect();
-          const dpr = window.devicePixelRatio || 1;
-          const width = Math.max(rect.width - 16, 300);
-          const height = 150;
+        const containerRef = activeTab === 'manager' ? managerContainerRef : approverContainerRef;
+        const sigCanvas = activeTab === 'manager' ? managerSigCanvas : approverSigCanvas;
 
-          setCanvasSize({
-            width: width,
-            height: height
-          });
+        const size = setupCanvas(containerRef, sigCanvas, 150);
+        if (size) {
+          setCssSize(size);
         }
       }, 100);
       return () => clearTimeout(timer);
@@ -61,8 +90,11 @@ export function DualSignatureDialog({
       setSavedApproverSignature('');
       setActiveTab('manager');
       setTimeout(() => {
-        managerSigCanvas.current?.clear();
-        approverSigCanvas.current?.clear();
+        // 두 캔버스 모두 초기 설정
+        const managerSize = setupCanvas(managerContainerRef, managerSigCanvas, 150);
+        if (managerSize) {
+          setCssSize(managerSize);
+        }
       }, 150);
     }
   }, [isOpen]);
@@ -153,10 +185,11 @@ export function DualSignatureDialog({
                   ref={managerSigCanvas}
                   penColor='black'
                   canvasProps={{
-                    width: canvasSize.width,
-                    height: canvasSize.height,
-                    className: 'w-full h-36 touch-none',
-                    style: { width: '100%', height: '9rem' }
+                    className: 'touch-none',
+                    style: {
+                      width: `${cssSize.width}px`,
+                      height: `${cssSize.height}px`
+                    }
                   }}
                 />
               </div>
@@ -182,10 +215,11 @@ export function DualSignatureDialog({
                   ref={approverSigCanvas}
                   penColor='black'
                   canvasProps={{
-                    width: canvasSize.width,
-                    height: canvasSize.height,
-                    className: 'w-full h-36 touch-none',
-                    style: { width: '100%', height: '9rem' }
+                    className: 'touch-none',
+                    style: {
+                      width: `${cssSize.width}px`,
+                      height: `${cssSize.height}px`
+                    }
                   }}
                 />
               </div>

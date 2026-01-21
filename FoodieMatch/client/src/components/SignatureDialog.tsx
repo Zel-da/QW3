@@ -13,35 +13,44 @@ interface SignatureDialogProps {
 export function SignatureDialog({ isOpen, onClose, onSave, userName }: SignatureDialogProps) {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 500, height: 200 });
+  const [cssSize, setCssSize] = useState({ width: 300, height: 200 });
 
-  // Calculate proper canvas size when dialog opens
+  // DPR을 고려한 캔버스 설정
   useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+    if (isOpen && containerRef.current && sigCanvas.current) {
+      const timer = setTimeout(() => {
+        const rect = containerRef.current!.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-      // Set canvas size based on container (accounting for padding/border)
-      const width = Math.max(rect.width - 16, 300); // Subtract padding, min 300px
-      const height = 200; // Fixed height
+        // CSS 크기 계산
+        const cssWidth = Math.max(rect.width - 16, 300);
+        const cssHeight = 200;
+        setCssSize({ width: cssWidth, height: cssHeight });
 
-      setCanvasSize({
-        width: width,
-        height: height
-      });
+        // 캔버스 직접 조작
+        const canvas = sigCanvas.current!.getCanvas();
 
-      // Clear canvas when dialog opens
-      setTimeout(() => {
-        if (sigCanvas.current) {
-          const canvas = sigCanvas.current.getCanvas();
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            // Fill white background
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, width, height);
-          }
+        // 캔버스 실제 픽셀 크기 = CSS 크기 * DPR
+        canvas.width = cssWidth * ratio;
+        canvas.height = cssHeight * ratio;
+
+        // CSS로 표시 크기 설정
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
+
+        // 드로잉 컨텍스트 스케일링 (좌표계를 CSS 픽셀 기준으로)
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, cssWidth, cssHeight);
         }
+
+        // 서명 패드 클리어 (isEmpty 정확도를 위해)
+        sigCanvas.current!.clear();
       }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -71,10 +80,11 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
             ref={sigCanvas}
             penColor='black'
             canvasProps={{
-              width: canvasSize.width,
-              height: canvasSize.height,
-              className: 'w-full h-48 touch-none',
-              style: { width: '100%', height: '12rem' }
+              className: 'touch-none',
+              style: {
+                width: `${cssSize.width}px`,
+                height: `${cssSize.height}px`
+              }
             }}
           />
         </div>
