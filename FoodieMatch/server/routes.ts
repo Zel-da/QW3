@@ -5030,12 +5030,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/tbm/:reportId", requireAuth, async (req, res) => {
-    try {
-      const { reportId } = req.params;
+    const { reportId } = req.params;
+    const parsedReportId = parseInt(reportId);
 
+    try {
       // 기존 TBM 조회하여 날짜 확인
       const existingReport = await prisma.dailyReport.findUnique({
-        where: { id: parseInt(reportId) }
+        where: { id: parsedReportId }
       });
 
       if (!existingReport) {
@@ -5044,66 +5045,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const reportData = tbmReportSchema.partial().parse(req.body);
       const { results, signatures, remarks, reportDate } = reportData;
-      await prisma.reportDetail.deleteMany({ where: { reportId: parseInt(reportId) } });
-      await prisma.reportSignature.deleteMany({ where: { reportId: parseInt(reportId) } });
 
-      const updatedReport = await prisma.dailyReport.update({
-        where: { id: parseInt(reportId) },
-        data: {
-          remarks,
-          reportDate: reportDate ? new Date(reportDate) : undefined,
-        },
-      });
+      // 날짜 문자열을 로컬 시간대로 파싱 (시간대 문제 방지)
+      let parsedDate = undefined;
+      if (reportDate) {
+        parsedDate = typeof reportDate === 'string' && !reportDate.includes('T')
+          ? new Date(reportDate + 'T12:00:00')
+          : new Date(reportDate);
+      }
 
-      if (results && results.length > 0) {
-        for (const r of results) {
-          const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
+      // 트랜잭션으로 모든 작업 수행 (실패 시 롤백)
+      const finalReport = await prisma.$transaction(async (tx) => {
+        // 기존 데이터 삭제
+        await tx.reportDetail.deleteMany({ where: { reportId: parsedReportId } });
+        await tx.reportSignature.deleteMany({ where: { reportId: parsedReportId } });
 
-          await prisma.reportDetail.create({
-            data: {
-              reportId: parseInt(reportId),
-              itemId: r.itemId,
-              checkState: r.checkState,
-              actionDescription: r.actionDescription,
-              actionTaken: r.actionTaken,
-              authorId: r.authorId,
-              attachments: hasAttachments && r.attachments ? {
-                create: r.attachments!.map((att: any) => ({
-                  url: att.url,
-                  name: att.name,
-                  type: att.type || 'image',
-                  size: att.size || 0,
-                  mimeType: att.mimeType || 'image/jpeg'
-                }))
-              } : undefined
-            }
+        // 리포트 업데이트
+        await tx.dailyReport.update({
+          where: { id: parsedReportId },
+          data: {
+            remarks,
+            reportDate: parsedDate,
+          },
+        });
+
+        // 결과 항목 생성
+        if (results && results.length > 0) {
+          for (const r of results) {
+            const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
+
+            await tx.reportDetail.create({
+              data: {
+                reportId: parsedReportId,
+                itemId: r.itemId,
+                checkState: r.checkState,
+                actionDescription: r.actionDescription,
+                actionTaken: r.actionTaken,
+                authorId: r.authorId,
+                attachments: hasAttachments && r.attachments ? {
+                  create: r.attachments!.map((att: any) => ({
+                    url: att.url,
+                    name: att.name,
+                    type: att.type || 'image',
+                    size: att.size || 0,
+                    mimeType: att.mimeType || 'image/jpeg'
+                  }))
+                } : undefined
+              }
+            });
+          }
+        }
+
+        // 서명 생성
+        if (signatures && signatures.length > 0) {
+          await tx.reportSignature.createMany({
+            data: signatures.map(s => ({
+              reportId: parsedReportId,
+              userId: s.userId || null,
+              memberId: s.memberId || null,
+              signatureImage: s.signatureImage
+            })),
           });
         }
-      }
 
-      if (signatures && signatures.length > 0) {
-        await prisma.reportSignature.createMany({
-          data: signatures.map(s => ({
-            reportId: parseInt(reportId),
-            userId: s.userId || null,
-            memberId: s.memberId || null,
-            signatureImage: s.signatureImage
-          })),
+        // 최종 결과 조회
+        return tx.dailyReport.findUnique({
+          where: { id: parsedReportId },
+          include: {
+            reportDetails: { include: { attachments: true } },
+            reportSignatures: { include: { user: true, member: true } }
+          }
         });
-      }
-
-      const finalReport = await prisma.dailyReport.findUnique({
-        where: { id: parseInt(reportId) },
-        include: {
-          reportDetails: { include: { attachments: true } },
-          reportSignatures: { include: { user: true, member: true } }
-        }
       });
 
       res.json(finalReport);
-    } catch (error) {
-      console.error('Failed to update report:', error);
-      res.status(500).json({ message: "Failed to update report" });
+    } catch (error: any) {
+      console.error('Failed to update TBM report:', {
+        reportId: parsedReportId,
+        error: error.message,
+        code: error.code,
+        meta: error.meta
+      });
+
+      // 더 자세한 에러 메시지 반환
+      const errorMessage = error.code === 'P2003'
+        ? '참조하는 항목(체크리스트 항목, 사용자, 팀원)이 존재하지 않습니다.'
+        : error.code === 'P2025'
+        ? '수정하려는 TBM을 찾을 수 없습니다.'
+        : `TBM 수정 실패: ${error.message}`;
+
+      res.status(500).json({ message: errorMessage, code: error.code });
     }
   });
 
