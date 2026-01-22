@@ -43,8 +43,8 @@ app.use(helmet({
 // Compression middleware - 응답 gzip 압축 (번들 크기 ~70% 감소)
 app.use(compression());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
