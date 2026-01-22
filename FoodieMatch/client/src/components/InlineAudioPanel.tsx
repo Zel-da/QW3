@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Square, Play, Pause, Upload, Trash2, Download, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Upload, Trash2, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useRecording, formatTime as formatRecordingTime } from '@/context/RecordingContext';
 
 export interface AudioRecordingData {
   url: string;
@@ -236,6 +238,9 @@ export function InlineAudioPanel({
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
 
+  // RecordingContext에서 녹음 상태 가져오기 (hook은 항상 최상단에서 호출)
+  const { state: recordingState } = useRecording();
+
   // 비활성화 상태
   if (disabled) {
     return (
@@ -245,8 +250,55 @@ export function InlineAudioPanel({
     );
   }
 
-  // 재생 전용 모드 - 녹음이 없는 경우
+  // 재생 전용 모드 - 녹음이 없는 경우 (RecordingContext 상태 표시)
   if (playbackOnly && state === 'idle') {
+    // 녹음 중
+    if (recordingState.isRecording) {
+      return (
+        <Card className="border-2 border-red-200 bg-red-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+          <div className="flex items-center gap-2 text-red-500 animate-pulse">
+            <div className="w-3 h-3 bg-red-500 rounded-full" />
+            <span className="font-mono text-lg font-bold">{formatRecordingTime(recordingState.duration)}</span>
+          </div>
+          <p className="text-sm text-red-600 font-medium">녹음 중...</p>
+          <p className="text-xs text-muted-foreground">헤더의 중지 버튼을 누르세요</p>
+        </Card>
+      );
+    }
+
+    // 저장 중
+    if (recordingState.isSaving || recordingState.saveStatus === 'saving') {
+      return (
+        <Card className="border-2 border-primary/30 bg-primary/5 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-primary font-medium">녹음 저장 중...</p>
+        </Card>
+      );
+    }
+
+    // 저장 완료
+    if (recordingState.saveStatus === 'success') {
+      return (
+        <Card className="border-2 border-green-200 bg-green-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+          <CheckCircle2 className="h-6 w-6 text-green-600" />
+          <p className="text-sm text-green-600 font-medium">녹음 저장 완료!</p>
+          <p className="text-xs text-muted-foreground">페이지를 새로고침하면 녹음이 표시됩니다</p>
+        </Card>
+      );
+    }
+
+    // 저장 실패
+    if (recordingState.saveStatus === 'error') {
+      return (
+        <Card className="border-2 border-red-200 bg-red-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+          <div className="h-6 w-6 text-red-600 flex items-center justify-center font-bold">!</div>
+          <p className="text-sm text-red-600 font-medium">녹음 저장 실패</p>
+          <p className="text-xs text-muted-foreground">{recordingState.saveError || '다시 시도해주세요'}</p>
+        </Card>
+      );
+    }
+
+    // 기본 상태 (녹음 없음)
     return (
       <Card className="border-2 border-dashed border-muted-foreground/25 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
         <Mic className="h-6 w-6 text-muted-foreground/50" />
@@ -348,7 +400,21 @@ export function InlineAudioPanel({
 
       {/* 녹음 완료 상태 */}
       {state === 'recorded' && (
-        <Card className="border p-4 space-y-3">
+        <Card className={cn(
+          "p-4 space-y-3",
+          playbackOnly && existingAudio ? "border-2 border-green-200 bg-green-50/50" : "border"
+        )}>
+          {/* playbackOnly 모드에서 저장됨 표시 */}
+          {playbackOnly && existingAudio && (
+            <div className="flex items-center gap-2 text-green-700 mb-2">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium text-sm">녹음 저장됨</span>
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                {formatTime(duration)}
+              </Badge>
+            </div>
+          )}
+
           {/* 재생 컨트롤 */}
           <div className="flex items-center gap-3">
             <Button onClick={togglePlayback} variant="outline" size="icon" className="h-10 w-10 shrink-0">
@@ -360,7 +426,10 @@ export function InlineAudioPanel({
               </div>
               <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-primary h-2 rounded-full transition-all"
+                  className={cn(
+                    "h-2 rounded-full transition-all",
+                    playbackOnly && existingAudio ? "bg-green-600" : "bg-primary"
+                  )}
                   style={{ width: duration > 0 ? `${(playbackTime / duration) * 100}%` : '0%' }}
                 />
               </div>

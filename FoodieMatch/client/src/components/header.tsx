@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from "wouter";
-import { Shield, BookOpen, Home, Menu, Mic, Square } from "lucide-react";
+import { Shield, BookOpen, Home, Menu, Mic, Square, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRecording, formatTime } from "@/context/RecordingContext";
 import { Button } from "./ui/button";
@@ -111,6 +111,7 @@ export function Header() {
             {navLinks}
             {/* Desktop Recording Button */}
             {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+              // 녹음 중
               recordingState.isRecording ? (
                 <Button
                   onClick={handleStopRecording}
@@ -122,7 +123,32 @@ export function Header() {
                   <span className="font-mono">{formatTime(recordingState.duration)}</span>
                   <span>중지</span>
                 </Button>
-              ) : (
+              ) : // 저장 중
+              recordingState.isSaving || recordingState.saveStatus === 'saving' ? (
+                <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  저장 중...
+                </Button>
+              ) : // 저장 완료
+              recordingState.saveStatus === 'success' ? (
+                <Button variant="outline" size="sm" className="flex items-center gap-2 text-green-600 border-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  저장 완료
+                </Button>
+              ) : // 저장 실패
+              recordingState.saveStatus === 'error' ? (
+                <Button
+                  onClick={handleStartRecording}
+                  variant="destructive"
+                  size="sm"
+                  disabled={!canStartRecording}
+                  className="flex items-center gap-2"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  재시도
+                </Button>
+              ) : // 기본 상태
+              (
                 <Button
                   onClick={handleStartRecording}
                   variant="outline"
@@ -141,6 +167,7 @@ export function Header() {
           {/* Mobile Center Recording Button */}
           <div className="lg:hidden flex-1 flex justify-center">
             {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+              // 녹음 중
               recordingState.isRecording ? (
                 <Button
                   onClick={handleStopRecording}
@@ -150,7 +177,38 @@ export function Header() {
                 >
                   <Square className="h-5 w-5" />
                 </Button>
-              ) : (
+              ) : // 저장 중
+              recordingState.isSaving || recordingState.saveStatus === 'saving' ? (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled
+                  className="rounded-lg w-10 h-10 shadow-lg"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </Button>
+              ) : // 저장 완료
+              recordingState.saveStatus === 'success' ? (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-lg w-10 h-10 shadow-lg text-green-600 border-green-600"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                </Button>
+              ) : // 저장 실패
+              recordingState.saveStatus === 'error' ? (
+                <Button
+                  onClick={handleStartRecording}
+                  variant="destructive"
+                  size="icon"
+                  disabled={!canStartRecording}
+                  className="rounded-lg w-10 h-10 shadow-lg"
+                >
+                  <AlertCircle className="h-5 w-5" />
+                </Button>
+              ) : // 기본 상태
+              (
                 <Button
                   onClick={handleStartRecording}
                   variant={canStartRecording ? "destructive" : "outline"}

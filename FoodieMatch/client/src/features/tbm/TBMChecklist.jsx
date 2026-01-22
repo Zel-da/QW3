@@ -64,6 +64,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [holidayInfo, setHolidayInfo] = useState(null);
   // 저장 중 상태
   const [isSaving, setIsSaving] = useState(false);
+  // 팀별 draft 캐시 (메모리) - 팀 전환 시 작성 중인 내용 유지
+  const [teamDrafts, setTeamDrafts] = useState({});
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
@@ -173,8 +175,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       const pending = getPendingRecording(selectedTeam, dateStr);
       if (pending && !audioRecording) {
         setAudioRecording(pending);
-        // 임시 저장 데이터 삭제
-        clearPendingRecording(selectedTeam, dateStr);
+        // 임시 저장 데이터는 제출 성공 시에만 삭제 (복원 후 바로 삭제하지 않음)
         toast({
           title: "녹음 불러옴",
           description: "이전에 녹음한 내용이 적용되었습니다.",
@@ -609,6 +610,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         // 제출 성공 시 임시저장 데이터 삭제
         clearSaved();
       }
+
+      // 제출 성공 후 pending 녹음 삭제 (새 작성/수정 모두 해당)
+      if (selectedTeam && date) {
+        clearPendingRecording(selectedTeam, getLocalDateStr(date));
+      }
+
+      // 제출 성공 시 해당 팀의 draft 캐시도 삭제
+      if (selectedTeam) {
+        setTeamDrafts(prev => {
+          const newDrafts = { ...prev };
+          delete newDrafts[selectedTeam];
+          return newDrafts;
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
       setShowSuccessDialog(true);
       resetChanges(); // 저장 후 변경사항 리셋 (페이지 이탈 경고 비활성화)
@@ -650,19 +665,55 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     setSelectedTeam(null);
   };
 
-  // 팀 변경 시 녹음/폼 상태 즉시 초기화 (auto-save 오염 방지)
+  // 팀 변경 시 현재 팀 데이터 캐싱 후 새 팀 데이터 복원
   const handleTeamChange = (newTeamId) => {
-    // 다른 팀으로 변경될 때만 초기화
-    if (newTeamId !== selectedTeam) {
-      setAudioRecording(null);
-      setTranscription(null);
+    // 다른 팀으로 변경될 때만 처리
+    if (newTeamId !== selectedTeam && selectedTeam) {
+      // 현재 팀 데이터를 캐시에 저장 (작성 중인 내용이 있을 때만)
+      const hasData = Object.keys(formState).length > 0 ||
+                      Object.keys(signatures).length > 0 ||
+                      remarks.trim().length > 0 ||
+                      remarksImages.length > 0 ||
+                      audioRecording;
+
+      if (hasData && !isViewMode) {
+        setTeamDrafts(prev => ({
+          ...prev,
+          [selectedTeam]: {
+            formState,
+            signatures,
+            absentUsers,
+            remarks,
+            remarksImages,
+            audioRecording,
+            transcription,
+          }
+        }));
+      }
+    }
+
+    setSelectedTeam(newTeamId);
+
+    // 새 팀의 캐시된 데이터가 있으면 복원
+    if (newTeamId && teamDrafts[newTeamId]) {
+      const cached = teamDrafts[newTeamId];
+      setFormState(cached.formState || {});
+      setSignatures(cached.signatures || {});
+      setAbsentUsers(cached.absentUsers || {});
+      setRemarks(cached.remarks || '');
+      setRemarksImages(cached.remarksImages || []);
+      setAudioRecording(cached.audioRecording || null);
+      setTranscription(cached.transcription || null);
+    } else {
+      // 캐시 없으면 초기화 (useAutoSave가 localStorage에서 복원)
       setFormState({});
       setSignatures({});
       setAbsentUsers({});
       setRemarks('');
       setRemarksImages([]);
+      setAudioRecording(null);
+      setTranscription(null);
     }
-    setSelectedTeam(newTeamId);
   };
 
   // 사이트별 부서 목록

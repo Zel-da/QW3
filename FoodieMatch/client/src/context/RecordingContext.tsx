@@ -10,10 +10,16 @@ interface RecordingStartInfo {
   date: string;
 }
 
+type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
+
 interface RecordingState {
   isRecording: boolean;
   startedFrom: RecordingStartInfo | null;
   duration: number;
+  // 저장 상태
+  isSaving: boolean;
+  saveStatus: SaveStatus;
+  saveError: string | null;
 }
 
 interface RecordingContextValue {
@@ -40,6 +46,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     isRecording: false,
     startedFrom: null,
     duration: 0,
+    isSaving: false,
+    saveStatus: 'idle',
+    saveError: null,
   });
 
   // TBM 페이지에서 현재 선택된 팀 정보
@@ -68,11 +77,17 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.isRecording]);
 
+  // saveStatus를 idle로 리셋하기 위한 타이머 ref (stopRecording 앞에서 선언)
+  const saveStatusTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (saveStatusTimerRef.current) {
+        clearTimeout(saveStatusTimerRef.current);
       }
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop();
@@ -111,6 +126,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         isRecording: true,
         startedFrom: { teamId, teamName, date },
         duration: 0,
+        isSaving: false,
+        saveStatus: 'idle',
+        saveError: null,
       });
 
       // 타이머 시작
@@ -145,6 +163,15 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+
+      // 저장 중 상태로 업데이트
+      setState(prev => ({
+        ...prev,
+        isRecording: false,
+        isSaving: true,
+        saveStatus: 'saving',
+        saveError: null,
+      }));
 
       mediaRecorderRef.current.onstop = async () => {
         try {
@@ -189,20 +216,35 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
             await saveRecordingToTbm(startInfo.teamId, startInfo.date, recordingData);
           }
 
-          // 상태 초기화
+          // 저장 성공 상태로 업데이트
           setState({
             isRecording: false,
             startedFrom: null,
             duration: 0,
+            isSaving: false,
+            saveStatus: 'success',
+            saveError: null,
           });
+
+          // 5초 후 idle로 리셋
+          if (saveStatusTimerRef.current) {
+            clearTimeout(saveStatusTimerRef.current);
+          }
+          saveStatusTimerRef.current = setTimeout(() => {
+            setState(prev => ({ ...prev, saveStatus: 'idle' }));
+          }, 5000);
 
           resolve(recordingData);
         } catch (error) {
           console.error('녹음 저장 실패:', error);
+          const errorMessage = error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.';
           setState({
             isRecording: false,
             startedFrom: null,
             duration: 0,
+            isSaving: false,
+            saveStatus: 'error',
+            saveError: errorMessage,
           });
           resolve(null);
         }
@@ -238,6 +280,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       isRecording: false,
       startedFrom: null,
       duration: 0,
+      isSaving: false,
+      saveStatus: 'idle',
+      saveError: null,
     });
   }, []);
 
