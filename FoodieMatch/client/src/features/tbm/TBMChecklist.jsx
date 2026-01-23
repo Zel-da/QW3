@@ -615,11 +615,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           validationErrors.push(`"${item.description}" 항목: 비고 입력 필수`);
         }
 
-        // △ or X items require photo attachment
-        const hasPhotos = itemState.attachments && itemState.attachments.length > 0;
-        if (!hasPhotos) {
-          validationErrors.push(`"${item.description}" 항목: 사진 업로드 필수 (이슈 항목)`);
-        }
+        // 사진 첨부는 선택사항으로 변경
       }
     });
 
