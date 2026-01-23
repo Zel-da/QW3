@@ -21,6 +21,8 @@ interface UseAutoSaveReturn {
   restoreSaved: () => void;
   discardSaved: () => void;
   showRestoreDialog: boolean;
+  /** 즉시 저장 (딜레이 없이) */
+  saveNow: () => boolean;
 }
 
 /**
@@ -193,12 +195,59 @@ export function useAutoSave<T>({
     }
   }, [key]);
 
+  // 데이터 참조 (saveNow에서 사용)
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  /**
+   * 즉시 저장 (딜레이 없이)
+   * 페이지 이탈 시 호출하여 바로 저장
+   * @returns 저장 성공 여부
+   */
+  const saveNow = useCallback((): boolean => {
+    if (!enabled) return false;
+
+    try {
+      // 기존 타이머 취소
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      const currentData = dataRef.current;
+      const dataString = JSON.stringify(currentData);
+
+      // 변경 없으면 스킵 (하지만 성공으로 처리)
+      if (dataString === lastSavedRef.current) {
+        console.log(`[Auto-Save] No changes to save: ${key}`);
+        return true;
+      }
+
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          data: currentData,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      lastSavedRef.current = dataString;
+      console.log(`[Auto-Save] Saved immediately: ${key}`);
+      return true;
+    } catch (err) {
+      console.error('Failed to save immediately:', err);
+      return false;
+    }
+  }, [key, enabled]);
+
   return {
     clearSaved,
     hasSavedData,
     savedTimestamp,
     restoreSaved,
     discardSaved,
-    showRestoreDialog
+    showRestoreDialog,
+    saveNow,
   };
 }

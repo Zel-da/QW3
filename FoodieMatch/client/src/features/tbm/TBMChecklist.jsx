@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
-import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -66,6 +65,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [isSaving, setIsSaving] = useState(false);
   // 팀별 draft 캐시 (메모리) - 팀 전환 시 작성 중인 내용 유지
   const [teamDrafts, setTeamDrafts] = useState({});
+  // 페이지 이탈 시 자동 임시저장 중 상태
+  const [isAutoSavingOnLeave, setIsAutoSavingOnLeave] = useState(false);
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
@@ -338,7 +339,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     showRestoreDialog,
     restoreSaved,
     discardSaved,
-    savedTimestamp
+    savedTimestamp,
+    saveNow
   } = useAutoSave({
     key: autoSaveKey,
     data: {
@@ -361,6 +363,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (restored.transcription) setTranscription(restored.transcription);
     },
   });
+
+  // 페이지 이탈 시 자동 임시저장 후 이동
+  useEffect(() => {
+    if (showUnsavedDialog && !isAutoSavingOnLeave) {
+      setIsAutoSavingOnLeave(true);
+
+      // 약간의 딜레이 후 저장 (UI가 보이도록)
+      const timer = setTimeout(() => {
+        saveNow();
+        // 저장 완료 후 이동
+        setTimeout(() => {
+          setIsAutoSavingOnLeave(false);
+          confirmNavigation();
+        }, 300);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showUnsavedDialog, isAutoSavingOnLeave, saveNow, confirmNavigation]);
 
   const updateFormState = (itemId, field, value) => {
     setFormState(prev => ({
@@ -1358,26 +1379,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </DialogContent>
       </Dialog>
 
-      {/* 저장하지 않은 변경사항 경고 다이얼로그 */}
-      <UnsavedChangesDialog
-        open={showUnsavedDialog}
-        onSaveAndLeave={async () => {
-          try {
-            setIsSaving(true);
-            await handleSubmit();
-            confirmNavigation();
-          } catch (error) {
-            // 저장 실패 시 다이얼로그 유지
-            console.error('저장 실패:', error);
-          } finally {
-            setIsSaving(false);
-          }
-        }}
-        onLeaveWithoutSaving={confirmNavigation}
-        onCancel={cancelNavigation}
-        showSaveOption={!isViewMode && checklist && Object.keys(formState).length > 0}
-        isSaving={isSaving}
-      />
+      {/* 페이지 이탈 시 자동 임시저장 다이얼로그 */}
+      <Dialog open={isAutoSavingOnLeave} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-xs">
+          <div className="flex flex-col items-center justify-center py-6 gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-center">
+              <p className="font-medium">임시저장 중...</p>
+              <p className="text-sm text-muted-foreground mt-1">잠시만 기다려주세요</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
