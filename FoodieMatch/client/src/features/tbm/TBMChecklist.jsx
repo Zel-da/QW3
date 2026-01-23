@@ -1049,25 +1049,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       <TableCell className="text-center">
                         {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') ? (
                           <div className="flex flex-col items-center gap-2">
-                            {/* 입력 완료 상태 표시 */}
-                            {currentItemState.attachments?.length > 0 && currentItemState.description ? (
+                            {/* 입력 완료 상태 표시 - 설명만 필수, 사진은 선택 */}
+                            {currentItemState.description ? (
                               <div className="flex items-center gap-2">
-                                <div className="flex -space-x-2">
-                                  {currentItemState.attachments.slice(0, 3).map((file, idx) => (
-                                    <img
-                                      key={idx}
-                                      src={file.url}
-                                      alt=""
-                                      className="w-8 h-8 object-cover rounded border-2 border-white cursor-pointer"
-                                      onClick={() => setEnlargedImage(file.url)}
-                                    />
-                                  ))}
-                                  {currentItemState.attachments.length > 3 && (
-                                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs border-2 border-white">
-                                      +{currentItemState.attachments.length - 3}
-                                    </div>
-                                  )}
-                                </div>
+                                {currentItemState.attachments?.length > 0 && (
+                                  <div className="flex -space-x-2">
+                                    {currentItemState.attachments.slice(0, 3).map((file, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={file.url}
+                                        alt=""
+                                        className="w-8 h-8 object-cover rounded border-2 border-white cursor-pointer"
+                                        onClick={() => setEnlargedImage(file.url)}
+                                      />
+                                    ))}
+                                    {currentItemState.attachments.length > 3 && (
+                                      <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs border-2 border-white">
+                                        +{currentItemState.attachments.length - 3}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                                 <Badge variant="outline" className="text-green-600 border-green-600">
                                   입력완료
                                 </Badge>
@@ -1093,7 +1095,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                                 }}
                               >
                                 <Edit3 className="h-3 w-3" />
-                                {currentItemState.attachments?.length > 0 ? '수정' : '입력'}
+                                {currentItemState.description ? '수정' : '입력'}
                               </Button>
                             )}
                           </div>
@@ -1162,23 +1164,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       <div className="flex-1 px-3 py-2">
                         {(currentItemState.checkState === '△' || currentItemState.checkState === 'X') ? (
                           <div className="flex items-center gap-2">
-                            {/* 입력 완료 상태 */}
-                            {currentItemState.attachments?.length > 0 && currentItemState.description ? (
+                            {/* 입력 완료 상태 - 설명만 필수, 사진은 선택 */}
+                            {currentItemState.description ? (
                               <div className="flex items-center gap-2 flex-1">
-                                <div className="flex -space-x-1">
-                                  {currentItemState.attachments.slice(0, 2).map((file, idx) => (
-                                    <img
-                                      key={idx}
-                                      src={file.url}
-                                      alt=""
-                                      className="w-6 h-6 object-cover rounded border border-white"
-                                      onClick={() => setEnlargedImage(file.url)}
-                                    />
-                                  ))}
-                                  {currentItemState.attachments.length > 2 && (
-                                    <span className="text-xs text-muted-foreground ml-1">+{currentItemState.attachments.length - 2}</span>
-                                  )}
-                                </div>
+                                {currentItemState.attachments?.length > 0 && (
+                                  <div className="flex -space-x-1">
+                                    {currentItemState.attachments.slice(0, 2).map((file, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={file.url}
+                                        alt=""
+                                        className="w-6 h-6 object-cover rounded border border-white"
+                                        onClick={() => setEnlargedImage(file.url)}
+                                      />
+                                    ))}
+                                    {currentItemState.attachments.length > 2 && (
+                                      <span className="text-xs text-muted-foreground ml-1">+{currentItemState.attachments.length - 2}</span>
+                                    )}
+                                  </div>
+                                )}
                                 <span className="text-xs text-green-600">완료</span>
                               </div>
                             ) : (
@@ -1199,7 +1203,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                                   setIssueModalOpen(true);
                                 }}
                               >
-                                {currentItemState.attachments?.length > 0 ? '수정' : '입력'}
+                                {currentItemState.description ? '수정' : '입력'}
                               </Button>
                             )}
                           </div>
