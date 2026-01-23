@@ -46,6 +46,14 @@ interface RecordingState {
   saveError: string | null;
 }
 
+// 마지막으로 저장된 녹음 정보 (TBMChecklist에서 감지용)
+interface LastSavedRecording {
+  teamId: number;
+  date: string;
+  recording: AudioRecordingData;
+  savedAt: number; // timestamp for change detection
+}
+
 interface RecordingContextValue {
   state: RecordingState;
   startRecording: (teamId: number, teamName: string, date: string) => Promise<boolean>;
@@ -54,6 +62,9 @@ interface RecordingContextValue {
   setCurrentTbmInfo: (info: { teamId: number; teamName: string; date: string } | null) => void;
   currentTbmInfo: { teamId: number; teamName: string; date: string } | null;
   canStartRecording: boolean;
+  // 마지막 저장된 녹음 정보 (TBMChecklist에서 감지용)
+  lastSavedRecording: LastSavedRecording | null;
+  clearLastSavedRecording: () => void;
 }
 
 const RecordingContext = createContext<RecordingContextValue | null>(null);
@@ -77,6 +88,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   // TBM 페이지에서 현재 선택된 팀 정보
   const [currentTbmInfo, setCurrentTbmInfo] = useState<{ teamId: number; teamName: string; date: string } | null>(null);
+
+  // 마지막으로 저장된 녹음 정보 (TBMChecklist에서 감지용)
+  const [lastSavedRecording, setLastSavedRecording] = useState<LastSavedRecording | null>(null);
+
+  const clearLastSavedRecording = useCallback(() => {
+    setLastSavedRecording(null);
+  }, []);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -345,10 +363,26 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
         // 성공 시 로컬스토리지에서 임시 저장 데이터 삭제
         localStorage.removeItem(pendingKey);
+
+        // TBMChecklist에서 감지할 수 있도록 lastSavedRecording 설정
+        setLastSavedRecording({
+          teamId,
+          date,
+          recording: recordingData,
+          savedAt: Date.now(),
+        });
       } else {
         // TBM이 없으면 로컬스토리지에 임시 저장
         localStorage.setItem(pendingKey, JSON.stringify(recordingData));
         console.log('TBM이 없어 로컬에 임시 저장:', pendingKey);
+
+        // pending 상태로도 lastSavedRecording 설정 (TBMChecklist에서 감지)
+        setLastSavedRecording({
+          teamId,
+          date,
+          recording: recordingData,
+          savedAt: Date.now(),
+        });
       }
     } catch (error) {
       console.error('TBM 녹음 저장 실패 (로컬 백업 시도):', error);
@@ -374,6 +408,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         setCurrentTbmInfo,
         currentTbmInfo,
         canStartRecording,
+        lastSavedRecording,
+        clearLastSavedRecording,
       }}
     >
       {children}

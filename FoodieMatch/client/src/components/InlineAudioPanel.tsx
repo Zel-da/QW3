@@ -35,6 +35,27 @@ interface InlineAudioPanelProps {
 
 type RecordingState = 'idle' | 'recording' | 'recorded' | 'uploading';
 
+// 외부 URL에서 파일 다운로드 (CORS 우회)
+async function downloadFile(url: string, filename: string): Promise<void> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('다운로드 실패');
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('다운로드 실패:', error);
+    // fallback: 새 탭에서 열기
+    window.open(url, '_blank');
+  }
+}
+
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return '00:00';
   const mins = Math.floor(seconds / 60);
@@ -59,6 +80,7 @@ export function InlineAudioPanel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [duration, setDuration] = useState(existingAudio?.duration || 0);
+  const [isDownloading, setIsDownloading] = useState(false);
   // STT 기능 제거 - 비용 절감을 위해 외부 도구(Notebook LM) 활용
   // 녹음 파일 다운로드 후 필요시 외부에서 변환
 
@@ -446,23 +468,30 @@ export function InlineAudioPanel({
             )}
             {audioUrl && (
               <Button
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = audioUrl;
-                  link.download = `TBM_녹음_${new Date().toISOString().slice(0, 10)}.webm`;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+                onClick={async () => {
+                  const filename = existingAudio?.name || `TBM_녹음_${new Date().toISOString().slice(0, 10)}.webm`;
+                  setIsDownloading(true);
+                  try {
+                    await downloadFile(audioUrl, filename);
+                  } finally {
+                    setIsDownloading(false);
+                  }
                 }}
                 variant="outline"
                 size="sm"
                 className="flex-1"
+                disabled={isDownloading}
               >
-                <Download className="h-4 w-4 mr-1" />
-                다운로드
+                {isDownloading ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-1" />
+                )}
+                {isDownloading ? '다운로드 중...' : '다운로드'}
               </Button>
             )}
-            {!playbackOnly && (
+            {/* 삭제 버튼 - playbackOnly에서도 onDelete가 있으면 표시 */}
+            {(!playbackOnly || onDelete) && (
               <Button onClick={resetRecording} variant="ghost" size="icon" className="text-destructive hover:text-destructive shrink-0">
                 <Trash2 className="h-4 w-4" />
               </Button>

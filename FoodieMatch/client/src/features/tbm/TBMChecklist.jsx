@@ -31,7 +31,7 @@ import { format } from 'date-fns';
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { setCurrentTbmInfo } = useRecording();
+  const { setCurrentTbmInfo, lastSavedRecording, clearLastSavedRecording } = useRecording();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
@@ -184,6 +184,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
     }
   }, [selectedTeam, date, isViewMode, audioRecording, toast]);
+
+  // RecordingContext에서 새 녹음이 저장되면 자동으로 audioRecording 업데이트
+  useEffect(() => {
+    if (lastSavedRecording && selectedTeam && date) {
+      const d = new Date(date);
+      const dateStr = format(d, 'yyyy-MM-dd');
+
+      // 현재 선택된 팀/날짜와 일치하는 경우에만 업데이트
+      if (lastSavedRecording.teamId === selectedTeam && lastSavedRecording.date === dateStr) {
+        setAudioRecording(lastSavedRecording.recording);
+        clearLastSavedRecording();
+        toast({
+          title: "녹음 저장됨",
+          description: "새 녹음이 TBM에 저장되었습니다.",
+        });
+      }
+    }
+  }, [lastSavedRecording, selectedTeam, date, clearLastSavedRecording, toast]);
 
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {
