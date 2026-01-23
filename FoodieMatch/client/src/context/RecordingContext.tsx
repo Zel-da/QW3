@@ -323,11 +323,16 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         console.log('TBM이 없어 로컬에 임시 저장:', pendingKey);
       }
     } catch (error) {
-      console.error('TBM 녹음 저장 실패:', error);
-      // 실패 시에도 로컬에 백업 저장
-      localStorage.setItem(pendingKey, JSON.stringify(recordingData));
-      console.log('저장 실패, 로컬에 백업:', pendingKey);
-      throw error;
+      console.error('TBM 녹음 저장 실패 (로컬 백업 시도):', error);
+      // 실패 시에도 로컬에 백업 저장 - 백업 성공하면 에러 throw 안 함
+      try {
+        localStorage.setItem(pendingKey, JSON.stringify(recordingData));
+        console.log('TBM 저장 실패했지만 로컬에 백업 완료:', pendingKey);
+        // 로컬 백업 성공 시 에러 throw 안 함 - UI에 성공으로 표시
+      } catch (localStorageError) {
+        console.error('로컬 백업도 실패:', localStorageError);
+        throw error; // 로컬 백업도 실패하면 에러 throw
+      }
     }
   };
 
