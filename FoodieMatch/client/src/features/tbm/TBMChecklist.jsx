@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff } from "lucide-react";
+import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff, Save } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix, sortTeams } from '@/lib/utils';
 import { getDepartments, getDepartmentForTeam } from '@/lib/teamDepartments';
@@ -333,7 +333,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
   };
   const autoSaveKey = `tbm_draft_${selectedTeam}_${date ? getLocalDateStr(date) : 'new'}`;
-  const { clearSaved } = useAutoSave({
+  const {
+    clearSaved,
+    showRestoreDialog,
+    restoreSaved,
+    discardSaved,
+    savedTimestamp
+  } = useAutoSave({
     key: autoSaveKey,
     data: {
       formState,
@@ -344,7 +350,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       audioRecording,
       transcription,
     },
-    enabled: !!selectedTeam && !reportForEdit, // 팀이 선택되고 수정 모드가 아닐 때만 자동저장
+    enabled: !!selectedTeam && !reportForEdit && !isViewMode, // 팀이 선택되고 수정/조회 모드가 아닐 때만 자동저장
     onRestore: (restored) => {
       if (restored.formState) setFormState(restored.formState);
       if (restored.signatures) setSignatures(restored.signatures);
@@ -1313,6 +1319,40 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               }}
             >
               월별 보고서 보기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 임시저장 복원 다이얼로그 */}
+      <Dialog open={showRestoreDialog && !isViewMode} onOpenChange={() => {}}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Save className="h-5 w-5 text-blue-600" />
+              임시저장 데이터 발견
+            </DialogTitle>
+            <DialogDescription>
+              {savedTimestamp && (
+                <span>
+                  {new Date(savedTimestamp).toLocaleString('ko-KR')}에 저장된 작성 중인 TBM 데이터가 있습니다.
+                </span>
+              )}
+              <br />
+              이전 내용을 불러오시겠습니까?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={discardSaved}
+            >
+              삭제하고 새로 작성
+            </Button>
+            <Button
+              onClick={restoreSaved}
+            >
+              불러오기
             </Button>
           </DialogFooter>
         </DialogContent>
