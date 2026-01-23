@@ -63,6 +63,10 @@ export function useAutoSave<T>({
   const lastSavedRef = useRef<string>('');
   const onRestoreRef = useRef(onRestore);
 
+  // 같은 key에 대해 초기화가 이미 수행되었는지 추적
+  // enabled 변경으로 인한 재실행 방지
+  const hasInitializedForKey = useRef<string | null>(null);
+
   // 저장된 데이터 상태
   const [hasSavedData, setHasSavedData] = useState(false);
   const [savedTimestamp, setSavedTimestamp] = useState<string | null>(null);
@@ -74,9 +78,23 @@ export function useAutoSave<T>({
     onRestoreRef.current = onRestore;
   }, [onRestore]);
 
+  // key 변경 시 초기화 플래그 리셋 (팀/날짜 변경 시)
+  useEffect(() => {
+    // key가 바뀌면 이전 key에 대한 초기화 상태 리셋
+    if (hasInitializedForKey.current !== key) {
+      hasInitializedForKey.current = null;
+    }
+  }, [key]);
+
   // 초기 로드 시 저장된 데이터 확인 (복원은 사용자 선택 후)
   useEffect(() => {
+    // enabled가 false면 복원 로직 스킵
     if (!enabled) return;
+
+    // 같은 key에 대해 이미 초기화됐으면 스킵
+    // (enabled 변경으로 인한 재실행 방지)
+    if (hasInitializedForKey.current === key) return;
+    hasInitializedForKey.current = key;
 
     try {
       const saved = localStorage.getItem(key);

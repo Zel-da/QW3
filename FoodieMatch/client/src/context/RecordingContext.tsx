@@ -335,6 +335,23 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     recordingData: AudioRecordingData
   ) => {
     const pendingKey = `${PENDING_RECORDING_KEY}_${teamId}_${date}`;
+    const draftKey = `tbm_draft_${teamId}_${date}`;
+
+    // tbm_draft의 audioRecording도 함께 업데이트하는 헬퍼 함수
+    const updateDraftAudioRecording = (recording: AudioRecordingData) => {
+      try {
+        const draftData = localStorage.getItem(draftKey);
+        if (draftData) {
+          const parsed = JSON.parse(draftData);
+          parsed.data.audioRecording = recording;
+          parsed.timestamp = new Date().toISOString();
+          localStorage.setItem(draftKey, JSON.stringify(parsed));
+          console.log('[RecordingContext] tbm_draft 녹음 업데이트:', draftKey);
+        }
+      } catch (e) {
+        console.error('Failed to update draft with new recording:', e);
+      }
+    };
 
     try {
       // 기존 TBM 조회
@@ -364,6 +381,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         // 성공 시 로컬스토리지에서 임시 저장 데이터 삭제
         localStorage.removeItem(pendingKey);
 
+        // tbm_draft의 audioRecording도 새 녹음으로 업데이트
+        updateDraftAudioRecording(recordingData);
+
         // TBMChecklist에서 감지할 수 있도록 lastSavedRecording 설정
         setLastSavedRecording({
           teamId,
@@ -375,6 +395,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         // TBM이 없으면 로컬스토리지에 임시 저장
         localStorage.setItem(pendingKey, JSON.stringify(recordingData));
         console.log('TBM이 없어 로컬에 임시 저장:', pendingKey);
+
+        // tbm_draft의 audioRecording도 새 녹음으로 업데이트
+        updateDraftAudioRecording(recordingData);
 
         // pending 상태로도 lastSavedRecording 설정 (TBMChecklist에서 감지)
         setLastSavedRecording({
@@ -389,6 +412,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       // 실패 시에도 로컬에 백업 저장 - 백업 성공하면 에러 throw 안 함
       try {
         localStorage.setItem(pendingKey, JSON.stringify(recordingData));
+        // tbm_draft의 audioRecording도 새 녹음으로 업데이트
+        updateDraftAudioRecording(recordingData);
         console.log('TBM 저장 실패했지만 로컬에 백업 완료:', pendingKey);
         // 로컬 백업 성공 시 에러 throw 안 함 - UI에 성공으로 표시
       } catch (localStorageError) {

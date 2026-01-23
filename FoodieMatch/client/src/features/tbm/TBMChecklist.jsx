@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
@@ -67,6 +67,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [teamDrafts, setTeamDrafts] = useState({});
   // 페이지 이탈 시 자동 임시저장 중 상태
   const [isAutoSavingOnLeave, setIsAutoSavingOnLeave] = useState(false);
+
+  // 녹음 삭제 상태 추적 - pending 복원 방지용
+  const audioDeletedRef = useRef(false);
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
@@ -176,9 +179,17 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [selectedTeam, date, teams, isViewMode, setCurrentTbmInfo]);
 
+  // 팀/날짜 변경 시 삭제 플래그 리셋
+  useEffect(() => {
+    audioDeletedRef.current = false;
+  }, [selectedTeam, date]);
+
   // 팀/날짜 선택 시 임시 저장된 녹음 확인
   useEffect(() => {
     if (selectedTeam && date && !isViewMode) {
+      // 사용자가 명시적으로 삭제한 경우 복원 안 함
+      if (audioDeletedRef.current) return;
+
       const d = new Date(date);
       const dateStr = format(d, 'yyyy-MM-dd');
       const pending = getPendingRecording(selectedTeam, dateStr);
@@ -224,6 +235,17 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             setIsViewMode(true);
             // 기존 데이터로 폼 초기화
             initializeFormFromReport(res.data.report);
+
+            // 서버에 저장된 TBM이 있으면 localStorage 임시저장 삭제
+            // (서버 데이터가 source of truth)
+            // clearSaved()는 useAutoSave에서 가져오므로 여기서는 직접 localStorage 삭제
+            const draftKey = `tbm_draft_${selectedTeam}_${dateStr}`;
+            localStorage.removeItem(draftKey);
+            console.log('[TBM] 기존 TBM 발견, localStorage draft 삭제:', draftKey);
+
+            // pending 녹음도 삭제 (서버에 저장된 녹음이 우선)
+            clearPendingRecording(selectedTeam, dateStr);
+
             toast({
               title: "기존 TBM 발견",
               description: "해당 날짜에 이미 작성된 TBM이 있어 조회 모드로 표시합니다.",
@@ -477,6 +499,15 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const handleAudioDelete = () => {
     setAudioRecording(null);
     setTranscription(null);
+    audioDeletedRef.current = true;  // 삭제됨 표시 - pending 복원 방지
+
+    // localStorage pending 녹음도 함께 삭제
+    if (selectedTeam && date) {
+      const d = new Date(date);
+      const dateStr = format(d, 'yyyy-MM-dd');
+      clearPendingRecording(selectedTeam, dateStr);
+      console.log('[TBM] 녹음 삭제: pending recording 정리 완료');
+    }
   };
 
   // STT 변환 함수
@@ -761,6 +792,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setRemarksImages(cached.remarksImages || []);
       setAudioRecording(cached.audioRecording || null);
       setTranscription(cached.transcription || null);
+
+      // 중요: 메모리 캐시 복원 시 localStorage draft 삭제하여 중복 복원 방지
+      if (date) {
+        const draftKey = `tbm_draft_${newTeamId}_${getLocalDateStr(date)}`;
+        localStorage.removeItem(draftKey);
+        console.log('[TBM] 메모리 캐시에서 복원, localStorage draft 삭제:', draftKey);
+      }
     } else {
       // 캐시 없으면 초기화 (useAutoSave가 localStorage에서 복원)
       setFormState({});
@@ -1375,8 +1413,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </DialogContent>
       </Dialog>
 
-      {/* 임시저장 복원 다이얼로그 */}
-      <Dialog open={showRestoreDialog && !isViewMode} onOpenChange={() => {}}>
+      {/* 임시저장 복원 다이얼로그 - 서버에 기존 TBM이 있으면 표시 안 함 */}
+      <Dialog open={showRestoreDialog && !isViewMode && !existingReport} onOpenChange={() => {}}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
