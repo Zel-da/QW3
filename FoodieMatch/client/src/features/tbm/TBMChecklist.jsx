@@ -436,9 +436,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     },
   });
 
+  // 페이지 이탈 시 자동 임시저장 ref (중복 실행 방지)
+  const autoSaveInProgressRef = useRef(false);
+
   // 페이지 이탈 시 자동 임시저장 후 이동
   useEffect(() => {
-    if (showUnsavedDialog && !isAutoSavingOnLeave) {
+    if (showUnsavedDialog && !autoSaveInProgressRef.current) {
+      autoSaveInProgressRef.current = true;
       setIsAutoSavingOnLeave(true);
 
       // 저장 실행 후 완료 대기
@@ -450,14 +454,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           console.log('[TBM] 임시저장 실패, 그래도 페이지 이동');
         }
         setIsAutoSavingOnLeave(false);
+        autoSaveInProgressRef.current = false;
         confirmNavigation();
       };
 
       // 약간의 딜레이로 UI 표시 후 저장
-      const timer = setTimeout(doSaveAndNavigate, 100);
-      return () => clearTimeout(timer);
+      setTimeout(doSaveAndNavigate, 100);
     }
-  }, [showUnsavedDialog, isAutoSavingOnLeave, saveNow, confirmNavigation]);
+  }, [showUnsavedDialog, saveNow, confirmNavigation]);
 
   const updateFormState = (itemId, field, value) => {
     setFormState(prev => ({
