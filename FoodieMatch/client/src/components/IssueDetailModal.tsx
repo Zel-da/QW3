@@ -92,6 +92,7 @@ export function IssueDetailModal({
   };
 
   const handleSave = () => {
+    console.log('[IssueDetailModal] handleSave 호출됨', { description, attachments: attachments.length, uploading });
     if (!description.trim()) {
       toast({
         title: "위험예측 사항을 입력해주세요",
@@ -100,6 +101,7 @@ export function IssueDetailModal({
       });
       return;
     }
+    console.log('[IssueDetailModal] 저장 실행');
     onSave({ description, actionTaken, attachments });
     onClose();
   };
@@ -202,7 +204,7 @@ export function IssueDetailModal({
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button type="button" onClick={handleSave} disabled={uploading}>
+            <Button type="button" onClick={() => { console.log('버튼 클릭됨!'); handleSave(); }}>
               저장
             </Button>
           </DialogFooter>
