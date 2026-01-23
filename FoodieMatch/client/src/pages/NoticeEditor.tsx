@@ -23,6 +23,7 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { apiRequest } from "@/lib/queryClient";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NoticeEditor() {
   const [match, params] = useRoute("/notices/edit/:id");
@@ -58,6 +59,7 @@ export default function NoticeEditor() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isEditing && noticeToEdit) {
@@ -316,6 +318,7 @@ export default function NoticeEditor() {
     // 업로드 중이면 제출 방지
     if (uploadingIndex !== null) {
       setError('파일 업로드가 완료될 때까지 기다려주세요.');
+      toast({ title: '오류', description: '파일 업로드가 완료될 때까지 기다려주세요.', variant: 'destructive' });
       return;
     }
 

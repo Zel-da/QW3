@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { sortTeams } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Team {
   id: number;
@@ -55,6 +56,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { toast } = useToast();
 
   const { data: teams, isLoading: isLoadingTeams } = useQuery({
     queryKey: ['teams', formData.site],
@@ -84,6 +86,7 @@ export default function RegisterPage() {
     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
     if (!usernameRegex.test(formData.username)) {
       setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.');
+      toast({ title: '오류', description: '사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.', variant: 'destructive' });
       return;
     }
 
@@ -91,16 +94,19 @@ export default function RegisterPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('올바른 이메일 형식을 입력해주세요.');
+      toast({ title: '오류', description: '올바른 이메일 형식을 입력해주세요.', variant: 'destructive' });
       return;
     }
 
     if (formData.password.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
+      toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
       return;
     }
 
     if (formData.password !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
+      toast({ title: '오류', description: '비밀번호가 일치하지 않습니다.', variant: 'destructive' });
       return;
     }
 

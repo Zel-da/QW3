@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useRoute, Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ResetPasswordPage() {
   const [, params] = useRoute('/reset-password/:token');
@@ -22,6 +23,7 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const { toast } = useToast();
 
   // 토큰 유효성 확인
   useEffect(() => {
@@ -60,11 +62,13 @@ export default function ResetPasswordPage() {
     // 유효성 검사
     if (newPassword.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
+      toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
+      toast({ title: '오류', description: '비밀번호가 일치하지 않습니다.', variant: 'destructive' });
       return;
     }
 

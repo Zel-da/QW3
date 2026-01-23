@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { Loader2, Mail, User, ArrowLeft, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ForgotPasswordPage() {
   const [activeTab, setActiveTab] = useState<'username' | 'password'>('password');
@@ -16,6 +17,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const { toast } = useToast();
 
   // 아이디 찾기
   const handleFindUsername = async (e: React.FormEvent) => {
@@ -25,6 +27,7 @@ export default function ForgotPasswordPage() {
 
     if (!email.trim()) {
       setError('이메일을 입력해주세요.');
+      toast({ title: '오류', description: '이메일을 입력해주세요.', variant: 'destructive' });
       return;
     }
 
@@ -60,6 +63,7 @@ export default function ForgotPasswordPage() {
 
     if (!usernameOrEmail.trim()) {
       setError('아이디 또는 이메일을 입력해주세요.');
+      toast({ title: '오류', description: '아이디 또는 이메일을 입력해주세요.', variant: 'destructive' });
       return;
     }
 

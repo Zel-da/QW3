@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { refreshUser } = useAuth();
+  const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,6 +33,7 @@ export default function LoginPage() {
     // 검증: 빈 필드 체크
     if (!formData.username.trim() || !formData.password.trim()) {
       setError('사용자 ID와 비밀번호를 모두 입력해주세요.');
+      toast({ title: '오류', description: '사용자 ID와 비밀번호를 모두 입력해주세요.', variant: 'destructive' });
       return;
     }
 
