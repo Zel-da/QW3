@@ -4,6 +4,30 @@ import type { AudioRecordingData } from '@/components/InlineAudioPanel';
 // 임시 저장용 키 (TBM이 없을 때)
 const PENDING_RECORDING_KEY = 'pending_tbm_recording';
 
+// CSRF 토큰 캐시
+let csrfToken: string | null = null;
+let csrfTokenPromise: Promise<string> | null = null;
+
+async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  if (csrfTokenPromise) return csrfTokenPromise;
+
+  csrfTokenPromise = fetch('/api/csrf-token', { credentials: 'include' })
+    .then(res => res.json())
+    .then(data => {
+      csrfToken = data.token;
+      csrfTokenPromise = null;
+      return data.token;
+    })
+    .catch(err => {
+      csrfTokenPromise = null;
+      console.error('Failed to fetch CSRF token:', err);
+      throw err;
+    });
+
+  return csrfTokenPromise;
+}
+
 interface RecordingStartInfo {
   teamId: number;
   teamName: string;
@@ -304,9 +328,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
       if (checkData.exists && checkData.report) {
         // 기존 TBM이 있으면 새 PATCH 엔드포인트 사용 (안전한 업데이트)
+        const token = await getCsrfToken();
         const response = await fetch(`/api/tbm/${checkData.report.id}/audio`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': token,
+          },
           credentials: 'include',
           body: JSON.stringify({ audioRecording: recordingData }),
         });
