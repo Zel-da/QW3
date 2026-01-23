@@ -91,6 +91,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     confirmNavigation,
     cancelNavigation,
     resetChanges,
+    safeNavigate,
   } = useUnsavedChanges({
     hasChanges: hasUnsavedChanges,
     disabled: isViewMode,
@@ -120,12 +121,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
 
       // 사용자 팀 자동 선택 (user 로드 확인) + 부서도 자동 선택
+      // 사이트 변경 시에도 사용자 팀 기반으로 부서/팀 자동 설정
       if (user?.teamId) {
         const userTeam = res.data.find(t => t.id === user.teamId);
         if (userTeam) {
           const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
-          if (dept) setSelectedDepartment(dept);
-          setSelectedTeam(user.teamId);
+          if (dept) {
+            // 부서와 팀을 함께 선택 (부서 매핑 성공 시에만)
+            setSelectedDepartment(dept);
+            setSelectedTeam(user.teamId);
+            console.log(`[TBM] 자동 선택: 부서=${dept}, 팀=${stripSiteSuffix(userTeam.name)}`);
+          } else {
+            console.warn(`[TBM] 부서 매핑 실패: site=${site}, team=${userTeam.name}`);
+          }
         }
       }
     });
@@ -387,16 +395,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     if (showUnsavedDialog && !isAutoSavingOnLeave) {
       setIsAutoSavingOnLeave(true);
 
-      // 약간의 딜레이 후 저장 (UI가 보이도록)
-      const timer = setTimeout(() => {
-        saveNow();
-        // 저장 완료 후 이동
-        setTimeout(() => {
-          setIsAutoSavingOnLeave(false);
-          confirmNavigation();
-        }, 300);
-      }, 100);
+      // 저장 실행 후 완료 대기
+      const doSaveAndNavigate = async () => {
+        const saved = await saveNow();
+        if (saved) {
+          console.log('[TBM] 임시저장 완료, 페이지 이동');
+        } else {
+          console.log('[TBM] 임시저장 실패, 그래도 페이지 이동');
+        }
+        setIsAutoSavingOnLeave(false);
+        confirmNavigation();
+      };
 
+      // 약간의 딜레이로 UI 표시 후 저장
+      const timer = setTimeout(doSaveAndNavigate, 100);
       return () => clearTimeout(timer);
     }
   }, [showUnsavedDialog, isAutoSavingOnLeave, saveNow, confirmNavigation]);
@@ -842,7 +854,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => navigate('/monthly-report')}
+              onClick={() => safeNavigate('/monthly-report')}
             >
               월별 보고서 보기
             </Button>
@@ -1307,7 +1319,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => navigate('/monthly-report')}
+              onClick={() => safeNavigate('/monthly-report')}
             >
               월별 보고서 보기
             </Button>

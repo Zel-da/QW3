@@ -21,8 +21,8 @@ interface UseAutoSaveReturn {
   restoreSaved: () => void;
   discardSaved: () => void;
   showRestoreDialog: boolean;
-  /** 즉시 저장 (딜레이 없이) */
-  saveNow: () => boolean;
+  /** 즉시 저장 (딜레이 없이) - Promise 반환 */
+  saveNow: () => Promise<boolean>;
 }
 
 /**
@@ -204,41 +204,47 @@ export function useAutoSave<T>({
   /**
    * 즉시 저장 (딜레이 없이)
    * 페이지 이탈 시 호출하여 바로 저장
-   * @returns 저장 성공 여부
+   * @returns Promise<boolean> 저장 성공 여부
    */
-  const saveNow = useCallback((): boolean => {
-    if (!enabled) return false;
-
-    try {
-      // 기존 타이머 취소
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+  const saveNow = useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!enabled) {
+        resolve(false);
+        return;
       }
 
-      const currentData = dataRef.current;
-      const dataString = JSON.stringify(currentData);
+      try {
+        // 기존 타이머 취소
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
 
-      // 변경 없으면 스킵 (하지만 성공으로 처리)
-      if (dataString === lastSavedRef.current) {
-        console.log(`[Auto-Save] No changes to save: ${key}`);
-        return true;
+        const currentData = dataRef.current;
+        const dataString = JSON.stringify(currentData);
+
+        // 변경 없으면 스킵 (하지만 성공으로 처리)
+        if (dataString === lastSavedRef.current) {
+          console.log(`[Auto-Save] No changes to save: ${key}`);
+          resolve(true);
+          return;
+        }
+
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            data: currentData,
+            timestamp: new Date().toISOString(),
+          })
+        );
+        lastSavedRef.current = dataString;
+        console.log(`[Auto-Save] Saved immediately: ${key}`);
+        resolve(true);
+      } catch (err) {
+        console.error('Failed to save immediately:', err);
+        resolve(false);
       }
-
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          data: currentData,
-          timestamp: new Date().toISOString(),
-        })
-      );
-      lastSavedRef.current = dataString;
-      console.log(`[Auto-Save] Saved immediately: ${key}`);
-      return true;
-    } catch (err) {
-      console.error('Failed to save immediately:', err);
-      return false;
-    }
+    });
   }, [key, enabled]);
 
   return {
