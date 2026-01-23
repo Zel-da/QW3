@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Shield, BookOpen, Home, Menu, Mic, Square, Loader2, CheckCircle2, AlertCircle, Play, Save, Trash2, Pause } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRecording, formatTime } from "@/context/RecordingContext";
+import { useTbmNavigation } from "@/context/TbmNavigationContext";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +12,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [location] = useLocation();
+  const { safeNavigate: tbmSafeNavigate, isTbmActive } = useTbmNavigation();
   const {
     state: recordingState,
     startRecording,
@@ -104,6 +106,18 @@ export function Header() {
       return `${baseClass} text-foreground font-bold`;
     }
     return `${baseClass} text-muted-foreground hover:text-primary`;
+  };
+
+  // TBM 페이지에서 네비게이션 가로채기
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    // 모바일 메뉴 닫기 (TBM 활성 여부 상관없이)
+    setIsSheetOpen(false);
+
+    // TBM 페이지에서는 임시저장 후 이동
+    if (isTbmActive && tbmSafeNavigate) {
+      e.preventDefault();
+      tbmSafeNavigate(href);
+    }
   };
 
   // 녹음 상태에 따른 UI 렌더링
@@ -270,27 +284,27 @@ export function Header() {
 
   const navLinks = (
     <>
-      <Link href="/" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/')}>
+      <Link href="/" onClick={(e) => handleNavClick(e, '/')} className={getLinkClass('/')}>
         홈
       </Link>
-      <Link href="/notices" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/notices')}>
+      <Link href="/notices" onClick={(e) => handleNavClick(e, '/notices')} className={getLinkClass('/notices')}>
         공지사항
       </Link>
-      <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/tbm')}>
+      <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={getLinkClass('/tbm')}>
         TBM
       </Link>
-      <Link href="/courses" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/courses')}>
+      <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={getLinkClass('/courses')}>
         안전교육
       </Link>
       {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
         <>
-          <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/safety-inspection')}>
+          <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={getLinkClass('/safety-inspection')}>
             안전점검
           </Link>
-          <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/monthly-report')}>
+          <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={getLinkClass('/monthly-report')}>
             월별 보고서
           </Link>
-          <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className={getLinkClass('/admin-dashboard')}>
+          <Link href="/admin-dashboard" onClick={(e) => handleNavClick(e, '/admin-dashboard')} className={getLinkClass('/admin-dashboard')}>
             관리
           </Link>
         </>
@@ -374,27 +388,27 @@ export function Header() {
                 )}
                 <nav className="grid gap-2 text-lg font-medium">
                   <div className="grid gap-1">
-                    <Link href="/" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                    <Link href="/" onClick={(e) => handleNavClick(e, '/')} className={`${getLinkClass('/')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       홈
                     </Link>
-                    <Link href="/notices" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/notices')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                    <Link href="/notices" onClick={(e) => handleNavClick(e, '/notices')} className={`${getLinkClass('/notices')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       공지사항
                     </Link>
-                    <Link href="/tbm" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/tbm')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                    <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={`${getLinkClass('/tbm')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       TBM
                     </Link>
-                    <Link href="/courses" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/courses')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                    <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={`${getLinkClass('/courses')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       안전교육
                     </Link>
                     {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
                       <>
-                        <Link href="/safety-inspection" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/safety-inspection')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                        <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={`${getLinkClass('/safety-inspection')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           안전점검
                         </Link>
-                        <Link href="/monthly-report" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/monthly-report')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                        <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={`${getLinkClass('/monthly-report')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           월별 보고서
                         </Link>
-                        <Link href="/admin-dashboard" onClick={() => setIsSheetOpen(false)} className={`${getLinkClass('/admin-dashboard')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                        <Link href="/admin-dashboard" onClick={(e) => handleNavClick(e, '/admin-dashboard')} className={`${getLinkClass('/admin-dashboard')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           관리
                         </Link>
                       </>

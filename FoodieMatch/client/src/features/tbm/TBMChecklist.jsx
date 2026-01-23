@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
 import { useRecording, getPendingRecording, clearPendingRecording } from '@/context/RecordingContext';
+import { useTbmNavigation } from '@/context/TbmNavigationContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { setCurrentTbmInfo, lastSavedRecording, clearLastSavedRecording } = useRecording();
+  const { registerSafeNavigate, unregisterSafeNavigate } = useTbmNavigation();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
@@ -103,6 +105,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     hasChanges: hasUnsavedChanges,
     disabled: isViewMode,
   });
+
+  // TBM 네비게이션 가드: safeNavigate를 전역 Context에 등록
+  useEffect(() => {
+    registerSafeNavigate(safeNavigate);
+    return () => unregisterSafeNavigate();
+  }, [safeNavigate, registerSafeNavigate, unregisterSafeNavigate]);
 
   useEffect(() => {
     if (!site) return;

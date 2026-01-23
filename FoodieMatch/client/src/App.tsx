@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
 import { RecordingProvider } from "./context/RecordingContext";
+import { TbmNavigationProvider } from "./context/TbmNavigationContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Role } from "@shared/schema";
@@ -83,8 +84,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <RecordingProvider>
-          <QueryClientProvider client={queryClient}>
-            <Suspense fallback={<PageLoader />}>
+          <TbmNavigationProvider>
+            <QueryClientProvider client={queryClient}>
+              <Suspense fallback={<PageLoader />}>
               <Switch>
               {/* 공개 페이지 */}
               <Route path="/login" component={LoginPage} />
@@ -286,7 +288,8 @@ function App() {
             </Suspense>
             {/* 챗봇 - 모든 페이지에서 표시 */}
             <ChatBot />
-          </QueryClientProvider>
+            </QueryClientProvider>
+          </TbmNavigationProvider>
         </RecordingProvider>
       </AuthProvider>
     </ErrorBoundary>
