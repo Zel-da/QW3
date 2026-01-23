@@ -151,14 +151,14 @@ export function Header() {
               (
                 <Button
                   onClick={handleStartRecording}
-                  variant="outline"
+                  variant={canStartRecording ? "destructive" : "outline"}
                   size="sm"
                   disabled={!canStartRecording}
-                  className="flex items-center gap-2"
+                  className={`flex items-center gap-2 ${canStartRecording ? 'shadow-md' : 'opacity-60'}`}
                   title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
                 >
                   <Mic className="h-4 w-4" />
-                  녹음
+                  {canStartRecording ? '🎙️ 녹음 시작' : '녹음'}
                 </Button>
               )
             )}
@@ -167,15 +167,15 @@ export function Header() {
           {/* Mobile Center Recording Button */}
           <div className="lg:hidden flex-1 flex justify-center">
             {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
-              // 녹음 중
+              // 녹음 중 - 시간 표시와 함께
               recordingState.isRecording ? (
                 <Button
                   onClick={handleStopRecording}
                   variant="destructive"
-                  size="icon"
-                  className="rounded-lg w-10 h-10 animate-pulse shadow-lg"
+                  className="rounded-lg px-3 h-10 animate-pulse shadow-lg flex items-center gap-2"
                 >
-                  <Square className="h-5 w-5" />
+                  <Square className="h-4 w-4" />
+                  <span className="font-mono text-sm">{formatTime(recordingState.duration)}</span>
                 </Button>
               ) : // 저장 중
               recordingState.isSaving || recordingState.saveStatus === 'saving' ? (
@@ -191,33 +191,33 @@ export function Header() {
               recordingState.saveStatus === 'success' ? (
                 <Button
                   variant="outline"
-                  size="icon"
-                  className="rounded-lg w-10 h-10 shadow-lg text-green-600 border-green-600"
+                  className="rounded-lg px-3 h-10 shadow-lg text-green-600 border-green-600 bg-green-50 flex items-center gap-1"
                 >
-                  <CheckCircle2 className="h-5 w-5" />
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-xs font-medium">완료</span>
                 </Button>
               ) : // 저장 실패
               recordingState.saveStatus === 'error' ? (
                 <Button
                   onClick={handleStartRecording}
                   variant="destructive"
-                  size="icon"
+                  className="rounded-lg px-3 h-10 shadow-lg flex items-center gap-1"
                   disabled={!canStartRecording}
-                  className="rounded-lg w-10 h-10 shadow-lg"
                 >
-                  <AlertCircle className="h-5 w-5" />
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-xs">재시도</span>
                 </Button>
               ) : // 기본 상태
               (
                 <Button
                   onClick={handleStartRecording}
                   variant={canStartRecording ? "destructive" : "outline"}
-                  size="icon"
+                  className={`rounded-lg px-3 h-10 shadow-lg flex items-center gap-1 ${!canStartRecording ? 'opacity-60' : ''}`}
                   disabled={!canStartRecording}
-                  className="rounded-lg w-10 h-10 shadow-lg"
                   title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
                 >
-                  <Mic className="h-5 w-5" />
+                  <Mic className="h-4 w-4" />
+                  <span className="text-xs font-medium">녹음</span>
                 </Button>
               )
             )}

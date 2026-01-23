@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Mic, Square, Play, Pause, Upload, Trash2, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -81,6 +81,7 @@ export function InlineAudioPanel({
   const [playbackTime, setPlaybackTime] = useState(0);
   const [duration, setDuration] = useState(existingAudio?.duration || 0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   // STT 기능 제거 - 비용 절감을 위해 외부 도구(Notebook LM) 활용
   // 녹음 파일 다운로드 후 필요시 외부에서 변환
 
@@ -90,11 +91,24 @@ export function InlineAudioPanel({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 기존 오디오가 변경되면 (새 녹음 저장됨) UI 업데이트
+  const prevAudioUrlRef = useRef<string | null>(null);
   useEffect(() => {
     if (existingAudio) {
+      const isNewRecording = prevAudioUrlRef.current !== null &&
+                              prevAudioUrlRef.current !== existingAudio.url;
+
       setAudioUrl(existingAudio.url);
       setDuration(existingAudio.duration);
       setState('recorded');
+
+      // 새 녹음이 저장된 경우 "방금 저장됨" 표시
+      if (isNewRecording) {
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 5000);
+      }
+
+      prevAudioUrlRef.current = existingAudio.url;
     }
   }, [existingAudio]);
 
@@ -298,13 +312,13 @@ export function InlineAudioPanel({
       );
     }
 
-    // 저장 완료
+    // 저장 완료 - 잠시 후 자동으로 녹음이 표시됨
     if (recordingState.saveStatus === 'success') {
       return (
-        <Card className="border-2 border-green-200 bg-green-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
-          <CheckCircle2 className="h-6 w-6 text-green-600" />
-          <p className="text-sm text-green-600 font-medium">녹음 저장 완료!</p>
-          <p className="text-xs text-muted-foreground">페이지를 새로고침하면 녹음이 표시됩니다</p>
+        <Card className="border-2 border-green-300 bg-green-50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2 animate-pulse">
+          <CheckCircle2 className="h-8 w-8 text-green-600" />
+          <p className="text-base text-green-700 font-bold">✨ 녹음 저장 완료!</p>
+          <p className="text-sm text-green-600">잠시 후 녹음이 표시됩니다...</p>
         </Card>
       );
     }
@@ -322,10 +336,16 @@ export function InlineAudioPanel({
 
     // 기본 상태 (녹음 없음)
     return (
-      <Card className="border-2 border-dashed border-muted-foreground/25 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
-        <Mic className="h-6 w-6 text-muted-foreground/50" />
-        <p className="text-sm text-muted-foreground">녹음 없음</p>
-        <p className="text-xs text-muted-foreground">헤더의 녹음 버튼을 사용해주세요</p>
+      <Card className="border-2 border-dashed border-muted-foreground/30 p-6 flex flex-col items-center justify-center min-h-[120px] gap-3">
+        <div className="p-3 rounded-full bg-muted">
+          <Mic className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-muted-foreground">녹음 없음</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            상단 헤더의 <span className="font-semibold text-primary">🎙️ 녹음</span> 버튼을 눌러주세요
+          </p>
+        </div>
       </Card>
     );
   }
@@ -424,16 +444,44 @@ export function InlineAudioPanel({
       {state === 'recorded' && (
         <Card className={cn(
           "p-4 space-y-3",
+          justSaved ? "border-2 border-blue-400 bg-blue-50/50 animate-pulse" :
           playbackOnly && existingAudio ? "border-2 border-green-200 bg-green-50/50" : "border"
         )}>
-          {/* playbackOnly 모드에서 저장됨 표시 */}
-          {playbackOnly && existingAudio && (
-            <div className="flex items-center gap-2 text-green-700 mb-2">
-              <CheckCircle2 className="h-5 w-5" />
-              <span className="font-medium text-sm">녹음 저장됨</span>
-              <Badge variant="outline" className="text-green-600 border-green-600">
+          {/* 방금 저장됨 표시 */}
+          {justSaved && (
+            <div className="flex items-center justify-between gap-2 text-blue-700 mb-2 p-2 bg-blue-100 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                <span className="font-bold text-sm">✨ 방금 저장됨!</span>
+              </div>
+              <Badge variant="secondary" className="bg-blue-200 text-blue-800">
                 {formatTime(duration)}
               </Badge>
+            </div>
+          )}
+
+          {/* playbackOnly 모드에서 저장됨 표시 (방금 저장이 아닐 때) */}
+          {!justSaved && playbackOnly && existingAudio && (
+            <div className="flex items-center justify-between gap-2 text-green-700 mb-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="font-medium text-sm">녹음 저장됨</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  {formatTime(duration)}
+                </Badge>
+                {existingAudio.recordedAt && (
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(existingAudio.recordedAt).toLocaleString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
