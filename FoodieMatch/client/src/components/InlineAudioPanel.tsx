@@ -289,7 +289,7 @@ export function InlineAudioPanel({
   // 재생 전용 모드 - 녹음이 없는 경우 (RecordingContext 상태 표시)
   if (playbackOnly && state === 'idle') {
     // 녹음 중
-    if (recordingState.isRecording) {
+    if (recordingState.status === 'recording') {
       return (
         <Card className="border-2 border-red-200 bg-red-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
           <div className="flex items-center gap-2 text-red-500 animate-pulse">
@@ -297,13 +297,27 @@ export function InlineAudioPanel({
             <span className="font-mono text-lg font-bold">{formatRecordingTime(recordingState.duration)}</span>
           </div>
           <p className="text-sm text-red-600 font-medium">녹음 중...</p>
-          <p className="text-xs text-muted-foreground">헤더의 중지 버튼을 누르세요</p>
+          <p className="text-xs text-muted-foreground">헤더의 일시정지 버튼을 누르세요</p>
+        </Card>
+      );
+    }
+
+    // 일시정지 상태
+    if (recordingState.status === 'paused') {
+      return (
+        <Card className="border-2 border-amber-200 bg-amber-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+          <div className="flex items-center gap-2 text-amber-600">
+            <div className="w-3 h-3 bg-amber-500 rounded-full" />
+            <span className="font-mono text-lg font-bold">{formatRecordingTime(recordingState.duration)}</span>
+          </div>
+          <p className="text-sm text-amber-700 font-medium">녹음 일시정지</p>
+          <p className="text-xs text-muted-foreground">헤더에서 재개/저장/삭제할 수 있습니다</p>
         </Card>
       );
     }
 
     // 저장 중
-    if (recordingState.isSaving || recordingState.saveStatus === 'saving') {
+    if (recordingState.status === 'saving') {
       return (
         <Card className="border-2 border-primary/30 bg-primary/5 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -313,18 +327,18 @@ export function InlineAudioPanel({
     }
 
     // 저장 완료 - 잠시 후 자동으로 녹음이 표시됨
-    if (recordingState.saveStatus === 'success') {
+    if (recordingState.status === 'success') {
       return (
         <Card className="border-2 border-green-300 bg-green-50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2 animate-pulse">
           <CheckCircle2 className="h-8 w-8 text-green-600" />
-          <p className="text-base text-green-700 font-bold">✨ 녹음 저장 완료!</p>
+          <p className="text-base text-green-700 font-bold">녹음 저장 완료!</p>
           <p className="text-sm text-green-600">잠시 후 녹음이 표시됩니다...</p>
         </Card>
       );
     }
 
     // 저장 실패
-    if (recordingState.saveStatus === 'error') {
+    if (recordingState.status === 'error') {
       return (
         <Card className="border-2 border-red-200 bg-red-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
           <div className="h-6 w-6 text-red-600 flex items-center justify-center font-bold">!</div>
