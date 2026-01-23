@@ -199,10 +199,10 @@ export function IssueDetailModal({
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button onClick={handleSave} disabled={uploading}>
+            <Button type="button" onClick={handleSave} disabled={uploading}>
               저장
             </Button>
           </DialogFooter>

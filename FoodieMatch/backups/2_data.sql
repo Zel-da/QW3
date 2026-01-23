@@ -1,0 +1,4833 @@
+COPY public."AbsenceRecords" (id, "memberId", "reportId", "absenceType", reason, "createdAt") FROM stdin;
+\.
+
+
+--
+-- Data for Name: ApprovalRequests; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."ApprovalRequests" (id, "reportId", "requesterId", "approverId", status, "requestedAt", "approvedAt", "rejectionReason", "executiveSignature") FROM stdin;
+23c5e0e3-d3a5-410c-8c52-56abc09079a3	89452f3a-1a85-4fb5-ba6f-b60865533bad	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	APPROVED	2025-11-26 04:52:41.904	2025-11-26 05:08:38.862	\N	\N
+ab96a080-7ae9-46bc-89e7-d14197771e25	8dfdfaf0-fe4a-4ed0-8e59-3c1f715583ac	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	da97e549-6822-4935-943c-8f01865f6893	APPROVED	2025-11-26 05:39:45.059	2025-11-26 05:40:31.221	\N	\N
+753eed8d-18d3-4b29-9c58-3f4b75408feb	835d8865-edb5-4b5c-bc7b-f3b9dad2d825	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	68c383db-7a1a-4533-a9f4-fe24cc533a3f	APPROVED	2025-11-27 05:37:52.69	2025-11-27 05:38:56.512	\N	data:image/png;base64,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
+\.
+
+
+--
+-- Data for Name: Assessment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Assessment" (id, "courseId", question, options, "correctAnswer", difficulty) FROM stdin;
+ef8edbcf-f8bf-4774-b9d1-1f1d90213152	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	"1 + 1은?"	"1;2;3;4"	1	medium
+0eef1468-39ce-4f5f-a5cd-e6f3dee8287f	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	"5 * 3은?"	"10;12;15;20"	2	medium
+77562bbc-dc95-4850-bdc1-ad74b42fae79	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	"10 - 7은?"	"1;2;3;4"	2	medium
+5c783f19-5f99-4f6f-b270-ddc5379e550d	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	"8 / 2는?"	"2;4;6;8"	1	medium
+8292077e-8db6-49af-8c90-1b6553e2b1ee	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	"가장 큰 수는?"	"100;99;101;98"	2	medium
+c0572884-4f8d-44a8-8522-d7af1891c01f	2af6e980-d335-4c37-b967-99e103ff1438	"1 + 1은?"	"1;2;3;4"	1	medium
+3c4c2758-81ee-49f5-944a-7fb3130f0fec	2af6e980-d335-4c37-b967-99e103ff1438	"5 * 3은?"	"10;12;15;20"	2	medium
+2c1f8aa7-feba-4d77-ab7b-79cd2477f942	2af6e980-d335-4c37-b967-99e103ff1438	"10 - 7은?"	"1;2;3;4"	2	medium
+ea137e21-d5b6-45cf-8544-b31363408ae5	2af6e980-d335-4c37-b967-99e103ff1438	"8 / 2는?"	"2;4;6;8"	1	medium
+83ad0570-3ead-4261-8efe-a91f5a6f9f20	2af6e980-d335-4c37-b967-99e103ff1438	"가장 큰 수는?"	"100;99;101;98"	2	medium
+7ba915f4-80c0-42cc-8a13-4a5e7391b1de	fbb714d8-3d40-4370-8042-d7070916f97c	"다음 중 보호구의 구비요건에 해당하지 않는 것은?"	"착용하여 작업하기 쉬울 것;유해위험물로부터 보호성능이 충분할 것;사용재료가 작업자에게 해로운 영향을 주지 않을 것;중량이 클수록 충격흡수가 좋아 무거울 것"	3	medium
+5be21cd6-f67d-48ed-9216-3b53c17b3f9b	fbb714d8-3d40-4370-8042-d7070916f97c	"물체의 낙하 또는 비래와 더불어 추락에 의한 위험을 방지 또는 경감하기 위해 사용하는 안전모의 종류는 무엇인가?"	"낙하방지용 A형;낙하 및 추락방지용 AB형;낙하 및 감전방지용 AE형;다목적용 ABE형"	1	medium
+ff9c5c01-bdd2-462e-bdbb-742650e4c47f	fbb714d8-3d40-4370-8042-d7070916f97c	"플라스틱 등 합성수지 안전모의 관리방법으로 옳지 않은 것은?"	"자외선 등에 의해 탄성이 감소하거나 색상변화 균열이 발생하면 교체한다;자동차 뒷창문 등 직사광선이 강한 곳에 보관하지 않는다;합성수지 안전모는 스팀이나 뜨거운 물 사용을 피한다;강한 세척을 위해 고온 스팀으로 자주 소독한다"	3	medium
+ffc18db4-d170-4a53-bbcd-06b41ac980c5	fbb714d8-3d40-4370-8042-d7070916f97c	"가죽제 안전화의 기능으로 알맞은 것은?"	"물체의 낙하충격과 날카로운 것에 의한 찔림을 방지한다;방수성과 내화학성이 우수하여 화학약품 작업에만 사용한다;정전기의 인체대전을 방지한다;감전에 의한 위험만을 방지한다"	0	medium
+546a8d07-d3da-4a0f-aabd-17d1c4fb0c78	fbb714d8-3d40-4370-8042-d7070916f97c	"광산 채광 작업이나 건설현장의 중량물 운반작업 등에 적합한 안전화 작업등급은 무엇인가?"	"경작업용;보통작업용;중작업용;특수작업용"	2	medium
+cc694480-b55d-4559-bb5c-adadcc7a9386	fbb714d8-3d40-4370-8042-d7070916f97c	"차광보안경이 갖추어야 할 기능으로 옳지 않은 것은?"	"유해한 자외선을 차단한다;강렬한 가시광선을 약하게 하여 광원의 상태를 관측할 수 있게 한다;열작업에서 발생하는 적외선을 차단한다;작업장의 소음을 감소시켜 청력을 보호한다"	3	medium
+6819219f-de6f-4916-9363-98108d76997a	fbb714d8-3d40-4370-8042-d7070916f97c	"다음 중 소음 정도에 따른 귀 보호구 선택 기준으로 옳은 것은?"	"소음이 70에서 80데시벨일 때 귀마개와 귀덮개를 동시에 착용한다;소음이 85에서 115데시벨일 때 귀마개 또는 귀덮개를 착용한다;소음이 110에서 120데시벨 이상이어도 귀덮개만 착용하면 된다;소음 정도와 관계없이 항상 귀마개와 귀덮개를 동시에 착용한다"	1	medium
+09ada9b8-6f79-47d5-b862-01e5babb4f24	fbb714d8-3d40-4370-8042-d7070916f97c	"다음 중 귀마개와 귀덮개 선택에 대한 설명으로 가장 옳은 것은?"	"활동이 많은 작업에는 귀덮개를 우선 사용한다;활동이 적은 작업에는 귀마개를 사용해야 한다;중이염 등 귀에 이상이 있을 때는 귀마개를 깊게 밀어 넣는다;활동이 많은 작업에는 귀마개를 활동이 적은 작업에는 귀덮개를 사용하는 것이 바람직하다"	3	medium
+b3d6b6d5-3a86-4ec2-a51d-440529396db0	fbb714d8-3d40-4370-8042-d7070916f97c	"방진마스크의 사용 및 관리요령으로 볼 때 옳지 않은 것은?"	"사용 전에 배기밸브와 흡기밸브의 기능 및 공기누설 여부를 점검한다;여과재는 건조한 상태에서 사용한다;필터에 쌓인 분진은 수시로 제거하여 사용한다;여과 효율을 높이기 위해 여과재를 물에 충분히 적신 후 착용한다"	3	medium
+\.
+
+
+--
+-- Data for Name: Attachment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Attachment" (id, url, name, type, size, "mimeType", rotation, "createdAt", "noticeId", "commentId", "reportDetailId", "courseId") FROM stdin;
+940f0b69-6c4b-4737-9235-e5716a36ba66	https://www.youtube.com/watch?v=DJWXc--CM_M&t=3s	https://www.youtube.com/watch?v=DJWXc--CM_M&t=3s	youtube	0	application/octet-stream	0	2025-11-26 01:44:51.276	\N	\N	\N	fbb714d8-3d40-4370-8042-d7070916f97c
+51129268-9d9c-4c00-bf98-289bb8d67f60	https://www.youtube.com/watch?v=M5DG1f8VHDo	https://www.youtube.com/watch?v=M5DG1f8VHDo	youtube	0	application/octet-stream	0	2025-11-20 06:03:49.653	\N	\N	\N	2af6e980-d335-4c37-b967-99e103ff1438
+db0c13bc-fd33-4598-b584-7fefc01ceca9	https://www.youtube.com/watch?v=M5DG1f8VHDo	https://www.youtube.com/watch?v=M5DG1f8VHDo	youtube	0	application/octet-stream	0	2025-11-20 06:03:49.653	\N	\N	\N	2af6e980-d335-4c37-b967-99e103ff1438
+8f733aaa-aba5-4dfe-bc2f-ce1afce1882a	/uploads/1762992478859_7441_3191916-uhd_3840_2160_25fps.mp4	3191916-uhd_3840_2160_25fps.mp4	video	31818774	application/octet-stream	0	2025-11-20 06:03:49.653	\N	\N	\N	2af6e980-d335-4c37-b967-99e103ff1438
+98caa71e-60c6-4edf-8cd1-f6f5b796657c	/uploads/1764119862814_2868_%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7_2025-11-26_084622.png	스크린샷 2025-11-26 084622.png	image	247292	image/jpeg	0	2025-11-26 01:18:14.841	\N	\N	377	\N
+7f086575-f859-48de-86ac-5d576553ae80	/uploads/1764119871177_5395_%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7_2025-11-26_101443.png	스크린샷 2025-11-26 101443.png	image	269244	image/jpeg	0	2025-11-26 01:18:14.872	\N	\N	388	\N
+7aabbdea-997b-41d8-800d-e44f81c5c1c0	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099307440_1283_화면_캡처_2025-11-11_142524.png	화면 캡처 2025-11-11 142524.png	image	334656	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+90d2f7bc-ec19-422f-b499-e4d07f23e980	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099317797_2372_스크린샷_2025-09-02_134758.png	스크린샷 2025-09-02 134758.png	attachment	50953	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+4503da76-8d27-4ba3-979f-49f89680712c	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099318065_449_스크린샷_2025-09-02_134803.png	스크린샷 2025-09-02 134803.png	attachment	55845	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+a08770a9-37ee-4b9a-8822-a3e21fe4cc90	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099318369_8444_스크린샷_2025-09-02_134809.png	스크린샷 2025-09-02 134809.png	attachment	29436	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+befe4ebb-9cba-479f-944a-53ade825e88d	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099318639_9156_KakaoTalk_20250912_143701165.jpg	KakaoTalk_20250912_143701165.jpg	attachment	1156059	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+f1ce4b68-7c90-41ff-8c3d-75487de5e37c	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099318974_906_스크린샷_2025-09-02_134745.png	스크린샷 2025-09-02 134745.png	attachment	44897	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+172deed2-f42b-4407-aef0-36cfae7e5804	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099319229_18_스크린샷_2025-09-02_134750.png	스크린샷 2025-09-02 134750.png	attachment	30390	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+9e3a66b4-97cb-4e8c-8169-cf1f954e00d9	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099340642_5536_스크린샷_2025-09-02_134750.png	스크린샷 2025-09-02 134750.png	image	30390	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+3c3f58d3-853b-4efb-9dcf-26dd44f91c98	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099340941_9357_스크린샷_2025-09-02_134758.png	스크린샷 2025-09-02 134758.png	image	50953	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+34aab36a-362e-49b2-89f7-b5b0f81d6eea	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099341256_5040_스크린샷_2025-09-02_134803.png	스크린샷 2025-09-02 134803.png	image	55845	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+fd9c4a47-0a4d-4c41-9138-b33e09049722	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099341614_5124_스크린샷_2025-09-02_134745.png	스크린샷 2025-09-02 134745.png	image	44897	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+e0383597-3626-4040-92d1-0d46c81e2a95	https://www.youtube.com/watch?v=0-xIgidHZ2Y&pp=ygUM64m07Iqk7JWI7KCE	https://www.youtube.com/watch?v=0-xIgidHZ2Y&pp=ygUM64m07Iqk7JWI7KCE	youtube	0	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+1985823c-81e6-4f02-8c71-c49b9ac7d7d3	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099453127_5792_101668-video-720.mp4	101668-video-720.mp4	video	5326121	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+d38724b0-837f-4ea2-846e-7ffbe06adad9	https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099500246_1067_relaxing-guitar-loop-v5-245859.mp3	relaxing-guitar-loop-v5-245859.mp3	audio	585978	application/octet-stream	0	2025-12-18 23:11:43.596	a8cf36e8-f60b-419a-a0f4-04be0362c534	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: Certificate; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Certificate" (id, "userId", "courseId", "certificateUrl", "issuedAt", "certificateNumber", score) FROM stdin;
+8917b343-cddc-4966-ab01-a5d7c0c4eb51	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	fbb714d8-3d40-4370-8042-d7070916f97c	/certs/b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e-fbb714d8-3d40-4370-8042-d7070916f97c.pdf	2025-11-26 01:44:06.277	CERT-20251126-LEGACY-8917	\N
+f3189c8d-7866-4f8f-aabe-dff3a087c135	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2af6e980-d335-4c37-b967-99e103ff1438	/certs/b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e-2af6e980-d335-4c37-b967-99e103ff1438.pdf	2025-11-28 05:02:14.805	CERT-20251128-LEGACY-f318	\N
+\.
+
+
+--
+-- Data for Name: ChecklistTemplates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."ChecklistTemplates" (id, name, "teamId") FROM stdin;
+39	조립 전기라인 TBM 체크리스트	1
+43	지재/부품/출하 TBM 체크리스트	5
+45	품질 TBM 체크리스트	7
+47	인사총무팀 TBM 체크리스트	8
+31	S/A개발 TBM 체크리스트	32
+38	인사총무 TBM 체크리스트	38
+44	서비스 TBM 체크리스트	6
+46	생산기술팀 TBM 체크리스트	9
+32	BR출하 TBM 체크리스트	27
+33	CR출하 TBM 체크리스트	35
+41	가공라인 TBM 체크리스트	3
+42	연구소 TBM 체크리스트	4
+34	자재부품 TBM 체크리스트	28
+40	제관라인 TBM 체크리스트	2
+36	품질서비스 TBM 체크리스트	30
+80	M/B TBM 체크리스트	52
+81	BKT TBM 체크리스트	53
+82	조립 1라인 TBM 체크리스트	39
+83	조립 2라인 TBM 체크리스트	40
+84	조립 3라인 TBM 체크리스트	41
+85	전기라인 TBM 체크리스트	42
+86	자재팀 TBM 체크리스트	45
+87	부품팀 TBM 체크리스트	49
+88	고객지원팀 TBM 체크리스트	48
+89	품질관리팀 TBM 체크리스트	46
+90	선삭 TBM 체크리스트	50
+91	연삭 TBM 체크리스트	51
+92	열처리 TBM 체크리스트	55
+93	CR조립 TBM 체크리스트	54
+94	CR자재 TBM 체크리스트	56
+95	2공장 TBM 체크리스트	61
+97	BR개발 TBM 체크리스트	64
+98	BR생산관리 TBM 체크리스트	62
+99	BR총괄 TBM 체크리스트	63
+100	CR생산관리 TBM 체크리스트	65
+101	품질관리 TBM 체크리스트	66
+\.
+
+
+--
+-- Data for Name: Comment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Comment" (id, content, "imageUrl", "authorId", "noticeId", "createdAt") FROM stdin;
+3cf2a036-ded7-4f48-99eb-8b6e526fd6ca	테스트	\N	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	29a5cbff-11b1-4511-83b7-a1bed0710efd	2025-12-11 02:00:06.129
+\.
+
+
+--
+-- Data for Name: Course; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Course" (id, title, description, type, duration, "videoUrl", "videoType", "audioUrl", "documentUrl", color, icon, "isActive", "createdAt", "updatedAt") FROM stdin;
+09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	테스트용	테스트용	video	1	/uploads/1762315857326_5446_3191916-uhd_3840_2160_25fps.mp4	file	\N	/uploads/1762315864268_485_TBM_Report_2025_11 (1).xlsx	blue	book-open	t	2025-11-20 14:42:11.94	2025-11-20 14:42:11.94
+2af6e980-d335-4c37-b967-99e103ff1438	테스트1	테스트	video	2	\N	youtube	\N	\N	blue	book-open	t	2025-11-20 14:42:11.94	2025-11-20 06:03:49.648
+bee5807b-d9f6-4dc9-ac0d-73f70e83589e	교육 테스트	테스트	video	1	\N	youtube	\N	/uploads/1764120163349_9406_1_%EB%87%8C%EC%8B%AC%ED%98%88%EA%B4%80_%EC%A7%88%ED%99%98_%EC%98%88%EB%B0%A9_%EB%B0%8F_%EB%B9%84%EC%83%81%EB%8C%80%EC%9D%91_%EC%9D%91%EA%B8%89%EC%B2%98%EC%B9%98_%EA%B5%90%EC%9C%A1_%EC%9E%90%EB%A3%8C.pdf	blue	book-open	t	2025-11-26 01:24:03.628	2025-11-26 01:24:03.628
+fbb714d8-3d40-4370-8042-d7070916f97c	안전보호구 교육	안전보호구 교육	video	0	\N	youtube	\N	/uploads/1764120908088_374_%EC%95%88%EC%A0%84%EB%B3%B4%ED%98%B8%EA%B5%AC%EC%9D%98_%EC%A2%85%EB%A5%98.pptx	blue	book-open	t	2025-11-26 01:36:02.334	2025-11-26 01:44:51.268
+\.
+
+
+--
+-- Data for Name: DailyReports; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."DailyReports" (id, "teamId", "reportDate", "managerName", remarks, "createdAt", "updatedAt", site) FROM stdin;
+39	48	2025-11-26 05:39:01.598	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음"}	2025-11-26 05:39:37.317	2025-11-26 05:39:37.317	아산
+40	49	2025-11-27 05:37:04.408	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음"}	2025-11-27 05:37:37.367	2025-11-27 05:37:37.367	아산
+10	5	2025-10-21 06:16:49.91	안호형	연차자: 0명	2025-10-21 06:18:59.935	2025-10-21 06:19:55.707	아산
+19	6	2025-10-23 01:48:41.547	안호형	연차자: 2명	2025-10-23 01:48:49.144	2025-10-23 01:48:49.144	아산
+5	3	2025-10-20 06:03:24.818	Admin User	연차자: 0명	2025-10-20 06:03:33.302	2025-10-20 06:03:33.302	아산
+7	3	2025-10-21 00:20:15.801	Admin User	연차자: 0명	2025-10-21 00:20:56.396	2025-10-21 00:20:56.396	아산
+8	3	2025-10-21 15:00:00	Admin User	연차자: 0명	2025-10-21 00:23:46.247	2025-10-21 00:23:46.247	아산
+9	3	2025-10-22 15:00:00	Admin User	연차자: 0명	2025-10-21 00:38:37.55	2025-10-21 00:38:50.533	아산
+17	3	2025-10-22 15:00:00	Admin User	연차자: 1명	2025-10-22 00:21:34.829	2025-10-22 00:22:29.201	아산
+20	3	2025-10-30 07:40:43.532	테스트	연차자: 2명	2025-10-30 07:53:36.659	2025-10-30 07:53:36.659	아산
+18	3	2025-10-06 15:00:00	Admin User	결근자 없음	2025-10-23 01:18:01.799	2025-11-05 01:05:58.621	아산
+35	8	2025-11-26 00:04:46.663	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음"}	2025-11-26 00:10:06.802	2025-11-26 00:10:06.802	아산
+38	61	2025-11-26 01:16:57.777	Admin User	{"text":"없음","images":["/uploads/1764119881089_2292_%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7_2025-11-26_084536.png"],"absenceInfo":"결근자 없음"}	2025-11-26 01:18:14.828	2025-11-26 01:18:14.828	화성
+37	3	2025-11-26 05:35:20.338	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음"}	2025-11-26 00:24:50.758	2025-11-26 05:36:26.762	아산
+1	3	2025-12-02 04:31:18.531	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음"}	2025-12-02 04:31:49.77	2025-12-02 04:31:49.77	아산
+3	3	2025-12-11 05:42:46.829	Admin User	{"text":"","images":[],"absenceInfo":"결근자 없음","audioRecording":{"url":"https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1765431785058_TBM_녹음_2025-12-11.webm","name":"TBM_녹음_2025-12-11.webm","duration":4.859,"size":79437,"recordedAt":"2025-12-11T05:43:05.612Z"},"transcription":null}	2025-12-11 02:01:11.555	2025-12-11 05:43:16.548	아산
+2	55	2025-12-04 23:42:45.174	Admin User	{"text":"추움. 감기환자 속출. 환자 충분한 휴식하며 작업 실시\\n미끄러짐 위험. 제설 작업 실시\\n금요일 퇴근길 안전하길 바람.","images":["https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1764892214526_5252_스크린샷_2025-12-05_085010.png"],"absenceInfo":"결근자 없음"}	2025-12-04 23:52:37.412	2025-12-18 00:42:26.331	화성
+41	3	2025-12-18 23:12:25.696	Admin User	{"text":"이상","images":["https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099627041_9041_화면_캡처_2025-11-11_085007.png"],"absenceInfo":"결근자 없음","audioRecording":{"url":"https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1766099654880_TBM_녹음_2025-12-18.webm","name":"TBM_녹음_2025-12-18.webm","duration":0,"size":265101,"recordedAt":"2025-12-18T23:14:14.572Z"},"transcription":null}	2025-12-18 23:14:20.467	2025-12-18 23:14:20.467	아산
+\.
+
+
+--
+-- Data for Name: EmailLogs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."EmailLogs" (id, "emailType", "recipientId", "recipientEmail", subject, "sentAt", status, "errorMessage") FROM stdin;
+1e4b7a7a-c9f1-428d-ad72-26e6c97f3012	EDUCATION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전교육 미수강 알림	2025-11-24 23:34:00.938	sent	\N
+5263c06a-6747-43e0-998e-59fbc888dd4d	EDUCATION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전교육 미수강 알림	2025-11-24 23:41:49.489	sent	\N
+cda5e814-e902-4940-a349-a13459eb8f0c	EDUCATION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전교육 미수강 알림	2025-11-24 23:42:06.351	sent	\N
+c2cf2eeb-0279-493e-a250-eb6940a1e95e	INSPECTION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전점검 미작성 알림 (매월 4일)	2025-11-25 01:52:09.579	sent	\N
+9a3989a8-41ff-4042-b642-ba34947dae8b	INSPECTION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전점검 미작성 알림 (매월 4일)	2025-11-25 01:52:19.865	sent	\N
+69fa655d-94c8-4192-867a-476068ec04fb	EDUCATION_REMINDER	test-user-id	yj.an1@soosan.co.kr	안전교육 미수강 알림	2025-11-25 01:52:32.678	sent	\N
+3e2acef0-d061-47d7-9507-796b5fa7c064	EXEC_SIGNATURE_COMPLETE	test-user-id	yj.an1@soosan.co.kr	월간 TBM 보고서 임원 서명 완료	2025-11-25 02:31:25.561	sent	\N
+\.
+
+
+--
+-- Data for Name: Factories; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Factories" (id, name, code, "createdAt") FROM stdin;
+1	아산공장	ASAN	2025-11-18 05:41:32.75
+2	화성공장	HWASEONG	2025-11-18 05:41:32.763
+\.
+
+
+--
+-- Data for Name: Holidays; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Holidays" (id, date, name, "isRecurring", site, "createdAt", "updatedAt") FROM stdin;
+18	2026-02-28	삼일절	t	\N	2025-11-27 00:20:15.576	2025-11-27 00:20:15.576
+19	2026-05-04	어린이날	t	\N	2025-11-27 00:20:15.577	2025-11-27 00:20:15.577
+20	2026-06-05	현충일	t	\N	2025-11-27 00:20:15.579	2025-11-27 00:20:15.579
+21	2026-08-14	광복절	t	\N	2025-11-27 00:20:15.581	2025-11-27 00:20:15.581
+22	2026-10-02	개천절	t	\N	2025-11-27 00:20:15.582	2025-11-27 00:20:15.582
+23	2026-10-08	한글날	t	\N	2025-11-27 00:20:15.583	2025-11-27 00:20:15.583
+25	2026-02-15	설날 연휴	f	\N	2025-11-27 00:20:15.586	2025-11-27 00:20:15.586
+26	2026-02-16	설날	f	\N	2025-11-27 00:20:15.587	2025-11-27 00:20:15.587
+27	2026-02-17	설날 연휴	f	\N	2025-11-27 00:20:15.588	2025-11-27 00:20:15.588
+28	2026-05-23	부처님오신날	f	\N	2025-11-27 00:20:15.59	2025-11-27 00:20:15.59
+29	2026-09-23	추석 연휴	f	\N	2025-11-27 00:20:15.591	2025-11-27 00:20:15.591
+30	2026-09-24	추석	f	\N	2025-11-27 00:20:15.592	2025-11-27 00:20:15.592
+31	2026-09-25	추석 연휴	f	\N	2025-11-27 00:20:15.593	2025-11-27 00:20:15.593
+49	2025-02-28	삼일절	t	\N	2025-11-28 02:12:27.413	2025-11-28 02:12:27.413
+50	2025-05-04	어린이날	t	\N	2025-11-28 02:12:27.414	2025-11-28 02:12:27.414
+51	2025-06-05	현충일	t	\N	2025-11-28 02:12:27.416	2025-11-28 02:12:27.416
+52	2025-08-14	광복절	t	\N	2025-11-28 02:12:27.417	2025-11-28 02:12:27.417
+53	2025-10-02	개천절	t	\N	2025-11-28 02:12:27.418	2025-11-28 02:12:27.418
+54	2025-10-08	한글날	t	\N	2025-11-28 02:12:27.42	2025-11-28 02:12:27.42
+56	2025-01-27	설날 연휴	f	\N	2025-11-28 02:12:27.423	2025-11-28 02:12:27.423
+57	2025-01-28	설날	f	\N	2025-11-28 02:12:27.424	2025-11-28 02:12:27.424
+58	2025-01-29	설날 연휴	f	\N	2025-11-28 02:12:27.425	2025-11-28 02:12:27.425
+59	2025-05-05	대체공휴일	f	\N	2025-11-28 02:12:27.427	2025-11-28 02:12:27.427
+60	2025-10-04	추석 연휴	f	\N	2025-11-28 02:12:27.428	2025-11-28 02:12:27.428
+61	2025-10-05	추석	f	\N	2025-11-28 02:12:27.43	2025-11-28 02:12:27.43
+62	2025-10-06	추석 연휴	f	\N	2025-11-28 02:12:27.431	2025-11-28 02:12:27.431
+63	2025-10-07	추석 대체공휴일	f	\N	2025-11-28 02:12:27.433	2025-11-28 02:12:27.433
+1	2025-01-01	신정	t	\N	2025-12-08 23:03:10.82	2025-12-08 23:03:10.82
+2	2025-03-01	삼일절	t	\N	2025-12-08 23:03:10.841	2025-12-08 23:03:10.841
+3	2025-05-05	어린이날	t	\N	2025-12-08 23:03:10.845	2025-12-08 23:03:10.845
+4	2025-06-06	현충일	t	\N	2025-12-08 23:03:10.849	2025-12-08 23:03:10.849
+5	2025-08-15	광복절	t	\N	2025-12-08 23:03:10.853	2025-12-08 23:03:10.853
+6	2025-10-03	개천절	t	\N	2025-12-08 23:03:10.857	2025-12-08 23:03:10.857
+7	2025-10-09	한글날	t	\N	2025-12-08 23:03:10.861	2025-12-08 23:03:10.861
+8	2025-12-25	크리스마스	t	\N	2025-12-08 23:03:10.865	2025-12-08 23:03:10.865
+9	2025-01-28	설날 연휴	f	\N	2025-12-08 23:03:10.871	2025-12-08 23:03:10.871
+10	2025-01-29	설날	f	\N	2025-12-08 23:03:10.875	2025-12-08 23:03:10.875
+11	2025-01-30	설날 연휴	f	\N	2025-12-08 23:03:10.879	2025-12-08 23:03:10.879
+12	2025-05-06	대체공휴일	f	\N	2025-12-08 23:03:10.883	2025-12-08 23:03:10.883
+13	2025-10-05	추석 연휴	f	\N	2025-12-08 23:03:10.887	2025-12-08 23:03:10.887
+14	2025-10-06	추석	f	\N	2025-12-08 23:03:10.893	2025-12-08 23:03:10.893
+15	2025-10-07	추석 연휴	f	\N	2025-12-08 23:03:10.898	2025-12-08 23:03:10.898
+16	2025-10-08	추석 대체공휴일	f	\N	2025-12-08 23:03:10.901	2025-12-08 23:03:10.901
+\.
+
+
+--
+-- Data for Name: InspectionItems; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."InspectionItems" (id, "inspectionId", "equipmentName", "requiredPhotoCount", photos, remarks, "isCompleted", "uploadedAt") FROM stdin;
+2374d414-604e-4e96-bd02-534ceac6fbba	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	지게차 점검	1	[{"url": "/uploads/1764052945419_6735_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_085007.png", "uploadedAt": "2025-11-25T06:42:24.048Z"}]	\N	t	2025-11-25 06:43:37.935
+c9717919-eb62-4a21-a8bd-2196c5339e78	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	크레인 점검	6	[{"url": "/uploads/1764052949169_9598_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_085007.png", "uploadedAt": "2025-11-25T06:42:27.791Z"}, {"url": "/uploads/1764052958922_7005_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_085007.png", "uploadedAt": "2025-11-25T06:42:37.562Z"}, {"url": "/uploads/1764052961552_9183_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_085007.png", "uploadedAt": "2025-11-25T06:42:40.174Z"}, {"url": "/uploads/1764052969817_1170_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:42:48.440Z"}, {"url": "/uploads/1764052969819_5544_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-12_113404.png", "uploadedAt": "2025-11-25T06:42:48.440Z"}, {"url": "/uploads/1764053016237_9589_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:34.860Z"}]	\N	t	2025-11-25 06:43:37.935
+70ee25c7-a3be-4817-b4aa-fde2ed664f7a	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	전단기 점검	1	[{"url": "/uploads/1764052977839_2242_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-12_113404.png", "uploadedAt": "2025-11-25T06:42:56.461Z"}]	\N	t	2025-11-25 06:43:37.935
+21f7a106-e720-4c8c-a994-3067e747cf7b	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	절곡기 점검	3	[{"url": "/uploads/1764052988562_3184_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:07.185Z"}, {"url": "/uploads/1764052992915_8931_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:11.542Z"}, {"url": "/uploads/1764052996678_2181_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:15.647Z"}]	\N	t	2025-11-25 06:43:37.935
+f9f809de-edfe-4314-9fdb-d2115f32fd07	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	걸이구 점검	1	[{"url": "/uploads/1764052991345_978_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:09.965Z"}]	\N	t	2025-11-25 06:43:37.935
+dc1605c5-0a15-4ce9-aea1-138617e05f56	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	드릴기 점검	4	[{"url": "/uploads/1764053000824_1697_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:19.448Z"}, {"url": "/uploads/1764053005564_7975_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:24.186Z"}, {"url": "/uploads/1764053005566_2576_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_085007.png", "uploadedAt": "2025-11-25T06:43:24.186Z"}, {"url": "/uploads/1764053005567_8322_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-12_113404.png", "uploadedAt": "2025-11-25T06:43:24.186Z"}]	\N	t	2025-11-25 06:43:37.935
+f8286dac-7504-4198-a3f2-51c2786a7f0e	cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	소화전,소화기 점검	1	[{"url": "/uploads/1764053009113_763_%ED%99%94%EB%A9%B4_%EC%BA%A1%EC%B2%98_2025-11-11_142524.png", "uploadedAt": "2025-11-25T06:43:27.736Z"}]	\N	t	2025-11-25 06:43:37.935
+036aefa2-8db1-49aa-b755-86b9e2c2cd4c	800ca675-10df-4d27-be7a-c4db79c92f27	지게차 점검	1	[]	\N	f	2025-11-27 00:27:01.099
+f913c29c-5ee8-4a59-a09d-a4b34eacd1f6	800ca675-10df-4d27-be7a-c4db79c92f27	크레인 점검	2	[]	\N	f	2025-11-27 00:27:01.099
+73ccfcba-3075-48a1-b30f-cfe3af528f69	800ca675-10df-4d27-be7a-c4db79c92f27	절곡기 점검	1	[]	\N	f	2025-11-27 00:27:01.099
+0de691d9-365c-46d2-9f5b-ef0423f16035	800ca675-10df-4d27-be7a-c4db79c92f27	걸이구 점검	1	[]	\N	f	2025-11-27 00:27:01.099
+daf78739-80cc-45d2-a672-a12157f92596	800ca675-10df-4d27-be7a-c4db79c92f27	드릴기 점검	1	[]	\N	f	2025-11-27 00:27:01.099
+00ca503d-3271-4548-8546-49abe8ba54ed	800ca675-10df-4d27-be7a-c4db79c92f27	소화전,소화기 점검	1	[]	\N	f	2025-11-27 00:27:01.099
+8401178d-7d8b-47ac-bf64-ac063b14f6dd	5a3b709a-b1ba-4101-add1-4ea1590a9717	지게차 점검	5	[{"url": "/uploads/1764116694675_8145_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:24:54.556Z"}, {"url": "/uploads/1764116733276_3205_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:25:33.159Z"}, {"url": "/uploads/1764116741633_1313_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:25:41.520Z"}, {"url": "/uploads/1764116744423_4013_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:25:44.306Z"}, {"url": "/uploads/1764116751202_4110_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:25:51.091Z"}]	\N	t	2025-11-27 00:39:15.024
+45ccbf80-2b9c-4dde-b60b-647f8df9689e	5a3b709a-b1ba-4101-add1-4ea1590a9717	걸이구 점검	1	[{"url": "/uploads/1764116716432_6146_11.jpg", "rotation": 270, "uploadedAt": "2025-11-26T00:25:16.314Z"}]	\N	t	2025-11-27 00:39:15.024
+0bc5859c-ac33-4cf8-b129-c2307e719140	5a3b709a-b1ba-4101-add1-4ea1590a9717	소화전,소화기 점검	1	[{"url": "/uploads/1764116721255_7639_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T00:25:21.136Z"}]	\N	t	2025-11-27 00:39:15.024
+46de2086-5726-436e-80cc-bdca06a62678	9db2baaa-789d-4fa9-9354-a6f58435ec8a	절곡기 점검	1	[{"url": "/uploads/1764119631529_3906_KakaoTalk_20251104_091905919_05.jpg", "rotation": 90, "uploadedAt": "2025-11-26T01:13:51.436Z"}]	\N	t	2025-11-27 23:20:20.542
+7d7ec5ab-53a7-440a-ad96-190f0caaf39b	9db2baaa-789d-4fa9-9354-a6f58435ec8a	소화전,소화기 점검	1	[{"url": "/uploads/1764119636232_4897_11.jpg", "rotation": 270, "uploadedAt": "2025-11-26T01:13:56.138Z"}]	\N	t	2025-11-27 23:20:20.542
+1846fb91-2224-44ee-9901-f33d96e36c25	9a32f0e6-9329-42c4-86b8-9c6746163315	지게차 점검	1	[{"url": "https://pub-1a48d08cdc484562bf1ba171b12fb4f5.r2.dev/uploads/1764637158056_2724_화면_캡처_2025-12-01_081900.png", "uploadedAt": "2025-12-02T00:59:17.604Z"}]	\N	t	2025-12-02 00:59:24.93
+107cba1d-471a-4684-9899-773b14c054d4	9a32f0e6-9329-42c4-86b8-9c6746163315	크레인 점검	6	[]	\N	f	2025-12-02 00:59:24.93
+6605dfd5-a59b-46ab-ae73-470d2384d848	9a32f0e6-9329-42c4-86b8-9c6746163315	전단기 점검	1	[]	\N	f	2025-12-02 00:59:24.93
+448bbf2b-2eda-4e26-9eab-8fd999beeea3	9a32f0e6-9329-42c4-86b8-9c6746163315	절곡기 점검	3	[]	\N	f	2025-12-02 00:59:24.93
+f56200e1-f9d9-4e72-a2d7-05f9f5aa9b9a	9a32f0e6-9329-42c4-86b8-9c6746163315	걸이구 점검	1	[]	\N	f	2025-12-02 00:59:24.93
+e8a13e0e-64b4-478e-87c7-f82ed36ac36c	9a32f0e6-9329-42c4-86b8-9c6746163315	이동크레인 점검	6	[]	\N	f	2025-12-02 00:59:24.93
+\.
+
+
+--
+-- Data for Name: InspectionScheduleTemplates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."InspectionScheduleTemplates" (id, "factoryId", month, "equipmentName", "displayOrder", "createdAt", "updatedAt") FROM stdin;
+147	2	5	지게차 점검	1	2025-11-18 06:48:42.859	2025-11-18 06:48:42.859
+148	2	5	크레인 점검	2	2025-11-18 06:48:42.861	2025-11-18 06:48:42.861
+149	2	5	컨베이어 점검	3	2025-11-18 06:48:42.863	2025-11-18 06:48:42.863
+150	2	5	CNC 선반 점검	4	2025-11-18 06:48:42.864	2025-11-18 06:48:42.864
+151	2	5	MCT 점검	5	2025-11-18 06:48:42.866	2025-11-18 06:48:42.866
+152	2	5	걸이구 점검	6	2025-11-18 06:48:42.867	2025-11-18 06:48:42.867
+153	2	5	절곡기 점검	7	2025-11-18 06:48:42.869	2025-11-18 06:48:42.869
+154	2	5	프레스 점검	8	2025-11-18 06:48:42.87	2025-11-18 06:48:42.87
+155	2	5	전단기 점검	9	2025-11-18 06:48:42.873	2025-11-18 06:48:42.873
+156	2	5	이동크레인 점검	10	2025-11-18 06:48:42.874	2025-11-18 06:48:42.874
+157	2	5	소화전,소화기 점검	11	2025-11-18 06:48:42.877	2025-11-18 06:48:42.877
+158	2	6	지게차 점검	1	2025-11-18 06:48:42.878	2025-11-18 06:48:42.878
+159	2	6	크레인 점검	2	2025-11-18 06:48:42.88	2025-11-18 06:48:42.88
+160	2	6	컨베이어 점검	3	2025-11-18 06:48:42.882	2025-11-18 06:48:42.882
+161	2	6	CNC 선반 점검	4	2025-11-18 06:48:42.884	2025-11-18 06:48:42.884
+162	2	6	MCT 점검	5	2025-11-18 06:48:42.885	2025-11-18 06:48:42.885
+163	2	6	걸이구 점검	6	2025-11-18 06:48:42.887	2025-11-18 06:48:42.887
+164	2	6	드릴기 점검	7	2025-11-18 06:48:42.888	2025-11-18 06:48:42.888
+165	2	6	멀티밀링 점검	8	2025-11-18 06:48:42.89	2025-11-18 06:48:42.89
+166	2	6	스토우 점검	9	2025-11-18 06:48:42.892	2025-11-18 06:48:42.892
+167	2	6	프레스 점검	10	2025-11-18 06:48:42.893	2025-11-18 06:48:42.893
+168	2	6	위험물,가스저장소 점검	11	2025-11-18 06:48:42.895	2025-11-18 06:48:42.895
+169	2	7	지게차 점검	1	2025-11-18 06:48:42.897	2025-11-18 06:48:42.897
+170	2	7	크레인 점검	2	2025-11-18 06:48:42.898	2025-11-18 06:48:42.898
+171	2	7	컨베이어 점검	3	2025-11-18 06:48:42.9	2025-11-18 06:48:42.9
+172	2	7	CNC 선반 점검	4	2025-11-18 06:48:42.902	2025-11-18 06:48:42.902
+173	2	7	MCT 점검	5	2025-11-18 06:48:42.903	2025-11-18 06:48:42.903
+174	2	7	걸이구 점검	6	2025-11-18 06:48:42.905	2025-11-18 06:48:42.905
+175	2	7	보링기 점검	7	2025-11-18 06:48:42.906	2025-11-18 06:48:42.906
+176	2	7	멀티밀링 점검	8	2025-11-18 06:48:42.908	2025-11-18 06:48:42.908
+177	2	7	스토우 점검	9	2025-11-18 06:48:42.909	2025-11-18 06:48:42.909
+178	2	7	테스트크레인 점검	10	2025-11-18 06:48:42.911	2025-11-18 06:48:42.911
+179	2	7	위험물,가스저장소 점검	11	2025-11-18 06:48:42.912	2025-11-18 06:48:42.912
+180	2	8	지게차 점검	1	2025-11-18 06:48:42.914	2025-11-18 06:48:42.914
+181	2	8	크레인 점검	2	2025-11-18 06:48:42.916	2025-11-18 06:48:42.916
+182	2	8	컨베이어 점검	3	2025-11-18 06:48:42.917	2025-11-18 06:48:42.917
+183	2	8	CNC 선반 점검	4	2025-11-18 06:48:42.919	2025-11-18 06:48:42.919
+184	2	8	MCT 점검	5	2025-11-18 06:48:42.92	2025-11-18 06:48:42.92
+185	2	8	걸이구 점검	6	2025-11-18 06:48:42.922	2025-11-18 06:48:42.922
+186	2	8	세척기 점검	7	2025-11-18 06:48:42.923	2025-11-18 06:48:42.923
+187	2	8	연삭기 점검	8	2025-11-18 06:48:42.926	2025-11-18 06:48:42.926
+188	2	8	갠트리로더 점검	9	2025-11-18 06:48:42.928	2025-11-18 06:48:42.928
+189	2	8	굴착기 점검	10	2025-11-18 06:48:42.929	2025-11-18 06:48:42.929
+190	2	8	소화전,소화기 점검	11	2025-11-18 06:48:42.931	2025-11-18 06:48:42.931
+191	2	9	지게차 점검	1	2025-11-18 06:48:42.933	2025-11-18 06:48:42.933
+192	2	9	크레인 점검	2	2025-11-18 06:48:42.935	2025-11-18 06:48:42.935
+193	2	9	컨베이어 점검	3	2025-11-18 06:48:42.936	2025-11-18 06:48:42.936
+194	2	9	CNC 선반 점검	4	2025-11-18 06:48:42.937	2025-11-18 06:48:42.937
+195	2	9	MCT 점검	5	2025-11-18 06:48:42.939	2025-11-18 06:48:42.939
+196	2	9	걸이구 점검	6	2025-11-18 06:48:42.94	2025-11-18 06:48:42.94
+197	2	9	세척조,피트로,유조로 점검	7	2025-11-18 06:48:42.942	2025-11-18 06:48:42.942
+198	2	9	멀티밀링 점검	8	2025-11-18 06:48:42.943	2025-11-18 06:48:42.943
+199	2	9	스토우 점검	9	2025-11-18 06:48:42.944	2025-11-18 06:48:42.944
+200	2	9	프레스 점검	10	2025-11-18 06:48:42.946	2025-11-18 06:48:42.946
+201	2	9	위험물,가스저장소 점검	11	2025-11-18 06:48:42.947	2025-11-18 06:48:42.947
+202	2	10	지게차 점검	1	2025-11-18 06:48:42.949	2025-11-18 06:48:42.949
+203	2	10	크레인 점검	2	2025-11-18 06:48:42.95	2025-11-18 06:48:42.95
+204	2	10	컨베이어 점검	3	2025-11-18 06:48:42.951	2025-11-18 06:48:42.951
+205	2	10	CNC 선반 점검	4	2025-11-18 06:48:42.953	2025-11-18 06:48:42.953
+206	2	10	MCT 점검	5	2025-11-18 06:48:42.954	2025-11-18 06:48:42.954
+207	2	10	걸이구 점검	6	2025-11-18 06:48:42.956	2025-11-18 06:48:42.956
+208	2	10	용접기 점검	7	2025-11-18 06:48:42.958	2025-11-18 06:48:42.958
+209	2	10	굴착기 점검	8	2025-11-18 06:48:42.959	2025-11-18 06:48:42.959
+210	2	10	갠트리로더 점검	9	2025-11-18 06:48:42.961	2025-11-18 06:48:42.961
+211	2	10	테스트크레인 점검	10	2025-11-18 06:48:42.962	2025-11-18 06:48:42.962
+212	2	10	위험물,가스저장소 점검	11	2025-11-18 06:48:42.964	2025-11-18 06:48:42.964
+253	1	3	지게차 점검	1	2025-11-18 06:48:43.032	2025-11-18 06:48:43.032
+254	1	3	크레인 점검	2	2025-11-18 06:48:43.034	2025-11-18 06:48:43.034
+255	1	3	전단기 점검	3	2025-11-18 06:48:43.036	2025-11-18 06:48:43.036
+256	1	3	절곡기 점검	4	2025-11-18 06:48:43.038	2025-11-18 06:48:43.038
+258	1	3	걸이구 점검	6	2025-11-18 06:48:43.042	2025-11-18 06:48:43.042
+259	1	3	전동공구 점검	7	2025-11-18 06:48:43.043	2025-11-18 06:48:43.043
+260	1	3	탭핑기,스폿용접기 점검	8	2025-11-18 06:48:43.045	2025-11-18 06:48:43.045
+261	1	3	소화전,소화기 점검	9	2025-11-18 06:48:43.047	2025-11-18 06:48:43.047
+262	1	4	지게차 점검	1	2025-11-18 06:48:43.049	2025-11-18 06:48:43.049
+263	1	4	크레인 점검	2	2025-11-18 06:48:43.05	2025-11-18 06:48:43.05
+264	1	4	전단기 점검	3	2025-11-18 06:48:43.052	2025-11-18 06:48:43.052
+265	1	4	절곡기 점검	4	2025-11-18 06:48:43.053	2025-11-18 06:48:43.053
+267	1	4	걸이구 점검	6	2025-11-18 06:48:43.056	2025-11-18 06:48:43.056
+268	1	4	배전반 점검	7	2025-11-18 06:48:43.058	2025-11-18 06:48:43.058
+269	1	4	이동크레인 점검	8	2025-11-18 06:48:43.059	2025-11-18 06:48:43.059
+270	1	4	위험물,가스저장소 점검	9	2025-11-18 06:48:43.061	2025-11-18 06:48:43.061
+271	1	5	지게차 점검	1	2025-11-18 06:48:43.063	2025-11-18 06:48:43.063
+272	1	5	크레인 점검	2	2025-11-18 06:48:43.065	2025-11-18 06:48:43.065
+273	1	5	전단기 점검	3	2025-11-18 06:48:43.067	2025-11-18 06:48:43.067
+274	1	5	절곡기 점검	4	2025-11-18 06:48:43.069	2025-11-18 06:48:43.069
+276	1	5	걸이구 점검	6	2025-11-18 06:48:43.073	2025-11-18 06:48:43.073
+277	1	5	프레스 점검	7	2025-11-18 06:48:43.075	2025-11-18 06:48:43.075
+279	1	5	소화전,소화기 점검	9	2025-11-18 06:48:43.078	2025-11-18 06:48:43.078
+280	1	6	지게차 점검	1	2025-11-18 06:48:43.08	2025-11-18 06:48:43.08
+281	1	6	크레인 점검	2	2025-11-18 06:48:43.082	2025-11-18 06:48:43.082
+282	1	6	전단기 점검	3	2025-11-18 06:48:43.083	2025-11-18 06:48:43.083
+283	1	6	절곡기 점검	4	2025-11-18 06:48:43.085	2025-11-18 06:48:43.085
+285	1	6	걸이구 점검	6	2025-11-18 06:48:43.087	2025-11-18 06:48:43.087
+286	1	6	드릴기 점검	7	2025-11-18 06:48:43.089	2025-11-18 06:48:43.089
+287	1	6	용접기 점검	8	2025-11-18 06:48:43.091	2025-11-18 06:48:43.091
+288	1	6	위험물,가스저장소 점검	9	2025-11-18 06:48:43.092	2025-11-18 06:48:43.092
+289	1	7	지게차 점검	1	2025-11-18 06:48:43.094	2025-11-18 06:48:43.094
+290	1	7	크레인 점검	2	2025-11-18 06:48:43.096	2025-11-18 06:48:43.096
+291	1	7	전단기 점검	3	2025-11-18 06:48:43.097	2025-11-18 06:48:43.097
+292	1	7	절곡기 점검	4	2025-11-18 06:48:43.099	2025-11-18 06:48:43.099
+294	1	7	걸이구 점검	6	2025-11-18 06:48:43.102	2025-11-18 06:48:43.102
+295	1	7	전동공구 점검	7	2025-11-18 06:48:43.104	2025-11-18 06:48:43.104
+296	1	7	배전반 점검	8	2025-11-18 06:48:43.106	2025-11-18 06:48:43.106
+297	1	7	위험물,가스저장소 점검	9	2025-11-18 06:48:43.108	2025-11-18 06:48:43.108
+298	1	8	지게차 점검	1	2025-11-18 06:48:43.109	2025-11-18 06:48:43.109
+299	1	8	크레인 점검	2	2025-11-18 06:48:43.111	2025-11-18 06:48:43.111
+300	1	8	전단기 점검	3	2025-11-18 06:48:43.113	2025-11-18 06:48:43.113
+301	1	8	절곡기 점검	4	2025-11-18 06:48:43.115	2025-11-18 06:48:43.115
+303	1	8	걸이구 점검	6	2025-11-18 06:48:43.118	2025-11-18 06:48:43.118
+304	1	8	탭핑기,스폿용접기 점검	7	2025-11-18 06:48:43.119	2025-11-18 06:48:43.119
+306	1	8	소화전,소화기 점검	9	2025-11-18 06:48:43.122	2025-11-18 06:48:43.122
+307	1	9	지게차 점검	1	2025-11-18 06:48:43.123	2025-11-18 06:48:43.123
+308	1	9	크레인 점검	2	2025-11-18 06:48:43.125	2025-11-18 06:48:43.125
+309	1	9	전단기 점검	3	2025-11-18 06:48:43.126	2025-11-18 06:48:43.126
+310	1	9	절곡기 점검	4	2025-11-18 06:48:43.127	2025-11-18 06:48:43.127
+312	1	9	걸이구 점검	6	2025-11-18 06:48:43.13	2025-11-18 06:48:43.13
+313	1	9	밀링기,면취기 점검	7	2025-11-18 06:48:43.131	2025-11-18 06:48:43.131
+314	1	9	이동크레인 점검	8	2025-11-18 06:48:43.132	2025-11-18 06:48:43.132
+315	1	9	위험물,가스저장소 점검	9	2025-11-18 06:48:43.134	2025-11-18 06:48:43.134
+316	1	10	지게차 점검	1	2025-11-18 06:48:43.135	2025-11-18 06:48:43.135
+317	1	10	크레인 점검	2	2025-11-18 06:48:43.136	2025-11-18 06:48:43.136
+318	1	10	전단기 점검	3	2025-11-18 06:48:43.138	2025-11-18 06:48:43.138
+319	1	10	절곡기 점검	4	2025-11-18 06:48:43.139	2025-11-18 06:48:43.139
+321	1	10	걸이구 점검	6	2025-11-18 06:48:43.141	2025-11-18 06:48:43.141
+322	1	10	프레스 점검	7	2025-11-18 06:48:43.143	2025-11-18 06:48:43.143
+323	1	10	배전반 점검	8	2025-11-18 06:48:43.144	2025-11-18 06:48:43.144
+324	1	10	소화전,소화기 점검	9	2025-11-18 06:48:43.146	2025-11-18 06:48:43.146
+343	1	11	지게차 점검	1	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+344	1	11	크레인 점검	2	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+345	1	11	전단기 점검	3	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+346	1	11	절곡기 점검	4	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+348	1	11	걸이구 점검	6	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+349	1	11	드릴기 점검	7	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+351	1	11	소화전,소화기 점검	9	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+257	1	3	컨베이어 점검	5	2025-11-18 06:48:43.04	2025-11-18 06:48:43.04
+266	1	4	컨베이어 점검	5	2025-11-18 06:48:43.054	2025-11-18 06:48:43.054
+275	1	5	컨베이어 점검	5	2025-11-18 06:48:43.071	2025-11-18 06:48:43.071
+278	1	5	굴착기 점검	8	2025-11-18 06:48:43.077	2025-11-18 06:48:43.077
+284	1	6	컨베이어 점검	5	2025-11-18 06:48:43.086	2025-11-18 06:48:43.086
+293	1	7	컨베이어 점검	5	2025-11-18 06:48:43.1	2025-11-18 06:48:43.1
+302	1	8	컨베이어 점검	5	2025-11-18 06:48:43.116	2025-11-18 06:48:43.116
+305	1	8	굴착기 점검	8	2025-11-18 06:48:43.121	2025-11-18 06:48:43.121
+311	1	9	컨베이어 점검	5	2025-11-18 06:48:43.128	2025-11-18 06:48:43.128
+320	1	10	컨베이어 점검	5	2025-11-18 06:48:43.14	2025-11-18 06:48:43.14
+347	1	11	컨베이어 점검	5	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+350	1	11	굴착기 점검	8	2025-11-18 07:14:39.491	2025-11-18 07:14:39.491
+361	1	2	지게차 점검	1	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+362	1	2	크레인 점검	2	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+363	1	2	전단기 점검	3	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+364	1	2	절곡기 점검	4	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+365	1	2	컨베이어 점검	5	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+366	1	2	걸이구 점검	6	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+367	1	2	밀링기,면취기	7	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+368	1	2	용접기 점검	8	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+369	1	2	위험물,가스저장소	9	2025-11-26 00:30:15.433	2025-11-26 00:30:15.433
+382	2	2	지게차 점검	1	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+383	2	2	크레인 점검	2	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+384	2	2	컨베이어 점검	3	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+385	2	2	CNC 선반 점검	4	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+386	2	2	MCT	5	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+387	2	2	걸이구 점검	6	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+388	2	2	Deep Hole 점검	7	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+389	2	2	용접기 점검	8	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+390	2	2	굴착기 점검	9	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+391	2	2	테스트크레인 점검	10	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+392	2	2	위험물,가스저장소 점검	11	2025-11-26 02:01:31.548	2025-11-26 02:01:31.548
+393	2	3	지게차 점검	1	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+394	2	3	크레인 점검	2	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+395	2	3	컨베이어 점검	3	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+396	2	3	CNC 선반 점검	4	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+397	2	3	MCT 점검	5	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+398	2	3	걸이구 점검	6	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+399	2	3	반전기 점검	7	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+400	2	3	세척기	8	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+401	2	3	연삭기 점검	9	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+402	2	3	템퍼링로	10	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+403	2	3	소화전,소화기	11	2025-11-26 02:01:50.415	2025-11-26 02:01:50.415
+404	2	4	지게차 점검	1	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+405	2	4	크레인 점검	2	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+406	2	4	컨베이어 점검	3	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+407	2	4	CNC 선반 점검	4	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+408	2	4	MCT 점검	5	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+409	2	4	걸이구 점검	6	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+410	2	4	보링기 점검	7	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+411	2	4	마킹기 점검	8	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+412	2	4	멀티밀링 점검	9	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+413	2	4	스토우 점검	10	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+414	2	4	위험물,가스저장소 점검	11	2025-11-26 02:01:59.912	2025-11-26 02:01:59.912
+12	2	12	지게차 점검	1	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+13	2	12	크레인 점검	2	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+14	2	12	컨베이어 점검	3	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+15	2	12	CNC선반 점검	4	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+16	2	12	걸이구 점검	5	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+17	2	12	위험물/가스저장소 점검	6	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+18	2	12	소화전/소화기 점검	7	2025-12-11 01:44:17.256	2025-12-11 01:44:17.256
+39	2	11	지게차 점검	1	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+40	2	11	크레인 점검	2	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+41	2	11	컨베이어 점검	3	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+42	2	11	CNC선반 점검	4	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+43	2	11	MCT 점검	5	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+44	2	11	걸이구 점검	6	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+45	2	11	전동드릴/타카 점검	7	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+46	2	11	산소절단기 점검	8	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+47	2	11	둥근톱 점검	9	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+48	2	11	밧데리충전기 점검	10	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+49	2	11	작업대/발판 점검	11	2025-12-11 02:27:59.341	2025-12-11 02:27:59.341
+50	2	1	지게차 점검	1	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+51	2	1	크레인 점검	2	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+52	2	1	컨베이어 점검	3	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+53	2	1	CNC선반 점검	4	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+54	2	1	MCT 점검	5	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+55	2	1	걸이구 점검	6	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+56	2	1	세척조/피트로/유조로 점검	7	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+57	2	1	열처리/올케이스로 점검	8	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+58	2	1	둥근톱	9	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+59	2	1	위험물/가스저장소 점검	10	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+60	2	1	소화전/소화기 점검	11	2025-12-11 02:28:49.157	2025-12-11 02:28:49.157
+61	1	12	지게차 점검	1	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+62	1	12	크레인 점검	2	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+63	1	12	전단기 점검	3	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+64	1	12	절곡기 점검	4	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+65	1	12	컨베이어 점검	5	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+66	1	12	걸이구 점검	6	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+67	1	12	이동크레인 점검	7	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+68	1	12	소화전,소화기 점검	8	2025-12-11 02:30:39.672	2025-12-11 02:30:39.672
+69	1	1	지게차 점검	1	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+70	1	1	크레인 점검	2	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+71	1	1	전단기 점검	3	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+72	1	1	절곡기 점검	4	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+73	1	1	컨베이어 점검	5	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+74	1	1	걸이구 점검	6	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+75	1	1	드릴기,플라즈마,레이져절단기 점검	7	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+76	1	1	위험물,가스저장소 점검	8	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+77	1	1	소화전,소화기 점검	9	2025-12-11 02:31:15.387	2025-12-11 02:31:15.387
+\.
+
+
+--
+-- Data for Name: InspectionTemplates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."InspectionTemplates" (id, "teamId", month, "equipmentName", "displayOrder", "isRequired", "createdAt") FROM stdin;
+89	1	1	지게차	0	t	2025-11-10 00:13:32.308
+90	1	1	크레인/호이스트	10	t	2025-11-10 00:13:32.308
+91	1	1	전동공구	20	t	2025-11-10 00:13:32.308
+92	1	1	작업대	30	t	2025-11-10 00:13:32.308
+93	1	1	컨베이어	40	t	2025-11-10 00:13:32.308
+94	1	1	프레스	50	t	2025-11-10 00:13:32.308
+95	1	1	용접기	60	t	2025-11-10 00:13:32.308
+96	1	1	연삭기	70	t	2025-11-10 00:13:32.308
+97	1	1	선반	80	t	2025-11-10 00:13:32.308
+98	1	1	드릴	90	t	2025-11-10 00:13:32.308
+99	1	1	안전난간	100	t	2025-11-10 00:13:32.308
+100	1	1	비상정지장치	110	t	2025-11-10 00:13:32.308
+101	1	1	국소배기장치	120	t	2025-11-10 00:13:32.308
+102	1	1	방호덮개	130	t	2025-11-10 00:13:32.308
+103	1	1	전기패널	140	t	2025-11-10 00:13:32.308
+104	1	1	조명	150	t	2025-11-10 00:13:32.308
+105	1	1	소화기	160	t	2025-11-10 00:13:32.308
+106	1	1	비상구	170	t	2025-11-10 00:13:32.308
+107	1	1	안전통로	180	t	2025-11-10 00:13:32.308
+108	1	1	개인보호구 보관함	190	t	2025-11-10 00:13:32.308
+109	5	1	지게차	0	t	2025-11-10 00:13:32.313
+110	5	1	크레인/호이스트	10	t	2025-11-10 00:13:32.313
+111	5	1	파레트랙	20	t	2025-11-10 00:13:32.313
+112	5	1	하역설비	30	t	2025-11-10 00:13:32.313
+113	5	1	운반대차	40	t	2025-11-10 00:13:32.313
+114	5	1	안전난간	50	t	2025-11-10 00:13:32.313
+115	5	1	전기패널	60	t	2025-11-10 00:13:32.313
+116	5	1	조명	70	t	2025-11-10 00:13:32.313
+117	5	1	소화기	80	t	2025-11-10 00:13:32.313
+118	5	1	비상구	90	t	2025-11-10 00:13:32.313
+119	5	1	안전통로	100	t	2025-11-10 00:13:32.313
+120	5	1	개인보호구 보관함	110	t	2025-11-10 00:13:32.313
+121	5	1	창고 선반	120	t	2025-11-10 00:13:32.313
+122	5	1	포장 설비	130	t	2025-11-10 00:13:32.313
+123	7	1	검사 장비	0	t	2025-11-10 00:13:32.319
+124	7	1	측정 기구	10	t	2025-11-10 00:13:32.319
+125	7	1	전동공구	20	t	2025-11-10 00:13:32.319
+126	7	1	작업대	30	t	2025-11-10 00:13:32.319
+127	7	1	전기패널	40	t	2025-11-10 00:13:32.319
+128	7	1	조명	50	t	2025-11-10 00:13:32.319
+129	7	1	소화기	60	t	2025-11-10 00:13:32.319
+130	7	1	비상구	70	t	2025-11-10 00:13:32.319
+131	7	1	안전통로	80	t	2025-11-10 00:13:32.319
+132	7	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.319
+133	7	1	시험 장비	100	t	2025-11-10 00:13:32.319
+134	7	1	컴퓨터/전자기기	110	t	2025-11-10 00:13:32.319
+59	8	1	전기패널	0	t	2025-11-10 00:13:32.298
+60	8	1	조명	10	t	2025-11-10 00:13:32.298
+61	8	1	소화기	20	t	2025-11-10 00:13:32.298
+62	8	1	비상구	30	t	2025-11-10 00:13:32.298
+63	8	1	안전통로	40	t	2025-11-10 00:13:32.298
+64	8	1	컴퓨터/전자기기	50	t	2025-11-10 00:13:32.298
+65	8	1	에어컨/난방기	60	t	2025-11-10 00:13:32.298
+66	8	1	정수기	70	t	2025-11-10 00:13:32.298
+67	8	1	복사기	80	t	2025-11-10 00:13:32.298
+68	8	1	캐비닛/선반	90	t	2025-11-10 00:13:32.298
+1094	52	5	크레인	2	t	2025-12-18 01:15:51.336
+1095	52	5	컨베이어	3	t	2025-12-18 01:15:51.421
+1096	52	5	용접기	4	t	2025-12-18 01:15:51.5
+1097	52	5	연삭기	5	t	2025-12-18 01:15:51.579
+1098	52	5	둥근톱	6	t	2025-12-18 01:15:51.659
+1099	52	5	산소절단기	7	t	2025-12-18 01:15:51.739
+1100	52	5	위험물/가스저장소	8	t	2025-12-18 01:15:51.82
+1101	52	5	소화전/소화기	9	t	2025-12-18 01:15:51.899
+1102	52	5	분배전반	10	t	2025-12-18 01:15:51.979
+1103	52	5	공기압축기	11	t	2025-12-18 01:15:52.058
+1104	52	6	지게차	1	t	2025-12-18 01:15:52.138
+1105	52	6	크레인	2	t	2025-12-18 01:15:52.217
+1106	52	6	컨베이어	3	t	2025-12-18 01:15:52.297
+1107	52	6	용접기	4	t	2025-12-18 01:15:52.376
+1108	52	6	연삭기	5	t	2025-12-18 01:15:52.456
+1109	52	6	둥근톱	6	t	2025-12-18 01:15:52.535
+1110	52	6	산소절단기	7	t	2025-12-18 01:15:52.614
+1111	52	6	위험물/가스저장소	8	t	2025-12-18 01:15:52.694
+1112	52	6	소화전/소화기	9	t	2025-12-18 01:15:52.774
+1113	52	6	분배전반	10	t	2025-12-18 01:15:52.853
+1114	52	6	공기압축기	11	t	2025-12-18 01:15:52.933
+1115	52	7	지게차	1	t	2025-12-18 01:15:53.015
+1116	52	7	크레인	2	t	2025-12-18 01:15:53.094
+1117	52	7	컨베이어	3	t	2025-12-18 01:15:53.173
+1118	52	7	용접기	4	t	2025-12-18 01:15:53.253
+1119	52	7	연삭기	5	t	2025-12-18 01:15:53.332
+1120	52	7	둥근톱	6	t	2025-12-18 01:15:53.412
+1121	52	7	산소절단기	7	t	2025-12-18 01:15:53.491
+1122	52	7	위험물/가스저장소	8	t	2025-12-18 01:15:53.57
+1123	52	7	소화전/소화기	9	t	2025-12-18 01:15:53.65
+1124	52	7	분배전반	10	t	2025-12-18 01:15:53.729
+1125	52	7	공기압축기	11	t	2025-12-18 01:15:53.808
+1126	52	8	지게차	1	t	2025-12-18 01:15:53.888
+1127	52	8	크레인	2	t	2025-12-18 01:15:53.967
+1128	52	8	컨베이어	3	t	2025-12-18 01:15:54.046
+1129	52	8	용접기	4	t	2025-12-18 01:15:54.126
+1130	52	8	연삭기	5	t	2025-12-18 01:15:54.205
+1131	52	8	둥근톱	6	t	2025-12-18 01:15:54.284
+1132	52	8	산소절단기	7	t	2025-12-18 01:15:54.363
+1133	52	8	위험물/가스저장소	8	t	2025-12-18 01:15:54.443
+1134	52	8	소화전/소화기	9	t	2025-12-18 01:15:54.523
+1135	52	8	분배전반	10	t	2025-12-18 01:15:54.603
+1136	52	8	공기압축기	11	t	2025-12-18 01:15:54.682
+1137	52	9	지게차	1	t	2025-12-18 01:15:54.762
+1138	52	9	크레인	2	t	2025-12-18 01:15:54.841
+1139	52	9	컨베이어	3	t	2025-12-18 01:15:54.92
+1140	52	9	용접기	4	t	2025-12-18 01:15:54.999
+1141	52	9	연삭기	5	t	2025-12-18 01:15:55.079
+1142	52	9	둥근톱	6	t	2025-12-18 01:15:55.158
+1143	52	9	산소절단기	7	t	2025-12-18 01:15:55.237
+1144	52	9	위험물/가스저장소	8	t	2025-12-18 01:15:55.316
+1145	52	9	소화전/소화기	9	t	2025-12-18 01:15:55.396
+1146	52	9	분배전반	10	t	2025-12-18 01:15:55.475
+1147	52	9	공기압축기	11	t	2025-12-18 01:15:55.555
+1148	52	10	지게차	1	t	2025-12-18 01:15:55.634
+1149	52	10	크레인	2	t	2025-12-18 01:15:55.713
+1150	52	10	컨베이어	3	t	2025-12-18 01:15:55.792
+1151	52	10	용접기	4	t	2025-12-18 01:15:55.872
+1152	52	10	연삭기	5	t	2025-12-18 01:15:55.951
+1153	52	10	둥근톱	6	t	2025-12-18 01:15:56.03
+1154	52	10	산소절단기	7	t	2025-12-18 01:15:56.109
+1155	52	10	위험물/가스저장소	8	t	2025-12-18 01:15:56.189
+1156	52	10	소화전/소화기	9	t	2025-12-18 01:15:56.275
+1157	52	10	분배전반	10	t	2025-12-18 01:15:56.354
+1158	52	10	공기압축기	11	t	2025-12-18 01:15:56.434
+1159	52	11	지게차	1	t	2025-12-18 01:15:56.514
+1160	52	11	크레인	2	t	2025-12-18 01:15:56.594
+1161	52	11	컨베이어	3	t	2025-12-18 01:15:56.673
+1162	52	11	용접기	4	t	2025-12-18 01:15:56.752
+1163	52	11	연삭기	5	t	2025-12-18 01:15:56.832
+1164	52	11	둥근톱	6	t	2025-12-18 01:15:56.912
+1165	52	11	산소절단기	7	t	2025-12-18 01:15:56.991
+1166	52	11	위험물/가스저장소	8	t	2025-12-18 01:15:57.071
+1167	52	11	소화전/소화기	9	t	2025-12-18 01:15:57.15
+1168	52	11	분배전반	10	t	2025-12-18 01:15:57.229
+1169	52	11	공기압축기	11	t	2025-12-18 01:15:57.308
+1170	52	12	지게차	1	t	2025-12-18 01:15:57.387
+1171	52	12	크레인	2	t	2025-12-18 01:15:57.466
+1172	52	12	컨베이어	3	t	2025-12-18 01:15:57.545
+1173	52	12	용접기	4	t	2025-12-18 01:15:57.624
+1174	52	12	연삭기	5	t	2025-12-18 01:15:57.704
+1175	52	12	둥근톱	6	t	2025-12-18 01:15:57.783
+1176	52	12	산소절단기	7	t	2025-12-18 01:15:57.862
+1177	52	12	위험물/가스저장소	8	t	2025-12-18 01:15:57.941
+1178	52	12	소화전/소화기	9	t	2025-12-18 01:15:58.021
+1179	52	12	분배전반	10	t	2025-12-18 01:15:58.1
+1180	52	12	공기압축기	11	t	2025-12-18 01:15:58.18
+1181	53	1	지게차	1	t	2025-12-18 01:15:58.338
+1182	53	1	크레인	2	t	2025-12-18 01:15:58.417
+1183	53	1	산소절단기	3	t	2025-12-18 01:15:58.496
+1184	53	1	위험물/가스저장소	4	t	2025-12-18 01:15:58.575
+1185	53	1	소화전/소화기	5	t	2025-12-18 01:15:58.655
+1186	53	1	분배전반	6	t	2025-12-18 01:15:58.734
+1187	53	1	공기압축기	7	t	2025-12-18 01:15:58.816
+1188	53	2	지게차	1	t	2025-12-18 01:15:58.901
+1189	53	2	크레인	2	t	2025-12-18 01:15:58.987
+1190	53	2	산소절단기	3	t	2025-12-18 01:15:59.071
+1191	53	2	위험물/가스저장소	4	t	2025-12-18 01:15:59.155
+1192	53	2	소화전/소화기	5	t	2025-12-18 01:15:59.237
+1193	53	2	분배전반	6	t	2025-12-18 01:15:59.317
+1194	53	2	공기압축기	7	t	2025-12-18 01:15:59.396
+1195	53	3	지게차	1	t	2025-12-18 01:15:59.476
+1196	53	3	크레인	2	t	2025-12-18 01:15:59.555
+1197	53	3	산소절단기	3	t	2025-12-18 01:15:59.636
+1198	53	3	위험물/가스저장소	4	t	2025-12-18 01:15:59.715
+1199	53	3	소화전/소화기	5	t	2025-12-18 01:15:59.794
+1200	53	3	분배전반	6	t	2025-12-18 01:15:59.874
+1201	53	3	공기압축기	7	t	2025-12-18 01:15:59.953
+1202	53	4	지게차	1	t	2025-12-18 01:16:00.032
+1203	53	4	크레인	2	t	2025-12-18 01:16:00.112
+1204	53	4	산소절단기	3	t	2025-12-18 01:16:00.197
+1205	53	4	위험물/가스저장소	4	t	2025-12-18 01:16:00.286
+1206	53	4	소화전/소화기	5	t	2025-12-18 01:16:00.37
+1207	53	4	분배전반	6	t	2025-12-18 01:16:00.458
+1208	53	4	공기압축기	7	t	2025-12-18 01:16:00.537
+1209	53	5	지게차	1	t	2025-12-18 01:16:00.617
+1210	53	5	크레인	2	t	2025-12-18 01:16:00.696
+1211	53	5	산소절단기	3	t	2025-12-18 01:16:00.775
+1212	53	5	위험물/가스저장소	4	t	2025-12-18 01:16:00.855
+1213	53	5	소화전/소화기	5	t	2025-12-18 01:16:00.934
+1214	53	5	분배전반	6	t	2025-12-18 01:16:01.014
+1215	53	5	공기압축기	7	t	2025-12-18 01:16:01.093
+1216	53	6	지게차	1	t	2025-12-18 01:16:01.173
+1217	53	6	크레인	2	t	2025-12-18 01:16:01.252
+1218	53	6	산소절단기	3	t	2025-12-18 01:16:01.332
+1219	53	6	위험물/가스저장소	4	t	2025-12-18 01:16:01.411
+1220	53	6	소화전/소화기	5	t	2025-12-18 01:16:01.491
+1221	53	6	분배전반	6	t	2025-12-18 01:16:01.571
+1222	53	6	공기압축기	7	t	2025-12-18 01:16:01.651
+1223	53	7	지게차	1	t	2025-12-18 01:16:01.73
+1224	53	7	크레인	2	t	2025-12-18 01:16:01.809
+1225	53	7	산소절단기	3	t	2025-12-18 01:16:01.888
+1226	53	7	위험물/가스저장소	4	t	2025-12-18 01:16:01.968
+1227	53	7	소화전/소화기	5	t	2025-12-18 01:16:02.048
+1228	53	7	분배전반	6	t	2025-12-18 01:16:02.131
+1229	53	7	공기압축기	7	t	2025-12-18 01:16:02.21
+1230	53	8	지게차	1	t	2025-12-18 01:16:02.29
+1231	53	8	크레인	2	t	2025-12-18 01:16:02.369
+1232	53	8	산소절단기	3	t	2025-12-18 01:16:02.449
+1233	53	8	위험물/가스저장소	4	t	2025-12-18 01:16:02.528
+1234	53	8	소화전/소화기	5	t	2025-12-18 01:16:02.609
+1235	53	8	분배전반	6	t	2025-12-18 01:16:02.688
+1236	53	8	공기압축기	7	t	2025-12-18 01:16:02.767
+1237	53	9	지게차	1	t	2025-12-18 01:16:02.847
+1238	53	9	크레인	2	t	2025-12-18 01:16:02.926
+1239	53	9	산소절단기	3	t	2025-12-18 01:16:03.005
+1240	53	9	위험물/가스저장소	4	t	2025-12-18 01:16:03.084
+1241	53	9	소화전/소화기	5	t	2025-12-18 01:16:03.164
+1242	53	9	분배전반	6	t	2025-12-18 01:16:03.244
+1243	53	9	공기압축기	7	t	2025-12-18 01:16:03.323
+1244	53	10	지게차	1	t	2025-12-18 01:16:03.403
+1245	53	10	크레인	2	t	2025-12-18 01:16:03.482
+1246	53	10	산소절단기	3	t	2025-12-18 01:16:03.641
+1247	53	10	위험물/가스저장소	4	t	2025-12-18 01:16:03.72
+1248	53	10	소화전/소화기	5	t	2025-12-18 01:16:03.799
+1249	53	10	분배전반	6	t	2025-12-18 01:16:03.879
+1250	53	10	공기압축기	7	t	2025-12-18 01:16:03.958
+1251	53	11	지게차	1	t	2025-12-18 01:16:04.037
+1252	53	11	크레인	2	t	2025-12-18 01:16:04.117
+1253	53	11	산소절단기	3	t	2025-12-18 01:16:04.197
+1254	53	11	위험물/가스저장소	4	t	2025-12-18 01:16:04.276
+1255	53	11	소화전/소화기	5	t	2025-12-18 01:16:04.355
+1256	53	11	분배전반	6	t	2025-12-18 01:16:04.435
+1257	53	11	공기압축기	7	t	2025-12-18 01:16:04.514
+1258	53	12	지게차	1	t	2025-12-18 01:16:04.593
+1259	53	12	크레인	2	t	2025-12-18 01:16:04.672
+1260	53	12	산소절단기	3	t	2025-12-18 01:16:04.752
+1261	53	12	위험물/가스저장소	4	t	2025-12-18 01:16:04.831
+1262	53	12	소화전/소화기	5	t	2025-12-18 01:16:04.911
+1263	53	12	분배전반	6	t	2025-12-18 01:16:04.99
+1264	53	12	공기압축기	7	t	2025-12-18 01:16:05.07
+1265	54	1	지게차	1	t	2025-12-18 01:16:05.227
+1266	54	1	크레인	2	t	2025-12-18 01:16:05.307
+1267	54	1	컨베이어	3	t	2025-12-18 01:16:05.387
+1268	54	1	용접기	4	t	2025-12-18 01:16:05.466
+1269	54	1	반전기	5	t	2025-12-18 01:16:05.545
+1270	54	1	연삭기	6	t	2025-12-18 01:16:05.625
+1271	54	1	드릴(레디알)	7	t	2025-12-18 01:16:05.705
+1272	54	1	전동드릴/타카	8	t	2025-12-18 01:16:05.784
+1273	54	1	둥근톱	9	t	2025-12-18 01:16:05.864
+1274	54	1	산소절단기	10	t	2025-12-18 01:16:05.943
+1275	54	1	위험물/가스저장소	11	t	2025-12-18 01:16:06.023
+1276	54	1	소화전/소화기	12	t	2025-12-18 01:16:06.102
+1277	54	1	분배전반	13	t	2025-12-18 01:16:06.181
+1278	54	1	걸이구	14	t	2025-12-18 01:16:06.261
+1279	54	1	압력용기	15	t	2025-12-18 01:16:06.341
+1280	54	1	공기압축기	16	t	2025-12-18 01:16:06.42
+1281	54	2	지게차	1	t	2025-12-18 01:16:06.5
+1282	54	2	크레인	2	t	2025-12-18 01:16:06.58
+1283	54	2	컨베이어	3	t	2025-12-18 01:16:06.659
+1284	54	2	용접기	4	t	2025-12-18 01:16:06.738
+409	32	1	시험 장비	0	t	2025-11-10 00:13:32.388
+410	32	1	측정 기구	10	t	2025-11-10 00:13:32.388
+411	32	1	전동공구	20	t	2025-11-10 00:13:32.388
+412	32	1	작업대	30	t	2025-11-10 00:13:32.388
+413	32	1	전기패널	40	t	2025-11-10 00:13:32.388
+414	32	1	조명	50	t	2025-11-10 00:13:32.388
+415	32	1	소화기	60	t	2025-11-10 00:13:32.388
+416	32	1	비상구	70	t	2025-11-10 00:13:32.388
+417	32	1	안전통로	80	t	2025-11-10 00:13:32.388
+418	32	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.388
+419	32	1	컴퓨터/전자기기	100	t	2025-11-10 00:13:32.388
+420	32	1	화학물질 보관함	110	t	2025-11-10 00:13:32.388
+421	32	1	국소배기장치	120	t	2025-11-10 00:13:32.388
+422	32	1	실험대	130	t	2025-11-10 00:13:32.388
+1285	54	2	반전기	5	t	2025-12-18 01:16:06.818
+1286	54	2	연삭기	6	t	2025-12-18 01:16:06.897
+1287	54	2	드릴(레디알)	7	t	2025-12-18 01:16:06.977
+1288	54	2	전동드릴/타카	8	t	2025-12-18 01:16:07.056
+1289	54	2	둥근톱	9	t	2025-12-18 01:16:07.135
+1290	54	2	산소절단기	10	t	2025-12-18 01:16:07.214
+1291	54	2	위험물/가스저장소	11	t	2025-12-18 01:16:07.294
+1292	54	2	소화전/소화기	12	t	2025-12-18 01:16:07.374
+1293	54	2	분배전반	13	t	2025-12-18 01:16:07.453
+1294	54	2	걸이구	14	t	2025-12-18 01:16:07.533
+1295	54	2	압력용기	15	t	2025-12-18 01:16:07.623
+1296	54	2	공기압축기	16	t	2025-12-18 01:16:07.702
+1297	54	3	지게차	1	t	2025-12-18 01:16:07.782
+1298	54	3	크레인	2	t	2025-12-18 01:16:07.861
+1299	54	3	컨베이어	3	t	2025-12-18 01:16:07.941
+1300	54	3	용접기	4	t	2025-12-18 01:16:08.02
+1301	54	3	반전기	5	t	2025-12-18 01:16:08.1
+1302	54	3	연삭기	6	t	2025-12-18 01:16:08.179
+1303	54	3	드릴(레디알)	7	t	2025-12-18 01:16:08.258
+1304	54	3	전동드릴/타카	8	t	2025-12-18 01:16:08.337
+1305	54	3	둥근톱	9	t	2025-12-18 01:16:08.416
+1306	54	3	산소절단기	10	t	2025-12-18 01:16:08.496
+1307	54	3	위험물/가스저장소	11	t	2025-12-18 01:16:08.575
+1308	54	3	소화전/소화기	12	t	2025-12-18 01:16:08.655
+1309	54	3	분배전반	13	t	2025-12-18 01:16:08.735
+1310	54	3	걸이구	14	t	2025-12-18 01:16:08.815
+1311	54	3	압력용기	15	t	2025-12-18 01:16:08.895
+1312	54	3	공기압축기	16	t	2025-12-18 01:16:08.979
+1313	54	4	지게차	1	t	2025-12-18 01:16:09.065
+1314	54	4	크레인	2	t	2025-12-18 01:16:09.149
+1315	54	4	컨베이어	3	t	2025-12-18 01:16:09.23
+1316	54	4	용접기	4	t	2025-12-18 01:16:09.31
+1317	54	4	반전기	5	t	2025-12-18 01:16:09.389
+1318	54	4	연삭기	6	t	2025-12-18 01:16:09.468
+1319	54	4	드릴(레디알)	7	t	2025-12-18 01:16:09.55
+1320	54	4	전동드릴/타카	8	t	2025-12-18 01:16:09.63
+1321	54	4	둥근톱	9	t	2025-12-18 01:16:09.709
+1322	54	4	산소절단기	10	t	2025-12-18 01:16:09.788
+1323	54	4	위험물/가스저장소	11	t	2025-12-18 01:16:09.868
+1324	54	4	소화전/소화기	12	t	2025-12-18 01:16:09.947
+1325	54	4	분배전반	13	t	2025-12-18 01:16:10.026
+1326	54	4	걸이구	14	t	2025-12-18 01:16:10.105
+1327	54	4	압력용기	15	t	2025-12-18 01:16:10.184
+1328	54	4	공기압축기	16	t	2025-12-18 01:16:10.264
+1329	54	5	지게차	1	t	2025-12-18 01:16:10.348
+1330	54	5	크레인	2	t	2025-12-18 01:16:10.427
+792	50	1	밴드쏘우	8	t	2025-12-18 01:15:26.311
+793	50	1	칩이송장치	9	t	2025-12-18 01:15:26.391
+794	50	1	산소절단기	10	t	2025-12-18 01:15:26.47
+795	50	1	위험물/가스저장소	11	t	2025-12-18 01:15:26.557
+796	50	1	소화전/소화기	12	t	2025-12-18 01:15:26.649
+797	50	1	분배전반	13	t	2025-12-18 01:15:26.74
+798	50	1	걸이구	14	t	2025-12-18 01:15:26.832
+799	50	1	압력용기	15	t	2025-12-18 01:15:26.924
+800	50	2	지게차	1	t	2025-12-18 01:15:27.014
+801	50	2	크레인	2	t	2025-12-18 01:15:27.104
+802	50	2	CNC선반	3	t	2025-12-18 01:15:27.197
+803	50	2	MCT	4	t	2025-12-18 01:15:27.289
+804	50	2	Deep Hole	5	t	2025-12-18 01:15:27.378
+805	50	2	드릴(레디알)	6	t	2025-12-18 01:15:27.467
+806	50	2	탁상용연삭기	7	t	2025-12-18 01:15:27.554
+807	50	2	밴드쏘우	8	t	2025-12-18 01:15:27.638
+808	50	2	칩이송장치	9	t	2025-12-18 01:15:27.718
+809	50	2	산소절단기	10	t	2025-12-18 01:15:27.798
+810	50	2	위험물/가스저장소	11	t	2025-12-18 01:15:27.877
+811	50	2	소화전/소화기	12	t	2025-12-18 01:15:27.957
+423	38	1	전기패널	0	t	2025-11-10 00:13:32.392
+424	38	1	조명	10	t	2025-11-10 00:13:32.392
+425	38	1	소화기	20	t	2025-11-10 00:13:32.392
+1331	54	5	컨베이어	3	t	2025-12-18 01:16:10.506
+426	38	1	비상구	30	t	2025-11-10 00:13:32.392
+427	38	1	안전통로	40	t	2025-11-10 00:13:32.392
+428	38	1	컴퓨터/전자기기	50	t	2025-11-10 00:13:32.392
+429	38	1	에어컨/난방기	60	t	2025-11-10 00:13:32.392
+430	38	1	정수기	70	t	2025-11-10 00:13:32.392
+431	38	1	복사기	80	t	2025-11-10 00:13:32.392
+432	38	1	캐비닛/선반	90	t	2025-11-10 00:13:32.392
+33	6	1	검사 장비	0	t	2025-11-10 00:13:32.286
+34	6	1	측정 기구	10	t	2025-11-10 00:13:32.286
+35	6	1	전동공구	20	t	2025-11-10 00:13:32.286
+36	6	1	작업대	30	t	2025-11-10 00:13:32.286
+37	6	1	전기패널	40	t	2025-11-10 00:13:32.286
+38	6	1	조명	50	t	2025-11-10 00:13:32.286
+39	6	1	소화기	60	t	2025-11-10 00:13:32.286
+40	6	1	비상구	70	t	2025-11-10 00:13:32.286
+41	6	1	안전통로	80	t	2025-11-10 00:13:32.286
+42	6	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.286
+43	6	1	시험 장비	100	t	2025-11-10 00:13:32.286
+44	6	1	컴퓨터/전자기기	110	t	2025-11-10 00:13:32.286
+21	9	1	검사 장비	0	t	2025-11-10 00:13:32.281
+22	9	1	측정 기구	10	t	2025-11-10 00:13:32.281
+23	9	1	전동공구	20	t	2025-11-10 00:13:32.281
+24	9	1	작업대	30	t	2025-11-10 00:13:32.281
+25	9	1	전기패널	40	t	2025-11-10 00:13:32.281
+26	9	1	조명	50	t	2025-11-10 00:13:32.281
+27	9	1	소화기	60	t	2025-11-10 00:13:32.281
+28	9	1	비상구	70	t	2025-11-10 00:13:32.281
+29	9	1	안전통로	80	t	2025-11-10 00:13:32.281
+30	9	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.281
+31	9	1	시험 장비	100	t	2025-11-10 00:13:32.281
+32	9	1	컴퓨터/전자기기	110	t	2025-11-10 00:13:32.281
+315	27	1	지게차	0	t	2025-11-10 00:13:32.364
+316	27	1	크레인/호이스트	10	t	2025-11-10 00:13:32.364
+317	27	1	파레트랙	20	t	2025-11-10 00:13:32.364
+318	27	1	하역설비	30	t	2025-11-10 00:13:32.364
+319	27	1	운반대차	40	t	2025-11-10 00:13:32.364
+320	27	1	안전난간	50	t	2025-11-10 00:13:32.364
+321	27	1	전기패널	60	t	2025-11-10 00:13:32.364
+322	27	1	조명	70	t	2025-11-10 00:13:32.364
+323	27	1	소화기	80	t	2025-11-10 00:13:32.364
+324	27	1	비상구	90	t	2025-11-10 00:13:32.364
+325	27	1	안전통로	100	t	2025-11-10 00:13:32.364
+326	27	1	개인보호구 보관함	110	t	2025-11-10 00:13:32.364
+327	27	1	창고 선반	120	t	2025-11-10 00:13:32.364
+328	27	1	포장 설비	130	t	2025-11-10 00:13:32.364
+383	35	1	지게차	0	t	2025-11-10 00:13:32.38
+384	35	1	크레인/호이스트	10	t	2025-11-10 00:13:32.38
+385	35	1	파레트랙	20	t	2025-11-10 00:13:32.38
+386	35	1	하역설비	30	t	2025-11-10 00:13:32.38
+387	35	1	운반대차	40	t	2025-11-10 00:13:32.38
+388	35	1	안전난간	50	t	2025-11-10 00:13:32.38
+389	35	1	전기패널	60	t	2025-11-10 00:13:32.38
+390	35	1	조명	70	t	2025-11-10 00:13:32.38
+391	35	1	소화기	80	t	2025-11-10 00:13:32.38
+392	35	1	비상구	90	t	2025-11-10 00:13:32.38
+393	35	1	안전통로	100	t	2025-11-10 00:13:32.38
+394	35	1	개인보호구 보관함	110	t	2025-11-10 00:13:32.38
+395	35	1	창고 선반	120	t	2025-11-10 00:13:32.38
+396	35	1	포장 설비	130	t	2025-11-10 00:13:32.38
+1	3	1	지게차	0	t	2025-11-10 00:13:32.269
+2	3	1	크레인/호이스트	10	t	2025-11-10 00:13:32.269
+3	3	1	전동공구	20	t	2025-11-10 00:13:32.269
+4	3	1	작업대	30	t	2025-11-10 00:13:32.269
+5	3	1	컨베이어	40	t	2025-11-10 00:13:32.269
+6	3	1	프레스	50	t	2025-11-10 00:13:32.269
+7	3	1	용접기	60	t	2025-11-10 00:13:32.269
+8	3	1	연삭기	70	t	2025-11-10 00:13:32.269
+9	3	1	선반	80	t	2025-11-10 00:13:32.269
+10	3	1	드릴	90	t	2025-11-10 00:13:32.269
+11	3	1	안전난간	100	t	2025-11-10 00:13:32.269
+12	3	1	비상정지장치	110	t	2025-11-10 00:13:32.269
+13	3	1	국소배기장치	120	t	2025-11-10 00:13:32.269
+14	3	1	방호덮개	130	t	2025-11-10 00:13:32.269
+15	3	1	전기패널	140	t	2025-11-10 00:13:32.269
+16	3	1	조명	150	t	2025-11-10 00:13:32.269
+17	3	1	소화기	160	t	2025-11-10 00:13:32.269
+18	3	1	비상구	170	t	2025-11-10 00:13:32.269
+19	3	1	안전통로	180	t	2025-11-10 00:13:32.269
+20	3	1	개인보호구 보관함	190	t	2025-11-10 00:13:32.269
+45	4	1	시험 장비	0	t	2025-11-10 00:13:32.292
+46	4	1	측정 기구	10	t	2025-11-10 00:13:32.292
+47	4	1	전동공구	20	t	2025-11-10 00:13:32.292
+48	4	1	작업대	30	t	2025-11-10 00:13:32.292
+49	4	1	전기패널	40	t	2025-11-10 00:13:32.292
+50	4	1	조명	50	t	2025-11-10 00:13:32.292
+51	4	1	소화기	60	t	2025-11-10 00:13:32.292
+52	4	1	비상구	70	t	2025-11-10 00:13:32.292
+53	4	1	안전통로	80	t	2025-11-10 00:13:32.292
+54	4	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.292
+55	4	1	컴퓨터/전자기기	100	t	2025-11-10 00:13:32.292
+56	4	1	화학물질 보관함	110	t	2025-11-10 00:13:32.292
+57	4	1	국소배기장치	120	t	2025-11-10 00:13:32.292
+58	4	1	실험대	130	t	2025-11-10 00:13:32.292
+447	28	1	지게차	0	t	2025-11-10 00:13:32.399
+448	28	1	크레인/호이스트	10	t	2025-11-10 00:13:32.399
+449	28	1	파레트랙	20	t	2025-11-10 00:13:32.399
+450	28	1	하역설비	30	t	2025-11-10 00:13:32.399
+451	28	1	운반대차	40	t	2025-11-10 00:13:32.399
+452	28	1	안전난간	50	t	2025-11-10 00:13:32.399
+453	28	1	전기패널	60	t	2025-11-10 00:13:32.399
+454	28	1	조명	70	t	2025-11-10 00:13:32.399
+455	28	1	소화기	80	t	2025-11-10 00:13:32.399
+456	28	1	비상구	90	t	2025-11-10 00:13:32.399
+457	28	1	안전통로	100	t	2025-11-10 00:13:32.399
+458	28	1	개인보호구 보관함	110	t	2025-11-10 00:13:32.399
+459	28	1	창고 선반	120	t	2025-11-10 00:13:32.399
+460	28	1	포장 설비	130	t	2025-11-10 00:13:32.399
+69	2	1	지게차	0	t	2025-11-10 00:13:32.303
+70	2	1	크레인/호이스트	10	t	2025-11-10 00:13:32.303
+71	2	1	전동공구	20	t	2025-11-10 00:13:32.303
+72	2	1	작업대	30	t	2025-11-10 00:13:32.303
+73	2	1	컨베이어	40	t	2025-11-10 00:13:32.303
+74	2	1	프레스	50	t	2025-11-10 00:13:32.303
+75	2	1	용접기	60	t	2025-11-10 00:13:32.303
+76	2	1	연삭기	70	t	2025-11-10 00:13:32.303
+77	2	1	선반	80	t	2025-11-10 00:13:32.303
+78	2	1	드릴	90	t	2025-11-10 00:13:32.303
+79	2	1	안전난간	100	t	2025-11-10 00:13:32.303
+80	2	1	비상정지장치	110	t	2025-11-10 00:13:32.303
+81	2	1	국소배기장치	120	t	2025-11-10 00:13:32.303
+82	2	1	방호덮개	130	t	2025-11-10 00:13:32.303
+83	2	1	전기패널	140	t	2025-11-10 00:13:32.303
+84	2	1	조명	150	t	2025-11-10 00:13:32.303
+85	2	1	소화기	160	t	2025-11-10 00:13:32.303
+86	2	1	비상구	170	t	2025-11-10 00:13:32.303
+87	2	1	안전통로	180	t	2025-11-10 00:13:32.303
+88	2	1	개인보호구 보관함	190	t	2025-11-10 00:13:32.303
+461	30	1	검사 장비	0	t	2025-11-10 00:13:32.402
+462	30	1	측정 기구	10	t	2025-11-10 00:13:32.402
+463	30	1	전동공구	20	t	2025-11-10 00:13:32.402
+464	30	1	작업대	30	t	2025-11-10 00:13:32.402
+465	30	1	전기패널	40	t	2025-11-10 00:13:32.402
+466	30	1	조명	50	t	2025-11-10 00:13:32.402
+467	30	1	소화기	60	t	2025-11-10 00:13:32.402
+468	30	1	비상구	70	t	2025-11-10 00:13:32.402
+469	30	1	안전통로	80	t	2025-11-10 00:13:32.402
+470	30	1	개인보호구 보관함	90	t	2025-11-10 00:13:32.402
+471	30	1	시험 장비	100	t	2025-11-10 00:13:32.402
+472	30	1	컴퓨터/전자기기	110	t	2025-11-10 00:13:32.402
+713	39	1	시편절단기	1	t	2025-12-18 01:15:19.561
+714	39	1	굴착기	2	t	2025-12-18 01:15:19.733
+715	39	1	테스트크레인	3	t	2025-12-18 01:15:19.813
+716	39	1	전동드릴/타카	4	t	2025-12-18 01:15:19.897
+717	39	1	산소절단기	5	t	2025-12-18 01:15:19.977
+718	39	1	위험물/가스저장소	6	t	2025-12-18 01:15:20.057
+719	39	2	시편절단기	1	t	2025-12-18 01:15:20.136
+720	39	2	굴착기	2	t	2025-12-18 01:15:20.219
+721	39	2	테스트크레인	3	t	2025-12-18 01:15:20.298
+722	39	2	전동드릴/타카	4	t	2025-12-18 01:15:20.378
+723	39	2	산소절단기	5	t	2025-12-18 01:15:20.457
+724	39	2	위험물/가스저장소	6	t	2025-12-18 01:15:20.551
+725	39	3	시편절단기	1	t	2025-12-18 01:15:20.63
+726	39	3	굴착기	2	t	2025-12-18 01:15:20.712
+727	39	3	테스트크레인	3	t	2025-12-18 01:15:20.791
+728	39	3	전동드릴/타카	4	t	2025-12-18 01:15:20.871
+729	39	3	산소절단기	5	t	2025-12-18 01:15:20.951
+730	39	3	위험물/가스저장소	6	t	2025-12-18 01:15:21.039
+731	39	4	시편절단기	1	t	2025-12-18 01:15:21.132
+732	39	4	굴착기	2	t	2025-12-18 01:15:21.223
+733	39	4	테스트크레인	3	t	2025-12-18 01:15:21.329
+734	39	4	전동드릴/타카	4	t	2025-12-18 01:15:21.415
+735	39	4	산소절단기	5	t	2025-12-18 01:15:21.5
+736	39	4	위험물/가스저장소	6	t	2025-12-18 01:15:21.593
+737	39	5	시편절단기	1	t	2025-12-18 01:15:21.689
+738	39	5	굴착기	2	t	2025-12-18 01:15:21.786
+739	39	5	테스트크레인	3	t	2025-12-18 01:15:21.882
+740	39	5	전동드릴/타카	4	t	2025-12-18 01:15:21.976
+741	39	5	산소절단기	5	t	2025-12-18 01:15:22.072
+742	39	5	위험물/가스저장소	6	t	2025-12-18 01:15:22.167
+743	39	6	시편절단기	1	t	2025-12-18 01:15:22.262
+744	39	6	굴착기	2	t	2025-12-18 01:15:22.356
+745	39	6	테스트크레인	3	t	2025-12-18 01:15:22.45
+746	39	6	전동드릴/타카	4	t	2025-12-18 01:15:22.544
+747	39	6	산소절단기	5	t	2025-12-18 01:15:22.631
+748	39	6	위험물/가스저장소	6	t	2025-12-18 01:15:22.71
+749	39	7	시편절단기	1	t	2025-12-18 01:15:22.79
+750	39	7	굴착기	2	t	2025-12-18 01:15:22.869
+751	39	7	테스트크레인	3	t	2025-12-18 01:15:22.949
+752	39	7	전동드릴/타카	4	t	2025-12-18 01:15:23.029
+753	39	7	산소절단기	5	t	2025-12-18 01:15:23.109
+754	39	7	위험물/가스저장소	6	t	2025-12-18 01:15:23.19
+755	39	8	시편절단기	1	t	2025-12-18 01:15:23.273
+756	39	8	굴착기	2	t	2025-12-18 01:15:23.358
+757	39	8	테스트크레인	3	t	2025-12-18 01:15:23.44
+758	39	8	전동드릴/타카	4	t	2025-12-18 01:15:23.519
+759	39	8	산소절단기	5	t	2025-12-18 01:15:23.598
+760	39	8	위험물/가스저장소	6	t	2025-12-18 01:15:23.678
+761	39	9	시편절단기	1	t	2025-12-18 01:15:23.757
+762	39	9	굴착기	2	t	2025-12-18 01:15:23.843
+763	39	9	테스트크레인	3	t	2025-12-18 01:15:23.923
+764	39	9	전동드릴/타카	4	t	2025-12-18 01:15:24.002
+765	39	9	산소절단기	5	t	2025-12-18 01:15:24.082
+766	39	9	위험물/가스저장소	6	t	2025-12-18 01:15:24.161
+767	39	10	시편절단기	1	t	2025-12-18 01:15:24.241
+768	39	10	굴착기	2	t	2025-12-18 01:15:24.321
+769	39	10	테스트크레인	3	t	2025-12-18 01:15:24.401
+770	39	10	전동드릴/타카	4	t	2025-12-18 01:15:24.481
+771	39	10	산소절단기	5	t	2025-12-18 01:15:24.56
+772	39	10	위험물/가스저장소	6	t	2025-12-18 01:15:24.64
+773	39	11	시편절단기	1	t	2025-12-18 01:15:24.72
+774	39	11	굴착기	2	t	2025-12-18 01:15:24.799
+775	39	11	테스트크레인	3	t	2025-12-18 01:15:24.879
+776	39	11	전동드릴/타카	4	t	2025-12-18 01:15:24.958
+777	39	11	산소절단기	5	t	2025-12-18 01:15:25.038
+778	39	11	위험물/가스저장소	6	t	2025-12-18 01:15:25.117
+779	39	12	시편절단기	1	t	2025-12-18 01:15:25.197
+780	39	12	굴착기	2	t	2025-12-18 01:15:25.277
+781	39	12	테스트크레인	3	t	2025-12-18 01:15:25.356
+782	39	12	전동드릴/타카	4	t	2025-12-18 01:15:25.435
+783	39	12	산소절단기	5	t	2025-12-18 01:15:25.515
+784	39	12	위험물/가스저장소	6	t	2025-12-18 01:15:25.595
+785	50	1	지게차	1	t	2025-12-18 01:15:25.753
+786	50	1	크레인	2	t	2025-12-18 01:15:25.833
+787	50	1	CNC선반	3	t	2025-12-18 01:15:25.912
+788	50	1	MCT	4	t	2025-12-18 01:15:25.992
+789	50	1	Deep Hole	5	t	2025-12-18 01:15:26.071
+790	50	1	드릴(레디알)	6	t	2025-12-18 01:15:26.151
+791	50	1	탁상용연삭기	7	t	2025-12-18 01:15:26.231
+812	50	2	분배전반	13	t	2025-12-18 01:15:28.036
+813	50	2	걸이구	14	t	2025-12-18 01:15:28.116
+814	50	2	압력용기	15	t	2025-12-18 01:15:28.195
+815	50	3	지게차	1	t	2025-12-18 01:15:28.275
+816	50	3	크레인	2	t	2025-12-18 01:15:28.359
+817	50	3	CNC선반	3	t	2025-12-18 01:15:28.44
+818	50	3	MCT	4	t	2025-12-18 01:15:28.521
+819	50	3	Deep Hole	5	t	2025-12-18 01:15:28.6
+820	50	3	드릴(레디알)	6	t	2025-12-18 01:15:28.68
+821	50	3	탁상용연삭기	7	t	2025-12-18 01:15:28.759
+822	50	3	밴드쏘우	8	t	2025-12-18 01:15:28.839
+823	50	3	칩이송장치	9	t	2025-12-18 01:15:28.918
+824	50	3	산소절단기	10	t	2025-12-18 01:15:28.998
+825	50	3	위험물/가스저장소	11	t	2025-12-18 01:15:29.077
+826	50	3	소화전/소화기	12	t	2025-12-18 01:15:29.157
+827	50	3	분배전반	13	t	2025-12-18 01:15:29.237
+828	50	3	걸이구	14	t	2025-12-18 01:15:29.316
+829	50	3	압력용기	15	t	2025-12-18 01:15:29.395
+830	50	4	지게차	1	t	2025-12-18 01:15:29.475
+831	50	4	크레인	2	t	2025-12-18 01:15:29.555
+832	50	4	CNC선반	3	t	2025-12-18 01:15:29.634
+833	50	4	MCT	4	t	2025-12-18 01:15:29.714
+834	50	4	Deep Hole	5	t	2025-12-18 01:15:29.794
+835	50	4	드릴(레디알)	6	t	2025-12-18 01:15:29.874
+836	50	4	탁상용연삭기	7	t	2025-12-18 01:15:29.953
+837	50	4	밴드쏘우	8	t	2025-12-18 01:15:30.033
+838	50	4	칩이송장치	9	t	2025-12-18 01:15:30.113
+839	50	4	산소절단기	10	t	2025-12-18 01:15:30.192
+840	50	4	위험물/가스저장소	11	t	2025-12-18 01:15:30.272
+841	50	4	소화전/소화기	12	t	2025-12-18 01:15:30.351
+842	50	4	분배전반	13	t	2025-12-18 01:15:30.431
+843	50	4	걸이구	14	t	2025-12-18 01:15:30.511
+844	50	4	압력용기	15	t	2025-12-18 01:15:30.591
+845	50	5	지게차	1	t	2025-12-18 01:15:30.67
+846	50	5	크레인	2	t	2025-12-18 01:15:30.75
+847	50	5	CNC선반	3	t	2025-12-18 01:15:30.829
+848	50	5	MCT	4	t	2025-12-18 01:15:30.908
+849	50	5	Deep Hole	5	t	2025-12-18 01:15:30.988
+850	50	5	드릴(레디알)	6	t	2025-12-18 01:15:31.067
+851	50	5	탁상용연삭기	7	t	2025-12-18 01:15:31.146
+852	50	5	밴드쏘우	8	t	2025-12-18 01:15:31.225
+853	50	5	칩이송장치	9	t	2025-12-18 01:15:31.314
+854	50	5	산소절단기	10	t	2025-12-18 01:15:31.394
+855	50	5	위험물/가스저장소	11	t	2025-12-18 01:15:31.473
+856	50	5	소화전/소화기	12	t	2025-12-18 01:15:31.557
+857	50	5	분배전반	13	t	2025-12-18 01:15:31.637
+858	50	5	걸이구	14	t	2025-12-18 01:15:31.716
+859	50	5	압력용기	15	t	2025-12-18 01:15:31.795
+860	50	6	지게차	1	t	2025-12-18 01:15:31.875
+861	50	6	크레인	2	t	2025-12-18 01:15:31.955
+862	50	6	CNC선반	3	t	2025-12-18 01:15:32.034
+863	50	6	MCT	4	t	2025-12-18 01:15:32.114
+864	50	6	Deep Hole	5	t	2025-12-18 01:15:32.193
+865	50	6	드릴(레디알)	6	t	2025-12-18 01:15:32.272
+866	50	6	탁상용연삭기	7	t	2025-12-18 01:15:32.352
+867	50	6	밴드쏘우	8	t	2025-12-18 01:15:32.432
+868	50	6	칩이송장치	9	t	2025-12-18 01:15:32.513
+869	50	6	산소절단기	10	t	2025-12-18 01:15:32.592
+870	50	6	위험물/가스저장소	11	t	2025-12-18 01:15:32.672
+871	50	6	소화전/소화기	12	t	2025-12-18 01:15:32.751
+872	50	6	분배전반	13	t	2025-12-18 01:15:32.831
+873	50	6	걸이구	14	t	2025-12-18 01:15:32.91
+874	50	6	압력용기	15	t	2025-12-18 01:15:32.99
+875	50	7	지게차	1	t	2025-12-18 01:15:33.069
+876	50	7	크레인	2	t	2025-12-18 01:15:33.148
+877	50	7	CNC선반	3	t	2025-12-18 01:15:33.227
+878	50	7	MCT	4	t	2025-12-18 01:15:33.307
+879	50	7	Deep Hole	5	t	2025-12-18 01:15:33.463
+880	50	7	드릴(레디알)	6	t	2025-12-18 01:15:33.542
+881	50	7	탁상용연삭기	7	t	2025-12-18 01:15:33.622
+882	50	7	밴드쏘우	8	t	2025-12-18 01:15:33.701
+883	50	7	칩이송장치	9	t	2025-12-18 01:15:33.781
+884	50	7	산소절단기	10	t	2025-12-18 01:15:33.86
+885	50	7	위험물/가스저장소	11	t	2025-12-18 01:15:33.94
+886	50	7	소화전/소화기	12	t	2025-12-18 01:15:34.019
+887	50	7	분배전반	13	t	2025-12-18 01:15:34.099
+888	50	7	걸이구	14	t	2025-12-18 01:15:34.178
+889	50	7	압력용기	15	t	2025-12-18 01:15:34.26
+890	50	8	지게차	1	t	2025-12-18 01:15:34.34
+891	50	8	크레인	2	t	2025-12-18 01:15:34.425
+892	50	8	CNC선반	3	t	2025-12-18 01:15:34.504
+893	50	8	MCT	4	t	2025-12-18 01:15:34.584
+894	50	8	Deep Hole	5	t	2025-12-18 01:15:34.663
+895	50	8	드릴(레디알)	6	t	2025-12-18 01:15:34.743
+896	50	8	탁상용연삭기	7	t	2025-12-18 01:15:34.822
+897	50	8	밴드쏘우	8	t	2025-12-18 01:15:34.902
+898	50	8	칩이송장치	9	t	2025-12-18 01:15:34.981
+899	50	8	산소절단기	10	t	2025-12-18 01:15:35.061
+900	50	8	위험물/가스저장소	11	t	2025-12-18 01:15:35.14
+901	50	8	소화전/소화기	12	t	2025-12-18 01:15:35.22
+902	50	8	분배전반	13	t	2025-12-18 01:15:35.3
+903	50	8	걸이구	14	t	2025-12-18 01:15:35.379
+904	50	8	압력용기	15	t	2025-12-18 01:15:35.459
+905	50	9	지게차	1	t	2025-12-18 01:15:35.539
+906	50	9	크레인	2	t	2025-12-18 01:15:35.621
+907	50	9	CNC선반	3	t	2025-12-18 01:15:35.706
+908	50	9	MCT	4	t	2025-12-18 01:15:35.788
+909	50	9	Deep Hole	5	t	2025-12-18 01:15:35.872
+910	50	9	드릴(레디알)	6	t	2025-12-18 01:15:35.961
+911	50	9	탁상용연삭기	7	t	2025-12-18 01:15:36.044
+912	50	9	밴드쏘우	8	t	2025-12-18 01:15:36.124
+913	50	9	칩이송장치	9	t	2025-12-18 01:15:36.204
+914	50	9	산소절단기	10	t	2025-12-18 01:15:36.283
+915	50	9	위험물/가스저장소	11	t	2025-12-18 01:15:36.363
+916	50	9	소화전/소화기	12	t	2025-12-18 01:15:36.443
+917	50	9	분배전반	13	t	2025-12-18 01:15:36.522
+918	50	9	걸이구	14	t	2025-12-18 01:15:36.602
+919	50	9	압력용기	15	t	2025-12-18 01:15:36.682
+920	50	10	지게차	1	t	2025-12-18 01:15:36.761
+921	50	10	크레인	2	t	2025-12-18 01:15:36.841
+922	50	10	CNC선반	3	t	2025-12-18 01:15:36.921
+923	50	10	MCT	4	t	2025-12-18 01:15:37
+924	50	10	Deep Hole	5	t	2025-12-18 01:15:37.08
+925	50	10	드릴(레디알)	6	t	2025-12-18 01:15:37.16
+926	50	10	탁상용연삭기	7	t	2025-12-18 01:15:37.239
+927	50	10	밴드쏘우	8	t	2025-12-18 01:15:37.32
+928	50	10	칩이송장치	9	t	2025-12-18 01:15:37.401
+929	50	10	산소절단기	10	t	2025-12-18 01:15:37.482
+930	50	10	위험물/가스저장소	11	t	2025-12-18 01:15:37.567
+931	50	10	소화전/소화기	12	t	2025-12-18 01:15:37.647
+932	50	10	분배전반	13	t	2025-12-18 01:15:37.726
+933	50	10	걸이구	14	t	2025-12-18 01:15:37.805
+934	50	10	압력용기	15	t	2025-12-18 01:15:37.885
+935	50	11	지게차	1	t	2025-12-18 01:15:37.967
+936	50	11	크레인	2	t	2025-12-18 01:15:38.051
+937	50	11	CNC선반	3	t	2025-12-18 01:15:38.136
+938	50	11	MCT	4	t	2025-12-18 01:15:38.224
+939	50	11	Deep Hole	5	t	2025-12-18 01:15:38.312
+940	50	11	드릴(레디알)	6	t	2025-12-18 01:15:38.396
+941	50	11	탁상용연삭기	7	t	2025-12-18 01:15:38.479
+942	50	11	밴드쏘우	8	t	2025-12-18 01:15:38.564
+943	50	11	칩이송장치	9	t	2025-12-18 01:15:38.651
+944	50	11	산소절단기	10	t	2025-12-18 01:15:38.743
+945	50	11	위험물/가스저장소	11	t	2025-12-18 01:15:38.837
+946	50	11	소화전/소화기	12	t	2025-12-18 01:15:38.929
+947	50	11	분배전반	13	t	2025-12-18 01:15:39.021
+948	50	11	걸이구	14	t	2025-12-18 01:15:39.11
+949	50	11	압력용기	15	t	2025-12-18 01:15:39.197
+950	50	12	지게차	1	t	2025-12-18 01:15:39.287
+951	50	12	크레인	2	t	2025-12-18 01:15:39.379
+952	50	12	CNC선반	3	t	2025-12-18 01:15:39.478
+953	50	12	MCT	4	t	2025-12-18 01:15:39.577
+954	50	12	Deep Hole	5	t	2025-12-18 01:15:39.675
+955	50	12	드릴(레디알)	6	t	2025-12-18 01:15:39.77
+956	50	12	탁상용연삭기	7	t	2025-12-18 01:15:39.857
+957	50	12	밴드쏘우	8	t	2025-12-18 01:15:39.938
+958	50	12	칩이송장치	9	t	2025-12-18 01:15:40.026
+959	50	12	산소절단기	10	t	2025-12-18 01:15:40.116
+960	50	12	위험물/가스저장소	11	t	2025-12-18 01:15:40.204
+961	50	12	소화전/소화기	12	t	2025-12-18 01:15:40.287
+962	50	12	분배전반	13	t	2025-12-18 01:15:40.367
+963	50	12	걸이구	14	t	2025-12-18 01:15:40.447
+964	50	12	압력용기	15	t	2025-12-18 01:15:40.526
+965	51	1	크레인	1	t	2025-12-18 01:15:40.704
+966	51	1	MCT	2	t	2025-12-18 01:15:40.798
+967	51	1	연삭기	3	t	2025-12-18 01:15:40.89
+968	51	1	산소절단기	4	t	2025-12-18 01:15:40.982
+969	51	1	위험물/가스저장소	5	t	2025-12-18 01:15:41.075
+970	51	1	소화전/소화기	6	t	2025-12-18 01:15:41.163
+971	51	1	압력용기	7	t	2025-12-18 01:15:41.249
+972	51	2	크레인	1	t	2025-12-18 01:15:41.342
+973	51	2	MCT	2	t	2025-12-18 01:15:41.427
+974	51	2	연삭기	3	t	2025-12-18 01:15:41.512
+975	51	2	산소절단기	4	t	2025-12-18 01:15:41.607
+976	51	2	위험물/가스저장소	5	t	2025-12-18 01:15:41.689
+977	51	2	소화전/소화기	6	t	2025-12-18 01:15:41.77
+978	51	2	압력용기	7	t	2025-12-18 01:15:41.849
+979	51	3	크레인	1	t	2025-12-18 01:15:41.928
+980	51	3	MCT	2	t	2025-12-18 01:15:42.008
+981	51	3	연삭기	3	t	2025-12-18 01:15:42.087
+982	51	3	산소절단기	4	t	2025-12-18 01:15:42.167
+983	51	3	위험물/가스저장소	5	t	2025-12-18 01:15:42.247
+984	51	3	소화전/소화기	6	t	2025-12-18 01:15:42.326
+985	51	3	압력용기	7	t	2025-12-18 01:15:42.406
+986	51	4	크레인	1	t	2025-12-18 01:15:42.487
+987	51	4	MCT	2	t	2025-12-18 01:15:42.566
+988	51	4	연삭기	3	t	2025-12-18 01:15:42.646
+989	51	4	산소절단기	4	t	2025-12-18 01:15:42.726
+990	51	4	위험물/가스저장소	5	t	2025-12-18 01:15:42.805
+991	51	4	소화전/소화기	6	t	2025-12-18 01:15:42.885
+992	51	4	압력용기	7	t	2025-12-18 01:15:42.964
+993	51	5	크레인	1	t	2025-12-18 01:15:43.044
+994	51	5	MCT	2	t	2025-12-18 01:15:43.126
+995	51	5	연삭기	3	t	2025-12-18 01:15:43.213
+996	51	5	산소절단기	4	t	2025-12-18 01:15:43.302
+997	51	5	위험물/가스저장소	5	t	2025-12-18 01:15:43.39
+998	51	5	소화전/소화기	6	t	2025-12-18 01:15:43.473
+999	51	5	압력용기	7	t	2025-12-18 01:15:43.552
+1000	51	6	크레인	1	t	2025-12-18 01:15:43.632
+1001	51	6	MCT	2	t	2025-12-18 01:15:43.712
+1002	51	6	연삭기	3	t	2025-12-18 01:15:43.791
+1003	51	6	산소절단기	4	t	2025-12-18 01:15:43.871
+1004	51	6	위험물/가스저장소	5	t	2025-12-18 01:15:43.951
+1005	51	6	소화전/소화기	6	t	2025-12-18 01:15:44.035
+1006	51	6	압력용기	7	t	2025-12-18 01:15:44.115
+1007	51	7	크레인	1	t	2025-12-18 01:15:44.195
+1008	51	7	MCT	2	t	2025-12-18 01:15:44.275
+1009	51	7	연삭기	3	t	2025-12-18 01:15:44.355
+1010	51	7	산소절단기	4	t	2025-12-18 01:15:44.438
+1011	51	7	위험물/가스저장소	5	t	2025-12-18 01:15:44.522
+1012	51	7	소화전/소화기	6	t	2025-12-18 01:15:44.605
+1013	51	7	압력용기	7	t	2025-12-18 01:15:44.686
+1014	51	8	크레인	1	t	2025-12-18 01:15:44.764
+1015	51	8	MCT	2	t	2025-12-18 01:15:44.851
+1016	51	8	연삭기	3	t	2025-12-18 01:15:44.935
+1017	51	8	산소절단기	4	t	2025-12-18 01:15:45.015
+1018	51	8	위험물/가스저장소	5	t	2025-12-18 01:15:45.097
+1019	51	8	소화전/소화기	6	t	2025-12-18 01:15:45.178
+1020	51	8	압력용기	7	t	2025-12-18 01:15:45.258
+1021	51	9	크레인	1	t	2025-12-18 01:15:45.337
+1022	51	9	MCT	2	t	2025-12-18 01:15:45.419
+1023	51	9	연삭기	3	t	2025-12-18 01:15:45.503
+1024	51	9	산소절단기	4	t	2025-12-18 01:15:45.593
+1025	51	9	위험물/가스저장소	5	t	2025-12-18 01:15:45.678
+1026	51	9	소화전/소화기	6	t	2025-12-18 01:15:45.759
+1027	51	9	압력용기	7	t	2025-12-18 01:15:45.839
+1028	51	10	크레인	1	t	2025-12-18 01:15:45.918
+1029	51	10	MCT	2	t	2025-12-18 01:15:45.997
+1030	51	10	연삭기	3	t	2025-12-18 01:15:46.077
+1031	51	10	산소절단기	4	t	2025-12-18 01:15:46.157
+1032	51	10	위험물/가스저장소	5	t	2025-12-18 01:15:46.236
+1033	51	10	소화전/소화기	6	t	2025-12-18 01:15:46.316
+1034	51	10	압력용기	7	t	2025-12-18 01:15:46.396
+1035	51	11	크레인	1	t	2025-12-18 01:15:46.476
+1036	51	11	MCT	2	t	2025-12-18 01:15:46.556
+1037	51	11	연삭기	3	t	2025-12-18 01:15:46.635
+1038	51	11	산소절단기	4	t	2025-12-18 01:15:46.715
+1039	51	11	위험물/가스저장소	5	t	2025-12-18 01:15:46.795
+1040	51	11	소화전/소화기	6	t	2025-12-18 01:15:46.873
+1041	51	11	압력용기	7	t	2025-12-18 01:15:46.954
+1042	51	12	크레인	1	t	2025-12-18 01:15:47.033
+1043	51	12	MCT	2	t	2025-12-18 01:15:47.116
+1044	51	12	연삭기	3	t	2025-12-18 01:15:47.201
+1045	51	12	산소절단기	4	t	2025-12-18 01:15:47.281
+1046	51	12	위험물/가스저장소	5	t	2025-12-18 01:15:47.361
+1047	51	12	소화전/소화기	6	t	2025-12-18 01:15:47.441
+1048	51	12	압력용기	7	t	2025-12-18 01:15:47.521
+1049	52	1	지게차	1	t	2025-12-18 01:15:47.679
+1050	52	1	크레인	2	t	2025-12-18 01:15:47.758
+1051	52	1	컨베이어	3	t	2025-12-18 01:15:47.838
+1052	52	1	용접기	4	t	2025-12-18 01:15:47.917
+1053	52	1	연삭기	5	t	2025-12-18 01:15:47.996
+1054	52	1	둥근톱	6	t	2025-12-18 01:15:48.075
+1055	52	1	산소절단기	7	t	2025-12-18 01:15:48.154
+1056	52	1	위험물/가스저장소	8	t	2025-12-18 01:15:48.234
+1057	52	1	소화전/소화기	9	t	2025-12-18 01:15:48.314
+1058	52	1	분배전반	10	t	2025-12-18 01:15:48.394
+1059	52	1	공기압축기	11	t	2025-12-18 01:15:48.55
+1060	52	2	지게차	1	t	2025-12-18 01:15:48.63
+1061	52	2	크레인	2	t	2025-12-18 01:15:48.709
+1062	52	2	컨베이어	3	t	2025-12-18 01:15:48.788
+1063	52	2	용접기	4	t	2025-12-18 01:15:48.868
+1064	52	2	연삭기	5	t	2025-12-18 01:15:48.948
+1065	52	2	둥근톱	6	t	2025-12-18 01:15:49.027
+1066	52	2	산소절단기	7	t	2025-12-18 01:15:49.106
+1067	52	2	위험물/가스저장소	8	t	2025-12-18 01:15:49.186
+1068	52	2	소화전/소화기	9	t	2025-12-18 01:15:49.268
+1069	52	2	분배전반	10	t	2025-12-18 01:15:49.347
+1070	52	2	공기압축기	11	t	2025-12-18 01:15:49.427
+1071	52	3	지게차	1	t	2025-12-18 01:15:49.506
+1072	52	3	크레인	2	t	2025-12-18 01:15:49.586
+1073	52	3	컨베이어	3	t	2025-12-18 01:15:49.665
+1074	52	3	용접기	4	t	2025-12-18 01:15:49.744
+1075	52	3	연삭기	5	t	2025-12-18 01:15:49.824
+1076	52	3	둥근톱	6	t	2025-12-18 01:15:49.903
+1077	52	3	산소절단기	7	t	2025-12-18 01:15:49.982
+1078	52	3	위험물/가스저장소	8	t	2025-12-18 01:15:50.061
+1079	52	3	소화전/소화기	9	t	2025-12-18 01:15:50.141
+1080	52	3	분배전반	10	t	2025-12-18 01:15:50.22
+1081	52	3	공기압축기	11	t	2025-12-18 01:15:50.3
+1082	52	4	지게차	1	t	2025-12-18 01:15:50.379
+1083	52	4	크레인	2	t	2025-12-18 01:15:50.459
+1084	52	4	컨베이어	3	t	2025-12-18 01:15:50.538
+1085	52	4	용접기	4	t	2025-12-18 01:15:50.617
+1086	52	4	연삭기	5	t	2025-12-18 01:15:50.7
+1087	52	4	둥근톱	6	t	2025-12-18 01:15:50.78
+1088	52	4	산소절단기	7	t	2025-12-18 01:15:50.859
+1089	52	4	위험물/가스저장소	8	t	2025-12-18 01:15:50.939
+1090	52	4	소화전/소화기	9	t	2025-12-18 01:15:51.019
+1091	52	4	분배전반	10	t	2025-12-18 01:15:51.098
+1092	52	4	공기압축기	11	t	2025-12-18 01:15:51.178
+1093	52	5	지게차	1	t	2025-12-18 01:15:51.257
+1332	54	5	용접기	4	t	2025-12-18 01:16:10.586
+1333	54	5	반전기	5	t	2025-12-18 01:16:10.665
+1334	54	5	연삭기	6	t	2025-12-18 01:16:10.745
+1335	54	5	드릴(레디알)	7	t	2025-12-18 01:16:10.825
+1336	54	5	전동드릴/타카	8	t	2025-12-18 01:16:10.904
+1337	54	5	둥근톱	9	t	2025-12-18 01:16:10.984
+1338	54	5	산소절단기	10	t	2025-12-18 01:16:11.063
+1339	54	5	위험물/가스저장소	11	t	2025-12-18 01:16:11.142
+1340	54	5	소화전/소화기	12	t	2025-12-18 01:16:11.221
+1341	54	5	분배전반	13	t	2025-12-18 01:16:11.3
+1342	54	5	걸이구	14	t	2025-12-18 01:16:11.38
+1343	54	5	압력용기	15	t	2025-12-18 01:16:11.46
+1344	54	5	공기압축기	16	t	2025-12-18 01:16:11.54
+1345	54	6	지게차	1	t	2025-12-18 01:16:11.619
+1346	54	6	크레인	2	t	2025-12-18 01:16:11.701
+1347	54	6	컨베이어	3	t	2025-12-18 01:16:11.78
+1348	54	6	용접기	4	t	2025-12-18 01:16:11.86
+1349	54	6	반전기	5	t	2025-12-18 01:16:11.94
+1350	54	6	연삭기	6	t	2025-12-18 01:16:12.019
+1351	54	6	드릴(레디알)	7	t	2025-12-18 01:16:12.109
+1352	54	6	전동드릴/타카	8	t	2025-12-18 01:16:12.188
+1353	54	6	둥근톱	9	t	2025-12-18 01:16:12.268
+1354	54	6	산소절단기	10	t	2025-12-18 01:16:12.347
+1355	54	6	위험물/가스저장소	11	t	2025-12-18 01:16:12.427
+1356	54	6	소화전/소화기	12	t	2025-12-18 01:16:12.507
+1357	54	6	분배전반	13	t	2025-12-18 01:16:12.586
+1358	54	6	걸이구	14	t	2025-12-18 01:16:12.665
+1359	54	6	압력용기	15	t	2025-12-18 01:16:12.745
+1360	54	6	공기압축기	16	t	2025-12-18 01:16:12.824
+1361	54	7	지게차	1	t	2025-12-18 01:16:12.903
+1362	54	7	크레인	2	t	2025-12-18 01:16:12.983
+1363	54	7	컨베이어	3	t	2025-12-18 01:16:13.063
+1364	54	7	용접기	4	t	2025-12-18 01:16:13.142
+1365	54	7	반전기	5	t	2025-12-18 01:16:13.222
+1366	54	7	연삭기	6	t	2025-12-18 01:16:13.301
+1367	54	7	드릴(레디알)	7	t	2025-12-18 01:16:13.38
+1368	54	7	전동드릴/타카	8	t	2025-12-18 01:16:13.459
+1369	54	7	둥근톱	9	t	2025-12-18 01:16:13.539
+1370	54	7	산소절단기	10	t	2025-12-18 01:16:13.618
+1371	54	7	위험물/가스저장소	11	t	2025-12-18 01:16:13.698
+1372	54	7	소화전/소화기	12	t	2025-12-18 01:16:13.777
+1373	54	7	분배전반	13	t	2025-12-18 01:16:13.856
+1374	54	7	걸이구	14	t	2025-12-18 01:16:13.936
+1375	54	7	압력용기	15	t	2025-12-18 01:16:14.015
+1376	54	7	공기압축기	16	t	2025-12-18 01:16:14.094
+1377	54	8	지게차	1	t	2025-12-18 01:16:14.174
+1378	54	8	크레인	2	t	2025-12-18 01:16:14.253
+1379	54	8	컨베이어	3	t	2025-12-18 01:16:14.333
+1380	54	8	용접기	4	t	2025-12-18 01:16:14.412
+1381	54	8	반전기	5	t	2025-12-18 01:16:14.499
+1382	54	8	연삭기	6	t	2025-12-18 01:16:14.579
+1383	54	8	드릴(레디알)	7	t	2025-12-18 01:16:14.658
+1384	54	8	전동드릴/타카	8	t	2025-12-18 01:16:14.737
+1385	54	8	둥근톱	9	t	2025-12-18 01:16:14.817
+1386	54	8	산소절단기	10	t	2025-12-18 01:16:14.896
+1387	54	8	위험물/가스저장소	11	t	2025-12-18 01:16:14.975
+1388	54	8	소화전/소화기	12	t	2025-12-18 01:16:15.054
+1389	54	8	분배전반	13	t	2025-12-18 01:16:15.133
+1390	54	8	걸이구	14	t	2025-12-18 01:16:15.212
+1391	54	8	압력용기	15	t	2025-12-18 01:16:15.292
+1392	54	8	공기압축기	16	t	2025-12-18 01:16:15.371
+1393	54	9	지게차	1	t	2025-12-18 01:16:15.45
+1394	54	9	크레인	2	t	2025-12-18 01:16:15.53
+1395	54	9	컨베이어	3	t	2025-12-18 01:16:15.609
+1396	54	9	용접기	4	t	2025-12-18 01:16:15.689
+1397	54	9	반전기	5	t	2025-12-18 01:16:15.769
+1398	54	9	연삭기	6	t	2025-12-18 01:16:15.849
+1399	54	9	드릴(레디알)	7	t	2025-12-18 01:16:15.929
+1400	54	9	전동드릴/타카	8	t	2025-12-18 01:16:16.01
+1401	54	9	둥근톱	9	t	2025-12-18 01:16:16.09
+1402	54	9	산소절단기	10	t	2025-12-18 01:16:16.17
+1403	54	9	위험물/가스저장소	11	t	2025-12-18 01:16:16.25
+1404	54	9	소화전/소화기	12	t	2025-12-18 01:16:16.329
+1405	54	9	분배전반	13	t	2025-12-18 01:16:16.409
+1406	54	9	걸이구	14	t	2025-12-18 01:16:16.488
+1407	54	9	압력용기	15	t	2025-12-18 01:16:16.567
+1408	54	9	공기압축기	16	t	2025-12-18 01:16:16.646
+1409	54	10	지게차	1	t	2025-12-18 01:16:16.725
+1410	54	10	크레인	2	t	2025-12-18 01:16:16.805
+1411	54	10	컨베이어	3	t	2025-12-18 01:16:16.884
+1412	54	10	용접기	4	t	2025-12-18 01:16:16.964
+1413	54	10	반전기	5	t	2025-12-18 01:16:17.043
+1414	54	10	연삭기	6	t	2025-12-18 01:16:17.122
+1415	54	10	드릴(레디알)	7	t	2025-12-18 01:16:17.201
+1416	54	10	전동드릴/타카	8	t	2025-12-18 01:16:17.281
+1417	54	10	둥근톱	9	t	2025-12-18 01:16:17.36
+1418	54	10	산소절단기	10	t	2025-12-18 01:16:17.44
+1419	54	10	위험물/가스저장소	11	t	2025-12-18 01:16:17.519
+1420	54	10	소화전/소화기	12	t	2025-12-18 01:16:17.599
+1421	54	10	분배전반	13	t	2025-12-18 01:16:17.678
+1422	54	10	걸이구	14	t	2025-12-18 01:16:17.758
+1423	54	10	압력용기	15	t	2025-12-18 01:16:17.837
+1424	54	10	공기압축기	16	t	2025-12-18 01:16:17.916
+1425	54	11	지게차	1	t	2025-12-18 01:16:17.996
+1426	54	11	크레인	2	t	2025-12-18 01:16:18.075
+1427	54	11	컨베이어	3	t	2025-12-18 01:16:18.153
+1428	54	11	용접기	4	t	2025-12-18 01:16:18.233
+1429	54	11	반전기	5	t	2025-12-18 01:16:18.312
+1430	54	11	연삭기	6	t	2025-12-18 01:16:18.391
+1431	54	11	드릴(레디알)	7	t	2025-12-18 01:16:18.47
+1432	54	11	전동드릴/타카	8	t	2025-12-18 01:16:18.55
+1433	54	11	둥근톱	9	t	2025-12-18 01:16:18.629
+1434	54	11	산소절단기	10	t	2025-12-18 01:16:18.785
+1435	54	11	위험물/가스저장소	11	t	2025-12-18 01:16:18.871
+1436	54	11	소화전/소화기	12	t	2025-12-18 01:16:18.95
+1437	54	11	분배전반	13	t	2025-12-18 01:16:19.03
+1438	54	11	걸이구	14	t	2025-12-18 01:16:19.109
+1439	54	11	압력용기	15	t	2025-12-18 01:16:19.188
+1440	54	11	공기압축기	16	t	2025-12-18 01:16:19.268
+1441	54	12	지게차	1	t	2025-12-18 01:16:19.347
+1442	54	12	크레인	2	t	2025-12-18 01:16:19.426
+1443	54	12	컨베이어	3	t	2025-12-18 01:16:19.505
+1444	54	12	용접기	4	t	2025-12-18 01:16:19.585
+1445	54	12	반전기	5	t	2025-12-18 01:16:19.664
+1446	54	12	연삭기	6	t	2025-12-18 01:16:19.75
+1447	54	12	드릴(레디알)	7	t	2025-12-18 01:16:19.829
+1448	54	12	전동드릴/타카	8	t	2025-12-18 01:16:19.909
+1449	54	12	둥근톱	9	t	2025-12-18 01:16:19.988
+1450	54	12	산소절단기	10	t	2025-12-18 01:16:20.067
+1451	54	12	위험물/가스저장소	11	t	2025-12-18 01:16:20.146
+1452	54	12	소화전/소화기	12	t	2025-12-18 01:16:20.225
+1453	54	12	분배전반	13	t	2025-12-18 01:16:20.308
+1454	54	12	걸이구	14	t	2025-12-18 01:16:20.387
+1455	54	12	압력용기	15	t	2025-12-18 01:16:20.467
+1456	54	12	공기압축기	16	t	2025-12-18 01:16:20.546
+1457	55	1	지게차	1	t	2025-12-18 01:16:20.712
+1458	55	1	크레인	2	t	2025-12-18 01:16:20.792
+1459	55	1	템퍼링로	3	t	2025-12-18 01:16:20.871
+1460	55	1	세척조/피트로/유조로	4	t	2025-12-18 01:16:20.95
+1461	55	1	열처리/올케이스로	5	t	2025-12-18 01:16:21.03
+1462	55	1	산소절단기	6	t	2025-12-18 01:16:21.109
+1463	55	1	위험물/가스저장소	7	t	2025-12-18 01:16:21.188
+1464	55	1	분배전반	8	t	2025-12-18 01:16:21.268
+1465	55	1	공기압축기	9	t	2025-12-18 01:16:21.347
+1466	55	2	지게차	1	t	2025-12-18 01:16:21.462
+1467	55	2	크레인	2	t	2025-12-18 01:16:21.542
+1468	55	2	템퍼링로	3	t	2025-12-18 01:16:21.621
+1469	55	2	세척조/피트로/유조로	4	t	2025-12-18 01:16:21.701
+1470	55	2	열처리/올케이스로	5	t	2025-12-18 01:16:21.78
+1471	55	2	산소절단기	6	t	2025-12-18 01:16:21.86
+1472	55	2	위험물/가스저장소	7	t	2025-12-18 01:16:21.939
+1473	55	2	분배전반	8	t	2025-12-18 01:16:22.024
+1474	55	2	공기압축기	9	t	2025-12-18 01:16:22.112
+1475	55	3	지게차	1	t	2025-12-18 01:16:22.198
+1476	55	3	크레인	2	t	2025-12-18 01:16:22.283
+1477	55	3	템퍼링로	3	t	2025-12-18 01:16:22.365
+1478	55	3	세척조/피트로/유조로	4	t	2025-12-18 01:16:22.451
+1479	55	3	열처리/올케이스로	5	t	2025-12-18 01:16:22.54
+1480	55	3	산소절단기	6	t	2025-12-18 01:16:22.625
+1481	55	3	위험물/가스저장소	7	t	2025-12-18 01:16:22.706
+1482	55	3	분배전반	8	t	2025-12-18 01:16:22.786
+1483	55	3	공기압축기	9	t	2025-12-18 01:16:22.865
+1484	55	4	지게차	1	t	2025-12-18 01:16:22.944
+1485	55	4	크레인	2	t	2025-12-18 01:16:23.023
+1486	55	4	템퍼링로	3	t	2025-12-18 01:16:23.102
+1487	55	4	세척조/피트로/유조로	4	t	2025-12-18 01:16:23.182
+1488	55	4	열처리/올케이스로	5	t	2025-12-18 01:16:23.261
+1489	55	4	산소절단기	6	t	2025-12-18 01:16:23.341
+1490	55	4	위험물/가스저장소	7	t	2025-12-18 01:16:23.419
+1491	55	4	분배전반	8	t	2025-12-18 01:16:23.499
+1492	55	4	공기압축기	9	t	2025-12-18 01:16:23.58
+1493	55	5	지게차	1	t	2025-12-18 01:16:23.659
+1494	55	5	크레인	2	t	2025-12-18 01:16:23.739
+1495	55	5	템퍼링로	3	t	2025-12-18 01:16:23.819
+1496	55	5	세척조/피트로/유조로	4	t	2025-12-18 01:16:23.898
+1497	55	5	열처리/올케이스로	5	t	2025-12-18 01:16:23.978
+1498	55	5	산소절단기	6	t	2025-12-18 01:16:24.058
+1499	55	5	위험물/가스저장소	7	t	2025-12-18 01:16:24.137
+1500	55	5	분배전반	8	t	2025-12-18 01:16:24.216
+1501	55	5	공기압축기	9	t	2025-12-18 01:16:24.296
+1502	55	6	지게차	1	t	2025-12-18 01:16:24.382
+1503	55	6	크레인	2	t	2025-12-18 01:16:24.462
+1504	55	6	템퍼링로	3	t	2025-12-18 01:16:24.541
+1505	55	6	세척조/피트로/유조로	4	t	2025-12-18 01:16:24.621
+1506	55	6	열처리/올케이스로	5	t	2025-12-18 01:16:24.7
+1507	55	6	산소절단기	6	t	2025-12-18 01:16:24.78
+1508	55	6	위험물/가스저장소	7	t	2025-12-18 01:16:24.86
+1509	55	6	분배전반	8	t	2025-12-18 01:16:24.939
+1510	55	6	공기압축기	9	t	2025-12-18 01:16:25.018
+1511	55	7	지게차	1	t	2025-12-18 01:16:25.098
+1512	55	7	크레인	2	t	2025-12-18 01:16:25.177
+1513	55	7	템퍼링로	3	t	2025-12-18 01:16:25.256
+1514	55	7	세척조/피트로/유조로	4	t	2025-12-18 01:16:25.335
+1515	55	7	열처리/올케이스로	5	t	2025-12-18 01:16:25.415
+1516	55	7	산소절단기	6	t	2025-12-18 01:16:25.494
+1517	55	7	위험물/가스저장소	7	t	2025-12-18 01:16:25.573
+1518	55	7	분배전반	8	t	2025-12-18 01:16:25.653
+1519	55	7	공기압축기	9	t	2025-12-18 01:16:25.732
+1520	55	8	지게차	1	t	2025-12-18 01:16:25.811
+1521	55	8	크레인	2	t	2025-12-18 01:16:25.891
+1522	55	8	템퍼링로	3	t	2025-12-18 01:16:25.97
+1523	55	8	세척조/피트로/유조로	4	t	2025-12-18 01:16:26.05
+1524	55	8	열처리/올케이스로	5	t	2025-12-18 01:16:26.129
+1525	55	8	산소절단기	6	t	2025-12-18 01:16:26.208
+1526	55	8	위험물/가스저장소	7	t	2025-12-18 01:16:26.288
+1527	55	8	분배전반	8	t	2025-12-18 01:16:26.368
+1528	55	8	공기압축기	9	t	2025-12-18 01:16:26.447
+1529	55	9	지게차	1	t	2025-12-18 01:16:26.527
+1530	55	9	크레인	2	t	2025-12-18 01:16:26.606
+1531	55	9	템퍼링로	3	t	2025-12-18 01:16:26.686
+1532	55	9	세척조/피트로/유조로	4	t	2025-12-18 01:16:26.765
+1533	55	9	열처리/올케이스로	5	t	2025-12-18 01:16:26.845
+1534	55	9	산소절단기	6	t	2025-12-18 01:16:26.924
+1535	55	9	위험물/가스저장소	7	t	2025-12-18 01:16:27.003
+1536	55	9	분배전반	8	t	2025-12-18 01:16:27.083
+1537	55	9	공기압축기	9	t	2025-12-18 01:16:27.162
+1538	55	10	지게차	1	t	2025-12-18 01:16:27.241
+1539	55	10	크레인	2	t	2025-12-18 01:16:27.321
+1540	55	10	템퍼링로	3	t	2025-12-18 01:16:27.4
+1541	55	10	세척조/피트로/유조로	4	t	2025-12-18 01:16:27.48
+1542	55	10	열처리/올케이스로	5	t	2025-12-18 01:16:27.559
+1543	55	10	산소절단기	6	t	2025-12-18 01:16:27.639
+1544	55	10	위험물/가스저장소	7	t	2025-12-18 01:16:27.718
+1545	55	10	분배전반	8	t	2025-12-18 01:16:27.797
+1546	55	10	공기압축기	9	t	2025-12-18 01:16:27.877
+1547	55	11	지게차	1	t	2025-12-18 01:16:27.956
+1548	55	11	크레인	2	t	2025-12-18 01:16:28.035
+1549	55	11	템퍼링로	3	t	2025-12-18 01:16:28.115
+1550	55	11	세척조/피트로/유조로	4	t	2025-12-18 01:16:28.194
+1551	55	11	열처리/올케이스로	5	t	2025-12-18 01:16:28.273
+1552	55	11	산소절단기	6	t	2025-12-18 01:16:28.352
+1553	55	11	위험물/가스저장소	7	t	2025-12-18 01:16:28.432
+1554	55	11	분배전반	8	t	2025-12-18 01:16:28.511
+1555	55	11	공기압축기	9	t	2025-12-18 01:16:28.591
+1556	55	12	지게차	1	t	2025-12-18 01:16:28.67
+1557	55	12	크레인	2	t	2025-12-18 01:16:28.75
+1558	55	12	템퍼링로	3	t	2025-12-18 01:16:28.829
+1559	55	12	세척조/피트로/유조로	4	t	2025-12-18 01:16:28.908
+1560	55	12	열처리/올케이스로	5	t	2025-12-18 01:16:28.988
+1561	55	12	산소절단기	6	t	2025-12-18 01:16:29.067
+1562	55	12	위험물/가스저장소	7	t	2025-12-18 01:16:29.147
+1563	55	12	분배전반	8	t	2025-12-18 01:16:29.227
+1564	55	12	공기압축기	9	t	2025-12-18 01:16:29.307
+1565	56	1	지게차	1	t	2025-12-18 01:16:29.464
+1566	56	1	밧데리충전기	2	t	2025-12-18 01:16:29.544
+1567	56	1	산소절단기	3	t	2025-12-18 01:16:29.623
+1568	56	1	위험물/가스저장소	4	t	2025-12-18 01:16:29.702
+1569	56	1	공기압축기	5	t	2025-12-18 01:16:29.784
+1570	56	2	지게차	1	t	2025-12-18 01:16:29.864
+1571	56	2	밧데리충전기	2	t	2025-12-18 01:16:29.943
+1572	56	2	산소절단기	3	t	2025-12-18 01:16:30.024
+1573	56	2	위험물/가스저장소	4	t	2025-12-18 01:16:30.109
+1574	56	2	공기압축기	5	t	2025-12-18 01:16:30.195
+1575	56	3	지게차	1	t	2025-12-18 01:16:30.283
+1576	56	3	밧데리충전기	2	t	2025-12-18 01:16:30.373
+1577	56	3	산소절단기	3	t	2025-12-18 01:16:30.464
+1578	56	3	위험물/가스저장소	4	t	2025-12-18 01:16:30.551
+1579	56	3	공기압축기	5	t	2025-12-18 01:16:30.636
+1580	56	4	지게차	1	t	2025-12-18 01:16:30.719
+1581	56	4	밧데리충전기	2	t	2025-12-18 01:16:30.798
+1582	56	4	산소절단기	3	t	2025-12-18 01:16:30.878
+1583	56	4	위험물/가스저장소	4	t	2025-12-18 01:16:30.957
+1584	56	4	공기압축기	5	t	2025-12-18 01:16:31.037
+1585	56	5	지게차	1	t	2025-12-18 01:16:31.116
+1586	56	5	밧데리충전기	2	t	2025-12-18 01:16:31.195
+1587	56	5	산소절단기	3	t	2025-12-18 01:16:31.274
+1588	56	5	위험물/가스저장소	4	t	2025-12-18 01:16:31.353
+1589	56	5	공기압축기	5	t	2025-12-18 01:16:31.432
+1590	56	6	지게차	1	t	2025-12-18 01:16:31.511
+1591	56	6	밧데리충전기	2	t	2025-12-18 01:16:31.59
+1592	56	6	산소절단기	3	t	2025-12-18 01:16:31.669
+1593	56	6	위험물/가스저장소	4	t	2025-12-18 01:16:31.749
+1594	56	6	공기압축기	5	t	2025-12-18 01:16:31.829
+1595	56	7	지게차	1	t	2025-12-18 01:16:31.908
+1596	56	7	밧데리충전기	2	t	2025-12-18 01:16:31.987
+1597	56	7	산소절단기	3	t	2025-12-18 01:16:32.066
+1598	56	7	위험물/가스저장소	4	t	2025-12-18 01:16:32.148
+1599	56	7	공기압축기	5	t	2025-12-18 01:16:32.228
+1600	56	8	지게차	1	t	2025-12-18 01:16:32.307
+1601	56	8	밧데리충전기	2	t	2025-12-18 01:16:32.387
+1602	56	8	산소절단기	3	t	2025-12-18 01:16:32.466
+1603	56	8	위험물/가스저장소	4	t	2025-12-18 01:16:32.545
+1604	56	8	공기압축기	5	t	2025-12-18 01:16:32.624
+1605	56	9	지게차	1	t	2025-12-18 01:16:32.704
+1606	56	9	밧데리충전기	2	t	2025-12-18 01:16:32.783
+1607	56	9	산소절단기	3	t	2025-12-18 01:16:32.863
+1608	56	9	위험물/가스저장소	4	t	2025-12-18 01:16:32.942
+1609	56	9	공기압축기	5	t	2025-12-18 01:16:33.022
+1610	56	10	지게차	1	t	2025-12-18 01:16:33.101
+1611	56	10	밧데리충전기	2	t	2025-12-18 01:16:33.181
+1612	56	10	산소절단기	3	t	2025-12-18 01:16:33.26
+1613	56	10	위험물/가스저장소	4	t	2025-12-18 01:16:33.339
+1614	56	10	공기압축기	5	t	2025-12-18 01:16:33.419
+1615	56	11	지게차	1	t	2025-12-18 01:16:33.498
+1616	56	11	밧데리충전기	2	t	2025-12-18 01:16:33.577
+1617	56	11	산소절단기	3	t	2025-12-18 01:16:33.657
+1618	56	11	위험물/가스저장소	4	t	2025-12-18 01:16:33.737
+1619	56	11	공기압축기	5	t	2025-12-18 01:16:33.893
+1620	56	12	지게차	1	t	2025-12-18 01:16:33.972
+1621	56	12	밧데리충전기	2	t	2025-12-18 01:16:34.052
+1622	56	12	산소절단기	3	t	2025-12-18 01:16:34.131
+1623	56	12	위험물/가스저장소	4	t	2025-12-18 01:16:34.211
+1624	56	12	공기압축기	5	t	2025-12-18 01:16:34.29
+1625	61	1	지게차	1	t	2025-12-18 01:16:34.45
+1626	61	1	크레인	2	t	2025-12-18 01:16:34.53
+1627	61	1	세척기	3	t	2025-12-18 01:16:34.609
+1628	61	1	템퍼링로	4	t	2025-12-18 01:16:34.689
+1629	61	1	열처리/올케이스로	5	t	2025-12-18 01:16:34.768
+1630	61	1	굴착기	6	t	2025-12-18 01:16:34.848
+1631	61	1	고속절단기	7	t	2025-12-18 01:16:34.927
+1632	61	1	핸드그라인더	8	t	2025-12-18 01:16:35.006
+1633	61	1	작업대/발판	9	t	2025-12-18 01:16:35.085
+1634	61	1	산소절단기	10	t	2025-12-18 01:16:35.165
+1635	61	1	위험물/가스저장소	11	t	2025-12-18 01:16:35.245
+1636	61	1	소화전/소화기	12	t	2025-12-18 01:16:35.324
+1637	61	1	분배전반	13	t	2025-12-18 01:16:35.404
+1638	61	1	걸이구	14	t	2025-12-18 01:16:35.483
+1639	61	1	공기압축기	15	t	2025-12-18 01:16:35.562
+1640	61	2	지게차	1	t	2025-12-18 01:16:35.641
+1641	61	2	크레인	2	t	2025-12-18 01:16:35.725
+1642	61	2	세척기	3	t	2025-12-18 01:16:35.804
+1643	61	2	템퍼링로	4	t	2025-12-18 01:16:35.883
+1644	61	2	열처리/올케이스로	5	t	2025-12-18 01:16:35.962
+1645	61	2	굴착기	6	t	2025-12-18 01:16:36.042
+1646	61	2	고속절단기	7	t	2025-12-18 01:16:36.121
+1647	61	2	핸드그라인더	8	t	2025-12-18 01:16:36.201
+1648	61	2	작업대/발판	9	t	2025-12-18 01:16:36.281
+1649	61	2	산소절단기	10	t	2025-12-18 01:16:36.36
+1650	61	2	위험물/가스저장소	11	t	2025-12-18 01:16:36.44
+1651	61	2	소화전/소화기	12	t	2025-12-18 01:16:36.519
+1652	61	2	분배전반	13	t	2025-12-18 01:16:36.599
+1653	61	2	걸이구	14	t	2025-12-18 01:16:36.678
+1654	61	2	공기압축기	15	t	2025-12-18 01:16:36.757
+1655	61	3	지게차	1	t	2025-12-18 01:16:36.837
+1656	61	3	크레인	2	t	2025-12-18 01:16:36.917
+1657	61	3	세척기	3	t	2025-12-18 01:16:36.996
+1658	61	3	템퍼링로	4	t	2025-12-18 01:16:37.075
+1659	61	3	열처리/올케이스로	5	t	2025-12-18 01:16:37.155
+1660	61	3	굴착기	6	t	2025-12-18 01:16:37.234
+1661	61	3	고속절단기	7	t	2025-12-18 01:16:37.313
+1662	61	3	핸드그라인더	8	t	2025-12-18 01:16:37.393
+1663	61	3	작업대/발판	9	t	2025-12-18 01:16:37.473
+1664	61	3	산소절단기	10	t	2025-12-18 01:16:37.552
+1665	61	3	위험물/가스저장소	11	t	2025-12-18 01:16:37.631
+1666	61	3	소화전/소화기	12	t	2025-12-18 01:16:37.711
+1667	61	3	분배전반	13	t	2025-12-18 01:16:37.791
+1668	61	3	걸이구	14	t	2025-12-18 01:16:37.87
+1669	61	3	공기압축기	15	t	2025-12-18 01:16:37.95
+1670	61	4	지게차	1	t	2025-12-18 01:16:38.029
+1671	61	4	크레인	2	t	2025-12-18 01:16:38.108
+1672	61	4	세척기	3	t	2025-12-18 01:16:38.188
+1673	61	4	템퍼링로	4	t	2025-12-18 01:16:38.267
+1674	61	4	열처리/올케이스로	5	t	2025-12-18 01:16:38.347
+1675	61	4	굴착기	6	t	2025-12-18 01:16:38.426
+1676	61	4	고속절단기	7	t	2025-12-18 01:16:38.505
+1677	61	4	핸드그라인더	8	t	2025-12-18 01:16:38.585
+1678	61	4	작업대/발판	9	t	2025-12-18 01:16:38.664
+1679	61	4	산소절단기	10	t	2025-12-18 01:16:38.744
+1680	61	4	위험물/가스저장소	11	t	2025-12-18 01:16:38.823
+1681	61	4	소화전/소화기	12	t	2025-12-18 01:16:38.902
+1682	61	4	분배전반	13	t	2025-12-18 01:16:38.981
+1683	61	4	걸이구	14	t	2025-12-18 01:16:39.061
+1684	61	4	공기압축기	15	t	2025-12-18 01:16:39.14
+1685	61	5	지게차	1	t	2025-12-18 01:16:39.22
+1686	61	5	크레인	2	t	2025-12-18 01:16:39.299
+1687	61	5	세척기	3	t	2025-12-18 01:16:39.378
+1688	61	5	템퍼링로	4	t	2025-12-18 01:16:39.457
+1689	61	5	열처리/올케이스로	5	t	2025-12-18 01:16:39.537
+1690	61	5	굴착기	6	t	2025-12-18 01:16:39.616
+1691	61	5	고속절단기	7	t	2025-12-18 01:16:39.696
+1692	61	5	핸드그라인더	8	t	2025-12-18 01:16:39.775
+1693	61	5	작업대/발판	9	t	2025-12-18 01:16:39.857
+1694	61	5	산소절단기	10	t	2025-12-18 01:16:39.944
+1695	61	5	위험물/가스저장소	11	t	2025-12-18 01:16:40.026
+1696	61	5	소화전/소화기	12	t	2025-12-18 01:16:40.107
+1697	61	5	분배전반	13	t	2025-12-18 01:16:40.188
+1698	61	5	걸이구	14	t	2025-12-18 01:16:40.277
+1699	61	5	공기압축기	15	t	2025-12-18 01:16:40.364
+1700	61	6	지게차	1	t	2025-12-18 01:16:40.45
+1701	61	6	크레인	2	t	2025-12-18 01:16:40.536
+1702	61	6	세척기	3	t	2025-12-18 01:16:40.618
+1703	61	6	템퍼링로	4	t	2025-12-18 01:16:40.702
+1704	61	6	열처리/올케이스로	5	t	2025-12-18 01:16:40.799
+1705	61	6	굴착기	6	t	2025-12-18 01:16:40.886
+1706	61	6	고속절단기	7	t	2025-12-18 01:16:40.98
+1707	61	6	핸드그라인더	8	t	2025-12-18 01:16:41.067
+1708	61	6	작업대/발판	9	t	2025-12-18 01:16:41.147
+1709	61	6	산소절단기	10	t	2025-12-18 01:16:41.232
+1710	61	6	위험물/가스저장소	11	t	2025-12-18 01:16:41.316
+1711	61	6	소화전/소화기	12	t	2025-12-18 01:16:41.395
+1712	61	6	분배전반	13	t	2025-12-18 01:16:41.475
+1713	61	6	걸이구	14	t	2025-12-18 01:16:41.555
+1714	61	6	공기압축기	15	t	2025-12-18 01:16:41.659
+1715	61	7	지게차	1	t	2025-12-18 01:16:41.753
+1716	61	7	크레인	2	t	2025-12-18 01:16:41.844
+1717	61	7	세척기	3	t	2025-12-18 01:16:41.935
+1718	61	7	템퍼링로	4	t	2025-12-18 01:16:42.023
+1719	61	7	열처리/올케이스로	5	t	2025-12-18 01:16:42.113
+1720	61	7	굴착기	6	t	2025-12-18 01:16:42.202
+1721	61	7	고속절단기	7	t	2025-12-18 01:16:42.298
+1722	61	7	핸드그라인더	8	t	2025-12-18 01:16:42.393
+1723	61	7	작업대/발판	9	t	2025-12-18 01:16:42.487
+1724	61	7	산소절단기	10	t	2025-12-18 01:16:42.574
+1725	61	7	위험물/가스저장소	11	t	2025-12-18 01:16:42.656
+1726	61	7	소화전/소화기	12	t	2025-12-18 01:16:42.737
+1727	61	7	분배전반	13	t	2025-12-18 01:16:42.817
+1728	61	7	걸이구	14	t	2025-12-18 01:16:42.896
+1729	61	7	공기압축기	15	t	2025-12-18 01:16:42.975
+1730	61	8	지게차	1	t	2025-12-18 01:16:43.055
+1731	61	8	크레인	2	t	2025-12-18 01:16:43.134
+1732	61	8	세척기	3	t	2025-12-18 01:16:43.213
+1733	61	8	템퍼링로	4	t	2025-12-18 01:16:43.294
+1734	61	8	열처리/올케이스로	5	t	2025-12-18 01:16:43.373
+1735	61	8	굴착기	6	t	2025-12-18 01:16:43.452
+1736	61	8	고속절단기	7	t	2025-12-18 01:16:43.532
+1737	61	8	핸드그라인더	8	t	2025-12-18 01:16:43.612
+1738	61	8	작업대/발판	9	t	2025-12-18 01:16:43.691
+1739	61	8	산소절단기	10	t	2025-12-18 01:16:43.771
+1740	61	8	위험물/가스저장소	11	t	2025-12-18 01:16:43.856
+1741	61	8	소화전/소화기	12	t	2025-12-18 01:16:43.941
+1742	61	8	분배전반	13	t	2025-12-18 01:16:44.021
+1743	61	8	걸이구	14	t	2025-12-18 01:16:44.1
+1744	61	8	공기압축기	15	t	2025-12-18 01:16:44.179
+1745	61	9	지게차	1	t	2025-12-18 01:16:44.269
+1746	61	9	크레인	2	t	2025-12-18 01:16:44.349
+1747	61	9	세척기	3	t	2025-12-18 01:16:44.429
+1748	61	9	템퍼링로	4	t	2025-12-18 01:16:44.508
+1749	61	9	열처리/올케이스로	5	t	2025-12-18 01:16:44.587
+1750	61	9	굴착기	6	t	2025-12-18 01:16:44.667
+1751	61	9	고속절단기	7	t	2025-12-18 01:16:44.746
+1752	61	9	핸드그라인더	8	t	2025-12-18 01:16:44.825
+1753	61	9	작업대/발판	9	t	2025-12-18 01:16:44.904
+1754	61	9	산소절단기	10	t	2025-12-18 01:16:44.983
+1755	61	9	위험물/가스저장소	11	t	2025-12-18 01:16:45.063
+1756	61	9	소화전/소화기	12	t	2025-12-18 01:16:45.143
+1757	61	9	분배전반	13	t	2025-12-18 01:16:45.222
+1758	61	9	걸이구	14	t	2025-12-18 01:16:45.301
+1759	61	9	공기압축기	15	t	2025-12-18 01:16:45.38
+1760	61	10	지게차	1	t	2025-12-18 01:16:45.46
+1761	61	10	크레인	2	t	2025-12-18 01:16:45.54
+1762	61	10	세척기	3	t	2025-12-18 01:16:45.619
+1763	61	10	템퍼링로	4	t	2025-12-18 01:16:45.698
+1764	61	10	열처리/올케이스로	5	t	2025-12-18 01:16:45.778
+1765	61	10	굴착기	6	t	2025-12-18 01:16:45.857
+1766	61	10	고속절단기	7	t	2025-12-18 01:16:45.936
+1767	61	10	핸드그라인더	8	t	2025-12-18 01:16:46.016
+1768	61	10	작업대/발판	9	t	2025-12-18 01:16:46.095
+1769	61	10	산소절단기	10	t	2025-12-18 01:16:46.175
+1770	61	10	위험물/가스저장소	11	t	2025-12-18 01:16:46.254
+1771	61	10	소화전/소화기	12	t	2025-12-18 01:16:46.333
+1772	61	10	분배전반	13	t	2025-12-18 01:16:46.414
+1773	61	10	걸이구	14	t	2025-12-18 01:16:46.495
+1774	61	10	공기압축기	15	t	2025-12-18 01:16:46.574
+1775	61	11	지게차	1	t	2025-12-18 01:16:46.653
+1776	61	11	크레인	2	t	2025-12-18 01:16:46.733
+1777	61	11	세척기	3	t	2025-12-18 01:16:46.813
+1778	61	11	템퍼링로	4	t	2025-12-18 01:16:46.892
+1779	61	11	열처리/올케이스로	5	t	2025-12-18 01:16:46.972
+1780	61	11	굴착기	6	t	2025-12-18 01:16:47.051
+1781	61	11	고속절단기	7	t	2025-12-18 01:16:47.131
+1782	61	11	핸드그라인더	8	t	2025-12-18 01:16:47.211
+1783	61	11	작업대/발판	9	t	2025-12-18 01:16:47.29
+1784	61	11	산소절단기	10	t	2025-12-18 01:16:47.369
+1785	61	11	위험물/가스저장소	11	t	2025-12-18 01:16:47.448
+1786	61	11	소화전/소화기	12	t	2025-12-18 01:16:47.527
+1787	61	11	분배전반	13	t	2025-12-18 01:16:47.607
+1788	61	11	걸이구	14	t	2025-12-18 01:16:47.686
+1789	61	11	공기압축기	15	t	2025-12-18 01:16:47.766
+1790	61	12	지게차	1	t	2025-12-18 01:16:47.845
+1791	61	12	크레인	2	t	2025-12-18 01:16:47.925
+1792	61	12	세척기	3	t	2025-12-18 01:16:48.004
+1793	61	12	템퍼링로	4	t	2025-12-18 01:16:48.084
+1794	61	12	열처리/올케이스로	5	t	2025-12-18 01:16:48.163
+1795	61	12	굴착기	6	t	2025-12-18 01:16:48.242
+1796	61	12	고속절단기	7	t	2025-12-18 01:16:48.322
+1797	61	12	핸드그라인더	8	t	2025-12-18 01:16:48.401
+1798	61	12	작업대/발판	9	t	2025-12-18 01:16:48.481
+1799	61	12	산소절단기	10	t	2025-12-18 01:16:48.56
+1800	61	12	위험물/가스저장소	11	t	2025-12-18 01:16:48.651
+1801	61	12	소화전/소화기	12	t	2025-12-18 01:16:48.731
+1802	61	12	분배전반	13	t	2025-12-18 01:16:48.811
+1803	61	12	걸이구	14	t	2025-12-18 01:16:48.891
+1804	61	12	공기압축기	15	t	2025-12-18 01:16:49.047
+\.
+
+
+--
+-- Data for Name: MonthlyApproval; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."MonthlyApproval" (id, "teamId", year, month, status, "pdfUrl", "approverId", "submittedAt", "approvedAt") FROM stdin;
+89452f3a-1a85-4fb5-ba6f-b60865533bad	3	2025	11	DRAFT	\N	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	\N
+8dfdfaf0-fe4a-4ed0-8e59-3c1f715583ac	48	2025	11	DRAFT	\N	da97e549-6822-4935-943c-8f01865f6893	\N	\N
+835d8865-edb5-4b5c-bc7b-f3b9dad2d825	49	2025	11	DRAFT	\N	68c383db-7a1a-4533-a9f4-fe24cc533a3f	\N	\N
+\.
+
+
+--
+-- Data for Name: MonthlyInspectionDays; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."MonthlyInspectionDays" (id, "factoryId", month, "inspectionDay", "createdAt", "updatedAt") FROM stdin;
+5	2	5	7	2025-11-18 06:46:32.3	2025-11-18 06:46:32.3
+6	2	6	4	2025-11-18 06:46:32.303	2025-11-18 06:46:32.303
+7	2	7	4	2025-11-18 06:46:32.306	2025-11-18 06:46:32.306
+8	2	8	7	2025-11-18 06:46:32.309	2025-11-18 06:46:32.309
+9	2	9	4	2025-11-18 06:46:32.311	2025-11-18 06:46:32.311
+10	2	10	4	2025-11-18 06:46:32.313	2025-11-18 06:46:32.313
+15	1	3	7	2025-11-18 06:46:32.324	2025-11-18 06:46:32.324
+16	1	4	4	2025-11-18 06:46:32.325	2025-11-18 06:46:32.325
+17	1	5	7	2025-11-18 06:46:32.328	2025-11-18 06:46:32.328
+18	1	6	4	2025-11-18 06:46:32.33	2025-11-18 06:46:32.33
+19	1	7	4	2025-11-18 06:46:32.331	2025-11-18 06:46:32.331
+20	1	8	7	2025-11-18 06:46:32.333	2025-11-18 06:46:32.333
+21	1	9	4	2025-11-18 06:46:32.334	2025-11-18 06:46:32.334
+22	1	10	7	2025-11-18 06:46:32.336	2025-11-18 06:46:32.336
+23	1	11	4	2025-11-18 06:46:32.338	2025-11-18 07:14:39.484
+14	1	2	4	2025-11-18 06:46:32.321	2025-11-26 00:30:15.42
+2	2	2	4	2025-11-18 06:46:32.293	2025-11-26 02:01:31.543
+3	2	3	7	2025-11-18 06:46:32.296	2025-11-26 02:01:50.412
+4	2	4	4	2025-11-18 06:46:32.298	2025-11-26 02:01:59.906
+12	2	12	4	2025-11-18 06:46:32.317	2025-12-11 01:44:17.252
+11	2	11	7	2025-11-18 06:46:32.315	2025-12-11 02:27:59.335
+1	2	1	3	2025-11-18 06:46:32.281	2025-12-11 02:28:49.152
+24	1	12	4	2025-11-18 06:46:32.34	2025-12-11 02:30:39.681
+13	1	1	3	2025-11-18 06:46:32.319	2025-12-11 02:31:15.355
+\.
+
+
+--
+-- Data for Name: Notice; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Notice" (id, title, content, "authorId", category, "createdAt", "updatedAt", "isActive", "viewCount", "imageUrl", "attachmentUrl", "attachmentName", "videoUrl", "videoType") FROM stdin;
+29a5cbff-11b1-4511-83b7-a1bed0710efd	테스트	테스트	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	GENERAL	2025-12-02 04:34:27.041	2025-12-17 07:20:18.761	t	25	\N	\N	\N	\N	file
+a6e33bd5-030a-4378-9a1b-45780d7d4efb	테스트	테스트	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	GENERAL	2025-12-11 02:00:21.365	2025-12-18 04:11:24.819	t	4	\N	\N	\N	\N	file
+a8cf36e8-f60b-419a-a0f4-04be0362c534	테스트1	테스트1	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	GENERAL	2025-12-18 23:11:43.596	2025-12-19 05:19:45.401	t	6	\N	\N	\N	\N	file
+\.
+
+
+--
+-- Data for Name: NoticeReads; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."NoticeReads" (id, "noticeId", "userId", "readAt") FROM stdin;
+bd51c433-2438-4de2-b957-be90f7b07d31	29a5cbff-11b1-4511-83b7-a1bed0710efd	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2025-12-02 04:36:53.083
+5dfdc50c-8be0-4c22-a57a-416fbe3a6c37	a6e33bd5-030a-4378-9a1b-45780d7d4efb	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2025-12-11 02:18:50.123
+450f3ec9-0a82-4812-90fd-d48dd06524a0	a8cf36e8-f60b-419a-a0f4-04be0362c534	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2025-12-18 23:11:49.151
+\.
+
+
+--
+-- Data for Name: PasswordResetToken; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."PasswordResetToken" (id, "userId", token, "expiresAt", used, "createdAt") FROM stdin;
+\.
+
+
+--
+-- Data for Name: ReportDetails; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."ReportDetails" (id, "reportId", "itemId", "checkState", "authorId", "actionDescription", "actionStatus") FROM stdin;
+457	39	2203	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+458	39	2204	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+459	39	2205	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+460	39	2206	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+461	39	2207	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+462	39	2208	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+463	39	2209	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+464	39	2210	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+465	39	2211	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+466	39	2212	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+467	39	2213	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+468	39	2214	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+469	39	2215	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+470	39	2216	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+471	39	2217	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+472	39	2218	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+473	39	2219	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+474	39	2220	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+475	39	2221	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+476	39	2222	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+477	39	2223	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+478	39	2224	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+479	39	2225	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+480	39	2226	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+481	39	2227	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+482	39	2228	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+483	39	2229	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+484	39	2230	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+485	39	2231	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+292	35	1163	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+293	35	1164	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+294	35	1165	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+295	35	1166	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+296	35	1167	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+297	35	1168	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+298	35	1169	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+299	35	1170	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+300	35	1171	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+301	35	1172	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+302	35	1173	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+303	35	1174	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+304	35	1175	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+376	38	2394	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+377	38	2395	△	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	음주	PENDING
+378	38	2396	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+379	38	2397	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+380	38	2398	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+381	38	2399	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+382	38	2400	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+383	38	2401	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+384	38	2402	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+385	38	2403	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+386	38	2404	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+387	38	2405	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+388	38	2406	△	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	그라인더	PENDING
+389	38	2407	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+390	38	2408	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+391	38	2409	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+392	38	2410	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+393	38	2411	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+394	38	2412	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+395	38	2413	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+396	38	2414	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+397	38	2415	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+398	38	2416	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+486	40	2180	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+487	40	2181	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+488	40	2182	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+489	40	2183	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+490	40	2184	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+491	40	2185	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+492	40	2186	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+428	37	1013	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+429	37	1014	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+430	37	1015	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+431	37	1016	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+432	37	1017	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+433	37	1018	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+434	37	1019	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+435	37	1020	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+436	37	1021	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+437	37	1022	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+438	37	1023	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+439	37	1024	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+440	37	1025	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+441	37	1026	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+442	37	1027	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+443	37	1028	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+444	37	1029	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+445	37	1030	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+446	37	1031	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+447	37	1032	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+448	37	1033	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+449	37	1034	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+450	37	1035	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+451	37	1036	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+452	37	1037	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+453	37	1038	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+454	37	1039	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+455	37	1040	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+456	37	1041	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+493	40	2187	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+494	40	2188	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+495	40	2189	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+496	40	2190	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+497	40	2191	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+498	40	2192	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+499	40	2193	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+500	40	2194	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+501	40	2195	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+502	40	2196	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+503	40	2197	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+504	40	2198	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+505	40	2199	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+506	40	2200	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+507	40	2201	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+508	40	2202	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+1	1	1013	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+2	1	1014	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+3	1	1015	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+4	1	1016	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+5	1	1017	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+6	1	1018	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+7	1	1019	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+8	1	1020	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+9	1	1021	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+10	1	1022	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+11	1	1023	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+12	1	1024	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+13	1	1025	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+14	1	1026	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+15	1	1027	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+16	1	1028	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+17	1	1029	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+18	1	1030	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+19	1	1031	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+20	1	1032	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+21	1	1033	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+22	1	1034	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+23	1	1035	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+24	1	1036	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+25	1	1037	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+26	1	1038	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+27	1	1039	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+28	1	1040	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+29	1	1041	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+509	3	1013	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+510	3	1014	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+511	3	1015	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+512	3	1016	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+513	3	1017	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+514	3	1018	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+515	3	1019	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+516	3	1020	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+517	3	1021	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+518	3	1022	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+519	3	1023	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+520	3	1024	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+521	3	1025	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+522	3	1026	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+523	3	1027	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+524	3	1028	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+525	3	1029	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+526	3	1030	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+527	3	1031	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+528	3	1032	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+529	3	1033	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+530	3	1034	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+531	3	1035	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+532	3	1036	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+533	3	1037	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+534	3	1038	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+535	3	1039	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+536	3	1040	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+537	3	1041	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+538	41	1013	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+539	41	1014	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+540	41	1015	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+541	41	1016	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+542	41	1017	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+543	41	1018	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+544	41	1019	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+545	41	1020	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+546	41	1021	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+547	41	1022	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+548	41	1023	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+549	41	1024	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+550	41	1025	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+551	41	1026	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+552	41	1027	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+553	41	1028	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+554	41	1029	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+555	41	1030	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+556	41	1031	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+557	41	1032	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+558	41	1033	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+559	41	1034	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+560	41	1035	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+561	41	1036	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+562	41	1037	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+563	41	1038	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+564	41	1039	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+565	41	1040	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+566	41	1041	O	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	PENDING
+\.
+
+
+--
+-- Data for Name: ReportSignatures; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."ReportSignatures" (id, "reportId", "userId", "memberId", "signedAt", "signatureImage") FROM stdin;
+54	38	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-11-26 01:18:14.895	data:image/png;base64,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
+57	37	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-11-26 05:36:26.82	data:image/png;base64,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
+58	37	68c383db-7a1a-4533-a9f4-fe24cc533a3f	\N	2025-11-26 05:36:26.82	data:image/png;base64,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
+59	39	da97e549-6822-4935-943c-8f01865f6893	\N	2025-11-26 05:39:37.388	data:image/png;base64,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
+60	39	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-11-26 05:39:37.388	data:image/png;base64,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
+61	40	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-11-27 05:37:37.415	data:image/png;base64,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
+50	35	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-11-26 00:10:06.874	data:image/png;base64,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
+1	1	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-12-02 04:31:49.951	data:image/png;base64,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
+3	2	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-12-04 23:52:37.603	data:image/png;base64,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
+62	3	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-12-11 05:43:16.703	data:image/png;base64,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
+63	41	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	\N	2025-12-18 23:14:20.648	data:image/png;base64,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
+\.
+
+
+--
+-- Data for Name: SafetyInspections; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."SafetyInspections" (id, "teamId", year, month, "inspectionDate", "isCompleted", "completedAt", "createdAt", "updatedAt") FROM stdin;
+cb71fbaa-1f82-4f72-a27d-3fa8f8a4c053	3	2025	11	2025-11-04 00:00:00	t	2025-11-25 06:43:37.931	2025-11-25 06:43:37.935	2025-11-25 06:43:37.935
+800ca675-10df-4d27-be7a-c4db79c92f27	48	2025	11	2025-11-04 00:00:00	f	\N	2025-11-27 00:27:01.099	2025-11-27 00:27:01.099
+5a3b709a-b1ba-4101-add1-4ea1590a9717	49	2025	11	2025-11-04 00:00:00	t	2025-11-27 00:39:15.022	2025-11-26 00:25:52.506	2025-11-27 00:39:15.024
+9db2baaa-789d-4fa9-9354-a6f58435ec8a	46	2025	11	2025-11-04 00:00:00	t	2025-11-27 23:20:20.54	2025-11-26 01:13:57.995	2025-11-27 23:20:20.542
+9a32f0e6-9329-42c4-86b8-9c6746163315	3	2025	12	2025-12-04 00:00:00	f	\N	2025-12-02 00:59:24.93	2025-12-02 00:59:24.93
+\.
+
+
+--
+-- Data for Name: SimpleEmailConfigs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."SimpleEmailConfigs" (id, "emailType", subject, content, enabled, "sendTiming", "daysAfter", "scheduledTime", "monthlyDay", "createdAt", "updatedAt") FROM stdin;
+bbb046a6-99de-4426-9d30-49747c1ed02a	EXEC_SIGNATURE_REQUEST	월간 TBM 보고서 임원 서명 요청	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">\n  <h2 style="color: #2563eb;">월간 TBM 보고서 임원 서명 요청</h2>\n  <p>안녕하세요.</p>\n  <p>{{MONTH}}월 TBM 보고서에 대한 임원 서명이 필요합니다.</p>\n  <p><strong>보고서:</strong> {{REPORT_NAME}}</p>\n  <p><strong>작성팀:</strong> {{TEAM_NAME}}</p>\n  <p><strong>작성일:</strong> {{CREATED_DATE}}</p>\n  <p>아래 링크를 클릭하여 보고서를 확인하고 서명해주세요.</p>\n  <p><a href="{{REPORT_URL}}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">보고서 확인 및 서명</a></p>\n  <p>감사합니다.</p>\n</div>	t	IMMEDIATE	\N	\N	\N	2025-11-24 01:11:24.333	2025-11-24 01:11:24.333
+1c9abab0-4ac7-474e-a18f-3c6387e54aa4	EXEC_SIGNATURE_COMPLETE	월간 TBM 보고서 임원 서명 완료	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">\n  <h2 style="color: #10b981;">월간 TBM 보고서 임원 서명 완료</h2>\n  <p>안녕하세요.</p>\n  <p>{{MONTH}}월 TBM 보고서에 임원 서명이 완료되었습니다.</p>\n  <p><strong>보고서:</strong> {{REPORT_NAME}}</p>\n  <p><strong>서명자:</strong> {{SIGNER_NAME}} ({{SIGNER_ROLE}})</p>\n  <p><strong>서명일시:</strong> {{SIGNED_DATE}}</p>\n  <p>아래 링크를 클릭하여 최종 보고서를 확인하세요.</p>\n  <p><a href="{{REPORT_URL}}" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">최종 보고서 확인</a></p>\n  <p>감사합니다.</p>\n</div>	t	IMMEDIATE	\N	\N	\N	2025-11-24 01:11:24.337	2025-11-24 01:11:24.337
+bb3326d5-b203-42f6-9668-3f448896a0d0	TBM_REMINDER	TBM 일지 미작성 알림	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">\n  <h2 style="color: #f59e0b;">TBM 일지 미작성 알림</h2>\n  <p>안녕하세요, {{USER_NAME}}님.</p>\n  <p>{{DATE}} TBM 일지가 아직 작성되지 않았습니다.</p>\n  <p><strong>팀:</strong> {{TEAM_NAME}}</p>\n  <p><strong>미작성 일수:</strong> {{DAYS_OVERDUE}}일</p>\n  <p>빠른 시일 내에 TBM 일지를 작성해주시기 바랍니다.</p>\n  <p><a href="{{TBM_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">TBM 일지 작성하기</a></p>\n  <p>감사합니다.</p>\n</div>	t	AFTER_N_DAYS	3	\N	\N	2025-11-24 01:11:24.339	2025-11-24 01:11:24.339
+4d463f69-5834-4488-acb6-88842d783762	EDUCATION_REMINDER	안전교육 미수강 알림	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">\n  <h2 style="color: #f59e0b;">안전교육 미수강 알림</h2>\n  <p>안녕하세요, {{USER_NAME}}님.</p>\n  <p>필수 안전교육이 아직 완료되지 않았습니다.</p>\n  <p><strong>교육명:</strong> {{COURSE_NAME}}</p>\n  <p><strong>마감일:</strong> {{DUE_DATE}}</p>\n  <p><strong>진행률:</strong> {{PROGRESS}}%</p>\n  <p>마감일까지 안전교육을 완료해주시기 바랍니다.</p>\n  <p><a href="{{COURSE_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">교육 이어보기</a></p>\n  <p>감사합니다.</p>\n</div>	t	AFTER_N_DAYS	7	\N	\N	2025-11-24 01:11:24.341	2025-11-24 01:11:24.341
+b59512ee-cb18-4692-8253-7da27a37a5a6	INSPECTION_REMINDER	안전점검 미작성 알림 (매월 4일)	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">\n  <h2 style="color: #f59e0b;">안전점검 미작성 알림</h2>\n  <p>안녕하세요, {{USER_NAME}}님.</p>\n  <p>{{MONTH}}월 안전점검이 아직 작성되지 않았습니다.</p>\n  <p><strong>담당팀:</strong> {{TEAM_NAME}}</p>\n  <p><strong>마감일:</strong> 매월 4일</p>\n  <p>매월 4일까지 안전점검을 완료해주시기 바랍니다.</p>\n  <p><a href="{{INSPECTION_URL}}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">안전점검 작성하기</a></p>\n  <p>감사합니다.</p>\n</div>	t	MONTHLY_DAY	\N	\N	4	2025-11-24 01:11:24.344	2025-11-24 01:11:24.344
+\.
+
+
+--
+-- Data for Name: TeamEquipments; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."TeamEquipments" (id, "teamId", "equipmentName", quantity, "createdAt", "updatedAt") FROM stdin;
+2	39	크레인	5	2025-11-18 05:43:36.701	2025-11-18 06:02:59.191
+3	39	절곡기	1	2025-11-18 05:43:36.704	2025-11-18 06:02:59.193
+4	39	걸이구	1	2025-11-18 05:43:36.706	2025-11-18 06:02:59.195
+6	39	소화전,소화기	1	2025-11-18 05:43:36.711	2025-11-18 06:02:59.198
+7	39	용접기	1	2025-11-18 05:43:36.713	2025-11-18 06:02:59.2
+8	39	세척기선반	1	2025-11-18 05:43:36.715	2025-11-18 06:02:59.202
+9	39	탁상용연삭기,드릴	1	2025-11-18 05:43:36.717	2025-11-18 06:02:59.203
+10	39	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.719	2025-11-18 06:02:59.205
+11	39	작업대발판	1	2025-11-18 05:43:36.721	2025-11-18 06:02:59.207
+12	40	지게차	1	2025-11-18 05:43:36.724	2025-11-18 06:02:59.21
+13	40	크레인	5	2025-11-18 05:43:36.727	2025-11-18 06:02:59.212
+14	40	절곡기	1	2025-11-18 05:43:36.729	2025-11-18 06:02:59.213
+15	40	걸이구	1	2025-11-18 05:43:36.73	2025-11-18 06:02:59.215
+16	40	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.732	2025-11-18 06:02:59.216
+17	40	밀링기,면취기	1	2025-11-18 05:43:36.733	2025-11-18 06:02:59.218
+18	40	소화전,소화기	1	2025-11-18 05:43:36.735	2025-11-18 06:02:59.219
+19	40	용접기	1	2025-11-18 05:43:36.736	2025-11-18 06:02:59.221
+20	40	세척기선반	1	2025-11-18 05:43:36.738	2025-11-18 06:02:59.223
+21	40	탁상용연삭기,드릴	1	2025-11-18 05:43:36.74	2025-11-18 06:02:59.224
+22	40	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.742	2025-11-18 06:02:59.226
+23	40	작업대발판	1	2025-11-18 05:43:36.743	2025-11-18 06:02:59.227
+24	41	지게차	1	2025-11-18 05:43:36.748	2025-11-18 06:02:59.231
+25	41	크레인	6	2025-11-18 05:43:36.75	2025-11-18 06:02:59.233
+26	41	절곡기	1	2025-11-18 05:43:36.752	2025-11-18 06:02:59.235
+27	41	걸이구	1	2025-11-18 05:43:36.754	2025-11-18 06:02:59.237
+28	41	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.756	2025-11-18 06:02:59.239
+29	41	밀링기,면취기	1	2025-11-18 05:43:36.758	2025-11-18 06:02:59.24
+30	41	소화전,소화기	1	2025-11-18 05:43:36.759	2025-11-18 06:02:59.242
+31	41	용접기	1	2025-11-18 05:43:36.761	2025-11-18 06:02:59.243
+32	41	세척기선반	1	2025-11-18 05:43:36.763	2025-11-18 06:02:59.245
+33	41	보링기,반전기	1	2025-11-18 05:43:36.765	2025-11-18 06:02:59.246
+35	41	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.768	2025-11-18 06:02:59.249
+36	41	작업대발판	1	2025-11-18 05:43:36.77	2025-11-18 06:02:59.25
+37	42	절곡기	1	2025-11-18 05:43:36.773	2025-11-18 06:02:59.253
+38	42	소화전,소화기	1	2025-11-18 05:43:36.775	2025-11-18 06:02:59.255
+39	42	밀링기,면취기	1	2025-11-18 05:43:36.777	2025-11-18 06:02:59.256
+40	42	탁상용연삭기,드릴	1	2025-11-18 05:43:36.778	2025-11-18 06:02:59.258
+76	4	크레인	3	2025-11-18 05:43:36.857	2025-11-19 00:30:18.76
+77	4	절곡기	1	2025-11-18 05:43:36.86	2025-11-19 00:30:18.76
+79	4	세척기선반	1	2025-11-18 05:43:36.864	2025-11-19 00:30:18.76
+80	4	탁상용연삭기,드릴	1	2025-11-18 05:43:36.866	2025-11-19 00:30:18.76
+41	2	지게차	1	2025-11-18 05:43:36.782	2025-11-19 00:30:18.799
+42	2	크레인	7	2025-11-18 05:43:36.784	2025-11-19 00:30:18.799
+43	2	절곡기	1	2025-11-18 05:43:36.786	2025-11-19 00:30:18.799
+44	2	걸이구	1	2025-11-18 05:43:36.788	2025-11-19 00:30:18.799
+45	2	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.789	2025-11-19 00:30:18.799
+46	2	소화전,소화기	1	2025-11-18 05:43:36.791	2025-11-19 00:30:18.799
+47	2	용접기	1	2025-11-18 05:43:36.793	2025-11-19 00:30:18.799
+48	2	세척기선반	1	2025-11-18 05:43:36.796	2025-11-19 00:30:18.799
+49	2	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.797	2025-11-19 00:30:18.799
+50	2	밧데리충전기	1	2025-11-18 05:43:36.8	2025-11-19 00:30:18.799
+51	2	작업대발판	1	2025-11-18 05:43:36.801	2025-11-19 00:30:18.799
+68	45	지게차	4	2025-11-18 05:43:36.839	2025-11-18 06:02:59.304
+69	45	걸이구	1	2025-11-18 05:43:36.841	2025-11-18 06:02:59.305
+70	45	소화전,소화기	1	2025-11-18 05:43:36.843	2025-11-18 06:02:59.307
+71	45	분배전반	1	2025-11-18 05:43:36.844	2025-11-18 06:02:59.308
+72	45	밧데리충전기	1	2025-11-18 05:43:36.846	2025-11-18 06:02:59.309
+73	46	절곡기	1	2025-11-18 05:43:36.85	2025-11-18 06:02:59.311
+74	46	소화전,소화기	1	2025-11-18 05:43:36.852	2025-11-18 06:02:59.313
+75	46	밀링기,면취기	1	2025-11-18 05:43:36.854	2025-11-18 06:02:59.314
+81	48	지게차	1	2025-11-18 05:43:36.869	2025-11-18 06:02:59.325
+82	48	크레인	2	2025-11-18 05:43:36.871	2025-11-18 06:02:59.326
+83	48	절곡기	1	2025-11-18 05:43:36.873	2025-11-18 06:02:59.327
+84	48	걸이구	1	2025-11-18 05:43:36.875	2025-11-18 06:02:59.329
+85	48	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.877	2025-11-18 06:02:59.331
+86	48	소화전,소화기	1	2025-11-18 05:43:36.879	2025-11-18 06:02:59.332
+87	48	용접기	1	2025-11-18 05:43:36.881	2025-11-18 06:02:59.333
+88	48	세척기선반	1	2025-11-18 05:43:36.882	2025-11-18 06:02:59.335
+89	48	탁상용연삭기,드릴	1	2025-11-18 05:43:36.884	2025-11-18 06:02:59.336
+90	48	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.886	2025-11-18 06:02:59.337
+91	48	작업대발판	1	2025-11-18 05:43:36.888	2025-11-18 06:02:59.339
+92	49	지게차	5	2025-11-18 05:43:36.891	2025-11-18 06:02:59.341
+93	49	걸이구	1	2025-11-18 05:43:36.893	2025-11-18 06:02:59.343
+94	49	소화전,소화기	1	2025-11-18 05:43:36.895	2025-11-18 06:02:59.345
+95	49	분배전반	1	2025-11-18 05:43:36.897	2025-11-18 06:02:59.346
+96	49	밧데리충전기	1	2025-11-18 05:43:36.899	2025-11-18 06:02:59.348
+52	3	지게차	1	2025-11-18 05:43:36.805	2025-11-19 00:30:18.741
+53	3	크레인	6	2025-11-18 05:43:36.807	2025-11-19 00:30:18.741
+1	39	지게차	1	2025-11-18 05:43:36.692	2025-11-18 06:02:59.182
+5	39	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.708	2025-11-18 06:02:59.196
+34	41	탁상용연삭기,드릴	1	2025-11-18 05:43:36.766	2025-11-18 06:02:59.247
+54	3	전단기	1	2025-11-18 05:43:36.809	2025-11-19 00:30:18.741
+55	3	절곡기	3	2025-11-18 05:43:36.811	2025-11-19 00:30:18.741
+56	3	걸이구	1	2025-11-18 05:43:36.813	2025-11-19 00:30:18.741
+58	3	소화전,소화기	1	2025-11-18 05:43:36.816	2025-11-19 00:30:18.741
+59	3	밀링기,면취기	2	2025-11-18 05:43:36.819	2025-11-19 00:30:18.741
+60	3	세척기선반	1	2025-11-18 05:43:36.82	2025-11-19 00:30:18.741
+61	3	보링기,반전기	1	2025-11-18 05:43:36.823	2025-11-19 00:30:18.741
+62	3	탁상용연삭기,드릴	1	2025-11-18 05:43:36.825	2025-11-19 00:30:18.741
+63	3	분배전반	1	2025-11-18 05:43:36.827	2025-11-19 00:30:18.741
+64	3	고속절단기,핸드그라인더	1	2025-11-18 05:43:36.829	2025-11-19 00:30:18.741
+65	3	전동드릴밴드쏘우	1	2025-11-18 05:43:36.831	2025-11-19 00:30:18.741
+66	3	산소절단기	1	2025-11-18 05:43:36.833	2025-11-19 00:30:18.741
+67	3	보일러,국소배기장치	1	2025-11-18 05:43:36.835	2025-11-19 00:30:18.741
+57	3	드릴기,플라즈마,레이져절단기	4	2025-11-18 05:43:36.815	2025-11-19 00:30:18.741
+78	4	드릴기,플라즈마,레이져절단기	1	2025-11-18 05:43:36.862	2025-11-19 00:30:18.76
+429	50	지게차	2	2025-11-26 01:54:49.816	2025-11-26 01:54:49.816
+430	50	크레인	14	2025-11-26 01:54:49.827	2025-11-26 01:54:49.827
+431	50	CNC선반	6	2025-11-26 01:54:49.83	2025-11-26 01:54:49.83
+432	50	MCT	9	2025-11-26 01:54:49.832	2025-11-26 01:54:49.832
+433	50	Deep Hole	1	2025-11-26 01:54:49.835	2025-11-26 01:54:49.835
+434	50	드릴(레디알)	1	2025-11-26 01:54:49.837	2025-11-26 01:54:49.837
+435	50	탁상용연삭기	1	2025-11-26 01:54:49.84	2025-11-26 01:54:49.84
+436	50	밴드쏘우	1	2025-11-26 01:54:49.842	2025-11-26 01:54:49.842
+437	50	칩이송장치	1	2025-11-26 01:54:49.845	2025-11-26 01:54:49.845
+438	50	산소절단기	1	2025-11-26 01:54:49.847	2025-11-26 01:54:49.847
+439	50	위험물/가스저장소	1	2025-11-26 01:54:49.849	2025-11-26 01:54:49.849
+440	50	소화전/소화기	1	2025-11-26 01:54:49.851	2025-11-26 01:54:49.851
+441	50	분배전반	1	2025-11-26 01:54:49.854	2025-11-26 01:54:49.854
+442	50	걸이구	1	2025-11-26 01:54:49.856	2025-11-26 01:54:49.856
+443	50	압력용기	1	2025-11-26 01:54:49.858	2025-11-26 01:54:49.858
+444	51	크레인	7	2025-11-26 01:54:49.86	2025-11-26 01:54:49.86
+445	51	Deep Hole	1	2025-11-26 01:54:49.863	2025-11-26 01:54:49.863
+446	51	연삭기	12	2025-11-26 01:54:49.865	2025-11-26 01:54:49.865
+447	51	위험물/가스저장소	1	2025-11-26 01:54:49.867	2025-11-26 01:54:49.867
+448	51	소화전/소화기	1	2025-11-26 01:54:49.869	2025-11-26 01:54:49.869
+449	51	분배전반	1	2025-11-26 01:54:49.871	2025-11-26 01:54:49.871
+450	51	공기압축기	1	2025-11-26 01:54:49.873	2025-11-26 01:54:49.873
+451	52	지게차	2	2025-11-26 01:54:49.875	2025-11-26 01:54:49.875
+452	52	크레인	9	2025-11-26 01:54:49.877	2025-11-26 01:54:49.877
+453	52	컨베이어	1	2025-11-26 01:54:49.879	2025-11-26 01:54:49.879
+454	52	반전기	1	2025-11-26 01:54:49.881	2025-11-26 01:54:49.881
+455	52	연삭기	1	2025-11-26 01:54:49.883	2025-11-26 01:54:49.883
+456	52	둥근톱	1	2025-11-26 01:54:49.884	2025-11-26 01:54:49.884
+457	52	산소절단기	1	2025-11-26 01:54:49.886	2025-11-26 01:54:49.886
+458	52	위험물/가스저장소	1	2025-11-26 01:54:49.888	2025-11-26 01:54:49.888
+459	52	소화전/소화기	1	2025-11-26 01:54:49.89	2025-11-26 01:54:49.89
+460	52	분배전반	1	2025-11-26 01:54:49.892	2025-11-26 01:54:49.892
+461	52	압력용기	1	2025-11-26 01:54:49.894	2025-11-26 01:54:49.894
+462	53	지게차	1	2025-11-26 01:54:49.896	2025-11-26 01:54:49.896
+463	53	크레인	7	2025-11-26 01:54:49.897	2025-11-26 01:54:49.897
+464	53	위험물/가스저장소	1	2025-11-26 01:54:49.899	2025-11-26 01:54:49.899
+465	53	소화전/소화기	1	2025-11-26 01:54:49.901	2025-11-26 01:54:49.901
+466	53	분배전반	1	2025-11-26 01:54:49.903	2025-11-26 01:54:49.903
+467	53	걸이구	1	2025-11-26 01:54:49.905	2025-11-26 01:54:49.905
+468	53	공기압축기	1	2025-11-26 01:54:49.906	2025-11-26 01:54:49.906
+469	54	지게차	3	2025-11-26 01:54:49.908	2025-11-26 01:54:49.908
+470	54	크레인	13	2025-11-26 01:54:49.91	2025-11-26 01:54:49.91
+471	54	컨베이어	1	2025-11-26 01:54:49.911	2025-11-26 01:54:49.911
+472	54	용접기	1	2025-11-26 01:54:49.913	2025-11-26 01:54:49.913
+473	54	반전기	1	2025-11-26 01:54:49.914	2025-11-26 01:54:49.914
+474	54	도장장/건조로	1	2025-11-26 01:54:49.916	2025-11-26 01:54:49.916
+475	54	드릴(레디알)	1	2025-11-26 01:54:49.917	2025-11-26 01:54:49.917
+476	54	전동드릴/타카	1	2025-11-26 01:54:49.919	2025-11-26 01:54:49.919
+477	54	둥근톱	1	2025-11-26 01:54:49.92	2025-11-26 01:54:49.92
+478	54	산소절단기	1	2025-11-26 01:54:49.922	2025-11-26 01:54:49.922
+479	54	위험물/가스저장소	1	2025-11-26 01:54:49.923	2025-11-26 01:54:49.923
+480	54	소화전/소화기	1	2025-11-26 01:54:49.925	2025-11-26 01:54:49.925
+481	54	분배전반	1	2025-11-26 01:54:49.926	2025-11-26 01:54:49.926
+482	54	걸이구	1	2025-11-26 01:54:49.928	2025-11-26 01:54:49.928
+483	54	압력용기	1	2025-11-26 01:54:49.929	2025-11-26 01:54:49.929
+484	54	공기압축기	2	2025-11-26 01:54:49.931	2025-11-26 01:54:49.931
+485	55	지게차	1	2025-11-26 01:54:49.933	2025-11-26 01:54:49.933
+486	55	크레인	4	2025-11-26 01:54:49.934	2025-11-26 01:54:49.934
+487	55	템퍼링로	8	2025-11-26 01:54:49.936	2025-11-26 01:54:49.936
+488	55	세척조/피트로/유조로	9	2025-11-26 01:54:49.937	2025-11-26 01:54:49.937
+489	55	열처리/올케이스로	3	2025-11-26 01:54:49.939	2025-11-26 01:54:49.939
+490	55	위험물/가스저장소	1	2025-11-26 01:54:49.941	2025-11-26 01:54:49.941
+491	55	소화전/소화기	1	2025-11-26 01:54:49.942	2025-11-26 01:54:49.942
+492	55	걸이구	1	2025-11-26 01:54:49.944	2025-11-26 01:54:49.944
+493	55	공기압축기	2	2025-11-26 01:54:49.945	2025-11-26 01:54:49.945
+494	56	지게차	2	2025-11-26 01:54:49.947	2025-11-26 01:54:49.947
+495	56	밧데리충전기	1	2025-11-26 01:54:49.949	2025-11-26 01:54:49.949
+496	56	위험물/가스저장소	1	2025-11-26 01:54:49.951	2025-11-26 01:54:49.951
+497	56	소화전/소화기	1	2025-11-26 01:54:49.952	2025-11-26 01:54:49.952
+498	56	공기압축기	1	2025-11-26 01:54:49.954	2025-11-26 01:54:49.954
+499	30	지게차	1	2025-11-26 01:54:49.955	2025-11-26 01:54:49.955
+500	30	크레인	8	2025-11-26 01:54:49.957	2025-11-26 01:54:49.957
+501	30	시편절단기	1	2025-11-26 01:54:49.958	2025-11-26 01:54:49.958
+502	30	전동드릴/타카	1	2025-11-26 01:54:49.96	2025-11-26 01:54:49.96
+503	30	산소절단기	1	2025-11-26 01:54:49.961	2025-11-26 01:54:49.961
+504	30	위험물/가스저장소	1	2025-11-26 01:54:49.963	2025-11-26 01:54:49.963
+505	30	소화전/소화기	1	2025-11-26 01:54:49.965	2025-11-26 01:54:49.965
+506	30	분배전반	1	2025-11-26 01:54:49.967	2025-11-26 01:54:49.967
+507	30	공기압축기	1	2025-11-26 01:54:49.968	2025-11-26 01:54:49.968
+508	35	지게차	1	2025-11-26 01:54:49.97	2025-11-26 01:54:49.97
+509	35	크레인	4	2025-11-26 01:54:49.972	2025-11-26 01:54:49.972
+510	35	위험물/가스저장소	1	2025-11-26 01:54:49.973	2025-11-26 01:54:49.973
+511	35	소화전/소화기	1	2025-11-26 01:54:49.975	2025-11-26 01:54:49.975
+512	35	공기압축기	1	2025-11-26 01:54:49.976	2025-11-26 01:54:49.976
+513	27	지게차	2	2025-11-26 01:54:49.978	2025-11-26 01:54:49.978
+514	27	크레인	2	2025-11-26 01:54:49.979	2025-11-26 01:54:49.979
+515	27	전동드릴/타카	1	2025-11-26 01:54:49.981	2025-11-26 01:54:49.981
+516	27	둥근톱	1	2025-11-26 01:54:49.982	2025-11-26 01:54:49.982
+517	27	위험물/가스저장소	1	2025-11-26 01:54:49.984	2025-11-26 01:54:49.984
+518	27	소화전/소화기	1	2025-11-26 01:54:49.985	2025-11-26 01:54:49.985
+519	27	공기압축기	1	2025-11-26 01:54:49.987	2025-11-26 01:54:49.987
+520	28	지게차	3	2025-11-26 01:54:49.988	2025-11-26 01:54:49.988
+521	28	크레인	4	2025-11-26 01:54:49.99	2025-11-26 01:54:49.99
+522	28	위험물/가스저장소	1	2025-11-26 01:54:49.991	2025-11-26 01:54:49.991
+523	28	소화전/소화기	1	2025-11-26 01:54:49.993	2025-11-26 01:54:49.993
+524	28	분배전반	1	2025-11-26 01:54:49.995	2025-11-26 01:54:49.995
+525	28	걸이구	1	2025-11-26 01:54:49.996	2025-11-26 01:54:49.996
+526	28	공기압축기	1	2025-11-26 01:54:49.998	2025-11-26 01:54:49.998
+527	61	지게차	3	2025-11-26 01:54:50	2025-11-26 01:54:50
+528	61	크레인	7	2025-11-26 01:54:50.001	2025-11-26 01:54:50.001
+529	61	세척기	1	2025-11-26 01:54:50.003	2025-11-26 01:54:50.003
+530	61	도장장/건조로	3	2025-11-26 01:54:50.004	2025-11-26 01:54:50.004
+531	61	템퍼링로	2	2025-11-26 01:54:50.006	2025-11-26 01:54:50.006
+532	61	탁상용연삭기	7	2025-11-26 01:54:50.008	2025-11-26 01:54:50.008
+533	61	고속절단기	1	2025-11-26 01:54:50.01	2025-11-26 01:54:50.01
+534	61	핸드그라인더	1	2025-11-26 01:54:50.011	2025-11-26 01:54:50.011
+535	61	둥근톱	1	2025-11-26 01:54:50.012	2025-11-26 01:54:50.012
+536	61	위험물/가스저장소	1	2025-11-26 01:54:50.014	2025-11-26 01:54:50.014
+537	61	소화전/소화기	1	2025-11-26 01:54:50.015	2025-11-26 01:54:50.015
+538	61	분배전반	1	2025-11-26 01:54:50.017	2025-11-26 01:54:50.017
+539	61	걸이구	1	2025-11-26 01:54:50.018	2025-11-26 01:54:50.018
+540	61	압력용기	2	2025-11-26 01:54:50.02	2025-11-26 01:54:50.02
+541	61	가스분배기/쇼트기	2	2025-11-26 01:54:50.021	2025-11-26 01:54:50.021
+548	54	작업대/발판	1	2025-12-11 02:19:23.84	2025-12-11 02:19:23.84
+549	30	작업대/발판	1	2025-12-11 02:27:28.555	2025-12-11 02:27:28.555
+\.
+
+
+--
+-- Data for Name: TeamMembers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."TeamMembers" (id, "teamId", "userId", name, "position", "isActive", "createdAt", "updatedAt") FROM stdin;
+1	50	\N	이강희	\N	t	2025-12-17 07:42:23.796	2025-12-17 07:42:23.796
+2	50	\N	박진수	\N	t	2025-12-17 07:42:23.953	2025-12-17 07:42:23.953
+3	50	\N	김상균	\N	t	2025-12-17 07:42:24.03	2025-12-17 07:42:24.03
+4	50	\N	백건열	\N	t	2025-12-17 07:42:24.106	2025-12-17 07:42:24.106
+5	50	\N	김갑태	\N	t	2025-12-17 07:42:24.182	2025-12-17 07:42:24.182
+6	51	\N	김동원	\N	t	2025-12-17 07:42:24.333	2025-12-17 07:42:24.333
+7	51	\N	하명남	\N	t	2025-12-17 07:42:24.41	2025-12-17 07:42:24.41
+8	51	\N	강석철	\N	t	2025-12-17 07:42:24.486	2025-12-17 07:42:24.486
+9	51	\N	서정원	\N	t	2025-12-17 07:42:24.562	2025-12-17 07:42:24.562
+10	51	\N	이순금	\N	t	2025-12-17 07:42:24.637	2025-12-17 07:42:24.637
+11	52	\N	최원기	\N	t	2025-12-17 07:42:24.788	2025-12-17 07:42:24.788
+12	52	\N	김성진	\N	t	2025-12-17 07:42:24.864	2025-12-17 07:42:24.864
+13	52	\N	허명	\N	t	2025-12-17 07:42:24.939	2025-12-17 07:42:24.939
+14	52	\N	김승현	\N	t	2025-12-17 07:42:25.015	2025-12-17 07:42:25.015
+15	52	\N	정희영	\N	t	2025-12-17 07:42:25.091	2025-12-17 07:42:25.091
+16	52	\N	원정환	\N	t	2025-12-17 07:42:25.167	2025-12-17 07:42:25.167
+17	53	\N	박철호	\N	t	2025-12-17 07:42:25.316	2025-12-17 07:42:25.316
+18	53	\N	권오석	\N	t	2025-12-17 07:42:25.392	2025-12-17 07:42:25.392
+19	53	\N	김남균	\N	t	2025-12-17 07:42:25.468	2025-12-17 07:42:25.468
+20	53	\N	최장수	\N	t	2025-12-17 07:42:25.544	2025-12-17 07:42:25.544
+21	53	\N	안상국	\N	t	2025-12-17 07:42:25.628	2025-12-17 07:42:25.628
+22	55	\N	이상현	\N	t	2025-12-17 07:42:25.778	2025-12-17 07:42:25.778
+23	55	\N	이덕표	\N	t	2025-12-17 07:42:25.854	2025-12-17 07:42:25.854
+24	55	\N	유자현	\N	t	2025-12-17 07:42:25.93	2025-12-17 07:42:25.93
+25	55	\N	안태영	\N	t	2025-12-17 07:42:26.006	2025-12-17 07:42:26.006
+26	55	\N	심윤근	\N	t	2025-12-17 07:42:26.085	2025-12-17 07:42:26.085
+27	27	\N	김지홍	\N	t	2025-12-17 07:42:26.235	2025-12-17 07:42:26.235
+28	28	\N	박명호	\N	t	2025-12-17 07:42:26.385	2025-12-17 07:42:26.385
+29	28	\N	황공식	\N	t	2025-12-17 07:42:26.461	2025-12-17 07:42:26.461
+30	28	\N	남광호	\N	t	2025-12-17 07:42:26.537	2025-12-17 07:42:26.537
+31	28	\N	박찬기	\N	t	2025-12-17 07:42:26.613	2025-12-17 07:42:26.613
+32	28	\N	김수현	\N	t	2025-12-17 07:42:26.689	2025-12-17 07:42:26.689
+33	28	\N	이강희	\N	t	2025-12-17 07:42:26.766	2025-12-17 07:42:26.766
+34	61	\N	홍은희	\N	t	2025-12-17 07:42:26.916	2025-12-17 07:42:26.916
+35	61	\N	서경우	\N	t	2025-12-17 07:42:26.992	2025-12-17 07:42:26.992
+36	61	\N	장종성	\N	t	2025-12-17 07:42:27.068	2025-12-17 07:42:27.068
+37	30	\N	이덕희	\N	t	2025-12-17 07:42:27.217	2025-12-17 07:42:27.217
+38	30	\N	이효문	\N	t	2025-12-17 07:42:27.293	2025-12-17 07:42:27.293
+39	30	\N	김은옥	\N	t	2025-12-17 07:42:27.368	2025-12-17 07:42:27.368
+40	30	\N	김영봉	\N	t	2025-12-17 07:42:27.444	2025-12-17 07:42:27.444
+41	30	\N	신태섭	\N	t	2025-12-17 07:42:27.52	2025-12-17 07:42:27.52
+42	54	\N	이부열	\N	t	2025-12-17 07:42:27.67	2025-12-17 07:42:27.67
+43	54	\N	김준철	\N	t	2025-12-17 07:42:27.746	2025-12-17 07:42:27.746
+44	54	\N	신동현	\N	t	2025-12-17 07:42:27.822	2025-12-17 07:42:27.822
+45	54	\N	김상현	\N	t	2025-12-17 07:42:27.898	2025-12-17 07:42:27.898
+46	54	\N	권태범	\N	t	2025-12-17 07:42:27.974	2025-12-17 07:42:27.974
+47	54	\N	전구	\N	t	2025-12-17 07:42:28.05	2025-12-17 07:42:28.05
+48	54	\N	윤관호	\N	t	2025-12-17 07:42:28.126	2025-12-17 07:42:28.126
+49	54	\N	마지환	\N	t	2025-12-17 07:42:28.202	2025-12-17 07:42:28.202
+50	54	\N	김혁	\N	t	2025-12-17 07:42:28.278	2025-12-17 07:42:28.278
+51	54	\N	정승혁	\N	t	2025-12-17 07:42:28.354	2025-12-17 07:42:28.354
+52	35	\N	조성진	\N	t	2025-12-17 07:42:28.504	2025-12-17 07:42:28.504
+53	35	\N	신민섭	\N	t	2025-12-17 07:42:28.58	2025-12-17 07:42:28.58
+54	56	\N	천광석	\N	t	2025-12-17 07:42:28.73	2025-12-17 07:42:28.73
+\.
+
+
+--
+-- Data for Name: Teams; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."Teams" (id, name, site, "factoryId", "leaderId", "approverId") FROM stdin;
+3	가공라인	아산	1	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	68c383db-7a1a-4533-a9f4-fe24cc533a3f
+48	고객지원팀	아산	1	da97e549-6822-4935-943c-8f01865f6893	da97e549-6822-4935-943c-8f01865f6893
+49	부품팀	아산	1	\N	68c383db-7a1a-4533-a9f4-fe24cc533a3f
+1	조립 전기라인	아산	\N	\N	\N
+5	지재/부품/출하	아산	\N	\N	\N
+7	품질	아산	\N	\N	\N
+8	인사총무팀	아산	\N	\N	\N
+6	서비스	아산	\N	\N	\N
+9	생산기술팀	아산	\N	\N	\N
+39	조립 1라인	아산	1	\N	\N
+40	조립 2라인	아산	1	\N	\N
+41	조립 3라인	아산	1	\N	\N
+42	전기라인	아산	1	\N	\N
+45	자재팀	아산	1	\N	\N
+61	2공장	화성	2	8ac655f0-94ef-4fbf-aa3b-c20527d43600	8d066e98-9d5f-4990-b1e4-c2f3174d999b
+53	BKT	화성	2	1f5eb43c-48c3-4b80-864d-457a3fa1f345	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+64	BR개발	화성	\N	d557afbf-1e2b-4c70-a524-ce28e5452870	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+62	BR생산관리	화성	\N	5a9887dc-a03c-4f25-91b4-569c4cf0bde6	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+63	BR총괄	화성	\N	8e8c7799-5abb-4b6c-9917-124ee1f58b35	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+27	BR출하	화성	2	c41af558-886e-43ae-be4f-084b4a923e7a	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+2	제관라인	아산	1	\N	\N
+65	CR생산관리	화성	\N	cfb762c2-0e74-4904-abb1-f0caa876b2bc	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+56	CR자재	화성	2	9d197fee-b578-4f22-844e-975d8bbf8ee4	8ac655f0-94ef-4fbf-aa3b-c20527d43600
+4	연구소	아산	1	a9f8117e-5932-4e47-9000-c60075b4a802	\N
+46	품질관리팀	아산	1	157a151a-d2b9-4757-b283-0f947cb37c27	\N
+54	CR조립	화성	2	dfa36861-266e-4c27-acfb-031782595d3c	8d066e98-9d5f-4990-b1e4-c2f3174d999b
+35	CR출하	화성	2	fe90c9b3-42e3-4d0d-ba13-b50cc1008ac6	8d066e98-9d5f-4990-b1e4-c2f3174d999b
+52	M/B	화성	2	810b5542-57da-4201-a54f-6d8d982ad64f	810b5542-57da-4201-a54f-6d8d982ad64f
+32	S/A개발	화성	\N	d87cbcec-fabb-4d30-8f17-4f2ab4903149	a9f8117e-5932-4e47-9000-c60075b4a802
+50	선삭	화성	2	df651c1a-63ba-417c-bc9b-67a1f990907b	a9f8117e-5932-4e47-9000-c60075b4a802
+51	연삭	화성	2	4e8a1a12-1665-4350-89d6-efa4a58ca4c7	4e8a1a12-1665-4350-89d6-efa4a58ca4c7
+55	열처리	화성	2	c4e6e42b-07e6-4d53-a57b-101a269c4dd5	4e8a1a12-1665-4350-89d6-efa4a58ca4c7
+38	인사총무	화성	\N	ea6c90e9-a082-49e2-8874-fef5a55d05ad	4e8a1a12-1665-4350-89d6-efa4a58ca4c7
+28	자재부품	화성	2	e608d7e1-481d-4786-ba72-1bc686d0591d	4e8a1a12-1665-4350-89d6-efa4a58ca4c7
+66	품질관리	화성	\N	e9c75807-6df1-4805-96a9-550e8209c6da	157a151a-d2b9-4757-b283-0f947cb37c27
+30	품질서비스	화성	2	e752fa2d-0242-42a0-b698-e3afb7a6279a	18342aa9-0d2b-4a9d-a14f-aab8d28db6e9
+\.
+
+
+--
+-- Data for Name: TemplateItems; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."TemplateItems" (id, "templateId", category, "subCategory", description, "displayOrder") FROM stdin;
+2440	97	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2441	97	TBM	점검	건강/복장/보호구 - 음주상태	20
+2442	97	TBM	점검	건강/복장/보호구 - 건강상태	30
+2443	97	TBM	점검	건강/복장/보호구 - 복장	40
+2444	97	TBM	점검	건강/복장/보호구 - 보호구	50
+2445	97	TBM	지시	작업내용 전파 - 생산회의	60
+2446	97	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2447	97	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2448	97	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2449	97	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2450	97	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2451	97	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2452	97	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2453	97	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2454	97	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2455	97	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2456	97	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2457	97	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+2458	97	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+2459	97	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+2460	97	관리감독자 일일안전점검	테스트작업	돌가루 등 비산 위험이 있는곳에서 보안경 착용 여부	210
+2461	97	관리감독자 일일안전점검	테스트작업	작업자가 낙하물 범위 밖으로 있는지 여부	220
+2462	97	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+2463	98	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2464	98	TBM	점검	건강/복장/보호구 - 음주상태	20
+2465	98	TBM	점검	건강/복장/보호구 - 건강상태	30
+2466	98	TBM	점검	건강/복장/보호구 - 복장	40
+2467	98	TBM	점검	건강/복장/보호구 - 보호구	50
+2468	98	TBM	지시	작업내용 전파 - 생산회의	60
+2469	98	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2470	98	TBM	교육	사고사례 공유 - 타사 사고사례 및 아차 사고사례 공유	80
+2471	98	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	90
+2472	98	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	100
+2473	98	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	110
+2474	98	관리감독자 일일안전점검	공통	담당직원 작업시 안전상태 확인	120
+2475	98	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	130
+2476	99	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2477	99	TBM	점검	건강/복장/보호구 - 음주상태	20
+2478	99	TBM	점검	건강/복장/보호구 - 건강상태	30
+2479	99	TBM	점검	건강/복장/보호구 - 복장	40
+2480	99	TBM	점검	건강/복장/보호구 - 보호구	50
+2481	99	TBM	지시	작업내용 전파 - 생산회의	60
+2482	99	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2483	99	TBM	교육	사고사례 공유 - 타사 사고사례 및 아차 사고사례 공유	80
+2484	99	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	90
+2485	99	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	100
+2486	99	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	110
+2487	99	관리감독자 일일안전점검	공통	담당직원 작업시 안전상태 확인	120
+2488	99	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	130
+2489	100	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2490	100	TBM	점검	건강/복장/보호구 - 음주상태	20
+2491	100	TBM	점검	건강/복장/보호구 - 건강상태	30
+2492	100	TBM	점검	건강/복장/보호구 - 복장	40
+2493	100	TBM	점검	건강/복장/보호구 - 보호구	50
+2494	100	TBM	지시	작업내용 전파 - 생산회의	60
+2495	100	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2496	100	TBM	교육	사고사례 공유 - 타사 사고사례 및 아차 사고사례 공유	80
+2497	100	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	90
+2498	100	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	100
+2499	100	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	110
+2500	100	관리감독자 일일안전점검	공통	담당직원 작업시 안전상태 확인	120
+2501	100	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	130
+2502	101	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2503	101	TBM	점검	건강/복장/보호구 - 음주상태	20
+2504	101	TBM	점검	건강/복장/보호구 - 건강상태	30
+2505	101	TBM	점검	건강/복장/보호구 - 복장	40
+2506	101	TBM	점검	건강/복장/보호구 - 보호구	50
+2507	101	TBM	지시	작업내용 전파 - 생산회의	60
+2508	101	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2509	101	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2510	101	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2511	101	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1983	80	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1984	80	TBM	점검	건강/복장/보호구 - 음주상태	20
+1985	80	TBM	점검	건강/복장/보호구 - 건강상태	30
+1986	80	TBM	점검	건강/복장/보호구 - 복장	40
+1987	80	TBM	점검	건강/복장/보호구 - 보호구	50
+1988	80	TBM	지시	작업내용 전파 - 생산회의	60
+1989	80	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1990	80	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1991	80	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1992	80	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1993	80	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1994	80	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1995	80	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1996	80	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1997	80	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+1998	80	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+1999	80	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2000	80	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2001	80	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2002	80	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2003	80	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2004	80	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2005	80	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2006	80	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2007	80	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2008	80	관리감독자 일일안전점검	위험작업조치	소화기구, 환기조치, 화재예방 피난교육 등	260
+2009	80	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2010	80	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2011	80	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2012	81	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2013	81	TBM	점검	건강/복장/보호구 - 음주상태	20
+2014	81	TBM	점검	건강/복장/보호구 - 건강상태	30
+2015	81	TBM	점검	건강/복장/보호구 - 복장	40
+2016	81	TBM	점검	건강/복장/보호구 - 보호구	50
+2017	81	TBM	지시	작업내용 전파 - 생산회의	60
+2018	81	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2019	81	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2020	81	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2021	81	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2022	81	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2023	81	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2024	81	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2025	81	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2026	81	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2027	81	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2028	81	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2029	81	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2030	81	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2031	81	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2032	81	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2033	81	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2034	81	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2035	81	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2036	81	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2037	81	관리감독자 일일안전점검	위험작업조치	소화기구, 환기조치, 화재예방 피난교육 등	260
+2038	81	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2039	81	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2040	81	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2512	101	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2513	101	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2514	101	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2515	101	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2516	101	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2517	101	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2518	101	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2519	101	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	180
+2520	101	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	190
+2521	101	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태, 하부 작업 여부	200
+2522	101	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	210
+2523	101	관리감독자 일일안전점검	공기압축기	드레인밸브, 압력방출장치, 언로드밸브, 윤활유, 덮개 이상 여부	220
+2524	101	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2525	101	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2526	101	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2527	101	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2528	101	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2041	82	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2042	82	TBM	점검	건강/복장/보호구 - 음주상태	20
+2043	82	TBM	점검	건강/복장/보호구 - 건강상태	30
+2044	82	TBM	점검	건강/복장/보호구 - 복장	40
+2045	82	TBM	점검	건강/복장/보호구 - 보호구	50
+2046	82	TBM	지시	작업내용 전파 - 생산회의	60
+2047	82	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2048	82	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2049	82	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2050	82	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2051	82	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2052	82	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2053	82	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2054	82	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2055	82	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2056	82	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2057	82	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2058	82	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2059	82	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2060	82	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2061	82	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2062	82	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2063	82	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2064	82	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2065	82	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2066	82	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2067	82	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2068	82	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2069	82	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2070	83	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2071	83	TBM	점검	건강/복장/보호구 - 음주상태	20
+2072	83	TBM	점검	건강/복장/보호구 - 건강상태	30
+2073	83	TBM	점검	건강/복장/보호구 - 복장	40
+2074	83	TBM	점검	건강/복장/보호구 - 보호구	50
+2075	83	TBM	지시	작업내용 전파 - 생산회의	60
+2076	83	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2077	83	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2078	83	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2079	83	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2080	83	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2081	83	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2082	83	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2083	83	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2084	83	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2085	83	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2086	83	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2087	83	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2088	83	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2089	83	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2090	83	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2091	83	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2092	83	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2093	83	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2094	83	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2095	83	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2096	83	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2097	83	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2098	83	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2099	84	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2100	84	TBM	점검	건강/복장/보호구 - 음주상태	20
+2101	84	TBM	점검	건강/복장/보호구 - 건강상태	30
+2102	84	TBM	점검	건강/복장/보호구 - 복장	40
+2103	84	TBM	점검	건강/복장/보호구 - 보호구	50
+2104	84	TBM	지시	작업내용 전파 - 생산회의	60
+2105	84	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2106	84	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2107	84	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2108	84	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2109	84	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2110	84	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2111	84	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2112	84	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2113	84	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2114	84	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2115	84	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2116	84	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2117	84	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2118	84	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2119	84	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2120	84	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2121	84	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2122	84	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2123	84	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2124	84	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2182	87	TBM	점검	건강/복장/보호구 - 건강상태	30
+2125	84	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2126	84	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2127	84	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2128	85	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2129	85	TBM	점검	건강/복장/보호구 - 음주상태	20
+2130	85	TBM	점검	건강/복장/보호구 - 건강상태	30
+2131	85	TBM	점검	건강/복장/보호구 - 복장	40
+2132	85	TBM	점검	건강/복장/보호구 - 보호구	50
+2133	85	TBM	지시	작업내용 전파 - 생산회의	60
+2134	85	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2135	85	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2136	85	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2137	85	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2138	85	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2139	85	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2140	85	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2141	85	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2142	85	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2143	85	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2144	85	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2145	85	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2146	85	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2147	85	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2148	85	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2149	85	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2150	85	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2151	85	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2152	85	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2153	85	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2154	85	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2155	85	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2156	85	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2157	86	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2158	86	TBM	점검	건강/복장/보호구 - 음주상태	20
+2159	86	TBM	점검	건강/복장/보호구 - 건강상태	30
+2160	86	TBM	점검	건강/복장/보호구 - 복장	40
+2161	86	TBM	점검	건강/복장/보호구 - 보호구	50
+2162	86	TBM	지시	작업내용 전파 - 생산회의	60
+2163	86	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2164	86	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2165	86	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2166	86	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2167	86	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2168	86	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2169	86	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2170	86	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2171	86	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2172	86	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2173	86	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2174	86	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+2175	86	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+2176	86	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+2177	86	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+2178	86	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+2179	86	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+2180	87	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2181	87	TBM	점검	건강/복장/보호구 - 음주상태	20
+2183	87	TBM	점검	건강/복장/보호구 - 복장	40
+2184	87	TBM	점검	건강/복장/보호구 - 보호구	50
+2185	87	TBM	지시	작업내용 전파 - 생산회의	60
+2186	87	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2187	87	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2188	87	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2189	87	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2190	87	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2191	87	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2192	87	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2193	87	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2194	87	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2195	87	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2196	87	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2197	87	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+2198	87	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+2199	87	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+2200	87	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+2201	87	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+2202	87	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+2203	88	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2204	88	TBM	점검	건강/복장/보호구 - 음주상태	20
+2205	88	TBM	점검	건강/복장/보호구 - 건강상태	30
+2206	88	TBM	점검	건강/복장/보호구 - 복장	40
+2207	88	TBM	점검	건강/복장/보호구 - 보호구	50
+2208	88	TBM	지시	작업내용 전파 - 생산회의	60
+2209	88	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2210	88	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2211	88	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2212	88	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2213	88	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2214	88	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2215	88	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2216	88	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2217	88	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2218	88	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2219	88	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2220	88	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	180
+2221	88	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	190
+2222	88	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태, 하부 작업 여부	200
+2223	88	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	210
+2224	88	관리감독자 일일안전점검	공기압축기	드레인밸브, 압력방출장치, 언로드밸브, 윤활유, 덮개 이상 여부	220
+2225	88	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2226	88	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2227	88	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2228	88	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2229	88	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2230	88	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2231	88	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2232	89	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2233	89	TBM	점검	건강/복장/보호구 - 음주상태	20
+2234	89	TBM	점검	건강/복장/보호구 - 건강상태	30
+2235	89	TBM	점검	건강/복장/보호구 - 복장	40
+2236	89	TBM	점검	건강/복장/보호구 - 보호구	50
+2237	89	TBM	지시	작업내용 전파 - 생산회의	60
+2238	89	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2239	89	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2240	89	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2241	89	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2242	89	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2243	89	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2244	89	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2245	89	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2246	89	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2247	89	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2248	89	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2249	89	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+2250	89	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+2251	89	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+2252	89	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	210
+2253	89	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	220
+2254	89	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+2255	90	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2256	90	TBM	점검	건강/복장/보호구 - 음주상태	20
+2257	90	TBM	점검	건강/복장/보호구 - 건강상태	30
+2258	90	TBM	점검	건강/복장/보호구 - 복장	40
+2259	90	TBM	점검	건강/복장/보호구 - 보호구	50
+2260	90	TBM	지시	작업내용 전파 - 생산회의	60
+2261	90	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2262	90	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2263	90	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2264	90	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2265	90	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2266	90	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2267	90	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2268	90	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2269	90	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2270	90	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2271	90	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2272	90	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2273	90	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2274	90	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2275	90	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2276	90	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2277	90	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2278	90	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2279	90	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2280	90	관리감독자 일일안전점검	위험작업조치	전단기, 절곡기 등의 방호장치의 기능	260
+2281	90	관리감독자 일일안전점검	위험작업조치	클러치, 브레이크, 금형, 고정볼트, 칼날, 테이블 등의 상태	270
+2282	90	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2283	90	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2284	91	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2285	91	TBM	점검	건강/복장/보호구 - 음주상태	20
+2286	91	TBM	점검	건강/복장/보호구 - 건강상태	30
+2287	91	TBM	점검	건강/복장/보호구 - 복장	40
+2288	91	TBM	점검	건강/복장/보호구 - 보호구	50
+2289	91	TBM	지시	작업내용 전파 - 생산회의	60
+2290	91	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2291	91	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2292	91	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2293	91	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2294	91	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2295	91	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2296	91	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2297	91	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2298	91	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2299	91	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2300	91	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2301	91	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2302	91	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2303	91	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2304	91	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2305	91	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2306	91	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2307	91	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2308	91	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2309	91	관리감독자 일일안전점검	위험작업조치	전단기, 절곡기 등의 방호장치의 기능	260
+2310	91	관리감독자 일일안전점검	위험작업조치	클러치, 브레이크, 금형, 고정볼트, 칼날, 테이블 등의 상태	270
+2311	91	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2312	91	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2313	92	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2314	92	TBM	점검	건강/복장/보호구 - 음주상태	20
+2315	92	TBM	점검	건강/복장/보호구 - 건강상태	30
+2316	92	TBM	점검	건강/복장/보호구 - 복장	40
+2317	92	TBM	점검	건강/복장/보호구 - 보호구	50
+2318	92	TBM	지시	작업내용 전파 - 생산회의	60
+2319	92	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2320	92	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2321	92	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2322	92	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2323	92	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2324	92	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2325	92	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2326	92	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2327	92	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2328	92	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2329	92	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2330	92	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2331	92	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2332	92	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2333	92	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2334	92	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2335	92	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2336	92	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2337	92	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2338	92	관리감독자 일일안전점검	위험작업조치	전단기, 절곡기 등의 방호장치의 기능	260
+2339	92	관리감독자 일일안전점검	위험작업조치	클러치, 브레이크, 금형, 고정볼트, 칼날, 테이블 등의 상태	270
+2340	92	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2341	92	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2342	93	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2343	93	TBM	점검	건강/복장/보호구 - 음주상태	20
+2344	93	TBM	점검	건강/복장/보호구 - 건강상태	30
+2345	93	TBM	점검	건강/복장/보호구 - 복장	40
+2346	93	TBM	점검	건강/복장/보호구 - 보호구	50
+2347	93	TBM	지시	작업내용 전파 - 생산회의	60
+2348	93	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2349	93	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2350	93	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2351	93	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2352	93	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2353	93	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2354	93	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2355	93	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2356	93	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+2357	93	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+2358	93	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+2359	93	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+2360	93	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+2361	93	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+2362	93	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+2363	93	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+2364	93	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+2365	93	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+2366	93	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+2367	93	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+2368	93	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+2369	93	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2370	93	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2371	94	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2372	94	TBM	점검	건강/복장/보호구 - 음주상태	20
+2373	94	TBM	점검	건강/복장/보호구 - 건강상태	30
+2374	94	TBM	점검	건강/복장/보호구 - 복장	40
+2375	94	TBM	점검	건강/복장/보호구 - 보호구	50
+2376	94	TBM	지시	작업내용 전파 - 생산회의	60
+2377	94	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2378	94	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2379	94	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2380	94	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+2381	94	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2382	94	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+2383	94	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2384	94	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2385	94	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2386	94	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2387	94	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2388	94	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+2389	94	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+2390	94	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+2391	94	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+2392	94	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+2393	94	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+2394	95	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+2395	95	TBM	점검	건강/복장/보호구 - 음주상태	20
+2396	95	TBM	점검	건강/복장/보호구 - 건강상태	30
+2397	95	TBM	점검	건강/복장/보호구 - 복장	40
+2398	95	TBM	점검	건강/복장/보호구 - 보호구	50
+2399	95	TBM	지시	작업내용 전파 - 생산회의	60
+2400	95	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+2401	95	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+2402	95	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+2403	95	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+955	39	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+956	39	TBM	점검	건강/복장/보호구 - 음주상태	20
+957	39	TBM	점검	건강/복장/보호구 - 건강상태	30
+958	39	TBM	점검	건강/복장/보호구 - 복장	40
+959	39	TBM	점검	건강/복장/보호구 - 보호구	50
+960	39	TBM	지시	작업내용 전파 - 생산회의	60
+961	39	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+962	39	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+963	39	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+964	39	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+965	39	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+966	39	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+967	39	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+968	39	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+969	39	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+970	39	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+971	39	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+972	39	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+973	39	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+974	39	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+975	39	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+976	39	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+977	39	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+978	39	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+979	39	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+980	39	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+981	39	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+982	39	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2529	101	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+2404	95	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+2405	95	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+983	39	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+1065	43	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1066	43	TBM	점검	건강/복장/보호구 - 음주상태	20
+1067	43	TBM	점검	건강/복장/보호구 - 건강상태	30
+1068	43	TBM	점검	건강/복장/보호구 - 복장	40
+1069	43	TBM	점검	건강/복장/보호구 - 보호구	50
+1070	43	TBM	지시	작업내용 전파 - 생산회의	60
+1071	43	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1072	43	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1073	43	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1074	43	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1075	43	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1076	43	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1077	43	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1078	43	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1079	43	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+1080	43	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+1081	43	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+1082	43	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+1083	43	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+1084	43	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+1085	43	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+1086	43	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+1087	43	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+1117	45	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1118	45	TBM	점검	건강/복장/보호구 - 음주상태	20
+1119	45	TBM	점검	건강/복장/보호구 - 건강상태	30
+1120	45	TBM	점검	건강/복장/보호구 - 복장	40
+1121	45	TBM	점검	건강/복장/보호구 - 보호구	50
+1122	45	TBM	지시	작업내용 전파 - 생산회의	60
+1123	45	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1124	45	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1125	45	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1126	45	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1127	45	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1128	45	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1129	45	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1130	45	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1131	45	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+1132	45	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+1133	45	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+1134	45	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+1135	45	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+1136	45	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+1137	45	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	210
+1138	45	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	220
+1139	45	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+1163	47	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1164	47	TBM	점검	건강/복장/보호구 - 음주상태	20
+1165	47	TBM	점검	건강/복장/보호구 - 건강상태	30
+1166	47	TBM	점검	건강/복장/보호구 - 복장	40
+1167	47	TBM	점검	건강/복장/보호구 - 보호구	50
+1168	47	TBM	지시	작업내용 전파 - 생산회의	60
+1169	47	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1170	47	TBM	교육	사고사례 공유 - 타사 사고사례 및 아차 사고사례 공유	80
+1171	47	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	90
+1172	47	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	100
+1173	47	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	110
+1174	47	관리감독자 일일안전점검	공통	담당직원 작업시 안전상태 확인	120
+1175	47	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	130
+2530	101	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+775	31	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+776	31	TBM	점검	건강/복장/보호구 - 음주상태	20
+777	31	TBM	점검	건강/복장/보호구 - 건강상태	30
+778	31	TBM	점검	건강/복장/보호구 - 복장	40
+779	31	TBM	점검	건강/복장/보호구 - 보호구	50
+780	31	TBM	지시	작업내용 전파 - 생산회의	60
+781	31	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+782	31	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+783	31	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+784	31	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+785	31	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+786	31	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+787	31	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+788	31	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+789	31	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+790	31	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+791	31	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+792	31	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+793	31	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+794	31	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+795	31	관리감독자 일일안전점검	테스트작업	돌가루 등 비산 위험이 있는곳에서 보안경 착용 여부	210
+796	31	관리감독자 일일안전점검	테스트작업	작업자가 낙하물 범위 밖으로 있는지 여부	220
+797	31	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+942	38	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+943	38	TBM	점검	건강/복장/보호구 - 음주상태	20
+944	38	TBM	점검	건강/복장/보호구 - 건강상태	30
+945	38	TBM	점검	건강/복장/보호구 - 복장	40
+946	38	TBM	점검	건강/복장/보호구 - 보호구	50
+947	38	TBM	지시	작업내용 전파 - 생산회의	60
+948	38	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+949	38	TBM	교육	사고사례 공유 - 타사 사고사례 및 아차 사고사례 공유	80
+950	38	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	90
+951	38	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	100
+952	38	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	110
+953	38	관리감독자 일일안전점검	공통	담당직원 작업시 안전상태 확인	120
+954	38	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	130
+1088	44	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1089	44	TBM	점검	건강/복장/보호구 - 음주상태	20
+1090	44	TBM	점검	건강/복장/보호구 - 건강상태	30
+1091	44	TBM	점검	건강/복장/보호구 - 복장	40
+1092	44	TBM	점검	건강/복장/보호구 - 보호구	50
+1093	44	TBM	지시	작업내용 전파 - 생산회의	60
+1094	44	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1095	44	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1096	44	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1097	44	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1098	44	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1099	44	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1100	44	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1101	44	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1102	44	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+1103	44	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+1104	44	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+1105	44	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	180
+1106	44	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	190
+1107	44	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태, 하부 작업 여부	200
+1108	44	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	210
+1109	44	관리감독자 일일안전점검	공기압축기	드레인밸브, 압력방출장치, 언로드밸브, 윤활유, 덮개 이상 여부	220
+1110	44	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+1111	44	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+1112	44	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+1113	44	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+1114	44	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+1115	44	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+1116	44	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+1140	46	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1141	46	TBM	점검	건강/복장/보호구 - 음주상태	20
+1142	46	TBM	점검	건강/복장/보호구 - 건강상태	30
+1143	46	TBM	점검	건강/복장/보호구 - 복장	40
+1144	46	TBM	점검	건강/복장/보호구 - 보호구	50
+1145	46	TBM	지시	작업내용 전파 - 생산회의	60
+1146	46	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1147	46	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1148	46	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1149	46	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1150	46	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1151	46	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1152	46	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1153	46	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1154	46	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+1155	46	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+1156	46	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+1157	46	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+1158	46	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+1159	46	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+1160	46	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	210
+1161	46	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	220
+1162	46	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+798	32	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+799	32	TBM	점검	건강/복장/보호구 - 음주상태	20
+800	32	TBM	점검	건강/복장/보호구 - 건강상태	30
+801	32	TBM	점검	건강/복장/보호구 - 복장	40
+802	32	TBM	점검	건강/복장/보호구 - 보호구	50
+803	32	TBM	지시	작업내용 전파 - 생산회의	60
+804	32	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+805	32	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+806	32	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+807	32	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+808	32	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+809	32	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+810	32	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+811	32	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+812	32	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+813	32	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+814	32	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+815	32	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+816	32	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+817	32	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+818	32	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+819	32	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+820	32	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+821	33	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+822	33	TBM	점검	건강/복장/보호구 - 음주상태	20
+823	33	TBM	점검	건강/복장/보호구 - 건강상태	30
+824	33	TBM	점검	건강/복장/보호구 - 복장	40
+825	33	TBM	점검	건강/복장/보호구 - 보호구	50
+826	33	TBM	지시	작업내용 전파 - 생산회의	60
+827	33	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+828	33	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+829	33	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+830	33	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+831	33	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+832	33	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+833	33	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+834	33	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+835	33	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+836	33	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+837	33	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+838	33	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+839	33	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+840	33	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+841	33	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+842	33	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+843	33	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+1013	41	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1014	41	TBM	점검	건강/복장/보호구 - 음주상태	20
+1015	41	TBM	점검	건강/복장/보호구 - 건강상태	30
+1016	41	TBM	점검	건강/복장/보호구 - 복장	40
+1017	41	TBM	점검	건강/복장/보호구 - 보호구	50
+1018	41	TBM	지시	작업내용 전파 - 생산회의	60
+1019	41	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1020	41	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1021	41	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1022	41	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1023	41	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1024	41	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1025	41	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1026	41	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1027	41	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+1028	41	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+1029	41	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+1030	41	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+1031	41	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+1032	41	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+1033	41	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+1034	41	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+1035	41	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+1036	41	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+1037	41	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+1038	41	관리감독자 일일안전점검	위험작업조치	전단기, 절곡기 등의 방호장치의 기능	260
+1039	41	관리감독자 일일안전점검	위험작업조치	클러치, 브레이크, 금형, 고정볼트, 칼날, 테이블 등의 상태	270
+1040	41	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+1041	41	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+1042	42	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+1043	42	TBM	점검	건강/복장/보호구 - 음주상태	20
+1044	42	TBM	점검	건강/복장/보호구 - 건강상태	30
+1045	42	TBM	점검	건강/복장/보호구 - 복장	40
+1046	42	TBM	점검	건강/복장/보호구 - 보호구	50
+1047	42	TBM	지시	작업내용 전파 - 생산회의	60
+1048	42	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+1049	42	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+1050	42	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+1051	42	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+1052	42	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+1053	42	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+1054	42	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+1055	42	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+1056	42	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+1057	42	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+1058	42	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+1059	42	관리감독자 일일안전점검	사무실안전	파티션이나 그 밖에 넘어질 위험 여부	180
+1060	42	관리감독자 일일안전점검	사무실안전	끼이거나 부딪힐 수 있는 열린 서랍 등이 있는지 여부	190
+1061	42	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	200
+892	36	TBM	점검	건강/복장/보호구 - 건강상태	30
+1062	42	관리감독자 일일안전점검	테스트작업	돌가루 등 비산 위험이 있는곳에서 보안경 착용 여부	210
+1063	42	관리감독자 일일안전점검	테스트작업	작업자가 낙하물 범위 밖으로 있는지 여부	220
+1064	42	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+844	34	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+845	34	TBM	점검	건강/복장/보호구 - 음주상태	20
+846	34	TBM	점검	건강/복장/보호구 - 건강상태	30
+847	34	TBM	점검	건강/복장/보호구 - 복장	40
+848	34	TBM	점검	건강/복장/보호구 - 보호구	50
+849	34	TBM	지시	작업내용 전파 - 생산회의	60
+850	34	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+851	34	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+852	34	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+853	34	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+854	34	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+855	34	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+856	34	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+857	34	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+858	34	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+859	34	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+860	34	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+861	34	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+862	34	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+863	34	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+864	34	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+865	34	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+866	34	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+984	40	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+985	40	TBM	점검	건강/복장/보호구 - 음주상태	20
+986	40	TBM	점검	건강/복장/보호구 - 건강상태	30
+987	40	TBM	점검	건강/복장/보호구 - 복장	40
+988	40	TBM	점검	건강/복장/보호구 - 보호구	50
+989	40	TBM	지시	작업내용 전파 - 생산회의	60
+990	40	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+991	40	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+992	40	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+993	40	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+994	40	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+995	40	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+996	40	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+997	40	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+998	40	관리감독자 일일안전점검	공통	설비, 기계, 기구 등 점검 후 조치	150
+999	40	관리감독자 일일안전점검	공통	각 종 기계기구의 이상 유무	160
+1000	40	관리감독자 일일안전점검	공통	작업장 정리정돈, 통로확보 개구부 확인 점검결과	170
+1001	40	관리감독자 일일안전점검	중량물취급작업 크레인	올바른 자세, 복장 및 보호구착용 여부	180
+1002	40	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	190
+1003	40	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	200
+1004	40	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태	210
+1005	40	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	220
+1006	40	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+1007	40	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+1008	40	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+1009	40	관리감독자 일일안전점검	위험작업조치	소화기구, 환기조치, 화재예방 피난교육 등	260
+1010	40	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+1011	40	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+1012	40	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+890	36	TBM	도입	아침 조회 - 아침 체조 스트레칭	10
+891	36	TBM	점검	건강/복장/보호구 - 음주상태	20
+893	36	TBM	점검	건강/복장/보호구 - 복장	40
+894	36	TBM	점검	건강/복장/보호구 - 보호구	50
+895	36	TBM	지시	작업내용 전파 - 생산회의	60
+896	36	TBM	지시	작업내용 전파 - 금일 안전작업 내용지시	70
+897	36	위험평가 및 개선대책	위험예지훈련	각 팀원 최근 아차사고 사례 공유	80
+898	36	위험평가 및 개선대책	위험예지훈련	작업장소 등 환경에 대한 위험	90
+899	36	위험평가 및 개선대책	위험예지훈련	입고, 출고, 조립, 가공 등 공정 순서(작업방법)에 대한 위험	100
+900	36	위험평가 및 개선대책	위험예지훈련	크레인, 리프트, 지게차 등 설비에 대한 위험	110
+901	36	위험평가 및 개선대책	위험예지훈련	작업장 개구부, 고소작업 등에 대한 위험	120
+902	36	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+903	36	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+904	36	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+905	36	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+906	36	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+907	36	관리감독자 일일안전점검	중량물취급작업 크레인	주행로 상측 및 트롤리가 횡행하는 레일, 와이어 통하는 곳의 상태	180
+908	36	관리감독자 일일안전점검	중량물취급작업 크레인	권과방지장치ㆍ브레이크ㆍ클러치 및 운전장치의 기능	190
+909	36	관리감독자 일일안전점검	중량물취급작업 크레인	슬링, 와이어로프등의 이상 유무 및 매달린 상태, 하부 작업 여부	200
+910	36	관리감독자 일일안전점검	중량물취급작업 크레인	인양물 하부 작업 여부	210
+911	36	관리감독자 일일안전점검	공기압축기	드레인밸브, 압력방출장치, 언로드밸브, 윤활유, 덮개 이상 여부	220
+912	36	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	230
+913	36	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	240
+914	36	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	250
+915	36	관리감독자 일일안전점검	위험작업조치	고소작업시 안전모 착용, 안전고리 체결 유무	260
+916	36	관리감독자 일일안전점검	위험작업조치	용접,용단,연마 , 절단작업시 소화기구, 비산 방지, 환기 조치여부	270
+917	36	관리감독자 일일안전점검	위험작업조치	통전 전류, 접지 상태, 가스, 유해물질 등 작업환경 점검	280
+918	36	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	290
+2406	95	위험평가 및 개선대책	위험예지훈련	그라인더, 인양달기구 등 사용하는 기구,도구에 대한 위험	130
+2407	95	위험평가 및 개선대책	확인	지적확인 - 중점 위험요인 선정 구호 제창 (중점도 높은 사항으로 선정)	140
+2408	95	관리감독자 일일안전점검	공통	사무실 및 작업장 정리정돈	150
+2409	95	관리감독자 일일안전점검	공통	현장 출입 시 안전보호구 착용 유무(안전모, 안전화 등)	160
+2410	95	관리감독자 일일안전점검	공통	종사자의 건강상태 이상유무	170
+2411	95	관리감독자 일일안전점검	중량물운반 작업	중량물 작업시 올바른 자세 및 복장 교육	180
+2412	95	관리감독자 일일안전점검	중량물운반 작업	중량물 취급시 바닥의 상태 등 운반환경 점검	190
+2413	95	관리감독자 일일안전점검	지게차 하역운반기계	안전벨트 착용 상태 및 작업장내 과속, 급선회, 급출발 등 이상유무	200
+2414	95	관리감독자 일일안전점검	지게차 하역운반기계	제동장치 및 조종장치, 하역장치 및 유압장치 기능의 이상유무	210
+2415	95	관리감독자 일일안전점검	지게차 하역운반기계	전조등ㆍ후미등ㆍ방향지시기 및 경보장치, 바퀴 기능의 이상유무	220
+2416	95	인원관리	시작/종료	작업시작 및 종료 시, 담당직원의 투입 시/퇴장 시 인원 점검	230
+\.
+
+
+--
+-- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."User" (id, username, name, email, password, role, site, "teamId", "createdAt", "failedLoginAttempts", "lockedUntil") FROM stdin;
+1f5eb43c-48c3-4b80-864d-457a3fa1f345	kimci	김천일	kimci@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	50	2025-12-17 07:38:02.023	0	\N
+da97e549-6822-4935-943c-8f01865f6893	Test1	Test	yj.an1@soosan.co.kr	$2b$10$ANvwQbVl0q5Uzzy2pwNgJuADlQt3/TnUCqEpsKBkyL203mSEVhzMq	TEAM_LEADER	아산	48	2025-11-26 05:38:05.732	0	\N
+8d066e98-9d5f-4990-b1e4-c2f3174d999b	nowhs	노화식	nowhs@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	50	2025-12-17 07:37:59.833	0	\N
+8ac655f0-94ef-4fbf-aa3b-c20527d43600	sbk6116	손범국	sbk6116@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	50	2025-12-17 07:38:00.304	0	\N
+4e8a1a12-1665-4350-89d6-efa4a58ca4c7	pjy0302	박준영	pjy0302@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	\N	2025-12-17 07:38:01.322	0	\N
+8e8c7799-5abb-4b6c-9917-124ee1f58b35	ydlee	이용대	ydlee@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	52	2025-12-17 07:38:02.258	0	\N
+b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	admin	Admin User	admin@example.com	$2b$10$QZYjgeymOE/GjYCGxWS6W.HSnehQXsOmChSk6RmHvh6AZJD9U1xcy	ADMIN	아산	3	2025-11-26 00:09:08.352	0	\N
+9d197fee-b578-4f22-844e-975d8bbf8ee4	kkw	권기원	kkw@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	27	2025-12-17 07:38:02.495	0	\N
+c4e6e42b-07e6-4d53-a57b-101a269c4dd5	ksbong	권순봉	ksbong@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	54	2025-12-17 07:38:02.885	0	\N
+d87cbcec-fabb-4d30-8f17-4f2ab4903149	kimgho	김경호	kimgho@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	4	2025-12-17 07:38:02.729	0	\N
+df651c1a-63ba-417c-bc9b-67a1f990907b	kimns	김남수	kimns@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	32	2025-12-17 07:38:02.806	0	\N
+e752fa2d-0242-42a0-b698-e3afb7a6279a	seeyou.kim	김동현	seeyou.kim@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	38	2025-12-17 07:38:03.198	0	\N
+dfa36861-266e-4c27-acfb-031782595d3c	hkkim	김형근	hkkim@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	28	2025-12-17 07:38:02.573	0	\N
+157a151a-d2b9-4757-b283-0f947cb37c27	prh78	박래현	prh78@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	46	2025-12-17 07:38:01.712	0	\N
+5a9887dc-a03c-4f25-91b4-569c4cf0bde6	pyw	박영웅	pyw@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	51	2025-12-17 07:38:02.18	0	\N
+18342aa9-0d2b-4a9d-a14f-aab8d28db6e9	gjshin	신국재	gjshin@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	38	2025-12-17 07:38:01.867	0	\N
+810b5542-57da-4201-a54f-6d8d982ad64f	ssp	신상표	ssp@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	30	2025-12-17 07:38:00.931	0	\N
+68c383db-7a1a-4533-a9f4-fe24cc533a3f	Test	안예준	anjongman1029@gmail.com	$2b$10$OmEkRbDe4rUdbOShROQlmOOVCsCxuu.FvsNGCKJb7aTnUTlLxVteq	ADMIN	아산	\N	2025-11-26 01:16:05.818	0	\N
+e9c75807-6df1-4805-96a9-550e8209c6da	ku.lee	이강욱	ku.lee@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	46	2025-12-17 07:38:03.119	0	\N
+a9f8117e-5932-4e47-9000-c60075b4a802	swlee	이상우	swlee@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	APPROVER	화성	4	2025-12-17 07:38:01.087	0	\N
+e608d7e1-481d-4786-ba72-1bc686d0591d	jy.lee	이준용	jy.lee@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	56	2025-12-17 07:38:03.041	0	\N
+c41af558-886e-43ae-be4f-084b4a923e7a	leehsoo	이흥수	leehsoo@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	53	2025-12-17 07:38:02.338	0	\N
+d557afbf-1e2b-4c70-a524-ce28e5452870	hp.jeon	전형표	hp.jeon@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	50	2025-12-17 07:38:02.102	0	\N
+cfb762c2-0e74-4904-abb1-f0caa876b2bc	cs133	최영삼	cs133@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	55	2025-12-17 07:38:02.417	0	\N
+ea6c90e9-a082-49e2-8874-fef5a55d05ad	hanjb	한재봉	hanjb@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	35	2025-12-17 07:38:02.963	0	\N
+fe90c9b3-42e3-4d0d-ba13-b50cc1008ac6	ch.han	한철희	ch.han@soosan.co.kr	$2b$10$HscWww.D5VQPieoFCITqreM8j5Pma1kLd37WZdb2YfhjTjVFWL3Xe	TEAM_LEADER	화성	61	2025-12-17 07:38:02.651	0	\N
+\.
+
+
+--
+-- Data for Name: UserAssessment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."UserAssessment" (id, "userId", "courseId", score, "totalQuestions", passed, "attemptNumber", "completedAt") FROM stdin;
+f9fde7a6-af04-4d50-92cb-a8a7d8ad9d4a	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	fbb714d8-3d40-4370-8042-d7070916f97c	8	9	t	1	2025-11-26 01:44:06.272
+3907c547-80b3-4026-9182-5ad9dce0866e	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2af6e980-d335-4c37-b967-99e103ff1438	5	5	t	1	2025-11-28 05:02:14.798
+2f311e63-fef1-47a3-b0c4-67bf78fb0c19	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2af6e980-d335-4c37-b967-99e103ff1438	5	5	t	1	2025-12-18 23:21:28.473
+\.
+
+
+--
+-- Data for Name: UserProgress; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public."UserProgress" (id, "userId", "courseId", progress, completed, "currentStep", "timeSpent", "lastAccessed") FROM stdin;
+a79c0615-7324-4020-ab20-8197307f89f2	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	fbb714d8-3d40-4370-8042-d7070916f97c	100	t	3	2858	2025-12-18 04:13:39.286
+d2a11ef6-cf0c-4a5c-ae85-0a8669bcec0a	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	2af6e980-d335-4c37-b967-99e103ff1438	100	t	3	515	2025-12-18 23:21:28.191
+e6b8cf98-7b75-461d-b41a-76a2b5bb8c65	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	bee5807b-d9f6-4dc9-ac0d-73f70e83589e	100	f	3	116	2025-12-11 00:43:35.364
+688478ea-3600-44a4-aa81-556e93c089b6	b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e	09b7d948-b8eb-48f3-ad9d-b50b16b5b6d1	8	f	2	5	2025-12-11 07:24:09.222
+\.
+
+
+--
+-- Data for Name: user_sessions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.user_sessions (sid, sess, expire) FROM stdin;
+_16B-Z8TY4U-FAz7CH8EOGXbbKEHkTZ2	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-10T00:17:37.551Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-26 01:30:00
+56wDXYb4VUhUzY8bXz_oeMN9W6ARR3Jv	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-24T05:02:32.378Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-24 05:51:59
+xt2UilR13LTRT8krMN2z2QKP0f5AmTWC	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-10T01:34:15.754Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-25 23:57:08
+VR4PvbeHyBWK24KTtGxez-2cbXnYdyh0	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-24T07:19:53.820Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-24 07:23:47
+H9RC6RIE4IZ9wpD2bqM5V6LlSnwDVoIs	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-25T04:11:09.747Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-25 04:13:59
+J0cssIGQ_xODrouIa5h-EMzStva6Mfn1	{"cookie":{"originalMaxAge":604800000,"expires":"2025-12-26T01:07:50.920Z","secure":true,"httpOnly":true,"path":"/","sameSite":"lax"},"user":{"id":"b3fcfd1d-bd53-4948-8c4f-bc7f10b5b90e","username":"admin","role":"ADMIN","teamId":3,"name":"Admin User","site":"아산"}}	2025-12-29 06:14:56
+\.
+
+
+--
+-- Name: AbsenceRecords_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."AbsenceRecords_id_seq"', 1, false);
+
+
+--
+-- Name: ChecklistTemplates_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."ChecklistTemplates_id_seq"', 102, false);
+
+
+--
+-- Name: DailyReports_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."DailyReports_id_seq"', 42, false);
+
+
+--
+-- Name: Factories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."Factories_id_seq"', 3, false);
+
+
+--
+-- Name: Holidays_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."Holidays_id_seq"', 64, false);
+
+
+--
+-- Name: InspectionScheduleTemplates_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."InspectionScheduleTemplates_id_seq"', 415, false);
+
+
+--
+-- Name: InspectionTemplates_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."InspectionTemplates_id_seq"', 1805, false);
+
+
+--
+-- Name: MonthlyInspectionDays_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."MonthlyInspectionDays_id_seq"', 25, false);
+
+
+--
+-- Name: ReportDetails_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."ReportDetails_id_seq"', 567, false);
+
+
+--
+-- Name: ReportSignatures_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."ReportSignatures_id_seq"', 64, false);
+
+
+--
+-- Name: TeamEquipments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."TeamEquipments_id_seq"', 550, false);
+
+
+--
+-- Name: TeamMembers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."TeamMembers_id_seq"', 55, false);
+
+
+--
+-- Name: Teams_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."Teams_id_seq"', 66, true);
+
+
+--
+-- Name: TemplateItems_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public."TemplateItems_id_seq"', 2531, false);
+
+
+--
+-- Name: AbsenceRecords AbsenceRecords_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AbsenceRecords"
+    ADD CONSTRAINT "AbsenceRecords_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ApprovalRequests ApprovalRequests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ApprovalRequests"
+    ADD CONSTRAINT "ApprovalRequests_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Assessment Assessment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Assessment"
+    ADD CONSTRAINT "Assessment_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Attachment Attachment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Attachment"
+    ADD CONSTRAINT "Attachment_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Certificate Certificate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Certificate"
+    ADD CONSTRAINT "Certificate_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ChecklistTemplates ChecklistTemplates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ChecklistTemplates"
+    ADD CONSTRAINT "ChecklistTemplates_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Comment Comment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Comment"
+    ADD CONSTRAINT "Comment_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Course Course_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Course"
+    ADD CONSTRAINT "Course_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: DailyReports DailyReports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."DailyReports"
+    ADD CONSTRAINT "DailyReports_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: EmailLogs EmailLogs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."EmailLogs"
+    ADD CONSTRAINT "EmailLogs_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Factories Factories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Factories"
+    ADD CONSTRAINT "Factories_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Holidays Holidays_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Holidays"
+    ADD CONSTRAINT "Holidays_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: InspectionItems InspectionItems_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionItems"
+    ADD CONSTRAINT "InspectionItems_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: InspectionScheduleTemplates InspectionScheduleTemplates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionScheduleTemplates"
+    ADD CONSTRAINT "InspectionScheduleTemplates_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: InspectionTemplates InspectionTemplates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionTemplates"
+    ADD CONSTRAINT "InspectionTemplates_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: MonthlyApproval MonthlyApproval_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MonthlyApproval"
+    ADD CONSTRAINT "MonthlyApproval_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: MonthlyInspectionDays MonthlyInspectionDays_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MonthlyInspectionDays"
+    ADD CONSTRAINT "MonthlyInspectionDays_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: NoticeReads NoticeReads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NoticeReads"
+    ADD CONSTRAINT "NoticeReads_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Notice Notice_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Notice"
+    ADD CONSTRAINT "Notice_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: PasswordResetToken PasswordResetToken_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PasswordResetToken"
+    ADD CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ReportDetails ReportDetails_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportDetails"
+    ADD CONSTRAINT "ReportDetails_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ReportSignatures ReportSignatures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportSignatures"
+    ADD CONSTRAINT "ReportSignatures_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: SafetyInspections SafetyInspections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."SafetyInspections"
+    ADD CONSTRAINT "SafetyInspections_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: SimpleEmailConfigs SimpleEmailConfigs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."SimpleEmailConfigs"
+    ADD CONSTRAINT "SimpleEmailConfigs_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: TeamEquipments TeamEquipments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TeamEquipments"
+    ADD CONSTRAINT "TeamEquipments_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: TeamMembers TeamMembers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TeamMembers"
+    ADD CONSTRAINT "TeamMembers_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Teams Teams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Teams"
+    ADD CONSTRAINT "Teams_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: TemplateItems TemplateItems_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TemplateItems"
+    ADD CONSTRAINT "TemplateItems_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: UserAssessment UserAssessment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserAssessment"
+    ADD CONSTRAINT "UserAssessment_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: UserProgress UserProgress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserProgress"
+    ADD CONSTRAINT "UserProgress_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: User User_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."User"
+    ADD CONSTRAINT "User_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: user_sessions user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_sessions
+    ADD CONSTRAINT user_sessions_pkey PRIMARY KEY (sid);
+
+
+--
+-- Name: AbsenceRecords_memberId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AbsenceRecords_memberId_idx" ON public."AbsenceRecords" USING btree ("memberId");
+
+
+--
+-- Name: AbsenceRecords_reportId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AbsenceRecords_reportId_idx" ON public."AbsenceRecords" USING btree ("reportId");
+
+
+--
+-- Name: ApprovalRequests_approverId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ApprovalRequests_approverId_idx" ON public."ApprovalRequests" USING btree ("approverId");
+
+
+--
+-- Name: ApprovalRequests_reportId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "ApprovalRequests_reportId_key" ON public."ApprovalRequests" USING btree ("reportId");
+
+
+--
+-- Name: ApprovalRequests_requestedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ApprovalRequests_requestedAt_idx" ON public."ApprovalRequests" USING btree ("requestedAt");
+
+
+--
+-- Name: ApprovalRequests_requesterId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ApprovalRequests_requesterId_idx" ON public."ApprovalRequests" USING btree ("requesterId");
+
+
+--
+-- Name: ApprovalRequests_status_approverId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ApprovalRequests_status_approverId_idx" ON public."ApprovalRequests" USING btree (status, "approverId");
+
+
+--
+-- Name: ApprovalRequests_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ApprovalRequests_status_idx" ON public."ApprovalRequests" USING btree (status);
+
+
+--
+-- Name: Assessment_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Assessment_courseId_idx" ON public."Assessment" USING btree ("courseId");
+
+
+--
+-- Name: Attachment_commentId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Attachment_commentId_idx" ON public."Attachment" USING btree ("commentId");
+
+
+--
+-- Name: Attachment_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Attachment_courseId_idx" ON public."Attachment" USING btree ("courseId");
+
+
+--
+-- Name: Attachment_noticeId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Attachment_noticeId_idx" ON public."Attachment" USING btree ("noticeId");
+
+
+--
+-- Name: Attachment_reportDetailId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Attachment_reportDetailId_idx" ON public."Attachment" USING btree ("reportDetailId");
+
+
+--
+-- Name: Certificate_certificateNumber_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "Certificate_certificateNumber_key" ON public."Certificate" USING btree ("certificateNumber");
+
+
+--
+-- Name: Certificate_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Certificate_courseId_idx" ON public."Certificate" USING btree ("courseId");
+
+
+--
+-- Name: Certificate_userId_courseId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "Certificate_userId_courseId_key" ON public."Certificate" USING btree ("userId", "courseId");
+
+
+--
+-- Name: Certificate_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Certificate_userId_idx" ON public."Certificate" USING btree ("userId");
+
+
+--
+-- Name: ChecklistTemplates_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ChecklistTemplates_teamId_idx" ON public."ChecklistTemplates" USING btree ("teamId");
+
+
+--
+-- Name: Comment_authorId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Comment_authorId_idx" ON public."Comment" USING btree ("authorId");
+
+
+--
+-- Name: Comment_noticeId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Comment_noticeId_idx" ON public."Comment" USING btree ("noticeId");
+
+
+--
+-- Name: DailyReports_reportDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "DailyReports_reportDate_idx" ON public."DailyReports" USING btree ("reportDate");
+
+
+--
+-- Name: DailyReports_site_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "DailyReports_site_idx" ON public."DailyReports" USING btree (site);
+
+
+--
+-- Name: DailyReports_site_reportDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "DailyReports_site_reportDate_idx" ON public."DailyReports" USING btree (site, "reportDate");
+
+
+--
+-- Name: DailyReports_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "DailyReports_teamId_idx" ON public."DailyReports" USING btree ("teamId");
+
+
+--
+-- Name: DailyReports_teamId_reportDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "DailyReports_teamId_reportDate_idx" ON public."DailyReports" USING btree ("teamId", "reportDate");
+
+
+--
+-- Name: EmailLogs_emailType_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EmailLogs_emailType_idx" ON public."EmailLogs" USING btree ("emailType");
+
+
+--
+-- Name: EmailLogs_recipientEmail_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EmailLogs_recipientEmail_idx" ON public."EmailLogs" USING btree ("recipientEmail");
+
+
+--
+-- Name: EmailLogs_recipientId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EmailLogs_recipientId_idx" ON public."EmailLogs" USING btree ("recipientId");
+
+
+--
+-- Name: EmailLogs_sentAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EmailLogs_sentAt_idx" ON public."EmailLogs" USING btree ("sentAt");
+
+
+--
+-- Name: EmailLogs_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EmailLogs_status_idx" ON public."EmailLogs" USING btree (status);
+
+
+--
+-- Name: Factories_code_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Factories_code_idx" ON public."Factories" USING btree (code);
+
+
+--
+-- Name: Factories_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "Factories_code_key" ON public."Factories" USING btree (code);
+
+
+--
+-- Name: Holidays_date_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Holidays_date_idx" ON public."Holidays" USING btree (date);
+
+
+--
+-- Name: Holidays_date_site_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "Holidays_date_site_key" ON public."Holidays" USING btree (date, site);
+
+
+--
+-- Name: Holidays_site_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Holidays_site_idx" ON public."Holidays" USING btree (site);
+
+
+--
+-- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IDX_session_expire" ON public.user_sessions USING btree (expire);
+
+
+--
+-- Name: InspectionItems_inspectionId_equipmentName_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "InspectionItems_inspectionId_equipmentName_key" ON public."InspectionItems" USING btree ("inspectionId", "equipmentName");
+
+
+--
+-- Name: InspectionItems_inspectionId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "InspectionItems_inspectionId_idx" ON public."InspectionItems" USING btree ("inspectionId");
+
+
+--
+-- Name: InspectionScheduleTemplates_factoryId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "InspectionScheduleTemplates_factoryId_idx" ON public."InspectionScheduleTemplates" USING btree ("factoryId");
+
+
+--
+-- Name: InspectionScheduleTemplates_factoryId_month_equipmentName_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "InspectionScheduleTemplates_factoryId_month_equipmentName_key" ON public."InspectionScheduleTemplates" USING btree ("factoryId", month, "equipmentName");
+
+
+--
+-- Name: InspectionScheduleTemplates_factoryId_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "InspectionScheduleTemplates_factoryId_month_idx" ON public."InspectionScheduleTemplates" USING btree ("factoryId", month);
+
+
+--
+-- Name: InspectionTemplates_teamId_month_displayOrder_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "InspectionTemplates_teamId_month_displayOrder_idx" ON public."InspectionTemplates" USING btree ("teamId", month, "displayOrder");
+
+
+--
+-- Name: InspectionTemplates_teamId_month_equipmentName_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "InspectionTemplates_teamId_month_equipmentName_key" ON public."InspectionTemplates" USING btree ("teamId", month, "equipmentName");
+
+
+--
+-- Name: InspectionTemplates_teamId_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "InspectionTemplates_teamId_month_idx" ON public."InspectionTemplates" USING btree ("teamId", month);
+
+
+--
+-- Name: MonthlyApproval_approverId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MonthlyApproval_approverId_idx" ON public."MonthlyApproval" USING btree ("approverId");
+
+
+--
+-- Name: MonthlyApproval_approverId_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MonthlyApproval_approverId_status_idx" ON public."MonthlyApproval" USING btree ("approverId", status);
+
+
+--
+-- Name: MonthlyApproval_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MonthlyApproval_teamId_idx" ON public."MonthlyApproval" USING btree ("teamId");
+
+
+--
+-- Name: MonthlyApproval_teamId_year_month_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "MonthlyApproval_teamId_year_month_key" ON public."MonthlyApproval" USING btree ("teamId", year, month);
+
+
+--
+-- Name: MonthlyInspectionDays_factoryId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MonthlyInspectionDays_factoryId_idx" ON public."MonthlyInspectionDays" USING btree ("factoryId");
+
+
+--
+-- Name: MonthlyInspectionDays_factoryId_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MonthlyInspectionDays_factoryId_month_idx" ON public."MonthlyInspectionDays" USING btree ("factoryId", month);
+
+
+--
+-- Name: MonthlyInspectionDays_factoryId_month_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "MonthlyInspectionDays_factoryId_month_key" ON public."MonthlyInspectionDays" USING btree ("factoryId", month);
+
+
+--
+-- Name: NoticeReads_noticeId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NoticeReads_noticeId_idx" ON public."NoticeReads" USING btree ("noticeId");
+
+
+--
+-- Name: NoticeReads_noticeId_userId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "NoticeReads_noticeId_userId_key" ON public."NoticeReads" USING btree ("noticeId", "userId");
+
+
+--
+-- Name: NoticeReads_readAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NoticeReads_readAt_idx" ON public."NoticeReads" USING btree ("readAt");
+
+
+--
+-- Name: NoticeReads_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NoticeReads_userId_idx" ON public."NoticeReads" USING btree ("userId");
+
+
+--
+-- Name: Notice_authorId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Notice_authorId_idx" ON public."Notice" USING btree ("authorId");
+
+
+--
+-- Name: Notice_category_createdAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Notice_category_createdAt_idx" ON public."Notice" USING btree (category, "createdAt");
+
+
+--
+-- Name: Notice_category_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Notice_category_idx" ON public."Notice" USING btree (category);
+
+
+--
+-- Name: Notice_createdAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Notice_createdAt_idx" ON public."Notice" USING btree ("createdAt");
+
+
+--
+-- Name: PasswordResetToken_token_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PasswordResetToken_token_idx" ON public."PasswordResetToken" USING btree (token);
+
+
+--
+-- Name: PasswordResetToken_token_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "PasswordResetToken_token_key" ON public."PasswordResetToken" USING btree (token);
+
+
+--
+-- Name: PasswordResetToken_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PasswordResetToken_userId_idx" ON public."PasswordResetToken" USING btree ("userId");
+
+
+--
+-- Name: ReportDetails_authorId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportDetails_authorId_idx" ON public."ReportDetails" USING btree ("authorId");
+
+
+--
+-- Name: ReportDetails_itemId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportDetails_itemId_idx" ON public."ReportDetails" USING btree ("itemId");
+
+
+--
+-- Name: ReportDetails_reportId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportDetails_reportId_idx" ON public."ReportDetails" USING btree ("reportId");
+
+
+--
+-- Name: ReportDetails_reportId_itemId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportDetails_reportId_itemId_idx" ON public."ReportDetails" USING btree ("reportId", "itemId");
+
+
+--
+-- Name: ReportSignatures_memberId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportSignatures_memberId_idx" ON public."ReportSignatures" USING btree ("memberId");
+
+
+--
+-- Name: ReportSignatures_reportId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportSignatures_reportId_idx" ON public."ReportSignatures" USING btree ("reportId");
+
+
+--
+-- Name: ReportSignatures_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportSignatures_userId_idx" ON public."ReportSignatures" USING btree ("userId");
+
+
+--
+-- Name: SafetyInspections_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "SafetyInspections_teamId_idx" ON public."SafetyInspections" USING btree ("teamId");
+
+
+--
+-- Name: SafetyInspections_teamId_year_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "SafetyInspections_teamId_year_month_idx" ON public."SafetyInspections" USING btree ("teamId", year, month);
+
+
+--
+-- Name: SafetyInspections_teamId_year_month_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "SafetyInspections_teamId_year_month_key" ON public."SafetyInspections" USING btree ("teamId", year, month);
+
+
+--
+-- Name: SafetyInspections_year_month_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "SafetyInspections_year_month_idx" ON public."SafetyInspections" USING btree (year, month);
+
+
+--
+-- Name: SimpleEmailConfigs_emailType_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "SimpleEmailConfigs_emailType_idx" ON public."SimpleEmailConfigs" USING btree ("emailType");
+
+
+--
+-- Name: SimpleEmailConfigs_emailType_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "SimpleEmailConfigs_emailType_key" ON public."SimpleEmailConfigs" USING btree ("emailType");
+
+
+--
+-- Name: SimpleEmailConfigs_enabled_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "SimpleEmailConfigs_enabled_idx" ON public."SimpleEmailConfigs" USING btree (enabled);
+
+
+--
+-- Name: TeamEquipments_teamId_equipmentName_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "TeamEquipments_teamId_equipmentName_key" ON public."TeamEquipments" USING btree ("teamId", "equipmentName");
+
+
+--
+-- Name: TeamEquipments_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "TeamEquipments_teamId_idx" ON public."TeamEquipments" USING btree ("teamId");
+
+
+--
+-- Name: TeamMembers_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "TeamMembers_teamId_idx" ON public."TeamMembers" USING btree ("teamId");
+
+
+--
+-- Name: TeamMembers_teamId_isActive_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "TeamMembers_teamId_isActive_idx" ON public."TeamMembers" USING btree ("teamId", "isActive");
+
+
+--
+-- Name: TeamMembers_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "TeamMembers_userId_idx" ON public."TeamMembers" USING btree ("userId");
+
+
+--
+-- Name: TeamMembers_userId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "TeamMembers_userId_key" ON public."TeamMembers" USING btree ("userId");
+
+
+--
+-- Name: Teams_factoryId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Teams_factoryId_idx" ON public."Teams" USING btree ("factoryId");
+
+
+--
+-- Name: TemplateItems_templateId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "TemplateItems_templateId_idx" ON public."TemplateItems" USING btree ("templateId");
+
+
+--
+-- Name: UserAssessment_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "UserAssessment_courseId_idx" ON public."UserAssessment" USING btree ("courseId");
+
+
+--
+-- Name: UserAssessment_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "UserAssessment_userId_idx" ON public."UserAssessment" USING btree ("userId");
+
+
+--
+-- Name: UserProgress_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "UserProgress_courseId_idx" ON public."UserProgress" USING btree ("courseId");
+
+
+--
+-- Name: UserProgress_userId_courseId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "UserProgress_userId_courseId_idx" ON public."UserProgress" USING btree ("userId", "courseId");
+
+
+--
+-- Name: UserProgress_userId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "UserProgress_userId_idx" ON public."UserProgress" USING btree ("userId");
+
+
+--
+-- Name: User_email_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "User_email_key" ON public."User" USING btree (email);
+
+
+--
+-- Name: User_role_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "User_role_idx" ON public."User" USING btree (role);
+
+
+--
+-- Name: User_role_site_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "User_role_site_idx" ON public."User" USING btree (role, site);
+
+
+--
+-- Name: User_site_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "User_site_idx" ON public."User" USING btree (site);
+
+
+--
+-- Name: User_teamId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "User_teamId_idx" ON public."User" USING btree ("teamId");
+
+
+--
+-- Name: User_username_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "User_username_key" ON public."User" USING btree (username);
+
+
+--
+-- Name: AbsenceRecords AbsenceRecords_memberId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AbsenceRecords"
+    ADD CONSTRAINT "AbsenceRecords_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES public."TeamMembers"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: AbsenceRecords AbsenceRecords_reportId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AbsenceRecords"
+    ADD CONSTRAINT "AbsenceRecords_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES public."DailyReports"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ApprovalRequests ApprovalRequests_approverId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ApprovalRequests"
+    ADD CONSTRAINT "ApprovalRequests_approverId_fkey" FOREIGN KEY ("approverId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ApprovalRequests ApprovalRequests_reportId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ApprovalRequests"
+    ADD CONSTRAINT "ApprovalRequests_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES public."MonthlyApproval"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ApprovalRequests ApprovalRequests_requesterId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ApprovalRequests"
+    ADD CONSTRAINT "ApprovalRequests_requesterId_fkey" FOREIGN KEY ("requesterId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Assessment Assessment_courseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Assessment"
+    ADD CONSTRAINT "Assessment_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES public."Course"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Attachment Attachment_commentId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Attachment"
+    ADD CONSTRAINT "Attachment_commentId_fkey" FOREIGN KEY ("commentId") REFERENCES public."Comment"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Attachment Attachment_courseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Attachment"
+    ADD CONSTRAINT "Attachment_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES public."Course"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Attachment Attachment_noticeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Attachment"
+    ADD CONSTRAINT "Attachment_noticeId_fkey" FOREIGN KEY ("noticeId") REFERENCES public."Notice"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Attachment Attachment_reportDetailId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Attachment"
+    ADD CONSTRAINT "Attachment_reportDetailId_fkey" FOREIGN KEY ("reportDetailId") REFERENCES public."ReportDetails"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Certificate Certificate_courseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Certificate"
+    ADD CONSTRAINT "Certificate_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES public."Course"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Certificate Certificate_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Certificate"
+    ADD CONSTRAINT "Certificate_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ChecklistTemplates ChecklistTemplates_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ChecklistTemplates"
+    ADD CONSTRAINT "ChecklistTemplates_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Comment Comment_authorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Comment"
+    ADD CONSTRAINT "Comment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Comment Comment_noticeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Comment"
+    ADD CONSTRAINT "Comment_noticeId_fkey" FOREIGN KEY ("noticeId") REFERENCES public."Notice"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: DailyReports DailyReports_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."DailyReports"
+    ADD CONSTRAINT "DailyReports_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE;
+
+
+--
+-- Name: InspectionItems InspectionItems_inspectionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionItems"
+    ADD CONSTRAINT "InspectionItems_inspectionId_fkey" FOREIGN KEY ("inspectionId") REFERENCES public."SafetyInspections"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: InspectionScheduleTemplates InspectionScheduleTemplates_factoryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionScheduleTemplates"
+    ADD CONSTRAINT "InspectionScheduleTemplates_factoryId_fkey" FOREIGN KEY ("factoryId") REFERENCES public."Factories"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: InspectionTemplates InspectionTemplates_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."InspectionTemplates"
+    ADD CONSTRAINT "InspectionTemplates_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: MonthlyApproval MonthlyApproval_approverId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MonthlyApproval"
+    ADD CONSTRAINT "MonthlyApproval_approverId_fkey" FOREIGN KEY ("approverId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: MonthlyApproval MonthlyApproval_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MonthlyApproval"
+    ADD CONSTRAINT "MonthlyApproval_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: MonthlyInspectionDays MonthlyInspectionDays_factoryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MonthlyInspectionDays"
+    ADD CONSTRAINT "MonthlyInspectionDays_factoryId_fkey" FOREIGN KEY ("factoryId") REFERENCES public."Factories"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: NoticeReads NoticeReads_noticeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NoticeReads"
+    ADD CONSTRAINT "NoticeReads_noticeId_fkey" FOREIGN KEY ("noticeId") REFERENCES public."Notice"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: NoticeReads NoticeReads_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NoticeReads"
+    ADD CONSTRAINT "NoticeReads_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: Notice Notice_authorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Notice"
+    ADD CONSTRAINT "Notice_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: PasswordResetToken PasswordResetToken_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PasswordResetToken"
+    ADD CONSTRAINT "PasswordResetToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportDetails ReportDetails_authorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportDetails"
+    ADD CONSTRAINT "ReportDetails_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ReportDetails ReportDetails_itemId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportDetails"
+    ADD CONSTRAINT "ReportDetails_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES public."TemplateItems"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportDetails ReportDetails_reportId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportDetails"
+    ADD CONSTRAINT "ReportDetails_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES public."DailyReports"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportSignatures ReportSignatures_memberId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportSignatures"
+    ADD CONSTRAINT "ReportSignatures_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES public."TeamMembers"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportSignatures ReportSignatures_reportId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportSignatures"
+    ADD CONSTRAINT "ReportSignatures_reportId_fkey" FOREIGN KEY ("reportId") REFERENCES public."DailyReports"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportSignatures ReportSignatures_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportSignatures"
+    ADD CONSTRAINT "ReportSignatures_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: SafetyInspections SafetyInspections_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."SafetyInspections"
+    ADD CONSTRAINT "SafetyInspections_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: TeamEquipments TeamEquipments_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TeamEquipments"
+    ADD CONSTRAINT "TeamEquipments_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: TeamMembers TeamMembers_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TeamMembers"
+    ADD CONSTRAINT "TeamMembers_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: TeamMembers TeamMembers_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TeamMembers"
+    ADD CONSTRAINT "TeamMembers_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Teams Teams_approverId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Teams"
+    ADD CONSTRAINT "Teams_approverId_fkey" FOREIGN KEY ("approverId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Teams Teams_factoryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Teams"
+    ADD CONSTRAINT "Teams_factoryId_fkey" FOREIGN KEY ("factoryId") REFERENCES public."Factories"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Teams Teams_leaderId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Teams"
+    ADD CONSTRAINT "Teams_leaderId_fkey" FOREIGN KEY ("leaderId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: TemplateItems TemplateItems_templateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."TemplateItems"
+    ADD CONSTRAINT "TemplateItems_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES public."ChecklistTemplates"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: UserAssessment UserAssessment_courseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserAssessment"
+    ADD CONSTRAINT "UserAssessment_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES public."Course"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: UserAssessment UserAssessment_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserAssessment"
+    ADD CONSTRAINT "UserAssessment_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: UserProgress UserProgress_courseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserProgress"
+    ADD CONSTRAINT "UserProgress_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES public."Course"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: UserProgress UserProgress_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."UserProgress"
+    ADD CONSTRAINT "UserProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: User User_teamId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."User"
+    ADD CONSTRAINT "User_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES public."Teams"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict 9U9uOTdnmsumhGYeKRAfZh4QuntrVdnTay2bXHs24RJ4GTTk7fTjyqEuevc4fv8
+

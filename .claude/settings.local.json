@@ -13,7 +13,8 @@
       "Bash(test:*)",
       "Bash(npm run db:push:*)",
       "Bash(npm run db:generate:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm run check:*)"
     ],
     "deny": [],
     "ask": []
