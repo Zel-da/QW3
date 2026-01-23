@@ -67,6 +67,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [teamDrafts, setTeamDrafts] = useState({});
   // 페이지 이탈 시 자동 임시저장 중 상태
   const [isAutoSavingOnLeave, setIsAutoSavingOnLeave] = useState(false);
+  // API 체크 완료 여부 (draft 복원 타이밍 제어용)
+  const [apiCheckComplete, setApiCheckComplete] = useState(false);
+  // 임시저장 조회 모드 (draft를 보여주는 상태)
+  const [isDraftViewMode, setIsDraftViewMode] = useState(false);
 
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
@@ -162,8 +166,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   }, [date, site]);
 
   // 선택된 팀 정보를 RecordingContext에 업데이트
+  // 조회 모드나 임시저장 조회 모드에서는 녹음 비활성화
   useEffect(() => {
-    if (selectedTeam && date && !isViewMode) {
+    if (selectedTeam && date && !isViewMode && !isDraftViewMode) {
       const selectedTeamData = teams.find(t => t.id === selectedTeam);
       if (selectedTeamData) {
         const d = new Date(date);
@@ -177,7 +182,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     } else {
       setCurrentTbmInfo(null);
     }
-  }, [selectedTeam, date, teams, isViewMode, setCurrentTbmInfo]);
+  }, [selectedTeam, date, teams, isViewMode, isDraftViewMode, setCurrentTbmInfo]);
 
   // 팀/날짜 변경 시 삭제 플래그 리셋
   useEffect(() => {
@@ -186,7 +191,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 팀/날짜 선택 시 임시 저장된 녹음 확인
   useEffect(() => {
-    if (selectedTeam && date && !isViewMode) {
+    if (selectedTeam && date && !isViewMode && !isDraftViewMode) {
       // 사용자가 명시적으로 삭제한 경우 복원 안 함
       if (audioDeletedRef.current) return;
 
@@ -222,6 +227,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [lastSavedRecording, selectedTeam, date, clearLastSavedRecording, toast]);
 
+  // 팀/날짜 변경 시 API 체크 상태 초기화
+  useEffect(() => {
+    setApiCheckComplete(false);
+    setIsDraftViewMode(false);
+  }, [selectedTeam, date]);
+
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {
     if (selectedTeam && date && !reportForEdit) {
@@ -233,12 +244,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           if (res.data.exists && res.data.report) {
             setExistingReport(res.data.report);
             setIsViewMode(true);
+            setIsDraftViewMode(false);
             // 기존 데이터로 폼 초기화
             initializeFormFromReport(res.data.report);
 
             // 서버에 저장된 TBM이 있으면 localStorage 임시저장 삭제
-            // (서버 데이터가 source of truth)
-            // clearSaved()는 useAutoSave에서 가져오므로 여기서는 직접 localStorage 삭제
             const draftKey = `tbm_draft_${selectedTeam}_${dateStr}`;
             localStorage.removeItem(draftKey);
             console.log('[TBM] 기존 TBM 발견, localStorage draft 삭제:', draftKey);
@@ -253,23 +263,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           } else {
             setExistingReport(null);
             setIsViewMode(false);
-            // 새 작성 모드로 초기화 (녹음/STT 포함)
-            setFormState({});
-            setSignatures({});
-            setAbsentUsers({});
-            setRemarks('');
-            setRemarksImages([]);
-            setAudioRecording(null);
-            setTranscription(null);
+            // 새 작성 모드로 초기화는 하지 않음 - draft 복원이 처리함
+            // draft가 없으면 빈 상태로 시작
           }
+          // API 체크 완료 표시 (draft 복원 트리거)
+          setApiCheckComplete(true);
         })
         .catch(err => {
           console.error('Failed to check existing TBM:', err);
+          setApiCheckComplete(true); // 에러가 나도 체크는 완료로 표시
         });
     } else if (!selectedTeam) {
       // 팀이 선택 해제되면 초기화 (녹음/STT 포함)
       setExistingReport(null);
       setIsViewMode(false);
+      setIsDraftViewMode(false);
+      setApiCheckComplete(false);
       setAudioRecording(null);
       setTranscription(null);
     }
@@ -384,11 +393,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const autoSaveKey = `tbm_draft_${selectedTeam}_${date ? getLocalDateStr(date) : 'new'}`;
   const {
     clearSaved,
-    showRestoreDialog,
-    restoreSaved,
     discardSaved,
     savedTimestamp,
-    saveNow
+    saveNow,
+    hasSavedData,
+    wasAutoRestored,
   } = useAutoSave({
     key: autoSaveKey,
     data: {
@@ -400,7 +409,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       audioRecording,
       transcription,
     },
-    enabled: !!selectedTeam && !reportForEdit && !isViewMode, // 팀이 선택되고 수정/조회 모드가 아닐 때만 자동저장
+    // 팀이 선택되고 수정/조회/draft조회 모드가 아닐 때만 자동저장
+    enabled: !!selectedTeam && !reportForEdit && !isViewMode && !isDraftViewMode,
+    // 자동 복원 모드 사용 (다이얼로그 없이)
+    autoRestore: true,
+    // API 체크 완료되고 기존 TBM이 없을 때만 복원
+    readyToRestore: apiCheckComplete && !existingReport,
     onRestore: (restored) => {
       if (restored.formState) setFormState(restored.formState);
       if (restored.signatures) setSignatures(restored.signatures);
@@ -409,6 +423,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
       if (restored.audioRecording) setAudioRecording(restored.audioRecording);
       if (restored.transcription) setTranscription(restored.transcription);
+      // 임시저장 데이터 복원 시 draft 조회 모드로 전환
+      setIsDraftViewMode(true);
     },
   });
 
@@ -900,6 +916,57 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </Alert>
       )}
 
+      {/* 임시저장 데이터 발견 시 알림 */}
+      {isDraftViewMode && hasSavedData && (
+        <Alert className="mb-4 border-amber-200 bg-amber-50">
+          <Save className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">임시저장 데이터 발견</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            {savedTimestamp && (
+              <span>{new Date(savedTimestamp).toLocaleString('ko-KR')}에 저장된 작성 중인 TBM 데이터가 있습니다. </span>
+            )}
+            <span className="font-medium">조회 모드</span>로 표시 중입니다.
+          </AlertDescription>
+          <div className="mt-3 flex gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => {
+                setIsDraftViewMode(false);
+                toast({
+                  title: "수정 모드로 전환",
+                  description: "임시저장된 내용을 수정할 수 있습니다.",
+                });
+              }}
+            >
+              <Edit3 className="h-4 w-4 mr-1" />
+              수정하기
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 border-red-300 hover:bg-red-50"
+              onClick={() => {
+                if (confirm('임시저장 데이터를 삭제하시겠습니까?')) {
+                  discardSaved();
+                  setIsDraftViewMode(false);
+                  // 폼 초기화
+                  setFormState({});
+                  setSignatures({});
+                  setAbsentUsers({});
+                  setRemarks('');
+                  setRemarksImages([]);
+                  setAudioRecording(null);
+                  setTranscription(null);
+                }
+              }}
+            >
+              삭제하고 새로 작성
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       {loading && <TBMChecklistSkeleton />}
 
       {!loading && checklist && (
@@ -965,10 +1032,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       )}
                       <TableCell className="border-r border-gray-200">{item.description}</TableCell>
                       <TableCell className="border-r border-gray-200">
-                        <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode}>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                        <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode || isDraftViewMode}>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
                         </RadioGroup>
                       </TableCell>
                       <TableCell className="text-center">
@@ -1002,7 +1069,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                                 입력필요
                               </Badge>
                             )}
-                            {!isViewMode && (
+                            {!isViewMode && !isDraftViewMode && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1066,18 +1133,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                           value={currentItemState.checkState || null}
                           onValueChange={(value) => updateFormState(item.id, 'checkState', value)}
                           className="flex gap-3"
-                          disabled={isViewMode}
+                          disabled={isViewMode || isDraftViewMode}
                         >
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="O" id={`m-${item.id}-o`} disabled={isViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="O" id={`m-${item.id}-o`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-o`} className="text-xs mt-1 text-green-600 font-medium">O</Label>
                           </div>
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="△" id={`m-${item.id}-d`} disabled={isViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="△" id={`m-${item.id}-d`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-d`} className="text-xs mt-1 text-yellow-600 font-medium">△</Label>
                           </div>
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="X" id={`m-${item.id}-x`} disabled={isViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="X" id={`m-${item.id}-x`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-x`} className="text-xs mt-1 text-red-600 font-medium">X</Label>
                           </div>
                         </RadioGroup>
@@ -1109,7 +1176,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                             ) : (
                               <span className="text-xs text-red-600 flex-1">입력필요</span>
                             )}
-                            {!isViewMode && (
+                            {!isViewMode && !isDraftViewMode && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1157,7 +1224,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
                 className="w-full min-h-[180px]"
-                disabled={isViewMode}
+                disabled={isViewMode || isDraftViewMode}
               />
             </div>
 
@@ -1167,14 +1234,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               <InlineAudioPanel
                 onRecordingComplete={(data) => setAudioRecording(data)}
                 onTranscriptionComplete={(data) => setTranscription(data)}
-                onDelete={() => {
-                  setAudioRecording(null);
-                  setTranscription(null);
-                }}
+                onDelete={handleAudioDelete}
                 existingAudio={audioRecording}
                 existingTranscription={transcription}
                 maxDurationSeconds={1800}
-                disabled={isViewMode}
+                disabled={isViewMode || isDraftViewMode}
                 playbackOnly={true}
               />
             </div>
@@ -1182,7 +1246,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             {/* 오른쪽: 사진 업로드 */}
             <div className="space-y-2">
               <Label>TBM 사진</Label>
-              {!isViewMode && (
+              {!isViewMode && !isDraftViewMode && (
                 <FileDropzone
                   onFilesSelected={(files) => handleRemarksImageUpload(files)}
                   accept={{
@@ -1203,7 +1267,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                         className="w-full h-24 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setEnlargedImage(imageUrl)}
                       />
-                      {!isViewMode && (
+                      {!isViewMode && !isDraftViewMode && (
                         <Button
                           size="icon"
                           variant="destructive"
@@ -1257,7 +1321,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     <Select
                       value={absentUsers[worker.id] || 'PRESENT'}
                       onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
-                      disabled={isViewMode}
+                      disabled={isViewMode || isDraftViewMode}
                     >
                       <SelectTrigger className="w-[150px]">
                         <SelectValue placeholder="출근" />
@@ -1408,40 +1472,6 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               }}
             >
               월별 보고서 보기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 임시저장 복원 다이얼로그 - 서버에 기존 TBM이 있으면 표시 안 함 */}
-      <Dialog open={showRestoreDialog && !isViewMode && !existingReport} onOpenChange={() => {}}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Save className="h-5 w-5 text-blue-600" />
-              임시저장 데이터 발견
-            </DialogTitle>
-            <DialogDescription>
-              {savedTimestamp && (
-                <span>
-                  {new Date(savedTimestamp).toLocaleString('ko-KR')}에 저장된 작성 중인 TBM 데이터가 있습니다.
-                </span>
-              )}
-              <br />
-              이전 내용을 불러오시겠습니까?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={discardSaved}
-            >
-              삭제하고 새로 작성
-            </Button>
-            <Button
-              onClick={restoreSaved}
-            >
-              불러오기
             </Button>
           </DialogFooter>
         </DialogContent>
