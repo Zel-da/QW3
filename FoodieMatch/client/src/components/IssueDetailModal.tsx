@@ -100,14 +100,6 @@ export function IssueDetailModal({
       });
       return;
     }
-    if (attachments.length === 0) {
-      toast({
-        title: "사진을 업로드해주세요",
-        description: "△ 또는 X 항목은 사진 첨부가 필수입니다.",
-        variant: "destructive"
-      });
-      return;
-    }
     onSave({ description, actionTaken, attachments });
     onClose();
   };
@@ -124,7 +116,7 @@ export function IssueDetailModal({
               이슈 상세 입력
             </DialogTitle>
             <DialogDescription>
-              {item.checkState === 'X' ? '불량' : '개선필요'} 항목에 대한 조치 내용과 사진을 입력해주세요.
+              {item.checkState === 'X' ? '불량' : '개선필요'} 항목에 대한 내용을 입력해주세요. (사진은 선택사항)
             </DialogDescription>
           </DialogHeader>
 
@@ -140,11 +132,11 @@ export function IssueDetailModal({
               <p className="text-sm font-medium">{item.description}</p>
             </div>
 
-            {/* 사진 업로드 */}
+            {/* 사진 업로드 (선택) */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Camera className="h-4 w-4" />
-                사진 첨부 <span className="text-red-500">*</span>
+                사진 첨부 <span className="text-muted-foreground text-xs">(선택)</span>
               </Label>
               <FileDropzone
                 onFilesSelected={handlePhotoUpload}
