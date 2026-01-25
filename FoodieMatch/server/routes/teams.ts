@@ -290,7 +290,7 @@ export function registerTeamRoutes(app: Express) {
   }));
 
   // 팀원 추가 (TeamMember)
-  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
+  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
     const { teamId } = req.params;
     const { name, position } = req.body;
 
@@ -299,7 +299,7 @@ export function registerTeamRoutes(app: Express) {
     }
 
     // 팀 소유권 검증
-    if (req.session.user?.role === 'TEAM_LEADER') {
+    if (req.session.user?.role === 'TEAM_LEADER' || req.session.user?.role === 'EXECUTIVE_LEADER') {
       const team = await prisma.team.findUnique({
         where: { id: parseInt(teamId) }
       });
@@ -322,7 +322,7 @@ export function registerTeamRoutes(app: Express) {
   }));
 
   // 팀원 정보 수정 (TeamMember)
-  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
+  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
     const { teamId, memberId } = req.params;
     const { name, position, isActive } = req.body;
 
@@ -331,7 +331,7 @@ export function registerTeamRoutes(app: Express) {
     }
 
     // 팀 소유권 검증
-    if (req.session.user?.role === 'TEAM_LEADER') {
+    if (req.session.user?.role === 'TEAM_LEADER' || req.session.user?.role === 'EXECUTIVE_LEADER') {
       const team = await prisma.team.findUnique({
         where: { id: parseInt(teamId) }
       });
@@ -354,11 +354,11 @@ export function registerTeamRoutes(app: Express) {
   }));
 
   // 팀원 삭제 (TeamMember - soft delete)
-  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
+  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), asyncHandler(async (req: Request, res: Response) => {
     const { teamId, memberId } = req.params;
 
     // 팀 소유권 검증
-    if (req.session.user?.role === 'TEAM_LEADER') {
+    if (req.session.user?.role === 'TEAM_LEADER' || req.session.user?.role === 'EXECUTIVE_LEADER') {
       const team = await prisma.team.findUnique({
         where: { id: parseInt(teamId) }
       });

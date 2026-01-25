@@ -1327,7 +1327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 추가
-  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.post("/api/teams/:teamId/team-members", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { teamId } = req.params;
       const { name, position } = req.body;
@@ -1336,8 +1336,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "팀원 이름은 필수입니다" });
       }
 
-      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user!.role === 'TEAM_LEADER') {
+      // 팀 소유권 검증: TEAM_LEADER 또는 EXECUTIVE_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user!.role === 'TEAM_LEADER' || req.session.user!.role === 'EXECUTIVE_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
@@ -1364,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 정보 수정
-  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.put("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { teamId, memberId } = req.params;
       const { name, position, isActive } = req.body;
@@ -1373,8 +1373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "팀원 이름은 필수입니다" });
       }
 
-      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user!.role === 'TEAM_LEADER') {
+      // 팀 소유권 검증: TEAM_LEADER 또는 EXECUTIVE_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user!.role === 'TEAM_LEADER' || req.session.user!.role === 'EXECUTIVE_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
@@ -1401,12 +1401,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀원 삭제 (soft delete)
-  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.delete("/api/teams/:teamId/team-members/:memberId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { teamId, memberId } = req.params;
 
-      // 팀 소유권 검증: TEAM_LEADER는 자신의 팀만 수정 가능
-      if (req.session.user!.role === 'TEAM_LEADER') {
+      // 팀 소유권 검증: TEAM_LEADER 또는 EXECUTIVE_LEADER는 자신의 팀만 수정 가능
+      if (req.session.user!.role === 'TEAM_LEADER' || req.session.user!.role === 'EXECUTIVE_LEADER') {
         const team = await prisma.team.findUnique({
           where: { id: parseInt(teamId) }
         });
@@ -1485,7 +1485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전점검 생성 (매월 4일)
-  app.post("/api/safety-inspections", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.post("/api/safety-inspections", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { teamId, year, month, inspectionDate } = req.body;
 
@@ -1526,7 +1526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전점검 완료 처리
-  app.put("/api/safety-inspections/:inspectionId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.put("/api/safety-inspections/:inspectionId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { inspectionId } = req.params;
       const { isCompleted } = req.body;
@@ -1551,7 +1551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전점검 항목(사진) 추가
-  app.post("/api/safety-inspections/:inspectionId/items", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), upload.single('photo'), async (req, res) => {
+  app.post("/api/safety-inspections/:inspectionId/items", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), upload.single('photo'), async (req, res) => {
     try {
       const { inspectionId } = req.params;
       const { equipmentName, remarks } = req.body;
@@ -1599,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전점검 항목(사진) 삭제
-  app.delete("/api/safety-inspections/items/:itemId", requireAuth, requireRole('TEAM_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  app.delete("/api/safety-inspections/items/:itemId", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const { itemId } = req.params;
 
@@ -1703,7 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // APPROVAL SYSTEM (결재 시스템: 팀관리자 → 임원)
 
   // 월별보고서 결재 요청 생성 (MonthlyApproval + ApprovalRequest 자동 생성)
-  app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req, res) => {
+  app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
       const { teamId, year, month } = req.body;
       const requesterId = req.session.user!.id;
@@ -1824,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 결재 요청 생성 (기존 엔드포인트 - ApprovalPage에서 사용)
-  app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req, res) => {
+  app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
       const { reportId, approverId } = req.body;
       const requesterId = req.session.user!.id;
@@ -2257,8 +2257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pendingReceivedApprovals = 0;
       let pendingSentApprovals = 0;
 
-      // APPROVER나 ADMIN은 받은 결재 대기 건수 조회
-      if (user.role === 'APPROVER' || user.role === 'ADMIN') {
+      // APPROVER, EXECUTIVE_LEADER, ADMIN은 받은 결재 대기 건수 조회
+      if (user.role === 'APPROVER' || user.role === 'EXECUTIVE_LEADER' || user.role === 'ADMIN') {
         pendingReceivedApprovals = await prisma.approvalRequest.count({
           where: {
             approverId: userId,
@@ -2267,8 +2267,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // TEAM_LEADER나 ADMIN은 보낸 결재 대기 건수 조회
-      if (user.role === 'TEAM_LEADER' || user.role === 'ADMIN') {
+      // TEAM_LEADER, EXECUTIVE_LEADER, ADMIN은 보낸 결재 대기 건수 조회
+      if (user.role === 'TEAM_LEADER' || user.role === 'EXECUTIVE_LEADER' || user.role === 'ADMIN') {
         pendingSentApprovals = await prisma.approvalRequest.count({
           where: {
             requesterId: userId,

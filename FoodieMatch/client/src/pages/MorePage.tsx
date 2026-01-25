@@ -161,6 +161,7 @@ export default function MorePage() {
                 <p className="text-sm text-muted-foreground">
                   {user?.role === 'ADMIN' && '관리자'}
                   {user?.role === 'TEAM_LEADER' && '팀장'}
+                  {user?.role === 'EXECUTIVE_LEADER' && '임원팀장'}
                   {user?.role === 'WORKER' && '작업자'}
                   {user?.role === 'APPROVER' && '결재자'}
                 </p>

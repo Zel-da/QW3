@@ -75,9 +75,9 @@ const AdminHelpPage = lazy(() => import("./pages/AdminHelpPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // 권한 그룹 정의
-const ALL_ROLES = [Role.ADMIN, Role.APPROVER, Role.TEAM_LEADER, Role.PENDING];
-const ACTIVE_ROLES = [Role.ADMIN, Role.APPROVER, Role.TEAM_LEADER]; // PENDING 제외
-const WORKER_ROLES = [Role.ADMIN, Role.TEAM_LEADER]; // TBM, 점검 작성 가능
+const ALL_ROLES = [Role.ADMIN, Role.APPROVER, Role.EXECUTIVE_LEADER, Role.TEAM_LEADER, Role.PENDING];
+const ACTIVE_ROLES = [Role.ADMIN, Role.APPROVER, Role.EXECUTIVE_LEADER, Role.TEAM_LEADER]; // PENDING 제외
+const WORKER_ROLES = [Role.ADMIN, Role.EXECUTIVE_LEADER, Role.TEAM_LEADER]; // TBM, 점검 작성 가능
 
 function App() {
   return (

@@ -137,9 +137,9 @@ export default function InspectionGalleryPage() {
     }
   });
 
-  // 팀장의 경우 해당 팀 자동 선택
+  // 팀장 또는 임원팀장의 경우 해당 팀 자동 선택
   useEffect(() => {
-    if (user?.role === 'TEAM_LEADER' && user.teamId && teams.length > 0) {
+    if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && user.teamId && teams.length > 0) {
       const userTeam = teams.find(t => t.id === user.teamId);
       if (userTeam) {
         setSelectedTeamId(user.teamId);

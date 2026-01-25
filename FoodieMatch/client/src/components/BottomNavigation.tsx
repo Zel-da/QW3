@@ -22,7 +22,7 @@ export function BottomNavigation() {
     { href: '/more', icon: Menu, label: '더보기', showTo: 'all' },
   ];
 
-  // APPROVER는 TBM 숨김
+  // APPROVER는 TBM 숨김 (단, EXECUTIVE_LEADER는 TBM 표시)
   const visibleItems = navItems.filter(item => {
     if (item.href === '/tbm' && user?.role === 'APPROVER') return false;
     return true;

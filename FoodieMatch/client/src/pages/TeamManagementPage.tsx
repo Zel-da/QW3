@@ -121,7 +121,7 @@ export default function TeamManagementPage() {
 
   // Set initial team selection
   useEffect(() => {
-    if (currentUser?.role === 'TEAM_LEADER' && currentUser.teamId) {
+    if ((currentUser?.role === 'TEAM_LEADER' || currentUser?.role === 'EXECUTIVE_LEADER') && currentUser.teamId) {
       setSelectedTeamId(currentUser.teamId);
     }
   }, [currentUser]);
@@ -143,7 +143,7 @@ export default function TeamManagementPage() {
   const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['allUsers'],
     queryFn: fetchAllUsers,
-    enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER',
+    enabled: currentUser?.role === 'ADMIN' || currentUser?.role === 'TEAM_LEADER' || currentUser?.role === 'EXECUTIVE_LEADER',
     staleTime: 5 * 60 * 1000, // 5분 캐시 (Neon Compute 절약)
   });
 
@@ -678,10 +678,10 @@ export default function TeamManagementPage() {
                       </SelectItem>
                     ) : (
                       (() => {
-                        // 결재자는 ADMIN, TEAM_LEADER, APPROVER, EXECUTIVE 역할 가능
+                        // 결재자는 ADMIN, TEAM_LEADER, APPROVER, EXECUTIVE_LEADER 역할 가능
                         const eligibleApprovers = allUsers.filter(user =>
                           user.role === 'ADMIN' || user.role === 'TEAM_LEADER' ||
-                          user.role === 'APPROVER' || user.role === 'EXECUTIVE'
+                          user.role === 'APPROVER' || user.role === 'EXECUTIVE_LEADER'
                         );
 
                         if (eligibleApprovers.length === 0) {
@@ -696,7 +696,8 @@ export default function TeamManagementPage() {
                           let roleLabel = '사용자';
                           if (user.role === 'ADMIN') roleLabel = '관리자';
                           else if (user.role === 'TEAM_LEADER') roleLabel = '팀장';
-                          else if (user.role === 'APPROVER' || user.role === 'EXECUTIVE') roleLabel = '임원';
+                          else if (user.role === 'EXECUTIVE_LEADER') roleLabel = '임원팀장';
+                          else if (user.role === 'APPROVER') roleLabel = '임원';
                           else if (user.role === 'PENDING') roleLabel = '가입대기';
 
                           return (

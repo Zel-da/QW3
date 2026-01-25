@@ -104,8 +104,8 @@ export const requireTeamAccess = (teamIdParam: string = 'teamId') => {
       return next();
     }
 
-    // Team leader can access their own team
-    if (currentUserRole === 'TEAM_LEADER' && currentUserTeamId === targetTeamId) {
+    // Team leader or Executive Leader can access their own team
+    if ((currentUserRole === 'TEAM_LEADER' || currentUserRole === 'EXECUTIVE_LEADER') && currentUserTeamId === targetTeamId) {
       return next();
     }
 

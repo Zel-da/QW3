@@ -140,8 +140,8 @@ export function registerDashboardRoutes(app: Express) {
     let pendingReceivedApprovals = 0;
     let pendingSentApprovals = 0;
 
-    // APPROVER나 ADMIN은 받은 결재 대기 건수 조회
-    if (user.role === 'APPROVER' || user.role === 'ADMIN') {
+    // APPROVER, EXECUTIVE_LEADER, ADMIN은 받은 결재 대기 건수 조회
+    if (user.role === 'APPROVER' || user.role === 'EXECUTIVE_LEADER' || user.role === 'ADMIN') {
       pendingReceivedApprovals = await prisma.approvalRequest.count({
         where: {
           approverId: userId,
@@ -150,8 +150,8 @@ export function registerDashboardRoutes(app: Express) {
       });
     }
 
-    // TEAM_LEADER나 ADMIN은 보낸 결재 대기 건수 조회
-    if (user.role === 'TEAM_LEADER' || user.role === 'ADMIN') {
+    // TEAM_LEADER, EXECUTIVE_LEADER, ADMIN은 보낸 결재 대기 건수 조회
+    if (user.role === 'TEAM_LEADER' || user.role === 'EXECUTIVE_LEADER' || user.role === 'ADMIN') {
       pendingSentApprovals = await prisma.approvalRequest.count({
         where: {
           requesterId: userId,

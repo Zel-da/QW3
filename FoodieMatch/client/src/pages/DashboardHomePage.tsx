@@ -285,7 +285,7 @@ export default function DashboardHomePage() {
           ? '✅ 이번 달 점검 완료'
           : `⚠️ 점검 필요 (${stats.inspection.dueDate})`
         : '점검 시작하기',
-      showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER',
+      showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER',
     },
   ];
 

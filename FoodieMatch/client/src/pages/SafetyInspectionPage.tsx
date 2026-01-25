@@ -149,9 +149,9 @@ export default function SafetyInspectionPage() {
     ? teams.filter(team => team.factoryId === selectedFactory)
     : teams;
 
-  // 팀장의 경우 해당 팀의 공장을 자동 설정
+  // 팀장 또는 임원팀장의 경우 해당 팀의 공장을 자동 설정
   useEffect(() => {
-    if (user?.role === 'TEAM_LEADER' && user.teamId) {
+    if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && user.teamId) {
       setSelectedTeam(user.teamId);
       const userTeam = teams.find(t => t.id === user.teamId);
       if (userTeam?.factoryId) {

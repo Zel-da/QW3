@@ -296,7 +296,7 @@ export function Header() {
       <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={getLinkClass('/courses')}>
         안전교육
       </Link>
-      {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+      {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && (
         <>
           <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={getLinkClass('/safety-inspection')}>
             안전점검
@@ -329,12 +329,12 @@ export function Header() {
           <nav className="hidden lg:flex items-center space-x-4">
             {navLinks}
             {/* Desktop Recording Button */}
-            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && renderRecordingControls(false)}
+            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && renderRecordingControls(false)}
           </nav>
 
           {/* Mobile Center Recording Button */}
           <div className="lg:hidden flex-1 flex justify-center">
-            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && renderRecordingControls(true)}
+            {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && renderRecordingControls(true)}
           </div>
 
           <div className="flex items-center gap-4">
@@ -400,7 +400,7 @@ export function Header() {
                     <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={`${getLinkClass('/courses')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       안전교육
                     </Link>
-                    {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER') && (
+                    {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && (
                       <>
                         <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={`${getLinkClass('/safety-inspection')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           안전점검

@@ -12,7 +12,7 @@ import { logAudit } from "../auditLogger";
 
 export function registerApprovalRoutes(app: Express) {
   // 월별보고서 결재 요청 생성
-  app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req: Request, res: Response) => {
+  app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req: Request, res: Response) => {
     try {
       const { teamId, year, month } = req.body;
       const requesterId = req.session.user!.id;
@@ -130,7 +130,7 @@ export function registerApprovalRoutes(app: Express) {
   });
 
   // 결재 요청 생성 (기존 엔드포인트)
-  app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'ADMIN'), async (req: Request, res: Response) => {
+  app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req: Request, res: Response) => {
     try {
       const { reportId, approverId } = req.body;
       const requesterId = req.session.user!.id;
