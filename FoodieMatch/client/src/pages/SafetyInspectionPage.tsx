@@ -677,7 +677,7 @@ export default function SafetyInspectionPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-32 sticky left-0 bg-white z-10 font-bold text-black">팀명</TableHead>
+                          <TableHead className="sticky left-0 bg-white z-10 font-bold text-black whitespace-nowrap">팀명</TableHead>
                           <TableHead className="text-center min-w-20 font-bold text-black bg-blue-50">전체</TableHead>
                           {overviewData.equipmentTypes.map((equipment) => (
                             <TableHead key={equipment} className="text-center min-w-24 font-bold text-black">
@@ -717,7 +717,7 @@ export default function SafetyInspectionPage() {
                             )}
                           >
                             <TableCell className={cn(
-                              "font-medium sticky left-0 z-10",
+                              "font-medium sticky left-0 z-10 whitespace-nowrap",
                               selectedTeam === team.teamId
                                 ? "bg-blue-50"
                                 : !allCompleted
