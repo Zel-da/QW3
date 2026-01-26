@@ -154,20 +154,26 @@ export default function TeamManagementPage() {
   });
 
   // Mutations
-  const addMutation = useMutation({ mutationFn: addUserToTeam, 
+  const addMutation = useMutation({ mutationFn: addUserToTeam,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자가 팀에 추가되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
       queryClient.invalidateQueries({ queryKey: ['allUsers'] });
       setSelectedUser(null);
+    },
+    onError: (error: any) => {
+      toast({ title: '오류', description: error.response?.data?.message || error.message || '사용자 추가에 실패했습니다.', variant: 'destructive' });
     }
   });
 
-  const removeMutation = useMutation({ mutationFn: removeUserFromTeam, 
+  const removeMutation = useMutation({ mutationFn: removeUserFromTeam,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자가 팀에서 삭제되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
       queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+    },
+    onError: (error: any) => {
+      toast({ title: '오류', description: error.response?.data?.message || error.message || '사용자 삭제에 실패했습니다.', variant: 'destructive' });
     }
   });
 
@@ -175,6 +181,9 @@ export default function TeamManagementPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '팀장이 지정되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+    },
+    onError: (error: any) => {
+      toast({ title: '오류', description: error.response?.data?.message || error.message || '팀장 지정에 실패했습니다.', variant: 'destructive' });
     }
   });
 
@@ -182,6 +191,9 @@ export default function TeamManagementPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '결재자가 지정되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teamData', selectedTeamId] });
+    },
+    onError: (error: any) => {
+      toast({ title: '오류', description: error.response?.data?.message || error.message || '결재자 지정에 실패했습니다.', variant: 'destructive' });
     }
   });
 

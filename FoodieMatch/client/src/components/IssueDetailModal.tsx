@@ -204,8 +204,8 @@ export function IssueDetailModal({
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button type="button" onClick={() => { console.log('버튼 클릭됨!'); handleSave(); }}>
-              저장
+            <Button type="button" onClick={() => { console.log('버튼 클릭됨!'); handleSave(); }} disabled={uploading}>
+              {uploading ? '업로드 중...' : '저장'}
             </Button>
           </DialogFooter>
         </DialogContent>

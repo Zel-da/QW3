@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Notice } from "@shared/schema";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
-import { FileText, BookOpen, BarChart3, ClipboardCheck, Search, Plus, ChevronRight, ImageIcon, X, ChevronLeft as ChevronLeftIcon } from "lucide-react";
+import { FileText, BookOpen, BarChart3, ClipboardCheck, Search, Plus, ChevronRight, ImageIcon, X, ChevronLeft as ChevronLeftIcon, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: notices = [], isLoading } = useQuery<Notice[]>({
+  const { data: notices = [], isLoading, isError: noticesError, refetch: refetchNotices } = useQuery<Notice[]>({
     queryKey: ["/api/notices"],
   });
 
@@ -288,7 +288,14 @@ export default function HomePage() {
           )}
         </div>
 
-        {isLoading ? (
+        {noticesError ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h2 className="text-lg font-semibold mb-2">공지사항을 불러올 수 없습니다</h2>
+            <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+            <Button onClick={() => refetchNotices()} variant="outline">다시 시도</Button>
+          </div>
+        ) : isLoading ? (
           <p className="text-lg">공지사항을 불러오는 중...</p>
         ) : notices.length === 0 ? (
           <div className="text-center py-16">

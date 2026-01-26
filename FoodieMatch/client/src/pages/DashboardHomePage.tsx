@@ -133,7 +133,7 @@ export default function DashboardHomePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: stats, isLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading, isError: statsError, refetch: refetchStats } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: fetchDashboardStats,
     enabled: !!user,
@@ -234,6 +234,23 @@ export default function DashboardHomePage() {
         <main className="container mx-auto p-4 lg:p-8">
           <LoadingSpinner size="lg" text="대시보드를 불러오는 중..." className="py-16" />
         </main>
+      </div>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 pb-20 md:pb-0">
+        <Header />
+        <main className="container mx-auto p-4 lg:p-8">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h2 className="text-lg font-semibold mb-2">데이터를 불러올 수 없습니다</h2>
+            <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+            <Button onClick={() => refetchStats()} variant="outline">다시 시도</Button>
+          </div>
+        </main>
+        <BottomNavigation />
       </div>
     );
   }

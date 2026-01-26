@@ -11,10 +11,11 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
 import { SITES, ROLE_LABELS } from '@/lib/constants';
-import { Search, Users, UserCheck, UserX, Key, Copy, Clock } from 'lucide-react';
+import { Search, Users, UserCheck, UserX, Key, Copy, Clock, AlertCircle } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -89,7 +90,13 @@ export default function AdminPage() {
   const [tempPassword, setTempPassword] = useState<string>('');
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
 
-  const { data: users = [], isLoading: usersLoading } = useQuery<User[]> ({
+  // 삭제/거절 확인 다이얼로그 상태
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const { data: users = [], isLoading: usersLoading, isError: usersError, refetch: refetchUsers } = useQuery<User[]> ({
     queryKey: ['users'],
     queryFn: fetchUsers,
   });
@@ -109,7 +116,10 @@ export default function AdminPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '사용자 역할이 변경되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] }); // TeamManagementPage 캐시도 갱신
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message || '역할 변경에 실패했습니다.', variant: 'destructive' });
     }
   });
 
@@ -118,7 +128,10 @@ export default function AdminPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '사용자의 소속 현장이 변경되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] }); // TeamManagementPage 캐시도 갱신
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message || '현장 변경에 실패했습니다.', variant: 'destructive' });
     }
   });
 
@@ -127,6 +140,9 @@ export default function AdminPage() {
     onSuccess: () => {
       toast({ title: '성공', description: '사용자가 삭제되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message || '사용자 삭제에 실패했습니다.', variant: 'destructive' });
     }
   });
 
@@ -180,9 +196,16 @@ export default function AdminPage() {
       toast({ title: "오류", description: "현재 로그인된 관리자 계정은 삭제할 수 없습니다.", variant: "destructive" });
       return;
     }
-    if (window.confirm(`${username} 사용자를 정말로 삭제하시겠습니까?`)) {
-      deleteMutation.mutate(userId);
+    setDeleteTarget({ id: userId, name: username });
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (deleteTarget) {
+      deleteMutation.mutate(deleteTarget.id);
     }
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
   };
 
   const openApproveDialog = (user: User) => {
@@ -204,9 +227,16 @@ export default function AdminPage() {
   };
 
   const handleReject = (userId: string, username: string) => {
-    if (window.confirm(`${username}님의 가입 요청을 정말로 거절하시겠습니까?\n계정이 삭제됩니다.`)) {
-      rejectMutation.mutate(userId);
+    setRejectTarget({ id: userId, name: username });
+    setRejectConfirmOpen(true);
+  };
+
+  const confirmRejectUser = () => {
+    if (rejectTarget) {
+      rejectMutation.mutate(rejectTarget.id);
     }
+    setRejectConfirmOpen(false);
+    setRejectTarget(null);
   };
 
   const openPasswordDialog = (user: User) => {
@@ -285,6 +315,30 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </AdminPageLayout>
+    );
+  }
+
+  if (usersError) {
+    return (
+      <AdminPageLayout>
+        <PageHeader
+          title="사용자 관리"
+          description="사용자 계정 생성, 수정, 삭제 및 권한 관리"
+          icon={<Users className="h-6 w-6" />}
+          backUrl="/admin-dashboard"
+          backText="대시보드"
+        />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h2 className="text-lg font-semibold mb-2">사용자 목록을 불러올 수 없습니다</h2>
+              <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+              <Button onClick={() => refetchUsers()} variant="outline">다시 시도</Button>
             </div>
           </CardContent>
         </Card>
@@ -453,7 +507,7 @@ export default function AdminPage() {
                           <TableCell>{user.username}</TableCell>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>
-                            <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)}>
+                            <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)} disabled={siteMutation.isPending}>
                               <SelectTrigger className="w-[120px]">
                                 <SelectValue placeholder="현장 선택" />
                               </SelectTrigger>
@@ -465,7 +519,7 @@ export default function AdminPage() {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)}>
+                            <Select value={user.role} onValueChange={(newRole) => handleRoleChange(user.id, newRole as Role)} disabled={roleMutation.isPending}>
                               <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="역할 선택" />
                               </SelectTrigger>
@@ -657,6 +711,41 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 사용자 삭제 확인 다이얼로그 */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>사용자 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.name} 사용자를 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 가입 거절 확인 다이얼로그 */}
+      <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>가입 요청 거절</AlertDialogTitle>
+            <AlertDialogDescription>
+              {rejectTarget?.name}님의 가입 요청을 거절하시겠습니까? 계정이 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRejectUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              거절
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminPageLayout>
   );
 }

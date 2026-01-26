@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import type { AudioRecordingData } from '@/components/InlineAudioPanel';
+import { toast } from '@/hooks/use-toast';
 
 // 임시 저장용 키 (TBM이 없을 때)
 const PENDING_RECORDING_KEY = 'pending_tbm_recording';
@@ -355,7 +356,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('녹음 시작 실패:', error);
-      alert('마이크 접근 권한이 필요합니다.');
+      toast({ title: '마이크 접근 권한이 필요합니다.', variant: 'destructive' });
       return false;
     }
   }, [state.pausedInfo]);
@@ -489,7 +490,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('녹음 재개 실패:', error);
-      alert('마이크 접근 권한이 필요합니다.');
+      toast({ title: '마이크 접근 권한이 필요합니다.', variant: 'destructive' });
       return false;
     }
   }, [state.pausedInfo, state.status]);

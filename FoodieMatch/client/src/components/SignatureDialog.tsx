@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 interface SignatureDialogProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export function SignatureDialog({ isOpen, onClose, onSave, userName }: Signature
 
   const save = () => {
     if (sigCanvas.current?.isEmpty()) {
-      alert('서명을 입력해주세요.');
+      toast({ title: '서명을 입력해주세요.', variant: 'destructive' });
       return;
     }
     const signatureData = sigCanvas.current?.toDataURL('image/png') || '';

@@ -11,7 +11,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, Award, Search, Settings, BarChart3, ChevronRight, Clock, CheckCircle } from "lucide-react";
+import { BookOpen, Award, Search, Settings, BarChart3, ChevronRight, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { Course, UserProgress, UserAssessment } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
@@ -28,16 +28,16 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<'latest' | 'name' | 'progress'>('latest');
   const ITEMS_PER_PAGE = 9;
 
-  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
+  const { data: courses = [], isLoading: coursesLoading, isError: coursesError } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
 
-  const { data: userProgress = [], isLoading: userProgressLoading } = useQuery<UserProgress[]>({
+  const { data: userProgress = [], isLoading: userProgressLoading, isError: progressError } = useQuery<UserProgress[]>({
     queryKey: ["/api/users", user?.id, "progress"],
     enabled: !!user?.id,
   });
 
-  const { data: userAssessments = [], isLoading: assessmentsLoading } = useQuery<UserAssessment[]>({
+  const { data: userAssessments = [], isLoading: assessmentsLoading, isError: assessmentsError } = useQuery<UserAssessment[]>({
     queryKey: ["/api/users", user?.id, "assessments"],
     enabled: !!user?.id,
   });
@@ -108,6 +108,8 @@ export default function Dashboard() {
     setLocation(`/courses/${courseId}`);
   };
 
+  const hasError = coursesError || progressError || assessmentsError;
+
   if (authLoading || coursesLoading || userProgressLoading || assessmentsLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -117,6 +119,23 @@ export default function Dashboard() {
             <div className="text-lg">로딩 중...</div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-background pb-20 md:pb-0">
+        <Header />
+        <main className="container mx-auto px-4 py-4 md:py-8">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h2 className="text-lg font-semibold mb-2">데이터를 불러올 수 없습니다</h2>
+            <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+            <Button onClick={() => window.location.reload()} variant="outline">다시 시도</Button>
+          </div>
+        </main>
+        <BottomNavigation />
       </div>
     );
   }

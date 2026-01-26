@@ -68,16 +68,6 @@ export function UnsavedChangesDialog({
             계속 작성
           </Button>
 
-          {/* 저장하지 않고 이동 버튼 */}
-          <Button
-            variant="destructive"
-            onClick={onLeaveWithoutSaving}
-            className="flex items-center gap-2"
-          >
-            <ArrowRight className="h-4 w-4" />
-            저장 안 함
-          </Button>
-
           {/* 저장 후 이동 버튼 */}
           {showSaveOption && onSaveAndLeave && (
             <Button
@@ -98,6 +88,16 @@ export function UnsavedChangesDialog({
               )}
             </Button>
           )}
+
+          {/* 저장하지 않고 이동 버튼 (파괴적 동작이므로 마지막에 배치) */}
+          <Button
+            variant="destructive"
+            onClick={onLeaveWithoutSaving}
+            className="flex items-center gap-2"
+          >
+            <ArrowRight className="h-4 w-4" />
+            저장 안 함
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

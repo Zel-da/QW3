@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'wouter';
-import { BookOpen, CheckCircle2, XCircle, Search, ArrowLeft } from 'lucide-react';
+import { BookOpen, CheckCircle2, XCircle, Search, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { Course, UserProgress, UserAssessment } from '@shared/schema';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
@@ -48,18 +48,18 @@ export default function MyCertificatesPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'progress'>('recent');
   const ITEMS_PER_PAGE = 9;
 
-  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
+  const { data: courses = [], isLoading: coursesLoading, isError: coursesError } = useQuery<Course[]>({
     queryKey: ['/api/courses'],
     queryFn: fetchCourses,
   });
 
-  const { data: userProgress = [], isLoading: progressLoading } = useQuery<UserProgress[]>({
+  const { data: userProgress = [], isLoading: progressLoading, isError: progressError } = useQuery<UserProgress[]>({
     queryKey: ['userProgress', user?.id],
     queryFn: () => fetchUserProgress(user!.id),
     enabled: !!user?.id,
   });
 
-  const { data: userAssessments = [], isLoading: assessmentsLoading } = useQuery<UserAssessment[]>({
+  const { data: userAssessments = [], isLoading: assessmentsLoading, isError: assessmentsError } = useQuery<UserAssessment[]>({
     queryKey: ['userAssessments', user?.id],
     queryFn: () => fetchUserAssessments(user!.id),
     enabled: !!user?.id,
@@ -120,6 +120,7 @@ export default function MyCertificatesPage() {
   }, [filterStatus, searchTerm, sortBy]);
 
   const isLoading = authLoading || coursesLoading || progressLoading || assessmentsLoading;
+  const hasError = coursesError || progressError || assessmentsError;
 
   if (!user) {
     return <div>로그인이 필요합니다.</div>;
@@ -148,7 +149,14 @@ export default function MyCertificatesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {hasError ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                <h2 className="text-lg font-semibold mb-2">데이터를 불러올 수 없습니다</h2>
+                <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+                <Button onClick={() => window.location.reload()} variant="outline">다시 시도</Button>
+              </div>
+            ) : isLoading ? (
               <LoadingSpinner size="lg" text="수강 이력을 불러오는 중..." className="py-16" />
             ) : courseHistory.length === 0 ? (
               <EmptyState

@@ -125,9 +125,9 @@ export function FileDropzone({
   });
 
   const removeFile = (index: number) => {
-    // 파일 제거는 빈 배열로 전달하여 부모 컴포넌트가 처리하도록 함
-    // 부모 컴포넌트의 handleMultiplePhotoUpload에서 적절히 처리됨
-    onFilesSelected([]);
+    // 해당 인덱스의 파일만 제거한 배열을 부모에게 전달
+    const remaining = files.filter((_, i) => i !== index);
+    onFilesSelected(remaining);
   };
 
   const getFileIcon = (file: File) => {

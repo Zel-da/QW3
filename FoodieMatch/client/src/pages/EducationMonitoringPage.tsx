@@ -60,7 +60,7 @@ export default function EducationMonitoringPage() {
   const ITEMS_PER_PAGE = 10;
 
   // Query education overview data
-  const { data, isLoading } = useQuery<EducationOverviewData>({
+  const { data, isLoading, isError: overviewError, refetch: refetchOverview } = useQuery<EducationOverviewData>({
     queryKey: ['education-overview'],
     queryFn: fetchEducationOverview,
     enabled: !!currentUser && currentUser.role === 'ADMIN',
@@ -332,6 +332,30 @@ export default function EducationMonitoringPage() {
           backText="대시보드"
         />
         <LoadingSpinner size="lg" text="교육 현황을 불러오는 중..." className="py-16" />
+      </AdminPageLayout>
+    );
+  }
+
+  if (overviewError) {
+    return (
+      <AdminPageLayout>
+        <PageHeader
+          title="교육 현황 모니터링"
+          description="전체 사용자의 안전교육 진행 상황을 확인하고 관리합니다."
+          icon={<GraduationCap className="h-6 w-6" />}
+          backUrl="/admin-dashboard"
+          backText="대시보드"
+        />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h2 className="text-lg font-semibold mb-2">교육 현황을 불러올 수 없습니다</h2>
+              <p className="text-muted-foreground mb-4">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+              <Button onClick={() => refetchOverview()} variant="outline">다시 시도</Button>
+            </div>
+          </CardContent>
+        </Card>
       </AdminPageLayout>
     );
   }

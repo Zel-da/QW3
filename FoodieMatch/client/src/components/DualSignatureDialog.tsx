@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
 
 interface DualSignatureDialogProps {
   isOpen: boolean;
@@ -58,7 +59,7 @@ export function DualSignatureDialog({
 
   const confirmManager = () => {
     if (managerSigCanvas.current?.isEmpty()) {
-      alert('담당자 서명을 입력해주세요.');
+      toast({ title: '담당자 서명을 입력해주세요.', variant: 'destructive' });
       return;
     }
     // 담당 서명 데이터를 미리 저장
@@ -70,7 +71,7 @@ export function DualSignatureDialog({
 
   const confirmApprover = () => {
     if (approverSigCanvas.current?.isEmpty()) {
-      alert('승인자 서명을 입력해주세요.');
+      toast({ title: '승인자 서명을 입력해주세요.', variant: 'destructive' });
       return;
     }
     // 승인 서명 데이터를 미리 저장
@@ -81,12 +82,12 @@ export function DualSignatureDialog({
 
   const save = () => {
     if (!managerSigned || !savedManagerSignature) {
-      alert('담당자 서명을 먼저 입력해주세요.');
+      toast({ title: '담당자 서명을 먼저 입력해주세요.', variant: 'destructive' });
       setActiveTab('manager');
       return;
     }
     if (!approverSigned || !savedApproverSignature) {
-      alert('승인자 서명을 입력해주세요.');
+      toast({ title: '승인자 서명을 입력해주세요.', variant: 'destructive' });
       setActiveTab('approver');
       return;
     }

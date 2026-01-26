@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
-import { CheckCircle, XCircle, Clock, FileText, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { ApprovalRequest } from '@shared/schema';
 
 const fetchSentApprovals = async (status?: string): Promise<ApprovalRequest[]> => {
@@ -44,12 +44,12 @@ export default function ApprovalHistoryPage() {
   const [sentStatus, setSentStatus] = useState<string>('ALL');
   const [receivedStatus, setReceivedStatus] = useState<string>('ALL');
 
-  const { data: sentApprovals = [], isLoading: sentLoading } = useQuery({
+  const { data: sentApprovals = [], isLoading: sentLoading, isError: sentError, refetch: refetchSent } = useQuery({
     queryKey: ['sentApprovals', sentStatus],
     queryFn: () => fetchSentApprovals(sentStatus === 'ALL' ? undefined : sentStatus),
   });
 
-  const { data: receivedApprovals = [], isLoading: receivedLoading } = useQuery({
+  const { data: receivedApprovals = [], isLoading: receivedLoading, isError: receivedError, refetch: refetchReceived } = useQuery({
     queryKey: ['receivedApprovals', receivedStatus],
     queryFn: () => fetchReceivedApprovals(receivedStatus === 'ALL' ? undefined : receivedStatus),
   });
@@ -101,7 +101,13 @@ export default function ApprovalHistoryPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {sentLoading ? (
+                {sentError ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+                    <p className="text-sm text-muted-foreground mb-3">결재 목록을 불러올 수 없습니다.</p>
+                    <Button onClick={() => refetchSent()} variant="outline" size="sm">다시 시도</Button>
+                  </div>
+                ) : sentLoading ? (
                   <LoadingSpinner size="lg" text="결재 목록을 불러오는 중..." className="py-12" />
                 ) : sentApprovals.length === 0 ? (
                   <EmptyState
@@ -179,7 +185,13 @@ export default function ApprovalHistoryPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {receivedLoading ? (
+                {receivedError ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+                    <p className="text-sm text-muted-foreground mb-3">결재 목록을 불러올 수 없습니다.</p>
+                    <Button onClick={() => refetchReceived()} variant="outline" size="sm">다시 시도</Button>
+                  </div>
+                ) : receivedLoading ? (
                   <LoadingSpinner size="lg" text="결재 목록을 불러오는 중..." className="py-12" />
                 ) : receivedApprovals.length === 0 ? (
                   <EmptyState
@@ -205,7 +217,7 @@ export default function ApprovalHistoryPage() {
                         {receivedApprovals.map((approval) => (
                           <TableRow
                             key={approval.id}
-                            className={approval.status === 'PENDING' ? 'cursor-pointer hover:bg-muted/50' : ''}
+                            className={approval.status === 'PENDING' ? 'cursor-pointer hover:bg-blue-50 bg-blue-50/30 border-l-2 border-l-blue-400' : 'opacity-80'}
                             onClick={() => {
                               if (approval.status === 'PENDING') {
                                 setLocation(`/approval/${approval.id}`);

@@ -61,6 +61,7 @@ export default function ApprovalPage() {
   const [hasSignature, setHasSignature] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [approvalComplete, setApprovalComplete] = useState<'approved' | 'rejected' | null>(null);
 
   const { data: approvalRequest, isLoading, error } = useQuery<ApprovalRequest>({
     queryKey: ['approvalRequest', approvalId],
@@ -80,10 +81,7 @@ export default function ApprovalPage() {
         title: "결재 완료",
         description: "결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.",
       });
-      // 결재 완료 후 대시보드로 이동
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
+      setApprovalComplete('approved');
     },
     onError: (error: any) => {
       toast({
@@ -107,10 +105,7 @@ export default function ApprovalPage() {
         description: "결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.",
       });
       setShowRejectDialog(false);
-      // 반려 완료 후 대시보드로 이동
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
+      setApprovalComplete('rejected');
     },
     onError: (error: any) => {
       toast({
@@ -313,6 +308,36 @@ export default function ApprovalPage() {
     );
   }
 
+  // 방금 처리 완료된 경우
+  if (approvalComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              {approvalComplete === 'approved' ? (
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              ) : (
+                <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              )}
+              <h2 className="text-xl font-semibold mb-2">
+                {approvalComplete === 'approved' ? '결재가 완료되었습니다' : '결재가 반려되었습니다'}
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                {approvalComplete === 'approved'
+                  ? '결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.'
+                  : '결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.'}
+              </p>
+              <Button onClick={() => navigate('/')}>
+                대시보드로 이동
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (approvalRequest.status === 'APPROVED') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -320,16 +345,43 @@ export default function ApprovalPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">✅ 결재가 완료되었습니다</h2>
+              <h2 className="text-xl font-semibold mb-2">결재가 완료되었습니다</h2>
               <p className="text-muted-foreground mb-2">
                 이 문서는 이미 승인되었습니다.
               </p>
-              <p className="text-sm text-muted-foreground">
-                결재 일시: {approvalRequest.approvedAt ? new Date(approvalRequest.approvedAt).toLocaleString('ko-KR') : '-'}
-              </p>
+              <div className="text-sm text-muted-foreground space-y-1 mb-4">
+                <p>결재자: {approvalRequest.approver?.name || approvalRequest.approver?.username || '-'}</p>
+                <p>결재 일시: {approvalRequest.approvedAt ? new Date(approvalRequest.approvedAt).toLocaleString('ko-KR') : '-'}</p>
+              </div>
               <Button
                 onClick={() => navigate('/')}
-                className="mt-4"
+              >
+                대시보드로 이동
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (approvalRequest.status === 'REJECTED') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">결재가 반려되었습니다</h2>
+              <p className="text-muted-foreground mb-2">
+                이 문서는 반려 처리되었습니다.
+              </p>
+              <div className="text-sm text-muted-foreground space-y-1 mb-4">
+                <p>결재자: {approvalRequest.approver?.name || approvalRequest.approver?.username || '-'}</p>
+                <p>처리 일시: {approvalRequest.approvedAt ? new Date(approvalRequest.approvedAt).toLocaleString('ko-KR') : '-'}</p>
+              </div>
+              <Button
+                onClick={() => navigate('/')}
               >
                 대시보드로 이동
               </Button>
@@ -386,7 +438,7 @@ export default function ApprovalPage() {
                   지우기
                 </Button>
               </div>
-              <div className="border-2 border-dashed rounded-lg p-2 bg-white">
+              <div className={`border-2 border-dashed rounded-lg p-2 bg-white ${approveMutation.isPending || rejectMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                 <canvas
                   ref={canvasRef}
                   className="w-full h-40 cursor-crosshair touch-none"

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +72,8 @@ export default function EducationManagementPage() {
   const ITEMS_PER_PAGE = 10;
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteCourseTarget, setDeleteCourseTarget] = useState<string | null>(null);
 
   const { data: courses = [], isLoading } = useQuery<Course[]>({
       queryKey: ['courses'],
@@ -105,7 +108,7 @@ export default function EducationManagementPage() {
             reader.onload = (e) => {
                 const text = e.target?.result;
                 if (typeof text !== 'string') return;
-                
+
                 const questions = text.split('\n').slice(1).map(line => {
                     const [question, options, correctAnswer] = line.split(',');
                     return { question, options, correctAnswer: parseInt(correctAnswer, 10) };
@@ -124,6 +127,9 @@ export default function EducationManagementPage() {
             queryClient.invalidateQueries({ queryKey: ['courses'] });
             setShowSuccessDialog(true);
         }
+      },
+      onError: (error: any) => {
+        toast({ title: '오류', description: error.message || '교육 과정 생성에 실패했습니다.', variant: 'destructive' });
       }
   });
 
@@ -147,6 +153,9 @@ export default function EducationManagementPage() {
         toast({ title: '교육 과정과 퀴즈가 성공적으로 생성되었습니다.' });
         queryClient.invalidateQueries({ queryKey: ['courses'] });
         setShowSuccessDialog(true);
+      },
+      onError: (error: any) => {
+        toast({ title: '오류', description: error.message || '퀴즈 생성에 실패했습니다.', variant: 'destructive' });
       }
   });
 
@@ -289,10 +298,17 @@ export default function EducationManagementPage() {
   };
 
   const handleDelete = (courseId: string) => {
-    if (window.confirm('정말로 이 교육 과정을 삭제하시겠습니까? 관련된 모든 평가와 진행 기록이 삭제됩니다.')) {
-        deleteCourseMutation.mutate(courseId);
+    setDeleteCourseTarget(courseId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteCourse = () => {
+    if (deleteCourseTarget) {
+      deleteCourseMutation.mutate(deleteCourseTarget);
     }
-  }
+    setDeleteConfirmOpen(false);
+    setDeleteCourseTarget(null);
+  };
 
   const handleEdit = (course: Course) => {
     setSelectedCourse(course);
@@ -585,6 +601,24 @@ export default function EducationManagementPage() {
             onClose={() => setIsEditDialogOpen(false)}
             course={selectedCourse}
         />
+
+        {/* 교육 과정 삭제 확인 다이얼로그 */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>교육 과정 삭제</AlertDialogTitle>
+              <AlertDialogDescription>
+                정말로 이 교육 과정을 삭제하시겠습니까? 관련된 모든 평가와 진행 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteCourse} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* 성공 다이얼로그 */}
         <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
