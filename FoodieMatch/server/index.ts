@@ -3,8 +3,6 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import helmet from "helmet";
 import compression from "compression";
-import cookieParser from "cookie-parser";
-import { doubleCsrf } from "csrf-csrf";
 import { prisma, startConnectionHealthCheck, syncSequences } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -75,76 +73,9 @@ app.use(session({
   rolling: true, // Reset maxAge on every response (keep active sessions alive)
 }));
 
-// Cookie parser for CSRF
-app.use(cookieParser());
-
-// CSRF Protection Configuration
-const csrfSecret = process.env.CSRF_SECRET || 'csrf-secret-dev-only-change-in-production';
-if (!process.env.CSRF_SECRET && process.env.NODE_ENV === 'production') {
-  console.warn('WARNING: CSRF_SECRET environment variable should be set in production');
-}
-const isSecure = process.env.NODE_ENV === 'production' && process.env.RENDER === 'true';
-
-const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
-  getSecret: () => csrfSecret,
-  getSessionIdentifier: (req) => (req.session as any)?.id || req.ip || 'anonymous',
-  cookieName: '__csrf',
-  cookieOptions: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isSecure,
-    path: '/',
-  },
-  size: 64,
-  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
-});
-
 // Health check endpoint - DB 조회 없음 (Cron용)
 app.get('/api/ping', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// CSRF token endpoint - 클라이언트가 토큰을 요청할 수 있는 엔드포인트
-app.get('/api/csrf-token', (req, res) => {
-  try {
-    const token = generateCsrfToken(req, res);
-    res.json({ token });
-  } catch (error) {
-    logger.error('CSRF token generation error:', error);
-    res.status(500).json({ message: 'Failed to generate CSRF token' });
-  }
-});
-
-// CSRF protection middleware - 상태 변경 요청에 적용
-// 단, 파일 업로드와 일부 API는 제외 (multipart/form-data 처리 이슈)
-app.use('/api', (req, res, next) => {
-  // GET, HEAD, OPTIONS 요청은 CSRF 검증 스킵
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    return next();
-  }
-
-  // CSRF 검증 제외 경로 (app.use('/api', ...) 기준이므로 /api 제외)
-  // - 파일 업로드: multipart/form-data 이슈
-  // - 인증 관련: 세션 생성 전 호출됨
-  // - 챗봇: 로그인 전 사용 가능
-  const excludedPaths = [
-    '/upload',
-    '/upload-multiple',
-    '/voice-input',
-    '/auth/login',
-    '/auth/logout',
-    '/auth/register',
-    '/auth/forgot-password',
-    '/auth/reset-password',
-    '/auth/find-username',
-    '/chatbot',
-  ];
-  if (excludedPaths.some(path => req.path.startsWith(path))) {
-    return next();
-  }
-
-  // CSRF 토큰 검증
-  return doubleCsrfProtection(req, res, next);
 });
 
 // HTTP request logging middleware with Winston

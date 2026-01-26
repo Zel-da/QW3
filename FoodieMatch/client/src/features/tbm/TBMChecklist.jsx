@@ -331,6 +331,29 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         if (remarksData.transcription) {
           setTranscription(remarksData.transcription);
         }
+        // 참석자 상태 복원 (연차, 출장 등)
+        if (remarksData.absentUsersData) {
+          setAbsentUsers(remarksData.absentUsersData);
+        } else if (remarksData.absenceInfo && remarksData.absenceInfo !== '결근자 없음') {
+          // Legacy: absenceInfo 문자열에서 복원 시도 (이전 저장 데이터 호환)
+          const restored = {};
+          remarksData.absenceInfo.split(' / ').forEach(part => {
+            const colonIdx = part.indexOf(': ');
+            if (colonIdx > 0) {
+              const type = part.substring(0, colonIdx);
+              const names = part.substring(colonIdx + 2).split(', ');
+              names.forEach(name => {
+                const matchedUser = teamUsers.find(u => u.name === name);
+                if (matchedUser) {
+                  restored[matchedUser.id] = type;
+                }
+              });
+            }
+          });
+          if (Object.keys(restored).length > 0) {
+            setAbsentUsers(restored);
+          }
+        }
       } catch {
         setRemarks(report.remarks);
         setRemarksImages([]);
@@ -662,6 +685,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       text: remarks || '',
       images: remarksImages || [],
       absenceInfo: remarksText || '결근자 없음',
+      absentUsersData: Object.keys(absentUsers).length > 0 ? absentUsers : null,
       audioRecording: audioRecording || null,
       transcription: transcription || null
     };

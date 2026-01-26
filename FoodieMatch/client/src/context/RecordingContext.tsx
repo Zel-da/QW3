@@ -11,30 +11,6 @@ const DB_VERSION = 1;
 const STORE_NAME = 'pausedRecordings';
 const PAUSED_STATE_KEY = 'paused_recording_state';
 
-// CSRF 토큰 캐시
-let csrfToken: string | null = null;
-let csrfTokenPromise: Promise<string> | null = null;
-
-async function getCsrfToken(): Promise<string> {
-  if (csrfToken) return csrfToken;
-  if (csrfTokenPromise) return csrfTokenPromise;
-
-  csrfTokenPromise = fetch('/api/csrf-token', { credentials: 'include' })
-    .then(res => res.json())
-    .then(data => {
-      csrfToken = data.token;
-      csrfTokenPromise = null;
-      return data.token;
-    })
-    .catch(err => {
-      csrfTokenPromise = null;
-      console.error('Failed to fetch CSRF token:', err);
-      throw err;
-    });
-
-  return csrfTokenPromise;
-}
-
 // ============ IndexedDB Helper Functions ============
 
 interface PausedRecordingData {
@@ -656,12 +632,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       const checkData = await checkResponse.json();
 
       if (checkData.exists && checkData.report) {
-        const token = await getCsrfToken();
         const response = await fetch(`/api/tbm/${checkData.report.id}/audio`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': token,
           },
           credentials: 'include',
           body: JSON.stringify({ audioRecording: recordingData }),
