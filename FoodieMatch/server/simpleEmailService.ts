@@ -5,9 +5,15 @@ const prisma = new PrismaClient();
 
 // 사이트별 발신자 이름 매핑
 const SITE_SENDER_NAMES: Record<string, string> = {
-  'ASAN': '아산 안전관리팀',
-  'HWASEONG': '화성 안전관리팀',
-  'DEFAULT': '안전관리팀'
+  'ASAN': '아산 안전보건팀',
+  'HWASEONG': '화성 안전보건팀',
+  'DEFAULT': '안전보건팀'
+};
+
+// 사이트별 Reply-To 이메일 (답장 시 해당 담당자에게 전달)
+const SITE_REPLY_TO: Record<string, string> = {
+  'ASAN': 'soosan7143@soosan.co.kr',
+  'HWASEONG': 'gy.pyo@soosan.co.kr',
 };
 
 /**
@@ -26,6 +32,15 @@ export function getSenderAddress(site?: string): string {
   const senderName = getSenderNameBySite(site);
   const senderEmail = process.env.SMTP_USER || process.env.SMTP_FROM || 'noreply@soosan.co.kr';
   return `${senderName} <${senderEmail}>`;
+}
+
+/**
+ * 사이트별 Reply-To 주소 반환
+ */
+export function getReplyToAddress(site?: string): string | undefined {
+  if (!site) return undefined;
+  const upperSite = site.toUpperCase();
+  return SITE_REPLY_TO[upperSite];
 }
 
 /**
@@ -122,12 +137,14 @@ export async function sendEmail(options: {
   try {
     // 사이트가 지정되면 사이트별 발신자 사용, 아니면 기본값 사용
     const fromAddress = options.from || getSenderAddress(options.site);
+    const replyTo = getReplyToAddress(options.site);
 
-    const mailOptions = {
+    const mailOptions: any = {
       from: fromAddress,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
-      html: options.html
+      html: options.html,
+      ...(replyTo && { replyTo }),
     };
 
     // 매번 새로운 transporter 생성 (환경변수 변경 반영)
