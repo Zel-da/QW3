@@ -7,7 +7,7 @@ import { prisma, startConnectionHealthCheck, syncSequences } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import logger from "./logger";
-import { verifyEmailConnection } from "./simpleEmailService";
+import { verifyEmailConnection, ensureEmailConfigs } from "./simpleEmailService";
 import { startAllSchedulers } from "./scheduler";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -144,6 +144,7 @@ async function startServer() {
 
     // Initialize email service
     await verifyEmailConnection();
+    await ensureEmailConfigs();
 
     // Start email schedulers
     await startAllSchedulers();

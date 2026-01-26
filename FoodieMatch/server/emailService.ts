@@ -89,9 +89,15 @@ export async function sendEmail(options: {
   html: string;
   from?: string;
 }) {
+  // 글로벌 이메일 발송 토글 확인
+  if (process.env.ENABLE_EMAIL === 'false') {
+    console.log(`📧 이메일 발송 비활성화 (ENABLE_EMAIL=false) - 수신: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}, 제목: ${options.subject}`);
+    return { success: false, error: 'Email disabled (ENABLE_EMAIL=false)' };
+  }
+
   try {
     const mailOptions = {
-      from: options.from || process.env.SMTP_FROM || '안전관리팀 <noreply@safety.com>',
+      from: options.from || process.env.SMTP_FROM || '안전관리팀 <noreply@soosan.co.kr>',
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
       html: options.html

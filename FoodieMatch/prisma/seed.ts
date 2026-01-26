@@ -424,6 +424,111 @@ async function main() {
       scheduledTime: null,
       monthlyDay: 4,
     },
+    // === 인증/계정 관련 이메일 ===
+    {
+      emailType: 'PASSWORD_RESET',
+      subject: '비밀번호가 재설정되었습니다',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">비밀번호 재설정 안내</h2>
+  <p>{{USER_NAME}}님의 비밀번호가 관리자에 의해 재설정되었습니다.</p>
+  <p><strong>임시 비밀번호:</strong> {{TEMP_PASSWORD}}</p>
+  <p>로그인 후 반드시 비밀번호를 변경해주세요.</p>
+  <p><a href="{{LOGIN_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">로그인하기</a></p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'PASSWORD_RESET_LINK',
+      subject: '비밀번호 재설정 요청',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">비밀번호 재설정</h2>
+  <p>{{USER_NAME}}님, 비밀번호 재설정 요청이 접수되었습니다.</p>
+  <p>아래 링크를 클릭하여 새 비밀번호를 설정해주세요.</p>
+  <p><a href="{{RESET_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">비밀번호 재설정</a></p>
+  <p style="color: #666; font-size: 14px;">이 링크는 1시간 동안만 유효합니다.</p>
+  <p style="color: #666; font-size: 14px;">본인이 요청하지 않았다면 이 이메일을 무시해주세요.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'FIND_USERNAME',
+      subject: '아이디 찾기 결과',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">아이디 찾기 결과</h2>
+  <p>{{USER_NAME}}님의 아이디는 <strong>{{USERNAME}}</strong>입니다.</p>
+  <p><a href="{{LOGIN_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">로그인하기</a></p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    // === 결재 시스템 이메일 ===
+    {
+      emailType: 'APPROVAL_REQUEST',
+      subject: '[결재요청] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 결재',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #2563eb;">월별보고서 결재 요청</h2>
+  <p>{{APPROVER_NAME}}님, 안녕하세요.</p>
+  <p>{{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서 결재가 요청되었습니다.</p>
+  <p><strong>요청자:</strong> {{REQUESTER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p>아래 버튼을 클릭하여 보고서를 확인하고 서명해주세요.</p>
+  <p><a href="{{APPROVAL_URL}}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">결재하러 가기</a></p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'APPROVAL_APPROVED',
+      subject: '[결재승인] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 승인 완료',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #16a34a;">결재 승인 완료</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서가 승인되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p><strong>승인 일시:</strong> {{APPROVED_AT}}</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
+    {
+      emailType: 'APPROVAL_REJECTED',
+      subject: '[결재반려] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 반려',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #dc2626;">결재 반려</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서가 반려되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 12px 0;"><strong>반려 사유:</strong> {{REJECTION_REASON}}</p>
+  <p>보고서를 수정한 후 다시 결재 요청해주세요.</p>
+</div>`,
+      enabled: true,
+      sendTiming: 'IMMEDIATE',
+      daysAfter: null,
+      scheduledTime: null,
+      monthlyDay: null,
+    },
   ];
 
   for (const config of emailConfigs) {

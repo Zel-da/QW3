@@ -203,7 +203,7 @@ export function scheduleSafetyInspectionReminders() {
 
         // Use template from database
         await sendEmailFromTemplate(
-          'SAFETY_INSPECTION_REMINDER',
+          'INSPECTION_REMINDER',
           manager.email,
           {
             managerName: manager.username,
@@ -318,7 +318,7 @@ async function executeScheduledEmail(schedule: any) {
       await sendTBMReminders();
       break;
 
-    case 'SAFETY_INSPECTION_REMINDER':
+    case 'INSPECTION_REMINDER':
       await sendSafetyInspectionReminders();
       break;
 
@@ -444,7 +444,7 @@ async function sendSafetyInspectionReminders() {
     if (!manager.email) continue;
 
     await sendEmailFromTemplate(
-      'SAFETY_INSPECTION_REMINDER',
+      'INSPECTION_REMINDER',
       manager.email,
       {
         managerName: manager.username,

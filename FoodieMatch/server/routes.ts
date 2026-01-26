@@ -14,7 +14,7 @@ import { tbmReportSchema } from "@shared/schema";
 import sharp from "sharp";
 import rateLimit from "express-rate-limit";
 // Email services are now dynamically imported where needed
-import { getApprovalRequestTemplate, getApprovalApprovedTemplate, getApprovalRejectedTemplate } from "./approvalEmailTemplates";
+// 결재 이메일 템플릿은 DB 템플릿으로 전환됨 (APPROVAL_REQUEST, APPROVAL_APPROVED, APPROVAL_REJECTED)
 // R2 Storage for cloud deployment
 import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
 // Google Gemini AI
@@ -372,27 +372,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // 이메일 발송 옵션이 활성화된 경우
+      // 이메일 발송 옵션이 활성화된 경우 (DB 템플릿 사용)
       if (sendEmail && user.email) {
         try {
-          const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
-          const smtpConfig = await loadSmtpConfig();
-          if (smtpConfig) {
-            await sendEmailWithTemplate(
-              smtpConfig,
-              user.email,
-              '비밀번호가 재설정되었습니다',
-              `
-                <h2>비밀번호 재설정 안내</h2>
-                <p>${user.name || user.username}님의 비밀번호가 관리자에 의해 재설정되었습니다.</p>
-                <p><strong>임시 비밀번호:</strong> ${tempPassword}</p>
-                <p>로그인 후 반드시 비밀번호를 변경해주세요.</p>
-              `
-            );
-          }
+          const { sendEmailByType } = await import('./simpleEmailService');
+          const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
+          await sendEmailByType('PASSWORD_RESET', user.email, userId, {
+            USER_NAME: user.name || user.username,
+            TEMP_PASSWORD: tempPassword,
+            LOGIN_URL: baseUrl + '/login',
+          });
         } catch (emailError) {
           console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
-          // 이메일 실패해도 비밀번호 재설정은 완료됨
         }
       }
 
@@ -446,27 +437,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // 재설정 링크 이메일 발송
+      // 재설정 링크 이메일 발송 (DB 템플릿 사용)
       try {
-        const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
-        const smtpConfig = await loadSmtpConfig();
-        if (smtpConfig) {
-          const resetUrl = `${req.headers.origin || 'http://localhost:5173'}/reset-password/${token}`;
-          await sendEmailWithTemplate(
-            smtpConfig,
-            user.email,
-            '비밀번호 재설정 요청',
-            `
-              <h2>비밀번호 재설정</h2>
-              <p>${user.name || user.username}님, 비밀번호 재설정 요청이 접수되었습니다.</p>
-              <p>아래 링크를 클릭하여 새 비밀번호를 설정해주세요:</p>
-              <p><a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">비밀번호 재설정</a></p>
-              <p style="color: #666; font-size: 14px;">이 링크는 1시간 동안만 유효합니다.</p>
-              <p style="color: #666; font-size: 14px;">본인이 요청하지 않았다면 이 이메일을 무시해주세요.</p>
-            `
-          );
-          console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
-        }
+        const { sendEmailByType } = await import('./simpleEmailService');
+        const resetUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/reset-password/${token}`;
+        await sendEmailByType('PASSWORD_RESET_LINK', user.email, user.id, {
+          USER_NAME: user.name || user.username,
+          RESET_URL: resetUrl,
+        });
+        console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
       } catch (emailError) {
         console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
       }
@@ -588,23 +567,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? user.username.substring(0, 3) + '*'.repeat(user.username.length - 3)
         : user.username;
 
-      // 이메일 발송
+      // 이메일 발송 (DB 템플릿 사용)
       try {
-        const { sendEmailWithTemplate, loadSmtpConfig } = await import('./simpleEmail');
-        const smtpConfig = await loadSmtpConfig();
-        if (smtpConfig) {
-          await sendEmailWithTemplate(
-            smtpConfig,
-            email,
-            '아이디 찾기 결과',
-            `
-              <h2>아이디 찾기 결과</h2>
-              <p>${user.name || '회원'}님의 아이디는 <strong>${user.username}</strong>입니다.</p>
-              <p><a href="${req.headers.origin || 'http://localhost:5173'}/login" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">로그인하기</a></p>
-            `
-          );
-          console.log(`아이디 찾기 이메일 발송: ${email}`);
-        }
+        const { sendEmailByType } = await import('./simpleEmailService');
+        const loginUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/login`;
+        await sendEmailByType('FIND_USERNAME', email, user.id, {
+          USER_NAME: user.name || '회원',
+          USERNAME: user.username,
+          LOGIN_URL: loginUrl,
+        });
+        console.log(`아이디 찾기 이메일 발송: ${email}`);
       } catch (emailError) {
         console.error('아이디 찾기 이메일 발송 실패:', emailError);
       }
@@ -807,37 +779,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to reject user:', error);
       res.status(500).json({ message: "가입 거절 중 오류가 발생했습니다" });
-    }
-  });
-
-  // Admin-only: Reset user password
-  app.put("/api/users/:userId/reset-password", requireAuth, requireRole('ADMIN'), async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const { newPassword } = req.body;
-
-      // 사용자 확인
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) {
-        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
-      }
-
-      // 임시 비밀번호 생성 또는 제공된 비밀번호 사용
-      const tempPassword = newPassword || Math.random().toString(36).slice(-8) + 'A1!';
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-      await prisma.user.update({
-        where: { id: userId },
-        data: { password: hashedPassword }
-      });
-
-      res.json({
-        message: "비밀번호가 초기화되었습니다",
-        tempPassword: tempPassword
-      });
-    } catch (error) {
-      console.error('Failed to reset password:', error);
-      res.status(500).json({ message: "비밀번호 초기화 중 오류가 발생했습니다" });
     }
   });
 
@@ -1785,32 +1726,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Monthly Approval Request] Created approval request: ${approvalRequest.id}`);
 
-      // 결재 요청 이메일 발송
+      // 결재 요청 이메일 발송 (DB 템플릿 사용)
       if (approvalRequest.approver?.email) {
         try {
           const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
           const approvalUrl = `${baseUrl}/approval/${approvalRequest.id}`;
 
-          const emailTemplate = getApprovalRequestTemplate(
-            approvalRequest.approver.name || approvalRequest.approver.username,
-            approvalRequest.requester.name || approvalRequest.requester.username,
-            approvalRequest.monthlyReport.team.name,
-            approvalRequest.monthlyReport.year,
-            approvalRequest.monthlyReport.month,
-            approvalUrl
-          );
-
-          const { sendEmail } = await import('./simpleEmailService');
-          await sendEmail({
-            to: approvalRequest.approver.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('APPROVAL_REQUEST', approvalRequest.approver.email, approvalRequest.approverId, {
+            APPROVER_NAME: approvalRequest.approver.name || approvalRequest.approver.username,
+            REQUESTER_NAME: approvalRequest.requester.name || approvalRequest.requester.username,
+            TEAM_NAME: approvalRequest.monthlyReport.team.name,
+            YEAR: String(approvalRequest.monthlyReport.year),
+            MONTH: String(approvalRequest.monthlyReport.month),
+            APPROVAL_URL: approvalUrl,
           });
 
           console.log(`[Monthly Approval Request] Email sent to ${approvalRequest.approver.email}`);
         } catch (emailError) {
           console.error(`[Monthly Approval Request] Email sending failed:`, emailError);
-          // 이메일 실패해도 결재 요청은 성공으로 처리
         }
       } else {
         console.warn(`[Monthly Approval Request] Approver has no email address`);
@@ -1926,29 +1860,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // 승인 알림 이메일 발송
+      // 승인 알림 이메일 발송 (DB 템플릿 사용)
       if (updated.requester?.email) {
         try {
-          const emailTemplate = getApprovalApprovedTemplate(
-            updated.requester.name || updated.requester.username,
-            updated.approver.name || updated.approver.username,
-            updated.monthlyReport.team.name,
-            updated.monthlyReport.year,
-            updated.monthlyReport.month,
-            updated.approvedAt ? new Date(updated.approvedAt).toLocaleString('ko-KR') : ''
-          );
-
-          const { sendEmail } = await import('./simpleEmailService');
-          await sendEmail({
-            to: updated.requester.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('APPROVAL_APPROVED', updated.requester.email, updated.requesterId, {
+            REQUESTER_NAME: updated.requester.name || updated.requester.username,
+            APPROVER_NAME: updated.approver.name || updated.approver.username,
+            TEAM_NAME: updated.monthlyReport.team.name,
+            YEAR: String(updated.monthlyReport.year),
+            MONTH: String(updated.monthlyReport.month),
+            APPROVED_AT: updated.approvedAt ? new Date(updated.approvedAt).toLocaleString('ko-KR') : '',
           });
 
           console.log(`[Approval] Approval notification email sent to ${updated.requester.email}`);
         } catch (emailError) {
           console.error(`[Approval] Email sending failed:`, emailError);
-          // 이메일 실패해도 승인은 성공으로 처리
         }
       }
 
@@ -2001,26 +1928,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 요청자에게 반려 알림 이메일 발송
       if (updated.requester?.email) {
         try {
-          const emailTemplate = getApprovalRejectedTemplate(
-            updated.requester.name || updated.requester.username,
-            updated.approver.name || updated.approver.username,
-            updated.monthlyReport.team.name,
-            updated.monthlyReport.year,
-            updated.monthlyReport.month,
-            updated.rejectionReason || '사유 없음'
-          );
-
-          const { sendEmail } = await import('./simpleEmailService');
-          await sendEmail({
-            to: updated.requester.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('APPROVAL_REJECTED', updated.requester.email, updated.requesterId, {
+            REQUESTER_NAME: updated.requester.name || updated.requester.username,
+            APPROVER_NAME: updated.approver.name || updated.approver.username,
+            TEAM_NAME: updated.monthlyReport.team.name,
+            YEAR: String(updated.monthlyReport.year),
+            MONTH: String(updated.monthlyReport.month),
+            REJECTION_REASON: updated.rejectionReason || '사유 없음',
           });
 
           console.log(`[Approval] Rejection notification email sent to ${updated.requester.email}`);
         } catch (emailError) {
           console.error(`[Approval] Email sending failed:`, emailError);
-          // 이메일 실패해도 반려는 성공으로 처리
         }
       }
 

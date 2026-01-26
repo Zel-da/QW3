@@ -10,8 +10,8 @@ export interface SmtpConfig {
   host: string;
   port: number;
   secure: boolean;
-  user: string;
-  password: string;
+  user?: string;
+  password?: string;
   fromEmail: string;
   fromName: string;
 }
@@ -20,24 +20,30 @@ export interface SmtpConfig {
  * 환경변수에서 SMTP 설정 로드
  */
 export async function loadSmtpConfig(): Promise<SmtpConfig | null> {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
-
-  if (!host || !user || !password) {
-    console.warn('SMTP 설정이 완료되지 않았습니다. 환경변수를 확인해주세요.');
+  // 글로벌 이메일 발송 토글 확인
+  if (process.env.ENABLE_EMAIL === 'false') {
+    console.log('📧 이메일 발송이 비활성화되어 있습니다 (ENABLE_EMAIL=false)');
     return null;
   }
 
+  const host = process.env.SMTP_HOST;
+
+  if (!host) {
+    console.warn('SMTP_HOST가 설정되지 않았습니다. 환경변수를 확인해주세요.');
+    return null;
+  }
+
+  const user = process.env.SMTP_USER;
+  const password = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
   const port = parseInt(process.env.SMTP_PORT || '587');
 
   return {
     host,
     port,
     secure: port === 465,
-    user,
-    password,
-    fromEmail: process.env.SMTP_FROM || user,
+    // 인증 정보는 있을 때만 설정 (내부 SMTP 릴레이는 인증 불필요)
+    ...(user && password ? { user, password } : {}),
+    fromEmail: process.env.SMTP_FROM || user || 'noreply@soosan.co.kr',
     fromName: process.env.SMTP_FROM_NAME || '안전관리시스템'
   };
 }
@@ -52,21 +58,27 @@ export async function sendEmailWithTemplate(
   htmlContent: string
 ): Promise<{ success: boolean; messageId?: string; error?: any }> {
   try {
-    const transporter = nodemailer.createTransport({
+    const transportConfig: any = {
       host: config.host,
       port: config.port,
       secure: config.secure,
-      auth: {
-        user: config.user,
-        pass: config.password
-      },
       tls: {
         rejectUnauthorized: false
       },
       connectionTimeout: 30000,
       greetingTimeout: 30000,
       socketTimeout: 30000
-    });
+    };
+
+    // 인증 정보가 있을 때만 추가 (내부 SMTP 릴레이는 인증 불필요)
+    if (config.user && config.password) {
+      transportConfig.auth = {
+        user: config.user,
+        pass: config.password
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig);
 
     // 이메일 발송
     const info = await transporter.sendMail({

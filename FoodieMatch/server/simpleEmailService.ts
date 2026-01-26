@@ -24,7 +24,7 @@ export function getSenderNameBySite(site?: string): string {
  */
 export function getSenderAddress(site?: string): string {
   const senderName = getSenderNameBySite(site);
-  const senderEmail = process.env.SMTP_USER || process.env.SMTP_FROM || 'noreply@safety.com';
+  const senderEmail = process.env.SMTP_USER || process.env.SMTP_FROM || 'noreply@soosan.co.kr';
   return `${senderName} <${senderEmail}>`;
 }
 
@@ -113,6 +113,12 @@ export async function sendEmail(options: {
   from?: string;
   site?: string; // 사이트별 발신자 이름을 위한 파라미터
 }) {
+  // 글로벌 이메일 발송 토글 확인
+  if (process.env.ENABLE_EMAIL === 'false') {
+    console.log(`📧 이메일 발송 비활성화 (ENABLE_EMAIL=false) - 수신: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}, 제목: ${options.subject}`);
+    return { success: false, error: 'Email disabled (ENABLE_EMAIL=false)' };
+  }
+
   try {
     // 사이트가 지정되면 사이트별 발신자 사용, 아니면 기본값 사용
     const fromAddress = options.from || getSenderAddress(options.site);
@@ -344,4 +350,118 @@ export async function getEmailStats(startDate?: Date, endDate?: Date) {
       count: item._count
     }))
   };
+}
+
+/**
+ * 누락된 이메일 설정을 자동 생성 (프로덕션 DB 호환)
+ * 서버 시작 시 한 번 실행하여 새로 추가된 이메일 타입이 DB에 없으면 자동 생성
+ */
+export async function ensureEmailConfigs() {
+  const requiredConfigs: Array<{ emailType: string; subject: string; content: string; sendTiming: string; daysAfter?: number | null; monthlyDay?: number | null }> = [
+    {
+      emailType: 'PASSWORD_RESET',
+      subject: '비밀번호가 재설정되었습니다',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">비밀번호 재설정 안내</h2>
+  <p>{{USER_NAME}}님의 비밀번호가 관리자에 의해 재설정되었습니다.</p>
+  <p><strong>임시 비밀번호:</strong> {{TEMP_PASSWORD}}</p>
+  <p>로그인 후 반드시 비밀번호를 변경해주세요.</p>
+  <p><a href="{{LOGIN_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">로그인하기</a></p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'PASSWORD_RESET_LINK',
+      subject: '비밀번호 재설정 요청',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">비밀번호 재설정</h2>
+  <p>{{USER_NAME}}님, 비밀번호 재설정 요청이 접수되었습니다.</p>
+  <p>아래 링크를 클릭하여 새 비밀번호를 설정해주세요.</p>
+  <p><a href="{{RESET_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">비밀번호 재설정</a></p>
+  <p style="color: #666; font-size: 14px;">이 링크는 1시간 동안만 유효합니다.</p>
+  <p style="color: #666; font-size: 14px;">본인이 요청하지 않았다면 이 이메일을 무시해주세요.</p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'FIND_USERNAME',
+      subject: '아이디 찾기 결과',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #3b82f6;">아이디 찾기 결과</h2>
+  <p>{{USER_NAME}}님의 아이디는 <strong>{{USERNAME}}</strong>입니다.</p>
+  <p><a href="{{LOGIN_URL}}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">로그인하기</a></p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'APPROVAL_REQUEST',
+      subject: '[결재요청] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 결재',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #2563eb;">월별보고서 결재 요청</h2>
+  <p>{{APPROVER_NAME}}님, 안녕하세요.</p>
+  <p>{{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서 결재가 요청되었습니다.</p>
+  <p><strong>요청자:</strong> {{REQUESTER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p>아래 버튼을 클릭하여 보고서를 확인하고 서명해주세요.</p>
+  <p><a href="{{APPROVAL_URL}}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">결재하러 가기</a></p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'APPROVAL_APPROVED',
+      subject: '[결재승인] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 승인 완료',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #16a34a;">결재 승인 완료</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서가 승인되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p><strong>승인 일시:</strong> {{APPROVED_AT}}</p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'APPROVAL_REJECTED',
+      subject: '[결재반려] {{TEAM_NAME}} {{YEAR}}년 {{MONTH}}월 TBM 보고서 반려',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #dc2626;">결재 반려</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{TEAM_NAME}}의 {{YEAR}}년 {{MONTH}}월 TBM 보고서가 반려되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>팀명:</strong> {{TEAM_NAME}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 12px 0;"><strong>반려 사유:</strong> {{REJECTION_REASON}}</p>
+  <p>보고서를 수정한 후 다시 결재 요청해주세요.</p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+  ];
+
+  let created = 0;
+  for (const config of requiredConfigs) {
+    const existing = await prisma.simpleEmailConfig.findUnique({
+      where: { emailType: config.emailType }
+    });
+    if (!existing) {
+      await prisma.simpleEmailConfig.create({
+        data: {
+          emailType: config.emailType,
+          subject: config.subject,
+          content: config.content,
+          enabled: true,
+          sendTiming: config.sendTiming,
+          daysAfter: config.daysAfter || null,
+          scheduledTime: null,
+          monthlyDay: config.monthlyDay || null,
+        }
+      });
+      created++;
+      console.log(`📧 이메일 설정 자동 생성: ${config.emailType}`);
+    }
+  }
+  if (created > 0) {
+    console.log(`📧 ${created}개의 누락된 이메일 설정이 자동 생성되었습니다.`);
+  }
 }
