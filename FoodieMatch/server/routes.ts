@@ -5058,6 +5058,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TBM 오디오 녹음만 업데이트 (다른 데이터 건드리지 않음)
+  app.patch("/api/tbm/:reportId/audio", requireAuth, async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const { audioRecording } = req.body;
+
+      const existingReport = await prisma.dailyReport.findUnique({
+        where: { id: parseInt(reportId) }
+      });
+
+      if (!existingReport) {
+        return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
+      }
+
+      // 기존 remarks 파싱
+      let remarksData: any = {};
+      try {
+        if (existingReport.remarks) {
+          remarksData = JSON.parse(existingReport.remarks);
+        }
+      } catch (e) {
+        remarksData = { text: existingReport.remarks || '' };
+      }
+
+      // audioRecording만 업데이트
+      remarksData.audioRecording = audioRecording;
+
+      await prisma.dailyReport.update({
+        where: { id: parseInt(reportId) },
+        data: { remarks: JSON.stringify(remarksData) }
+      });
+
+      res.json({ success: true, audioRecording });
+    } catch (error: any) {
+      res.status(500).json({ message: `오디오 저장 실패: ${error.message}` });
+    }
+  });
+
   app.delete("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
