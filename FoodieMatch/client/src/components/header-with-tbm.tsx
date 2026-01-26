@@ -2,10 +2,7 @@ import { Shield, Gauge, Book, Bell, User, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function HeaderWithTBM() {
-  // TBM 시스템 URL - 실제 배포 환경에 맞게 수정하세요
-  const TBM_URL = process.env.NODE_ENV === 'production' 
-    ? 'http://192.68.10.249:8081'  // TBM 프로덕션 URL
-    : 'http://localhost:3001';      // TBM 개발 URL
+  const TBM_URL = import.meta.env.VITE_TBM_URL || 'http://localhost:3001';
 
   const handleTBMClick = () => {
     // 새 창에서 TBM 열기

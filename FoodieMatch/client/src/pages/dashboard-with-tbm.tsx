@@ -14,10 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 export default function DashboardWithTBM() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   
-  // TBM 시스템 URL 설정
-  const TBM_URL = process.env.NODE_ENV === 'production' 
-    ? 'http://192.68.10.249:8081'  // TBM 프로덕션 URL
-    : 'http://localhost:3001';      // TBM 개발 URL
+  const TBM_URL = import.meta.env.VITE_TBM_URL || 'http://localhost:3001';
 
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
