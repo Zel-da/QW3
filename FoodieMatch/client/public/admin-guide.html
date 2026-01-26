@@ -959,9 +959,10 @@
                     <strong>역할 지정</strong><br>
                     "역할 변경" 버튼 클릭 → 역할 선택
                     <ul style="margin-top: 10px;">
-                        <li><strong>팀장</strong>: TBM 작성, 안전점검, 결재 요청</li>
-                        <li><strong>결재자</strong>: 월별 보고서 승인/반려</li>
-                        <li><strong>관리자</strong>: 모든 시스템 관리 권한</li>
+                        <li><strong>팀장 (TEAM_LEADER)</strong>: TBM 작성, 안전점검, 결재 요청</li>
+                        <li><strong>임원 (EXECUTIVE_LEADER)</strong>: 팀장 권한 + 결재 승인/반려 (이중 역할)</li>
+                        <li><strong>결재자 (APPROVER)</strong>: 월별 보고서 승인/반려</li>
+                        <li><strong>관리자 (ADMIN)</strong>: 모든 시스템 관리 권한</li>
                     </ul>
                 </li>
                 <li>
@@ -981,23 +982,29 @@
                         <th>기능</th>
                         <th>대기<br><small>(PENDING)</small></th>
                         <th>팀장<br><small>(TEAM_LEADER)</small></th>
+                        <th>임원<br><small>(EXECUTIVE_LEADER)</small></th>
                         <th>결재자<br><small>(APPROVER)</small></th>
                         <th>관리자<br><small>(ADMIN)</small></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td>공지사항 조회</td><td>O</td><td>O</td><td>O</td><td>O</td></tr>
-                    <tr><td>안전교육 수강</td><td>X</td><td>O</td><td>O</td><td>O</td></tr>
-                    <tr><td>TBM 일지 작성</td><td>X</td><td>O</td><td>X</td><td>O</td></tr>
-                    <tr><td>안전점검 수행</td><td>X</td><td>O</td><td>X</td><td>O</td></tr>
-                    <tr><td>월별 보고서 작성</td><td>X</td><td>O</td><td>X</td><td>O</td></tr>
-                    <tr><td>결재 요청</td><td>X</td><td>O</td><td>X</td><td>O</td></tr>
-                    <tr><td>결재 승인/반려</td><td>X</td><td>X</td><td>O</td><td>O</td></tr>
-                    <tr><td>사용자 관리</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
-                    <tr><td>교육 과정 관리</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
-                    <tr><td>시스템 설정</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
+                    <tr><td>공지사항 조회</td><td>O</td><td>O</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>안전교육 수강</td><td>X</td><td>O</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>TBM 일지 작성</td><td>X</td><td>O</td><td>O</td><td>X</td><td>O</td></tr>
+                    <tr><td>안전점검 수행</td><td>X</td><td>O</td><td>O</td><td>X</td><td>O</td></tr>
+                    <tr><td>월별 보고서 작성</td><td>X</td><td>O</td><td>O</td><td>X</td><td>O</td></tr>
+                    <tr><td>결재 요청</td><td>X</td><td>O</td><td>O</td><td>X</td><td>O</td></tr>
+                    <tr><td>결재 승인/반려</td><td>X</td><td>X</td><td>O</td><td>O</td><td>O</td></tr>
+                    <tr><td>사용자 관리</td><td>X</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
+                    <tr><td>교육 과정 관리</td><td>X</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
+                    <tr><td>시스템 설정</td><td>X</td><td>X</td><td>X</td><td>X</td><td>O</td></tr>
                 </tbody>
             </table>
+
+            <div class="info-box">
+                <strong>EXECUTIVE_LEADER</strong>는 팀장(TEAM_LEADER)과 결재자(APPROVER)의 이중 역할입니다.
+                TBM 작성, 안전점검, 결재 요청은 물론 결재 승인/반려까지 가능합니다.
+            </div>
 
             <div class="warning-box">
                 PENDING 사용자는 로그인은 가능하지만 공지사항 조회 외 모든 기능이 제한됩니다.
@@ -1039,6 +1046,20 @@
                 </ol>
                 <div class="success-box">
                     변경 완료 후 사용자가 다시 로그인하면 새 권한이 적용됩니다.
+                </div>
+            </div>
+
+            <div class="scenario">
+                <div class="scenario-title">임원이 팀장 역할도 겸해야 하는 경우</div>
+                <ol class="steps">
+                    <li>사용자 관리에서 해당 임원 검색</li>
+                    <li>"역할 변경" 버튼 클릭</li>
+                    <li>역할을 "EXECUTIVE_LEADER"로 변경</li>
+                    <li>소속 팀 지정</li>
+                    <li>"저장" 클릭</li>
+                </ol>
+                <div class="info-box">
+                    EXECUTIVE_LEADER는 팀장(TBM 작성, 안전점검, 결재 요청) + 결재자(승인/반려) 권한을 동시에 갖는 이중 역할입니다.
                 </div>
             </div>
 
@@ -1196,7 +1217,7 @@
                 <ol class="steps">
                     <li>팀원 관리에서 해당 팀 선택</li>
                     <li>"결재자 설정" 버튼 클릭</li>
-                    <li>APPROVER 또는 ADMIN 역할을 가진 사용자 중 선택</li>
+                    <li>APPROVER, EXECUTIVE_LEADER 또는 ADMIN 역할을 가진 사용자 중 선택</li>
                     <li>저장</li>
                 </ol>
             </div>
@@ -1204,6 +1225,7 @@
             <div class="info-box">
                 결재자는 해당 팀의 월별 보고서를 승인/반려할 수 있습니다.
                 한 명의 결재자가 여러 팀을 담당할 수 있습니다.
+                EXECUTIVE_LEADER는 자신이 팀장인 팀의 결재 요청도 하면서 다른 팀의 결재 승인도 할 수 있습니다.
             </div>
 
             <h3>팀원 삭제</h3>
@@ -1244,7 +1266,7 @@
                 <div class="field-spec-title">교육 과정 등록 필드</div>
                 <div class="field-item">
                     <span class="field-name">과정명<span class="field-required">*필수</span></span>
-                    <span class="field-desc">교육 제목 (예: 2024년 정기 안전교육)</span>
+                    <span class="field-desc">교육 제목 (예: 2026년 정기 안전교육)</span>
                 </div>
                 <div class="field-item">
                     <span class="field-name">과정 유형<span class="field-required">*필수</span></span>
@@ -1523,8 +1545,9 @@
                     <strong>현장 선택</strong>
                 </li>
                 <li>
-                    <strong>점검일 설정</strong><br>
-                    매월 점검일 설정 (기본값: 매월 4일)
+                    <strong>월별 점검일 설정</strong><br>
+                    각 월별로 점검일(1~31일)을 개별 설정 가능 (기본값: 매월 4일)<br>
+                    현장별로 다른 점검 일정을 운영할 수 있습니다.
                 </li>
                 <li>
                     <strong>저장</strong>
@@ -1745,6 +1768,14 @@
                 필요시 내용을 수정하여 "삭제됨" 표시 후 보관하는 것을 권장합니다.
             </div>
 
+            <h3>댓글 관리</h3>
+            <p>공지사항 상세 페이지에서 사용자들이 댓글을 작성할 수 있습니다.</p>
+            <ul>
+                <li>댓글에 텍스트, 이미지, 파일 첨부 가능</li>
+                <li>작성자 본인 또는 관리자가 댓글 수정/삭제 가능</li>
+                <li>PENDING 상태의 사용자는 댓글 작성 불가</li>
+            </ul>
+
             <h3>공지 팝업 설정</h3>
             <p>중요 공지는 로그인 시 팝업으로 표시됩니다. 사용자가 읽음 처리하면 다시 표시되지 않습니다.</p>
         </section>
@@ -1847,7 +1878,7 @@
                 <tbody>
                     <tr><td>{{name}}</td><td>수신자 이름</td><td>홍길동</td></tr>
                     <tr><td>{{team}}</td><td>팀 이름</td><td>생산1팀</td></tr>
-                    <tr><td>{{month}}</td><td>해당 월</td><td>2024년 12월</td></tr>
+                    <tr><td>{{month}}</td><td>해당 월</td><td>2026년 1월</td></tr>
                     <tr><td>{{link}}</td><td>관련 페이지 링크</td><td>https://...</td></tr>
                     <tr><td>{{reason}}</td><td>반려 사유 (반려 시)</td><td>TBM 누락일 확인 필요</td></tr>
                 </tbody>
@@ -2168,7 +2199,7 @@ GROUP BY c.id, c.title;</pre>
 
         <footer style="text-align: center; padding: 30px; color: #64748b; font-size: 0.9rem;">
             <p>수산세보틱스 안전관리 플랫폼 - 관리자 업무 절차서</p>
-            <p>최종 수정일: 2025년 12월</p>
+            <p>최종 수정일: 2026년 1월</p>
         </footer>
         </div><!-- /.container -->
     </div><!-- /.main-wrapper -->
