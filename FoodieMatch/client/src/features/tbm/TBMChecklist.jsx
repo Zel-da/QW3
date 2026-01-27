@@ -241,6 +241,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     setIsDraftViewMode(false);
   }, [selectedTeam, date]);
 
+  // 날짜 변경 시 팀별 메모리 캐시 초기화 (다른 날짜로 녹음 데이터가 넘어가는 것 방지)
+  useEffect(() => {
+    setTeamDrafts({});
+  }, [date]);
+
   // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
   useEffect(() => {
     if (selectedTeam && date && !reportForEdit) {
@@ -271,8 +276,15 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           } else {
             setExistingReport(null);
             setIsViewMode(false);
-            // 새 작성 모드로 초기화는 하지 않음 - draft 복원이 처리함
-            // draft가 없으면 빈 상태로 시작
+            setIsDraftViewMode(false);
+            // 이전 날짜 데이터가 남지 않도록 폼 초기화
+            setFormState({});
+            setSignatures({});
+            setAbsentUsers({});
+            setRemarks('');
+            setRemarksImages([]);
+            setAudioRecording(null);
+            setTranscription(null);
           }
           // API 체크 완료 표시 (draft 복원 트리거)
           setApiCheckComplete(true);
