@@ -386,7 +386,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   useEffect(() => {
     if (reportForEdit) {
       initializeFormFromReport(reportForEdit);
-      setIsViewMode(false); // 수정 모드이므로 viewMode는 false
+      setIsViewMode(true); // 항상 조회 모드로 먼저 표시, 수정하기 버튼 클릭 시 수정 모드 전환
     } else if (!existingReport) {
       // 새 작성 모드일 때만 초기화
       setFormState({});
@@ -650,6 +650,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const handleSubmit = async () => {
     if (!user?.id) {
       toast({ title: "로그인이 필요합니다.", variant: "destructive" });
+      return;
+    }
+
+    // 기존 TBM 수정 시 권한 체크 (새 작성은 통과)
+    const reportIdToCheck = reportForEdit?.id || existingReport?.id;
+    if (reportIdToCheck && !canEditReport) {
+      toast({ title: "권한이 없습니다", description: "본인이 작성한 TBM만 수정할 수 있습니다.", variant: "destructive" });
       return;
     }
 
@@ -940,12 +947,17 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       )}
 
       {/* 기존 TBM 발견 시 알림 */}
-      {isViewMode && existingReport && (
+      {isViewMode && (existingReport || reportForEdit) && (
         <Alert className="mb-4 border-blue-200 bg-blue-50">
           <CheckCircle2 className="h-4 w-4 text-blue-600" />
           <AlertTitle className="text-blue-800">기존 TBM 발견</AlertTitle>
           <AlertDescription className="text-blue-700">
-            해당 날짜({new Date(existingReport.reportDate).toLocaleDateString('ko-KR')})에 이미 작성된 TBM이 있습니다.
+            {(() => {
+              const report = existingReport || reportForEdit;
+              return report?.reportDate
+                ? `해당 날짜(${new Date(report.reportDate).toLocaleDateString('ko-KR')})에 이미 작성된 TBM이 있습니다.`
+                : '이미 작성된 TBM이 있습니다.';
+            })()}
             <span className="font-medium ml-1">조회 모드</span>로 표시 중입니다.
           </AlertDescription>
           <div className="mt-3 flex gap-2">
