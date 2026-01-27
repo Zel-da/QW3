@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X } from 'lucide-react';
+import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X, Undo2 } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 import { SignatureDialog } from '@/components/SignatureDialog';
@@ -893,6 +893,7 @@ export default function MonthlyReportPage() {
                 const isApproved = approvalRequest.status === 'APPROVED';
                 const isPending = approvalRequest.status === 'PENDING';
                 const isRejected = approvalRequest.status === 'REJECTED';
+                const isWithdrawn = approvalRequest.status === 'WITHDRAWN';
 
                 return (
                   <div className="space-y-4">
@@ -924,6 +925,12 @@ export default function MonthlyReportPage() {
                             <>
                               <XCircle className="h-4 w-4 text-red-600" />
                               <Badge variant="destructive">반려됨</Badge>
+                            </>
+                          )}
+                          {isWithdrawn && (
+                            <>
+                              <Undo2 className="h-4 w-4 text-gray-600" />
+                              <Badge variant="secondary" className="bg-gray-100 text-gray-800">회수됨</Badge>
                             </>
                           )}
                         </div>

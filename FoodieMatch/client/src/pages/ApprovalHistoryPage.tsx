@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
-import { CheckCircle, XCircle, Clock, FileText, ArrowLeft, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, ArrowLeft, AlertCircle, Undo2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { ApprovalRequest } from '@shared/schema';
 
 const fetchSentApprovals = async (status?: string): Promise<ApprovalRequest[]> => {
@@ -34,6 +35,8 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300"><CheckCircle className="w-3 h-3 mr-1" />승인</Badge>;
     case 'REJECTED':
       return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300"><XCircle className="w-3 h-3 mr-1" />반려</Badge>;
+    case 'WITHDRAWN':
+      return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300"><Undo2 className="w-3 h-3 mr-1" />회수됨</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -43,6 +46,8 @@ export default function ApprovalHistoryPage() {
   const [, setLocation] = useLocation();
   const [sentStatus, setSentStatus] = useState<string>('ALL');
   const [receivedStatus, setReceivedStatus] = useState<string>('ALL');
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { data: sentApprovals = [], isLoading: sentLoading, isError: sentError, refetch: refetchSent } = useQuery({
     queryKey: ['sentApprovals', sentStatus],
@@ -53,6 +58,28 @@ export default function ApprovalHistoryPage() {
     queryKey: ['receivedApprovals', receivedStatus],
     queryFn: () => fetchReceivedApprovals(receivedStatus === 'ALL' ? undefined : receivedStatus),
   });
+
+  const handleWithdraw = async (approvalId: string) => {
+    if (!confirm('결재 요청을 회수하시겠습니까?')) return;
+
+    setWithdrawingId(approvalId);
+    try {
+      await axios.post(`/api/approvals/${approvalId}/withdraw`);
+      toast({
+        title: '결재 회수 완료',
+        description: '결재 요청이 회수되었습니다.',
+      });
+      refetchSent();
+    } catch (error: any) {
+      toast({
+        title: '결재 회수 실패',
+        description: error.response?.data?.message || '결재 회수 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,6 +123,7 @@ export default function ApprovalHistoryPage() {
                       <SelectItem value="PENDING">대기 중</SelectItem>
                       <SelectItem value="APPROVED">승인됨</SelectItem>
                       <SelectItem value="REJECTED">반려됨</SelectItem>
+                      <SelectItem value="WITHDRAWN">회수됨</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -113,7 +141,7 @@ export default function ApprovalHistoryPage() {
                   <EmptyState
                     icon={FileText}
                     title="결재 요청 내역이 없습니다"
-                    description={sentStatus === 'ALL' ? "아직 결재를 요청하지 않았습니다." : `${sentStatus === 'PENDING' ? '대기 중인' : sentStatus === 'APPROVED' ? '승인된' : '반려된'} 결재가 없습니다.`}
+                    description={sentStatus === 'ALL' ? "아직 결재를 요청하지 않았습니다." : `${sentStatus === 'PENDING' ? '대기 중인' : sentStatus === 'APPROVED' ? '승인된' : sentStatus === 'REJECTED' ? '반려된' : '회수된'} 결재가 없습니다.`}
                   />
                 ) : (
                   <div className="overflow-x-auto">
@@ -127,6 +155,7 @@ export default function ApprovalHistoryPage() {
                           <TableHead>요청 일시</TableHead>
                           <TableHead>처리 일시</TableHead>
                           <TableHead>반려 사유</TableHead>
+                          <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -153,6 +182,19 @@ export default function ApprovalHistoryPage() {
                                 <span className="text-sm text-red-600">{approval.rejectionReason}</span>
                               ) : (
                                 '-'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {approval.status === 'PENDING' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleWithdraw(approval.id)}
+                                  disabled={withdrawingId === approval.id}
+                                >
+                                  <Undo2 className="h-3 w-3 mr-1" />
+                                  {withdrawingId === approval.id ? '회수 중...' : '회수'}
+                                </Button>
                               )}
                             </TableCell>
                           </TableRow>

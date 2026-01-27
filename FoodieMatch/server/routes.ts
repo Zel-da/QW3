@@ -1699,10 +1699,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 3. 이미 결재 요청이 있는지 확인
       if (monthlyApproval.approvalRequest) {
-        return res.status(400).json({
-          message: "이미 결재 요청이 존재합니다",
-          approval: monthlyApproval.approvalRequest
-        });
+        // 회수된 결재는 삭제 후 재요청 허용
+        if (monthlyApproval.approvalRequest.status === 'WITHDRAWN') {
+          await prisma.approvalRequest.delete({
+            where: { id: monthlyApproval.approvalRequest.id }
+          });
+        } else {
+          return res.status(400).json({
+            message: "이미 결재 요청이 존재합니다",
+            approval: monthlyApproval.approvalRequest
+          });
+        }
       }
 
       // 4. ApprovalRequest 생성
@@ -1948,6 +1955,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to reject:", error);
       res.status(500).json({ message: "결재 반려에 실패했습니다" });
+    }
+  });
+
+  // 결재 회수 (요청자가 PENDING 상태의 결재를 취소)
+  app.post("/api/approvals/:id/withdraw", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.user!.id;
+
+      const approval = await prisma.approvalRequest.findUnique({
+        where: { id },
+        include: {
+          requester: true,
+          approver: true,
+          monthlyReport: {
+            include: { team: true }
+          }
+        }
+      });
+
+      if (!approval) {
+        return res.status(404).json({ message: "결재 요청을 찾을 수 없습니다" });
+      }
+
+      if (approval.requesterId !== userId) {
+        return res.status(403).json({ message: "본인이 요청한 결재만 회수할 수 있습니다" });
+      }
+
+      if (approval.status !== 'PENDING') {
+        return res.status(400).json({ message: "대기 중인 결재만 회수할 수 있습니다" });
+      }
+
+      // ApprovalRequest 상태를 WITHDRAWN으로 변경하고, MonthlyApproval 상태를 DRAFT로 되돌림
+      const [updated] = await prisma.$transaction([
+        prisma.approvalRequest.update({
+          where: { id },
+          data: {
+            status: 'WITHDRAWN',
+            approvedAt: new Date()
+          },
+          include: {
+            requester: true,
+            approver: true,
+            monthlyReport: {
+              include: { team: true }
+            }
+          }
+        }),
+        prisma.monthlyApproval.update({
+          where: { id: approval.reportId },
+          data: { status: 'DRAFT' }
+        })
+      ]);
+
+      // 승인자에게 회수 알림 이메일 발송
+      if (updated.approver?.email) {
+        try {
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('APPROVAL_WITHDRAWN', updated.approver.email, updated.approverId, {
+            REQUESTER_NAME: updated.requester.name || updated.requester.username,
+            APPROVER_NAME: updated.approver.name || updated.approver.username,
+            TEAM_NAME: updated.monthlyReport.team.name,
+            YEAR: String(updated.monthlyReport.year),
+            MONTH: String(updated.monthlyReport.month),
+          });
+          console.log(`[Approval] Withdrawal notification email sent to ${updated.approver.email}`);
+        } catch (emailError) {
+          console.error(`[Approval] Withdrawal email sending failed:`, emailError);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to withdraw approval:", error);
+      res.status(500).json({ message: "결재 회수에 실패했습니다" });
     }
   });
 
