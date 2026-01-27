@@ -17,6 +17,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [maskedUsername, setMaskedUsername] = useState('');
+  const [emailSent, setEmailSent] = useState(true);
   const { toast } = useToast();
 
   // 아이디 찾기
@@ -48,6 +50,10 @@ export default function ForgotPasswordPage() {
 
       setSuccess(true);
       setSuccessMessage(data.message);
+      if (data.maskedUsername) {
+        setMaskedUsername(data.maskedUsername);
+      }
+      setEmailSent(data.emailSent !== false);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -90,6 +96,7 @@ export default function ForgotPasswordPage() {
 
       setSuccess(true);
       setSuccessMessage(data.message);
+      setEmailSent(data.emailSent !== false);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -112,11 +119,30 @@ export default function ForgotPasswordPage() {
         <main className="container mx-auto p-4 lg:p-6 flex justify-center items-center min-h-[80vh]">
           <Card className="w-full max-w-md">
             <CardContent className="p-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${emailSent ? 'text-green-500' : 'text-amber-500'}`} />
               <h2 className="text-xl font-semibold mb-2">
-                {activeTab === 'username' ? '아이디 찾기 요청 완료' : '비밀번호 재설정 요청 완료'}
+                {activeTab === 'username' ? '아이디 찾기 결과' : '비밀번호 재설정 요청'}
               </h2>
-              <p className="text-muted-foreground mb-6">{successMessage}</p>
+              <p className="text-muted-foreground mb-4">{successMessage}</p>
+
+              {/* 아이디 찾기: 마스킹된 아이디 직접 표시 */}
+              {activeTab === 'username' && maskedUsername && (
+                <div className="bg-muted p-4 rounded-lg mb-4">
+                  <p className="text-sm text-muted-foreground mb-1">찾은 아이디</p>
+                  <p className="text-2xl font-bold tracking-wider">{maskedUsername}</p>
+                </div>
+              )}
+
+              {/* 이메일 발송 실패 시 안내 */}
+              {!emailSent && activeTab === 'password' && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 text-left">
+                  <p className="text-sm text-amber-800 font-medium mb-1">이메일 발송 실패</p>
+                  <p className="text-sm text-amber-700">
+                    관리자에게 비밀번호 초기화를 요청해주세요.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <Button asChild className="w-full">
                   <Link href="/login">로그인 페이지로 이동</Link>
@@ -128,6 +154,8 @@ export default function ForgotPasswordPage() {
                     setSuccess(false);
                     setEmail('');
                     setUsernameOrEmail('');
+                    setMaskedUsername('');
+                    setEmailSent(true);
                   }}
                 >
                   다시 요청하기

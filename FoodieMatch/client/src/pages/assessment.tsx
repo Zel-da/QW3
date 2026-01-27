@@ -39,7 +39,7 @@ const submitAssessment = async ({ courseId, userId, answers }: { courseId: strin
     }
   });
 
-  const passed = (score / questions.length) >= 0.8;
+  const passed = (score / questions.length) >= 0.6;
 
   if (passed) {
     // 합격: completed true, currentStep 3
@@ -230,6 +230,7 @@ export default function AssessmentPage() {
               <div className="text-center space-y-4">
                 <h2 className="text-3xl font-bold">{result.passed ? '합격' : '불합격'}</h2>
                 <p className="text-xl">점수: {result.score} / {result.totalQuestions}</p>
+                <p className="text-sm text-muted-foreground">(합격 기준: 60% 이상)</p>
                 {result.passed ? (
                   <div>
                     <p className="text-green-600">축하합니다! 과정을 성공적으로 이수하셨습니다.</p>
@@ -240,9 +241,35 @@ export default function AssessmentPage() {
                     }} className="mt-4">내 이수증 보러가기</Button>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-red-600">아쉽지만 합격 기준에 도달하지 못했습니다. 다시 시도해주세요.</p>
-                    <Button onClick={() => navigate(`/courses/${courseId}/content`)} className="mt-4">과정으로 돌아가기</Button>
+                  <div className="space-y-3">
+                    <p className="text-red-600">아쉽지만 합격 기준에 도달하지 못했습니다.</p>
+                    <p className="text-sm text-muted-foreground">맞춘 문제는 유지되고, 틀린 문제만 다시 풀 수 있습니다.</p>
+                    <div className="flex gap-3 justify-center mt-4">
+                      <Button onClick={() => {
+                        // 틀린 문제의 답변과 피드백만 제거, 맞춘 문제는 유지
+                        const newAnswers: { [key: string]: string } = {};
+                        const newFeedback: { [questionId: string]: { isCorrect: boolean; correctAnswer: number } } = {};
+                        if (questions) {
+                          questions.forEach((q) => {
+                            const qFeedback = feedback[q.id];
+                            if (qFeedback && qFeedback.isCorrect) {
+                              // 맞춘 문제: 답변과 피드백 유지
+                              newAnswers[q.id] = answers[q.id];
+                              newFeedback[q.id] = qFeedback;
+                            }
+                            // 틀린 문제: 답변과 피드백 제거 (다시 풀 수 있도록)
+                          });
+                        }
+                        setAnswers(newAnswers);
+                        setFeedback(newFeedback);
+                        setResult(null);
+                      }}>
+                        틀린 문제 다시 풀기
+                      </Button>
+                      <Button variant="outline" onClick={() => navigate(`/courses/${courseId}/content`)}>
+                        과정으로 돌아가기
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -65,6 +65,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [holidayInfo, setHolidayInfo] = useState(null);
   // 저장 중 상태
   const [isSaving, setIsSaving] = useState(false);
+  // 사진 업로드 중 상태
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   // 팀별 draft 캐시 (메모리) - 팀 전환 시 작성 중인 내용 유지
   const [teamDrafts, setTeamDrafts] = useState({});
   // 페이지 이탈 시 자동 임시저장 중 상태
@@ -548,6 +550,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     const formData = new FormData();
     Array.from(files).forEach(file => formData.append('files', file));
 
+    setIsUploadingImages(true);
     try {
       const res = await apiClient.post('/api/upload-multiple', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const newImages = res.data.files.map(f => f.url);
@@ -555,6 +558,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       toast({ title: `${files.length}개의 사진이 업로드되었습니다.` });
     } catch (err) {
       toast({ title: "사진 업로드 실패", description: err.response?.data?.message || err.message, variant: "destructive" });
+    } finally {
+      setIsUploadingImages(false);
     }
   };
 
@@ -1328,7 +1333,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   }}
                   maxFiles={50}
                   maxSize={50 * 1024 * 1024}
+                  disabled={isUploadingImages}
                 />
+              )}
+              {isUploadingImages && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="text-sm text-blue-700 font-medium">업로드 중...</span>
+                </div>
               )}
               {remarksImages.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-3">

@@ -438,6 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // 재설정 링크 이메일 발송 (DB 템플릿 사용)
+      let emailSent = false;
       try {
         const { sendEmailByType } = await import('./simpleEmailService');
         const resetUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/reset-password/${token}`;
@@ -445,12 +446,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           USER_NAME: user.name || user.username,
           RESET_URL: resetUrl,
         });
+        emailSent = true;
         console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
       } catch (emailError) {
         console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
       }
 
-      res.json({ message: "등록된 이메일이 있다면 비밀번호 재설정 링크가 발송됩니다" });
+      res.json({
+        message: emailSent
+          ? "비밀번호 재설정 링크가 이메일로 발송되었습니다."
+          : "이메일 발송에 실패했습니다. 관리자에게 비밀번호 초기화를 요청해주세요.",
+        emailSent,
+      });
     } catch (error) {
       console.error('비밀번호 찾기 오류:', error);
       res.status(500).json({ message: "비밀번호 찾기 요청 중 오류가 발생했습니다" });
@@ -567,7 +574,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? user.username.substring(0, 3) + '*'.repeat(user.username.length - 3)
         : user.username;
 
-      // 이메일 발송 (DB 템플릿 사용)
+      // 이메일 발송 시도 (실패해도 마스킹된 아이디는 화면에 표시)
+      let emailSent = false;
       try {
         const { sendEmailByType } = await import('./simpleEmailService');
         const loginUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/login`;
@@ -576,12 +584,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           USERNAME: user.username,
           LOGIN_URL: loginUrl,
         });
+        emailSent = true;
         console.log(`아이디 찾기 이메일 발송: ${email}`);
       } catch (emailError) {
         console.error('아이디 찾기 이메일 발송 실패:', emailError);
       }
 
-      res.json({ message: "등록된 이메일이 있다면 아이디 정보가 발송됩니다" });
+      res.json({
+        message: emailSent
+          ? "아이디 정보를 이메일로 발송했습니다."
+          : "아이디를 찾았습니다. (이메일 발송은 실패했습니다)",
+        maskedUsername,
+        emailSent,
+      });
     } catch (error) {
       console.error('아이디 찾기 오류:', error);
       res.status(500).json({ message: "아이디 찾기 요청 중 오류가 발생했습니다" });
