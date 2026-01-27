@@ -10,8 +10,8 @@ const SITE_SENDER_NAMES: Record<string, string> = {
   'DEFAULT': '안전보건팀'
 };
 
-// 사이트별 Reply-To 이메일 (답장 시 해당 담당자에게 전달)
-const SITE_REPLY_TO: Record<string, string> = {
+// 사이트별 발신 이메일 주소
+const SITE_FROM_EMAIL: Record<string, string> = {
   'ASAN': 'soosan7143@soosan.co.kr',
   'HWASEONG': 'gy.pyo@soosan.co.kr',
 };
@@ -30,17 +30,20 @@ export function getSenderNameBySite(site?: string): string {
  */
 export function getSenderAddress(site?: string): string {
   const senderName = getSenderNameBySite(site);
-  const senderEmail = process.env.SMTP_USER || process.env.SMTP_FROM || 'noreply@soosan.co.kr';
+  // 사이트별 발신 이메일이 있으면 사용, 없으면 기본값
+  const defaultEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@soosan.co.kr';
+  const upperSite = site?.toUpperCase() || '';
+  const senderEmail = SITE_FROM_EMAIL[upperSite] || defaultEmail;
   return `${senderName} <${senderEmail}>`;
 }
 
 /**
- * 사이트별 Reply-To 주소 반환
+ * 사이트별 Reply-To 주소 반환 (FROM과 동일한 담당자 이메일)
  */
 export function getReplyToAddress(site?: string): string | undefined {
   if (!site) return undefined;
   const upperSite = site.toUpperCase();
-  return SITE_REPLY_TO[upperSite];
+  return SITE_FROM_EMAIL[upperSite];
 }
 
 /**

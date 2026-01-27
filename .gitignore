@@ -60,3 +60,4 @@ obj/
 *.cache
 *.bak
 nul
+SERVER_ARCHITECTURE.md
