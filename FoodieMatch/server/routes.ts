@@ -5038,11 +5038,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // 기존 TBM 조회하여 날짜 확인
       const existingReport = await prisma.dailyReport.findUnique({
-        where: { id: parsedReportId }
+        where: { id: parsedReportId },
+        include: { reportDetails: { take: 1, select: { authorId: true } } }
       });
 
       if (!existingReport) {
         return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
+      }
+
+      // 작성자 본인 또는 ADMIN만 수정 가능
+      const currentUser = req.session.user!;
+      const originalAuthorId = existingReport.reportDetails[0]?.authorId;
+      if (currentUser.role !== 'ADMIN' && originalAuthorId && originalAuthorId !== currentUser.id) {
+        return res.status(403).json({ message: "본인이 작성한 TBM만 수정할 수 있습니다." });
       }
 
       const reportData = tbmReportSchema.partial().parse(req.body);
@@ -5147,11 +5155,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { audioRecording } = req.body;
 
       const existingReport = await prisma.dailyReport.findUnique({
-        where: { id: parseInt(reportId) }
+        where: { id: parseInt(reportId) },
+        include: { reportDetails: { take: 1, select: { authorId: true } } }
       });
 
       if (!existingReport) {
         return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
+      }
+
+      // 작성자 본인 또는 ADMIN만 수정 가능
+      const currentUser = req.session.user!;
+      const originalAuthorId = existingReport.reportDetails[0]?.authorId;
+      if (currentUser.role !== 'ADMIN' && originalAuthorId && originalAuthorId !== currentUser.id) {
+        return res.status(403).json({ message: "본인이 작성한 TBM만 수정할 수 있습니다." });
       }
 
       // 기존 remarks 파싱
@@ -5181,7 +5197,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/tbm/:reportId", requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
-      await prisma.dailyReport.delete({ where: { id: parseInt(reportId) } });
+      const parsedId = parseInt(reportId);
+
+      // 작성자 본인 또는 ADMIN만 삭제 가능
+      const existingReport = await prisma.dailyReport.findUnique({
+        where: { id: parsedId },
+        include: { reportDetails: { take: 1, select: { authorId: true } } }
+      });
+
+      if (!existingReport) {
+        return res.status(404).json({ message: "TBM을 찾을 수 없습니다." });
+      }
+
+      const currentUser = req.session.user!;
+      const originalAuthorId = existingReport.reportDetails[0]?.authorId;
+      if (currentUser.role !== 'ADMIN' && originalAuthorId && originalAuthorId !== currentUser.id) {
+        return res.status(403).json({ message: "본인이 작성한 TBM만 삭제할 수 있습니다." });
+      }
+
+      await prisma.dailyReport.delete({ where: { id: parsedId } });
       res.status(204).send();
     } catch (error) { res.status(500).json({ message: "Failed to delete report" }); }
   });

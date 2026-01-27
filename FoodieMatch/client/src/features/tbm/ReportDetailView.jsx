@@ -23,7 +23,7 @@ const formatFileSize = (bytes) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify }) => {
+const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, currentUser }) => {
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -68,21 +68,29 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify })
     if (error) return <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>;
     if (!report) return <p>표시할 정보가 없습니다.</p>;
 
+    // 작성자 본인 또는 ADMIN만 수정/삭제 가능
+    const originalAuthorId = report.reportDetails?.[0]?.authorId;
+    const canEdit = currentUser?.role === 'ADMIN' || !originalAuthorId || originalAuthorId === currentUser?.id;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={onBackToList}><ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기</Button>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => onModify(report.id)}
-                        disabled={isLoadingModify}
-                    >
-                        {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
-                    </Button>
-                    <Button variant="destructive" onClick={handleDelete}>
-                        삭제
-                    </Button>
-                </div>
+                {canEdit ? (
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => onModify(report.id)}
+                            disabled={isLoadingModify}
+                        >
+                            {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            삭제
+                        </Button>
+                    </div>
+                ) : (
+                    <span className="text-sm text-muted-foreground">작성자만 수정할 수 있습니다</span>
+                )}
             </div>
             <Card>
                 <CardHeader>

@@ -94,6 +94,16 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     return hasFormData || hasSignatures || hasRemarks || hasImages;
   }, [formState, signatures, remarks, remarksImages, isViewMode, loading]);
 
+  // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
+  const canEditReport = React.useMemo(() => {
+    if (user?.role === 'ADMIN') return true;
+    const report = reportForEdit || existingReport;
+    if (!report?.reportDetails?.length) return true; // 작성자 정보 없으면 허용
+    const originalAuthorId = report.reportDetails[0]?.authorId;
+    if (!originalAuthorId) return true;
+    return originalAuthorId === user?.id;
+  }, [user, reportForEdit, existingReport]);
+
   // 저장하지 않은 변경사항 경고 훅
   const {
     showDialog: showUnsavedDialog,
@@ -939,16 +949,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <span className="font-medium ml-1">조회 모드</span>로 표시 중입니다.
           </AlertDescription>
           <div className="mt-3 flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setIsViewMode(false);
-                // 수정 모드로 전환 - reportForEdit와 동일하게 처리
-              }}
-            >
-              수정하기
-            </Button>
+            {canEditReport ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsViewMode(false);
+                  // 수정 모드로 전환 - reportForEdit와 동일하게 처리
+                }}
+              >
+                수정하기
+              </Button>
+            ) : (
+              <span className="text-sm text-muted-foreground self-center">작성자만 수정할 수 있습니다</span>
+            )}
             <Button
               size="sm"
               variant="secondary"
@@ -1473,12 +1487,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             >
               월별 보고서 보기
             </Button>
-            <Button
-              size="lg"
-              onClick={() => setIsViewMode(false)}
-            >
-              수정하기
-            </Button>
+            {canEditReport && (
+              <Button
+                size="lg"
+                onClick={() => setIsViewMode(false)}
+              >
+                수정하기
+              </Button>
+            )}
           </>
         ) : (
           <Button

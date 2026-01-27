@@ -134,7 +134,7 @@ export default function TbmPage() {
       case 'list':
         return <ReportListView onSelectReport={handleSelectReport} onBack={() => setView('checklist')} site={site} />;
       case 'detail':
-        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} isLoadingModify={isLoadingModify} />;
+        return <ReportDetailView reportId={reportForEdit?.id} onBackToList={handleBackToList} onModify={handleModifyReport} isLoadingModify={isLoadingModify} currentUser={user} />;
       case 'checklist':
       default:
         return <TBMChecklist reportForEdit={reportForEdit} onFinishEditing={handleFinishEditing} date={date} site={site} />;
