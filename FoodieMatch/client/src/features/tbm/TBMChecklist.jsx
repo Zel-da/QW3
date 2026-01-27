@@ -949,20 +949,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <span className="font-medium ml-1">조회 모드</span>로 표시 중입니다.
           </AlertDescription>
           <div className="mt-3 flex gap-2">
-            {canEditReport ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setIsViewMode(false);
-                  // 수정 모드로 전환 - reportForEdit와 동일하게 처리
-                }}
-              >
-                수정하기
-              </Button>
-            ) : (
-              <span className="text-sm text-muted-foreground self-center">작성자만 수정할 수 있습니다</span>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!canEditReport) {
+                  toast({ title: "권한이 없습니다", description: "본인이 작성한 TBM만 수정할 수 있습니다.", variant: "destructive" });
+                  return;
+                }
+                setIsViewMode(false);
+              }}
+            >
+              수정하기
+            </Button>
             <Button
               size="sm"
               variant="secondary"
@@ -1487,14 +1486,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             >
               월별 보고서 보기
             </Button>
-            {canEditReport && (
-              <Button
-                size="lg"
-                onClick={() => setIsViewMode(false)}
-              >
-                수정하기
-              </Button>
-            )}
+            <Button
+              size="lg"
+              onClick={() => {
+                if (!canEditReport) {
+                  toast({ title: "권한이 없습니다", description: "본인이 작성한 TBM만 수정할 수 있습니다.", variant: "destructive" });
+                  return;
+                }
+                setIsViewMode(false);
+              }}
+            >
+              수정하기
+            </Button>
           </>
         ) : (
           <Button

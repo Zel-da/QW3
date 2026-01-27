@@ -72,25 +72,37 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
     const originalAuthorId = report.reportDetails?.[0]?.authorId;
     const canEdit = currentUser?.role === 'ADMIN' || !originalAuthorId || originalAuthorId === currentUser?.id;
 
+    const handleModifyWithCheck = () => {
+        if (!canEdit) {
+            alert('권한이 없습니다. 본인이 작성한 TBM만 수정할 수 있습니다.');
+            return;
+        }
+        onModify(report.id);
+    };
+
+    const handleDeleteWithCheck = () => {
+        if (!canEdit) {
+            alert('권한이 없습니다. 본인이 작성한 TBM만 삭제할 수 있습니다.');
+            return;
+        }
+        handleDelete();
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={onBackToList}><ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기</Button>
-                {canEdit ? (
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => onModify(report.id)}
-                            disabled={isLoadingModify}
-                        >
-                            {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete}>
-                            삭제
-                        </Button>
-                    </div>
-                ) : (
-                    <span className="text-sm text-muted-foreground">작성자만 수정할 수 있습니다</span>
-                )}
+                <div className="flex gap-2">
+                    <Button
+                        onClick={handleModifyWithCheck}
+                        disabled={isLoadingModify}
+                    >
+                        {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
+                    </Button>
+                    <Button variant="destructive" onClick={handleDeleteWithCheck}>
+                        삭제
+                    </Button>
+                </div>
             </div>
             <Card>
                 <CardHeader>
