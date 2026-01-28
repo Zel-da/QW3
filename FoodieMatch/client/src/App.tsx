@@ -211,7 +211,7 @@ function App() {
                 </ProtectedRoute>
               </Route>
               <Route path="/admin-dashboard">
-                <ProtectedRoute roles={WORKER_ROLES}>
+                <ProtectedRoute roles={ACTIVE_ROLES}>
                   <AdminDashboardPage />
                 </ProtectedRoute>
               </Route>
@@ -233,7 +233,7 @@ function App() {
                 </ProtectedRoute>
               </Route>
               <Route path="/education-monitoring">
-                <ProtectedRoute roles={[Role.ADMIN]}>
+                <ProtectedRoute roles={ACTIVE_ROLES}>
                   <EducationMonitoringPage />
                 </ProtectedRoute>
               </Route>

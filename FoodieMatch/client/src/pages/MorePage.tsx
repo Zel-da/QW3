@@ -26,7 +26,7 @@ interface MenuItem {
   icon: typeof Shield;
   label: string;
   description?: string;
-  showTo: ('ADMIN' | 'TEAM_LEADER' | 'WORKER' | 'APPROVER')[];
+  showTo: ('ADMIN' | 'TEAM_LEADER' | 'EXECUTIVE_LEADER' | 'WORKER' | 'APPROVER')[];
 }
 
 export default function MorePage() {
@@ -42,21 +42,21 @@ export default function MorePage() {
           icon: Shield,
           label: '안전점검',
           description: '월별 장비 안전점검',
-          showTo: ['ADMIN', 'TEAM_LEADER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER'],
         },
         {
           href: '/monthly-report',
           icon: FileText,
           label: '월별 보고서',
           description: 'TBM 월별 보고서 및 통계',
-          showTo: ['ADMIN', 'TEAM_LEADER', 'APPROVER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'APPROVER'],
         },
         {
           href: '/inspection-gallery',
           icon: BookOpen,
           label: '점검 갤러리',
           description: '안전점검 사진 기록',
-          showTo: ['ADMIN', 'TEAM_LEADER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'APPROVER'],
         },
       ],
     },
@@ -68,7 +68,7 @@ export default function MorePage() {
           icon: BarChart3,
           label: '관리 대시보드',
           description: '전체 현황 모니터링',
-          showTo: ['ADMIN', 'TEAM_LEADER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'APPROVER'],
         },
         {
           href: '/admin',
@@ -89,7 +89,7 @@ export default function MorePage() {
           icon: BookOpen,
           label: '교육 현황',
           description: '교육 이수 현황 모니터링',
-          showTo: ['ADMIN', 'TEAM_LEADER'],
+          showTo: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'APPROVER'],
         },
       ],
     },
