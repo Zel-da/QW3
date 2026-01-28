@@ -3010,7 +3010,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           reportDetails: {
             include: { attachments: true }
-          }
+          },
+          reportSignatures: true
         },
         orderBy: { reportDate: 'asc' },
       });

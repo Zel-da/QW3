@@ -1,12 +1,35 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { CheckCircle, XCircle } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  ClipboardCheck,
+  ShieldCheck,
+  AlertTriangle,
+  Users,
+  FileText,
+  ExternalLink,
+  Calendar,
+  User,
+  Clock,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -46,10 +69,82 @@ interface ApprovalRequest {
   };
 }
 
+interface DailyReport {
+  id: number;
+  reportDate: string;
+  managerName?: string;
+  remarks?: string;
+  reportDetails: {
+    id: number;
+    checkState?: string;
+    actionDescription?: string;
+    actionTaken?: string;
+    actionStatus?: string;
+  }[];
+  reportSignatures: {
+    id: number;
+    userId?: string;
+    memberId?: number;
+    signedAt: string;
+    signatureImage?: string;
+  }[];
+}
+
+interface MonthlyData {
+  dailyReports: DailyReport[];
+  teamName?: string;
+  year: string;
+  month: string;
+  checklistTemplate?: any;
+  monthlyApproval?: any;
+  approver?: any;
+}
+
 const fetchApprovalRequest = async (approvalId: string) => {
   const res = await axios.get(`/api/approvals/${approvalId}`);
   return res.data;
 };
+
+const fetchMonthlyData = async (teamId: number, year: number, month: number) => {
+  const res = await axios.get(`/api/tbm/monthly?teamId=${teamId}&year=${year}&month=${month}`);
+  return res.data;
+};
+
+// Skeleton 로딩 컴포넌트
+function TBMSummarySkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* 통계 카드 스켈레톤 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-32" />
+                </div>
+              </div>
+              <Skeleton className="h-2 w-full mt-3" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      {/* 테이블 스켈레톤 */}
+      <Card>
+        <CardContent className="pt-6">
+          <Skeleton className="h-5 w-40 mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function ApprovalPage() {
   const [, params] = useRoute('/approval/:approvalId');
@@ -68,6 +163,78 @@ export default function ApprovalPage() {
     queryFn: () => fetchApprovalRequest(approvalId),
     enabled: !!approvalId,
   });
+
+  // TBM 월별 데이터 조회
+  const { data: monthlyData, isLoading: isMonthlyLoading } = useQuery<MonthlyData>({
+    queryKey: [
+      'tbmMonthly',
+      approvalRequest?.monthlyReport.teamId,
+      approvalRequest?.monthlyReport.year,
+      approvalRequest?.monthlyReport.month,
+    ],
+    queryFn: () =>
+      fetchMonthlyData(
+        approvalRequest!.monthlyReport.teamId,
+        approvalRequest!.monthlyReport.year,
+        approvalRequest!.monthlyReport.month
+      ),
+    enabled: !!approvalRequest && approvalRequest.status === 'PENDING',
+  });
+
+  // 요약 통계 계산
+  const summary = useMemo(() => {
+    if (!monthlyData?.dailyReports) return null;
+
+    const reports = monthlyData.dailyReports;
+    const totalDays = new Date(
+      approvalRequest!.monthlyReport.year,
+      approvalRequest!.monthlyReport.month,
+      0
+    ).getDate();
+    const writtenDays = reports.length;
+    const writeRate = totalDays > 0 ? Math.round((writtenDays / totalDays) * 100) : 0;
+
+    // 점검 결과 집계
+    let checkOk = 0;
+    let checkWarning = 0;
+    let checkBad = 0;
+    let totalItems = 0;
+
+    reports.forEach((r) => {
+      r.reportDetails.forEach((d) => {
+        totalItems++;
+        const state = d.checkState?.toUpperCase();
+        if (state === 'O' || state === 'OK' || state === 'GOOD' || state === '양호' || state === '○') {
+          checkOk++;
+        } else if (state === 'X' || state === 'BAD' || state === 'NG' || state === '불량' || state === '×') {
+          checkBad++;
+        } else if (state === '△' || state === 'WARNING' || state === '주의') {
+          checkWarning++;
+        } else if (state) {
+          // 다른 상태값이 있으면 양호로 처리
+          checkOk++;
+        }
+      });
+    });
+
+    // 서명 현황
+    const totalSignatures = reports.reduce((sum, r) => sum + r.reportSignatures.length, 0);
+
+    // 특이사항 (불량/주의 건수)
+    const issueCount = checkBad + checkWarning;
+
+    return {
+      totalDays,
+      writtenDays,
+      writeRate,
+      checkOk,
+      checkWarning,
+      checkBad,
+      totalItems,
+      totalSignatures,
+      issueCount,
+    };
+  }, [monthlyData, approvalRequest]);
 
   const approveMutation = useMutation({
     mutationFn: async (signature: string) => {
@@ -151,9 +318,7 @@ export default function ApprovalPage() {
   }
 
   if (error || !approvalRequest) {
-    // Check if it's a 401 error (not logged in)
     const isUnauthorized = error && 'response' in error && (error as any).response?.status === 401;
-    // Check if it's a 403 error (no permission)
     const isForbidden = error && 'response' in error && (error as any).response?.status === 403;
 
     return (
@@ -281,48 +446,277 @@ export default function ApprovalPage() {
     );
   }
 
+  const teamName = approvalRequest.monthlyReport.team?.name || '알 수 없음';
+  const year = approvalRequest.monthlyReport.year;
+  const month = approvalRequest.monthlyReport.month;
+  const requesterName = approvalRequest.requester.name || approvalRequest.requester.username;
+
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
-      <div className="container mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* A. 페이지 헤더 */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">TBM 월별 보고서 결재</CardTitle>
-            <div className="text-sm text-muted-foreground space-y-1 mt-2">
-              <p>팀: <span className="font-medium">{approvalRequest.monthlyReport.team?.name || '알 수 없음'}</span></p>
-              <p>기간: <span className="font-medium">{approvalRequest.monthlyReport.year}년 {approvalRequest.monthlyReport.month}월</span></p>
-              <p>요청자: <span className="font-medium">{approvalRequest.requester.name || approvalRequest.requester.username}</span></p>
-              <p>요청 일시: <span className="font-medium">{new Date(approvalRequest.requestedAt).toLocaleString('ko-KR')}</span></p>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* 보고서 내용 안내 */}
-            <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">보고서 내용</h3>
-              <p className="text-sm text-muted-foreground">
-                {approvalRequest.monthlyReport.team?.name || '해당 팀'}의 {approvalRequest.monthlyReport.year}년 {approvalRequest.monthlyReport.month}월 TBM 일지 수행 내역을 확인하시고 결재해 주시기 바랍니다.
-              </p>
-              <div className="mt-4">
-                <a
-                  href={`/monthly-report?teamId=${approvalRequest.monthlyReport.teamId}&year=${approvalRequest.monthlyReport.year}&month=${approvalRequest.monthlyReport.month}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline text-sm"
-                >
-                  → 상세 보고서 보기 (새 창)
-                </a>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl lg:text-2xl">TBM 월별 보고서 결재</CardTitle>
+                <Badge variant="outline" className="mt-1">결재 대기</Badge>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4 shrink-0" />
+                <span>팀:</span>
+                <span className="font-medium text-foreground">{teamName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-4 w-4 shrink-0" />
+                <span>기간:</span>
+                <span className="font-medium text-foreground">{year}년 {month}월</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="h-4 w-4 shrink-0" />
+                <span>요청자:</span>
+                <span className="font-medium text-foreground">{requesterName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span>요청일:</span>
+                <span className="font-medium text-foreground">
+                  {new Date(approvalRequest.requestedAt).toLocaleString('ko-KR')}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* B-C. TBM 요약 및 일별 현황 */}
+        {isMonthlyLoading ? (
+          <TBMSummarySkeleton />
+        ) : summary && monthlyData ? (
+          <>
+            {/* B. 요약 통계 카드 (3열 그리드) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 보고서 작성 */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">보고서 작성</p>
+                      <p className="text-lg font-bold">
+                        {summary.writtenDays}<span className="text-sm font-normal text-muted-foreground">/{summary.totalDays}일</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">작성률</span>
+                      <span className="font-medium">{summary.writeRate}%</span>
+                    </div>
+                    <Progress value={summary.writeRate} className="h-2" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 점검 결과 */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">점검 결과</p>
+                      <p className="text-lg font-bold">
+                        {summary.totalItems}<span className="text-sm font-normal text-muted-foreground"> 항목</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0 hover:bg-green-100">
+                      ○ {summary.checkOk}
+                    </Badge>
+                    <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0 hover:bg-yellow-100">
+                      △ {summary.checkWarning}
+                    </Badge>
+                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 hover:bg-red-100">
+                      X {summary.checkBad}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 특이사항 */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                      summary.issueCount > 0
+                        ? 'bg-amber-100 dark:bg-amber-900/30'
+                        : 'bg-emerald-100 dark:bg-emerald-900/30'
+                    }`}>
+                      <AlertTriangle className={`h-5 w-5 ${
+                        summary.issueCount > 0
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">특이사항</p>
+                      <p className="text-lg font-bold">
+                        {summary.issueCount > 0 ? (
+                          <span className="text-amber-600 dark:text-amber-400">주의 {summary.issueCount}건</span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400">양호</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    {summary.issueCount > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        불량 {summary.checkBad}건, 주의 {summary.checkWarning}건이 확인되었습니다.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        점검 항목에서 특이사항이 없습니다.
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* C. 일별 작성 현황 테이블 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">일별 작성 현황</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="max-h-[400px] overflow-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[100px]">날짜</TableHead>
+                        <TableHead>작성자</TableHead>
+                        <TableHead className="text-center">서명</TableHead>
+                        <TableHead className="text-center">점검상태</TableHead>
+                        <TableHead>비고</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {monthlyData.dailyReports.length > 0 ? (
+                        monthlyData.dailyReports.map((report) => {
+                          const badCount = report.reportDetails.filter((d) => {
+                            const s = d.checkState?.toUpperCase();
+                            return s === 'X' || s === 'BAD' || s === 'NG' || s === '불량' || s === '×'
+                              || s === '△' || s === 'WARNING' || s === '주의';
+                          }).length;
+                          const date = new Date(report.reportDate);
+                          const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+                          const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                          const dayStr = dayNames[date.getDay()];
+
+                          return (
+                            <TableRow key={report.id}>
+                              <TableCell className="font-medium whitespace-nowrap">
+                                {dateStr} ({dayStr})
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {report.managerName || '-'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {report.reportSignatures.length > 0 ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-300">
+                                    {report.reportSignatures.length}명
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {badCount > 0 ? (
+                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 hover:bg-amber-100">
+                                    주의 {badCount}건
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0 hover:bg-green-100">
+                                    정상
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                                {report.remarks || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            작성된 보고서가 없습니다.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
+
+        {/* D. 상세 보고서 링크 */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">상세 보고서</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {teamName}의 {year}년 {month}월 TBM 일지 전체 내역을 확인합니다.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+              >
+                <a
+                  href={`/monthly-report?teamId=${approvalRequest.monthlyReport.teamId}&year=${year}&month=${month}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-1.5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  보고서 보기
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* E. 서명 + 결재 버튼 */}
+        <Card>
+          <CardContent className="pt-6 space-y-4">
             {/* 서명 영역 */}
             <div className="space-y-2">
-              <label className="font-semibold">서명</label>
+              <label className="font-semibold text-sm">결재 서명</label>
               {signatureImage ? (
-                <div className="flex items-center gap-4 p-4 border rounded-lg bg-white">
-                  <span className="text-sm text-green-600">✓ 서명 완료</span>
+                <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
+                  <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
+                  <span className="text-sm text-green-600 font-medium">서명 완료</span>
                   <img
                     src={signatureImage}
                     alt="결재 서명"
-                    className="h-16 w-32 object-contain border rounded"
+                    className="h-16 w-32 object-contain border rounded bg-white"
                   />
                   <Button
                     variant="outline"
@@ -334,35 +728,42 @@ export default function ApprovalPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="p-4 border-2 border-dashed rounded-lg bg-white text-center">
+                <div className="p-6 border-2 border-dashed rounded-lg bg-muted/20 text-center">
                   <Button
                     onClick={() => setIsSigDialogOpen(true)}
                     disabled={approveMutation.isPending || rejectMutation.isPending}
+                    variant="outline"
+                    className="gap-2"
                   >
+                    <ClipboardCheck className="h-4 w-4" />
                     서명하기
                   </Button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    버튼을 눌러 서명해 주세요.
+                    결재를 위해 서명을 해주세요.
                   </p>
                 </div>
               )}
             </div>
 
             {/* 결재 버튼 */}
-            <div className="flex justify-between gap-4 pt-4">
+            <div className="flex justify-between gap-4 pt-2 border-t">
               <Button
                 onClick={() => setShowRejectDialog(true)}
                 disabled={approveMutation.isPending || rejectMutation.isPending}
                 variant="destructive"
                 size="lg"
+                className="gap-2"
               >
+                <XCircle className="h-4 w-4" />
                 반려
               </Button>
               <Button
                 onClick={handleApprove}
                 disabled={!signatureImage || approveMutation.isPending || rejectMutation.isPending}
                 size="lg"
+                className="gap-2"
               >
+                <CheckCircle className="h-4 w-4" />
                 {approveMutation.isPending ? '처리 중...' : '결재 완료'}
               </Button>
             </div>
