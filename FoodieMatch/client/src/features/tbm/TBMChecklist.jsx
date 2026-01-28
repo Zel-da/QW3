@@ -1538,7 +1538,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             size="lg"
             disabled={!checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
           >
-            {existingReport ? '수정하기' : '제출하기'}
+            제출하기
           </Button>
         )}
       </div>
