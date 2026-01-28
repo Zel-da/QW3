@@ -190,7 +190,9 @@ export async function sendEmailByType(
       return { success: false, error: 'Email config not found' };
     }
 
-    if (!config.enabled) {
+    // 인증 관련 이메일(비밀번호 재설정, 아이디 찾기)은 enabled 플래그와 무관하게 항상 발송
+    const alwaysSendTypes = ['PASSWORD_RESET_LINK', 'FIND_USERNAME', 'PASSWORD_RESET'];
+    if (!config.enabled && !alwaysSendTypes.includes(emailType)) {
       console.log(`Email type ${emailType} is disabled, skipping send`);
       return { success: false, error: 'Email type is disabled' };
     }

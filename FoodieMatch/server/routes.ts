@@ -442,12 +442,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { sendEmailByType } = await import('./simpleEmailService');
         const resetUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/reset-password/${token}`;
-        await sendEmailByType('PASSWORD_RESET_LINK', user.email, user.id, {
+        const emailResult = await sendEmailByType('PASSWORD_RESET_LINK', user.email, user.id, {
           USER_NAME: user.name || user.username,
           RESET_URL: resetUrl,
         });
-        emailSent = true;
-        console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
+        emailSent = emailResult?.success === true;
+        if (emailSent) {
+          console.log(`비밀번호 재설정 이메일 발송: ${user.email}`);
+        } else {
+          console.error(`비밀번호 재설정 이메일 발송 실패: ${emailResult?.error}`);
+        }
       } catch (emailError) {
         console.error('비밀번호 재설정 이메일 발송 실패:', emailError);
       }
@@ -579,13 +583,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { sendEmailByType } = await import('./simpleEmailService');
         const loginUrl = `${req.headers.origin || process.env.BASE_URL || 'http://localhost:5173'}/login`;
-        await sendEmailByType('FIND_USERNAME', email, user.id, {
+        const emailResult = await sendEmailByType('FIND_USERNAME', email, user.id, {
           USER_NAME: user.name || '회원',
           USERNAME: user.username,
           LOGIN_URL: loginUrl,
         });
-        emailSent = true;
-        console.log(`아이디 찾기 이메일 발송: ${email}`);
+        emailSent = emailResult?.success === true;
+        if (emailSent) {
+          console.log(`아이디 찾기 이메일 발송: ${email}`);
+        } else {
+          console.error(`아이디 찾기 이메일 발송 실패: ${emailResult?.error}`);
+        }
       } catch (emailError) {
         console.error('아이디 찾기 이메일 발송 실패:', emailError);
       }
