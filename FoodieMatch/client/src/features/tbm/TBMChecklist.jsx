@@ -1316,8 +1316,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 existingAudio={audioRecording}
                 existingTranscription={transcription}
                 maxDurationSeconds={1800}
-                disabled={isViewMode || isDraftViewMode}
-                playbackOnly={true}
+                disabled={false}
+                playbackOnly={isViewMode || isDraftViewMode}
               />
             </div>
 
@@ -1432,11 +1432,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                           className="h-12 w-24 object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => setEnlargedImage(signatures[worker.id])}
                         />
+                        {!isViewMode && !isDraftViewMode && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
+                          >
+                            다시 서명
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <Button
                         onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                        disabled={isViewMode || (absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id]))}
+                        disabled={isViewMode || isDraftViewMode || (absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id]))}
                         size="sm"
                       >
                         서명
