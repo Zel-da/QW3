@@ -286,6 +286,7 @@ interface SmtpConfig {
   port: string;
   user: string;
   from: string;
+  hasPassword?: boolean;
 }
 
 export default function EmailSettingsPage() {
@@ -297,6 +298,7 @@ export default function EmailSettingsPage() {
   const [testEmail, setTestEmail] = useState("");
   const [smtpVerified, setSmtpVerified] = useState<boolean | null>(null);
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig | null>(null);
+  const [smtpErrorMessage, setSmtpErrorMessage] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState(false);
 
   // 편집 시작 시 폼 데이터 초기화
@@ -440,6 +442,7 @@ export default function EmailSettingsPage() {
       const data = await res.json();
       setSmtpVerified(data.success);
       setSmtpConfig(data.config);
+      setSmtpErrorMessage(data.success ? '' : (data.message || ''));
       toast({
         title: data.success ? "연결 성공" : "연결 실패",
         description: data.message,
@@ -530,15 +533,22 @@ export default function EmailSettingsPage() {
                 </Button>
 
                 {smtpVerified !== null && (
-                  <div className={`flex items-center gap-2 p-4 rounded-lg ${smtpVerified ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                    {smtpVerified ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
+                  <div className={`p-4 rounded-lg ${smtpVerified ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <div className="flex items-center gap-2">
+                      {smtpVerified ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
+                      <span className={smtpVerified ? 'text-green-800 font-medium' : 'text-red-800 font-medium'}>
+                        {smtpVerified ? 'SMTP 서버 연결 성공' : 'SMTP 서버 연결 실패'}
+                      </span>
+                    </div>
+                    {!smtpVerified && smtpErrorMessage && (
+                      <p className="mt-2 text-sm text-red-700 bg-red-100 p-2 rounded font-mono break-all">
+                        {smtpErrorMessage}
+                      </p>
                     )}
-                    <span className={smtpVerified ? 'text-green-800' : 'text-red-800'}>
-                      {smtpVerified ? 'SMTP 서버 연결 성공' : 'SMTP 서버 연결 실패'}
-                    </span>
                   </div>
                 )}
 
@@ -554,9 +564,15 @@ export default function EmailSettingsPage() {
                         <span className="text-muted-foreground">포트:</span>
                         <span className="ml-2 font-mono">{smtpConfig.port}</span>
                       </div>
-                      <div className="col-span-2">
+                      <div>
                         <span className="text-muted-foreground">인증 계정:</span>
                         <span className="ml-2 font-mono">{smtpConfig.user}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">비밀번호:</span>
+                        <span className={`ml-2 font-mono ${smtpConfig.hasPassword ? 'text-green-600' : 'text-red-600 font-medium'}`}>
+                          {smtpConfig.hasPassword ? '설정됨' : '미설정'}
+                        </span>
                       </div>
                     </div>
                   </div>

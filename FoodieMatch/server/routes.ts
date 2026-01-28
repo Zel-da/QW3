@@ -6901,23 +6901,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/email/verify", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { verifyEmailConnection } = await import('./simpleEmailService');
-      const isVerified = await verifyEmailConnection();
+      const result = await verifyEmailConnection();
 
       const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.SMTP_PASSWORD));
 
       res.json({
-        success: isVerified,
-        message: isVerified
+        success: result.success,
+        message: result.success
           ? 'SMTP 서버 연결 성공'
           : smtpConfigured
-            ? 'SMTP 서버 연결 실패 - 설정을 확인하세요'
-            : 'SMTP 환경변수가 설정되지 않았습니다',
+            ? `SMTP 서버 연결 실패: ${result.error || '알 수 없는 오류'}`
+            : 'SMTP 환경변수가 설정되지 않았습니다 (SMTP_HOST, SMTP_USER, SMTP_PASS 필요)',
         config: {
           host: process.env.SMTP_HOST || '설정되지 않음',
           port: process.env.SMTP_PORT || '587',
           user: process.env.SMTP_USER || '설정되지 않음',
           from: process.env.SMTP_FROM || process.env.SMTP_USER || '설정되지 않음',
-          configured: smtpConfigured
+          configured: smtpConfigured,
+          hasPassword: !!(process.env.SMTP_PASS || process.env.SMTP_PASSWORD),
         }
       });
     } catch (error) {

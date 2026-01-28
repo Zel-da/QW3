@@ -94,15 +94,16 @@ function createTransporter() {
 /**
  * SMTP 연결 확인
  */
-export async function verifyEmailConnection() {
+export async function verifyEmailConnection(): Promise<{ success: boolean; error?: string }> {
   try {
     const transporter = createTransporter();
     await transporter.verify();
     console.log('✅ Email service is ready');
-    return true;
+    return { success: true };
   } catch (error: any) {
-    console.error('❌ Email service error:', error.message || error);
-    return false;
+    const errorMsg = error.message || String(error);
+    console.error('❌ Email service error:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
