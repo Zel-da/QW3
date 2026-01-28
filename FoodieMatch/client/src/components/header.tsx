@@ -297,10 +297,12 @@ export function Header() {
         안전교육
       </Link>
       {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && (
+        <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={getLinkClass('/safety-inspection')}>
+          안전점검
+        </Link>
+      )}
+      {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER' || user?.role === 'APPROVER') && (
         <>
-          <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={getLinkClass('/safety-inspection')}>
-            안전점검
-          </Link>
           <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={getLinkClass('/monthly-report')}>
             월별 보고서
           </Link>
@@ -401,10 +403,12 @@ export function Header() {
                       안전교육
                     </Link>
                     {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && (
-                      <>
                         <Link href="/safety-inspection" onClick={(e) => handleNavClick(e, '/safety-inspection')} className={`${getLinkClass('/safety-inspection')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           안전점검
                         </Link>
+                    )}
+                    {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER' || user?.role === 'APPROVER') && (
+                      <>
                         <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={`${getLinkClass('/monthly-report')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                           월별 보고서
                         </Link>
