@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { SignatureDialog } from '@/components/SignatureDialog';
 
 interface ApprovalRequest {
   id: string;
@@ -56,9 +57,8 @@ export default function ApprovalPage() {
   const approvalId = params?.approvalId || '';
   const { toast } = useToast();
 
-  const [isDrawing, setIsDrawing] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hasSignature, setHasSignature] = useState(false);
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalComplete, setApprovalComplete] = useState<'approved' | 'rejected' | null>(null);
@@ -116,88 +116,8 @@ export default function ApprovalPage() {
     },
   });
 
-  // Canvas drawing functions with proper coordinate scaling
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Prevent scrolling on touch devices
-    if ('touches' in e) {
-      e.preventDefault();
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    // Calculate scale factors between CSS size and actual canvas size
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    // Get client coordinates and apply scaling
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Prevent scrolling on touch devices
-    if ('touches' in e) {
-      e.preventDefault();
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    // Calculate scale factors between CSS size and actual canvas size
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    // Get client coordinates and apply scaling
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
-
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    setHasSignature(true);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasSignature(false);
-  };
-
   const handleApprove = async () => {
-    if (!hasSignature) {
+    if (!signatureImage) {
       toast({
         title: "서명 필요",
         description: "서명을 해주세요.",
@@ -206,11 +126,6 @@ export default function ApprovalPage() {
       return;
     }
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Convert canvas to base64 image
-    const signatureImage = canvas.toDataURL('image/png');
     await approveMutation.mutateAsync(signatureImage);
   };
 
@@ -226,32 +141,6 @@ export default function ApprovalPage() {
 
     await rejectMutation.mutateAsync(rejectionReason);
   };
-
-  // Initialize canvas with proper dimensions and high-DPI support
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Get device pixel ratio for high-DPI displays
-    const dpr = window.devicePixelRatio || 1;
-
-    // Get display size from CSS
-    const rect = canvas.getBoundingClientRect();
-
-    // Set actual canvas size (scaled for high-DPI)
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-
-    // Scale context to match device pixel ratio
-    ctx.scale(dpr, dpr);
-
-    // Fill white background
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, rect.width, rect.height);
-  }, []);
 
   if (isLoading) {
     return (
@@ -426,34 +315,37 @@ export default function ApprovalPage() {
 
             {/* 서명 영역 */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="font-semibold">서명</label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSignature}
-                  disabled={!hasSignature}
-                >
-                  지우기
-                </Button>
-              </div>
-              <div className={`border-2 border-dashed rounded-lg p-2 bg-white ${approveMutation.isPending || rejectMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-40 cursor-crosshair touch-none"
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={startDrawing}
-                  onTouchMove={draw}
-                  onTouchEnd={stopDrawing}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                위 영역에 마우스나 터치로 서명해 주세요.
-              </p>
+              <label className="font-semibold">서명</label>
+              {signatureImage ? (
+                <div className="flex items-center gap-4 p-4 border rounded-lg bg-white">
+                  <span className="text-sm text-green-600">✓ 서명 완료</span>
+                  <img
+                    src={signatureImage}
+                    alt="결재 서명"
+                    className="h-16 w-32 object-contain border rounded"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSigDialogOpen(true)}
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                  >
+                    다시 서명
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-4 border-2 border-dashed rounded-lg bg-white text-center">
+                  <Button
+                    onClick={() => setIsSigDialogOpen(true)}
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                  >
+                    서명하기
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    버튼을 눌러 서명해 주세요.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* 결재 버튼 */}
@@ -468,7 +360,7 @@ export default function ApprovalPage() {
               </Button>
               <Button
                 onClick={handleApprove}
-                disabled={!hasSignature || approveMutation.isPending || rejectMutation.isPending}
+                disabled={!signatureImage || approveMutation.isPending || rejectMutation.isPending}
                 size="lg"
               >
                 {approveMutation.isPending ? '처리 중...' : '결재 완료'}
@@ -520,6 +412,13 @@ export default function ApprovalPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <SignatureDialog
+          isOpen={isSigDialogOpen}
+          onClose={() => setIsSigDialogOpen(false)}
+          onSave={(data) => { setSignatureImage(data); setIsSigDialogOpen(false); }}
+          userName={approvalRequest.approver?.name || approvalRequest.approver?.username || '결재자'}
+        />
       </div>
     </div>
   );
