@@ -321,7 +321,7 @@ export function Header() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Shield className="text-primary-foreground w-4 h-4" />
               </div>
-              <h1 className="text-base font-medium text-foreground korean-text whitespace-nowrap">안전관리 통합 프로그램</h1>
+              <h1 className="text-base font-medium text-foreground korean-text whitespace-nowrap">안전관리 통합 플랫폼</h1>
             </Link>
           </div>
 

@@ -233,7 +233,7 @@ export default function MorePage() {
 
         {/* 앱 버전 */}
         <p className="text-center text-xs text-muted-foreground mt-8">
-          안전관리 통합 프로그램 v1.0
+          안전관리 통합 플랫폼 v1.0
         </p>
       </main>
 
