@@ -66,9 +66,21 @@ export default function CourseContentPage() {
   const timeSpentRef = useRef(timeSpent); // Ref to hold the latest timeSpent
   const isSavingRef = useRef(false); // 중복 저장 방지 플래그
 
+  // localStorage 키 생성
+  const localStorageKey = user?.id && courseId ? `course_progress_${user.id}_${courseId}` : null;
+
+  // timeSpent 변경 시 ref 업데이트 및 localStorage 백업
   useEffect(() => {
     timeSpentRef.current = timeSpent;
-  }, [timeSpent]);
+
+    // localStorage에 백업 저장 (페이지 이탈 시 데이터 보호)
+    if (localStorageKey && timeSpent > 0) {
+      localStorage.setItem(localStorageKey, JSON.stringify({
+        timeSpent,
+        savedAt: Date.now()
+      }));
+    }
+  }, [timeSpent, localStorageKey]);
 
   const { data: course } = useQuery<Course>({
     queryKey: ["/api/courses", courseId],
@@ -148,13 +160,45 @@ export default function CourseContentPage() {
 
   useEffect(() => {
     if (!progressLoading) {
+      let serverTimeSpent = 0;
       if (userProgress && userProgress.timeSpent !== undefined && userProgress.timeSpent !== null) {
-        // Load saved progress (including 0)
-        setTimeSpent(userProgress.timeSpent);
+        serverTimeSpent = userProgress.timeSpent;
       }
+
+      // localStorage에서 백업 데이터 확인
+      let localTimeSpent = 0;
+      if (localStorageKey) {
+        try {
+          const savedData = localStorage.getItem(localStorageKey);
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            localTimeSpent = parsed.timeSpent || 0;
+          }
+        } catch (e) {
+          console.warn('Failed to parse localStorage progress:', e);
+        }
+      }
+
+      // 더 큰 값 사용 (서버와 로컬 중 최신 데이터 보존)
+      const finalTimeSpent = Math.max(serverTimeSpent, localTimeSpent);
+      setTimeSpent(finalTimeSpent);
+
+      // localStorage 값이 더 크면 서버에 동기화
+      if (localTimeSpent > serverTimeSpent && user?.id && courseId && course) {
+        const currentProgress = course.duration === 0
+          ? MAX_PROGRESS_PERCENT
+          : Math.min(Math.floor((localTimeSpent / (course.duration * SECONDS_PER_MINUTE)) * MAX_PROGRESS_PERCENT), MAX_PROGRESS_PERCENT);
+
+        apiRequest("PUT", `/api/users/${user.id}/progress/${courseId}`, {
+          progress: currentProgress,
+          timeSpent: localTimeSpent,
+          currentStep: currentProgress >= MAX_PROGRESS_PERCENT ? 3 : 2,
+        }).catch(err => console.error('Failed to sync localStorage to server:', err));
+      }
+
       setProgressLoaded(true);
     }
-  }, [userProgress, progressLoading]);
+  }, [userProgress, progressLoading, localStorageKey, user?.id, courseId, course]);
 
   useEffect(() => {
     // If duration is 0, save 100% progress immediately
@@ -182,12 +226,43 @@ export default function CourseContentPage() {
     };
   }, [progressLoaded, saveProgress]);
 
-  // Save progress on unmount
+  // Save progress on unmount using sendBeacon (guaranteed to complete even on navigation)
   useEffect(() => {
-    return () => {
-      saveProgress();
+    const handleBeforeUnload = () => {
+      if (!user?.id || !courseId || !course) return;
+
+      let currentProgress: number;
+      if (course.duration === 0) {
+        currentProgress = MAX_PROGRESS_PERCENT;
+      } else {
+        currentProgress = Math.min(
+          Math.floor((timeSpentRef.current / (course.duration * SECONDS_PER_MINUTE)) * MAX_PROGRESS_PERCENT),
+          MAX_PROGRESS_PERCENT
+        );
+      }
+
+      // sendBeacon은 페이지 이탈 시에도 요청이 완료됨
+      const data = JSON.stringify({
+        progress: currentProgress,
+        timeSpent: timeSpentRef.current,
+        currentStep: currentProgress >= MAX_PROGRESS_PERCENT ? 3 : 2,
+      });
+
+      navigator.sendBeacon(
+        `/api/users/${user.id}/progress/${courseId}`,
+        new Blob([data], { type: 'application/json' })
+      );
     };
-  }, [saveProgress]);
+
+    // 브라우저 탭 닫기/새로고침 시
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 컴포넌트 unmount 시에도 sendBeacon 사용
+      handleBeforeUnload();
+    };
+  }, [course, courseId, user?.id]);
 
 
   const handleStartAssessment = () => {

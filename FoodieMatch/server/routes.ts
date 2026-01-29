@@ -5678,6 +5678,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
+    });
+
+    // POST endpoint for sendBeacon (페이지 이탈 시 진행률 저장용)
+    app.post("/api/users/:userId/progress/:courseId", requireAuth, async (req, res) => {
+      try {
+        const { userId, courseId } = req.params;
+        const { progress, completed, currentStep, timeSpent } = req.body;
+
+        const existingProgress = await prisma.userProgress.findFirst({
+          where: { userId, courseId }
+        });
+
+        if (existingProgress) {
+          // 기존 값보다 큰 경우에만 업데이트 (진행률 보호)
+          const newTimeSpent = timeSpent !== undefined ? Math.max(timeSpent, existingProgress.timeSpent) : existingProgress.timeSpent;
+          const newProgress = progress !== undefined ? Math.max(progress, existingProgress.progress) : existingProgress.progress;
+
+          const updatedProgress = await prisma.userProgress.update({
+            where: { id: existingProgress.id },
+            data: {
+              progress: newProgress,
+              completed: completed !== undefined ? completed : existingProgress.completed,
+              currentStep: currentStep !== undefined ? Math.max(currentStep, existingProgress.currentStep) : existingProgress.currentStep,
+              timeSpent: newTimeSpent,
+              lastAccessed: new Date()
+            },
+          });
+          res.json(updatedProgress);
+        } else {
+          const newProgress = await prisma.userProgress.create({
+            data: {
+              userId,
+              courseId,
+              progress: progress || 0,
+              completed: completed || false,
+              currentStep: currentStep || 1,
+              timeSpent: timeSpent || 0,
+              lastAccessed: new Date()
+            },
+          });
+          res.json(newProgress);
+        }
+      } catch (error) {
+        console.error('❌ Failed to save progress (beacon):', error);
+        res.status(500).json({ message: "Failed to save progress" });
+      }
 
     });
 
