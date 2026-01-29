@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -152,6 +152,7 @@ export default function ApprovalPage() {
   const approvalId = params?.approvalId || '';
   const { toast } = useToast();
 
+  const queryClient = useQueryClient();
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -162,6 +163,7 @@ export default function ApprovalPage() {
     queryKey: ['approvalRequest', approvalId],
     queryFn: () => fetchApprovalRequest(approvalId),
     enabled: !!approvalId,
+    staleTime: 0, // 항상 최신 데이터 가져오기 (이미 처리된 결재 상태 즉시 반영)
   });
 
   // TBM 월별 데이터 조회
@@ -244,6 +246,8 @@ export default function ApprovalPage() {
       return res.data;
     },
     onSuccess: () => {
+      // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
+      queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       toast({
         title: "결재 완료",
         description: "결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.",
@@ -251,6 +255,8 @@ export default function ApprovalPage() {
       setApprovalComplete('approved');
     },
     onError: (error: any) => {
+      // 에러 시 데이터 다시 불러오기 (이미 처리된 결재인 경우 UI 갱신)
+      queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       toast({
         title: "오류",
         description: error.response?.data?.message || "결재 처리 중 오류가 발생했습니다.",
@@ -267,6 +273,8 @@ export default function ApprovalPage() {
       return res.data;
     },
     onSuccess: () => {
+      // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
+      queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       toast({
         title: "반려 완료",
         description: "결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.",
@@ -275,6 +283,8 @@ export default function ApprovalPage() {
       setApprovalComplete('rejected');
     },
     onError: (error: any) => {
+      // 에러 시 데이터 다시 불러오기 (이미 처리된 결재인 경우 UI 갱신)
+      queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       toast({
         title: "오류",
         description: error.response?.data?.message || "반려 처리 중 오류가 발생했습니다.",
