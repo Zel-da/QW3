@@ -83,10 +83,10 @@ export default function RegisterPage() {
     setSuccess('');
 
     // 검증: 사용자명 형식
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    const usernameRegex = /^[a-zA-Z0-9_.]{3,20}$/;
     if (!usernameRegex.test(formData.username)) {
-      setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.');
-      toast({ title: '오류', description: '사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_)만 사용 가능합니다.', variant: 'destructive' });
+      setError('사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_), 점(.)만 사용 가능합니다.');
+      toast({ title: '오류', description: '사용자 ID는 3-20자의 영문, 숫자, 언더스코어(_), 점(.)만 사용 가능합니다.', variant: 'destructive' });
       return;
     }
 
@@ -98,9 +98,25 @@ export default function RegisterPage() {
       return;
     }
 
+    // 비밀번호 검증: 8자 이상, 영문, 숫자, 특수문자 포함
     if (formData.password.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
       toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[a-zA-Z]/.test(formData.password)) {
+      setError('비밀번호에 영문자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 영문자를 포함해야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[0-9]/.test(formData.password)) {
+      setError('비밀번호에 숫자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 숫자를 포함해야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+      setError('비밀번호에 특수문자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 특수문자를 포함해야 합니다.', variant: 'destructive' });
       return;
     }
 
@@ -161,7 +177,7 @@ export default function RegisterPage() {
                 <Input id="email" name="email" type="email" required onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">비밀번호 (8자 이상)</Label>
+                <Label htmlFor="password">비밀번호 (8자 이상, 영문+숫자+특수문자)</Label>
                 <div className="relative">
                   <Input
                     id="password"

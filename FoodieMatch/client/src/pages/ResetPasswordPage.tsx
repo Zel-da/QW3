@@ -59,10 +59,25 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    // 유효성 검사
+    // 비밀번호 검증: 8자 이상, 영문, 숫자, 특수문자 포함
     if (newPassword.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
       toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[a-zA-Z]/.test(newPassword)) {
+      setError('비밀번호에 영문자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 영문자를 포함해야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setError('비밀번호에 숫자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 숫자를 포함해야 합니다.', variant: 'destructive' });
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      setError('비밀번호에 특수문자를 포함해야 합니다.');
+      toast({ title: '오류', description: '비밀번호에 특수문자를 포함해야 합니다.', variant: 'destructive' });
       return;
     }
 
@@ -239,13 +254,29 @@ export default function ResetPasswordPage() {
                   <li className={newPassword.length >= 8 ? 'text-green-600' : ''}>
                     8자 이상
                   </li>
+                  <li className={/[a-zA-Z]/.test(newPassword) ? 'text-green-600' : ''}>
+                    영문자 포함
+                  </li>
+                  <li className={/[0-9]/.test(newPassword) ? 'text-green-600' : ''}>
+                    숫자 포함
+                  </li>
+                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? 'text-green-600' : ''}>
+                    특수문자 포함
+                  </li>
                 </ul>
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-12 text-base"
-                disabled={isLoading || newPassword !== confirmPassword || newPassword.length < 8}
+                disabled={
+                  isLoading ||
+                  newPassword !== confirmPassword ||
+                  newPassword.length < 8 ||
+                  !/[a-zA-Z]/.test(newPassword) ||
+                  !/[0-9]/.test(newPassword) ||
+                  !/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+                }
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? '변경 중...' : '비밀번호 변경'}

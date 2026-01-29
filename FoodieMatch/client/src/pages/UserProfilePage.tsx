@@ -126,8 +126,21 @@ export default function UserProfilePage() {
 
     const userData: { name: string, site: string, password?: string } = { name, site };
     if (password) {
+      // 비밀번호 검증: 8자 이상, 영문, 숫자, 특수문자 포함
       if (password.length < 8) {
         toast({ title: '오류', description: '비밀번호는 8자 이상이어야 합니다.', variant: 'destructive' });
+        return;
+      }
+      if (!/[a-zA-Z]/.test(password)) {
+        toast({ title: '오류', description: '비밀번호에 영문자를 포함해야 합니다.', variant: 'destructive' });
+        return;
+      }
+      if (!/[0-9]/.test(password)) {
+        toast({ title: '오류', description: '비밀번호에 숫자를 포함해야 합니다.', variant: 'destructive' });
+        return;
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        toast({ title: '오류', description: '비밀번호에 특수문자를 포함해야 합니다.', variant: 'destructive' });
         return;
       }
       if (password !== confirmPassword) {
@@ -216,7 +229,7 @@ export default function UserProfilePage() {
                     <h3 className="text-lg font-medium text-primary">보안</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="password">새 비밀번호</Label>
+                            <Label htmlFor="password">새 비밀번호 (8자 이상, 영문+숫자+특수문자)</Label>
                             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="변경할 경우에만 입력" />
                         </div>
                         <div className="space-y-2">

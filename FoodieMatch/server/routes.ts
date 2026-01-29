@@ -7412,6 +7412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 ### 일반
 - 비밀번호 변경: "내 정보" 페이지 [이동: /profile]
+- 비밀번호 규칙: 8자 이상, 영문+숫자+특수문자 포함 필수
+- 아이디 규칙: 3~20자, 영문+숫자+언더스코어(_)+점(.) 사용 가능
 - 공지사항: 공지사항 메뉴, 중요 공지는 홈 화면에도 표시 [이동: /notices]
 - 홈 화면: [이동: /]
 
