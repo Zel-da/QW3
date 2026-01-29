@@ -1757,14 +1757,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 3. 이미 결재 요청이 있는지 확인
       if (monthlyApproval.approvalRequest) {
-        // 회수된 결재는 삭제 후 재요청 허용
-        if (monthlyApproval.approvalRequest.status === 'WITHDRAWN') {
+        const existingStatus = monthlyApproval.approvalRequest.status;
+
+        // 회수(WITHDRAWN) 또는 반려(REJECTED)된 결재는 삭제 후 재요청 허용
+        if (existingStatus === 'WITHDRAWN' || existingStatus === 'REJECTED') {
           await prisma.approvalRequest.delete({
             where: { id: monthlyApproval.approvalRequest.id }
           });
-        } else {
+        } else if (existingStatus === 'APPROVED') {
           return res.status(400).json({
-            message: "이미 결재 요청이 존재합니다",
+            message: "이미 승인된 결재입니다. 재요청이 필요하지 않습니다.",
+            approval: monthlyApproval.approvalRequest
+          });
+        } else {
+          // PENDING 상태
+          return res.status(400).json({
+            message: "결재 대기 중입니다. 기존 요청을 회수한 후 다시 요청해주세요.",
             approval: monthlyApproval.approvalRequest
           });
         }
@@ -1834,7 +1842,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (existing) {
-        return res.status(400).json({ message: "이미 결재 요청이 존재합니다" });
+        // 회수(WITHDRAWN) 또는 반려(REJECTED)된 결재는 삭제 후 재요청 허용
+        if (existing.status === 'WITHDRAWN' || existing.status === 'REJECTED') {
+          await prisma.approvalRequest.delete({
+            where: { id: existing.id }
+          });
+        } else if (existing.status === 'APPROVED') {
+          return res.status(400).json({ message: "이미 승인된 결재입니다. 재요청이 필요하지 않습니다." });
+        } else {
+          // PENDING 상태
+          return res.status(400).json({ message: "결재 대기 중입니다. 기존 요청을 회수한 후 다시 요청해주세요." });
+        }
       }
 
       const approval = await prisma.approvalRequest.create({

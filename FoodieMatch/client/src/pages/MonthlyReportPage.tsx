@@ -293,9 +293,31 @@ export default function MonthlyReportPage() {
       }, 1500);
     },
     onError: (error: any) => {
+      // apiRequest는 Error 객체를 던지고, 메시지에 JSON이 포함될 수 있음
+      let errorMessage = '결재 요청 중 오류가 발생했습니다.';
+
+      if (error.response?.data?.message) {
+        // axios 스타일 에러
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        // apiRequest 스타일 에러: "400: {\"message\": \"...\"}"
+        try {
+          const match = error.message.match(/^\d+:\s*(.+)$/);
+          if (match) {
+            const jsonPart = match[1];
+            const parsed = JSON.parse(jsonPart);
+            errorMessage = parsed.message || jsonPart;
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
         title: '결재 요청 실패',
-        description: error.response?.data?.message || '결재 요청 중 오류가 발생했습니다.',
+        description: errorMessage,
         variant: 'destructive'
       });
     },
