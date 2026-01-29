@@ -1234,7 +1234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/teams/:teamId/members", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
+  app.post("/api/teams/:teamId/members", requireAuth, requireRole('ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'), async (req, res) => {
     try {
       const { userId } = req.body;
       const teamId = parseInt(req.params.teamId);
@@ -1246,7 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to add member" }); }
   });
 
-  app.delete("/api/teams/:teamId/members/:userId", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
+  app.delete("/api/teams/:teamId/members/:userId", requireAuth, requireRole('ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'), async (req, res) => {
     try {
       await prisma.user.update({ where: { id: req.params.userId }, data: { teamId: null } });
       res.status(204).send();
@@ -1266,7 +1266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 팀 결재자 설정 API
-  app.put("/api/teams/:teamId/approver", requireAuth, requireRole('ADMIN', 'TEAM_LEADER'), async (req, res) => {
+  app.put("/api/teams/:teamId/approver", requireAuth, requireRole('ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'), async (req, res) => {
     try {
       const { userId } = req.body;
 

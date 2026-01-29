@@ -5,7 +5,7 @@ export interface FAQItem {
   answer: string;
   navigateTo?: string;
   category: 'tbm' | 'education' | 'inspection' | 'admin' | 'general' | 'approval' | 'regulation';
-  roles?: ('ADMIN' | 'TEAM_LEADER' | 'APPROVER' | 'PENDING')[];
+  roles?: ('ADMIN' | 'TEAM_LEADER' | 'EXECUTIVE_LEADER' | 'EXECUTIVE' | 'APPROVER' | 'PENDING')[];
 }
 
 export const faqData: FAQItem[] = [
@@ -17,7 +17,7 @@ export const faqData: FAQItem[] = [
     answer: 'TBM 메뉴에서 오늘 날짜를 선택하고, 체크리스트 항목을 점검한 후 팀원 서명을 받으면 됩니다.',
     navigateTo: '/tbm',
     category: 'tbm',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'tbm-2',
@@ -26,7 +26,7 @@ export const faqData: FAQItem[] = [
     answer: '팀원 목록에서 서명할 팀원을 선택하고, 터치 또는 마우스로 서명란에 서명하면 됩니다.',
     navigateTo: '/tbm',
     category: 'tbm',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'tbm-3',
@@ -35,7 +35,7 @@ export const faqData: FAQItem[] = [
     answer: '월별 보고서 페이지에서 팀별/월별 TBM 작성률을 확인할 수 있습니다.',
     navigateTo: '/monthly-report',
     category: 'tbm',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'tbm-4',
@@ -43,7 +43,7 @@ export const faqData: FAQItem[] = [
     question: '이전에 작성한 TBM을 수정할 수 있나요?',
     answer: '당일 작성한 TBM만 수정 가능합니다. 이전 날짜의 TBM은 기록 보존을 위해 수정이 제한됩니다.',
     category: 'tbm',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
 
   // 교육 관련
@@ -95,7 +95,7 @@ export const faqData: FAQItem[] = [
     answer: '안전점검 메뉴에서 점검할 장비를 선택하고, 각 항목별로 상태를 체크한 후 사진을 첨부하면 됩니다.',
     navigateTo: '/safety-inspection',
     category: 'inspection',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'insp-2',
@@ -104,7 +104,7 @@ export const faqData: FAQItem[] = [
     answer: '점검 일정 페이지에서 현장별 월간 점검 일정을 확인할 수 있습니다.',
     navigateTo: '/inspection-schedule',
     category: 'inspection',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'insp-3',
@@ -113,7 +113,7 @@ export const faqData: FAQItem[] = [
     answer: '각 점검 항목에서 카메라 아이콘을 클릭하여 사진을 촬영하거나, 갤러리에서 선택할 수 있습니다.',
     navigateTo: '/safety-inspection',
     category: 'inspection',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
 
   // 결재 관련
@@ -124,7 +124,7 @@ export const faqData: FAQItem[] = [
     answer: '월별 보고서 작성 후 "결재 요청" 버튼을 클릭하면 지정된 결재자에게 승인 요청이 전송됩니다.',
     navigateTo: '/monthly-report',
     category: 'approval',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
   {
     id: 'appr-2',
@@ -141,7 +141,7 @@ export const faqData: FAQItem[] = [
     answer: '반려 사유를 확인하고 보고서를 수정한 후 다시 결재를 요청할 수 있습니다.',
     navigateTo: '/monthly-report',
     category: 'approval',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
 
   // 관리자 관련
@@ -179,7 +179,7 @@ export const faqData: FAQItem[] = [
     answer: '교육 현황 페이지에서 팀별, 개인별 교육 이수 현황을 모니터링할 수 있습니다.',
     navigateTo: '/education-monitoring',
     category: 'admin',
-    roles: ['ADMIN', 'TEAM_LEADER'],
+    roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'],
   },
 
   // 일반
