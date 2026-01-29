@@ -248,67 +248,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "사용자명과 비밀번호를 입력해주세요" });
       }
 
-      const user = await prisma.user.findUnique({ where: { username } });
-      if (!user || !user.password) {
-        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
-      }
+      const MAX_ATTEMPTS = 5;
+      const LOCK_DURATION_MINUTES = 15;
 
-      // 계정 잠금 상태 확인
-      if (user.lockedUntil && user.lockedUntil > new Date()) {
-        const remainingMinutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-        return res.status(423).json({
-          message: `계정이 잠겼습니다. ${remainingMinutes}분 후에 다시 시도해주세요.`,
-          lockedUntil: user.lockedUntil
-        });
-      }
+      // 트랜잭션으로 원자적 처리 (레이스 컨디션 방지)
+      const result = await prisma.$transaction(async (tx) => {
+        // SELECT FOR UPDATE로 행 잠금 (동시 접근 방지)
+        const users = await tx.$queryRaw<Array<{
+          id: number;
+          username: string;
+          password: string | null;
+          role: string;
+          teamId: number | null;
+          name: string | null;
+          site: string | null;
+          failedLoginAttempts: number;
+          lockedUntil: Date | null;
+        }>>`SELECT id, username, password, role, "teamId", name, site, "failedLoginAttempts", "lockedUntil" FROM "User" WHERE username = ${username} FOR UPDATE`;
 
-      const validPassword = await bcrypt.compare(password, user.password);
+        const user = users[0];
+        if (!user || !user.password) {
+          return { error: 'invalid_credentials' };
+        }
 
-      if (!validPassword) {
-        // 로그인 실패 횟수 증가
-        const newFailedAttempts = (user.failedLoginAttempts || 0) + 1;
-        const MAX_ATTEMPTS = 5;
-        const LOCK_DURATION_MINUTES = 15;
+        // 계정 잠금 상태 확인
+        if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+          const remainingMinutes = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
+          return { error: 'locked', remainingMinutes, lockedUntil: user.lockedUntil };
+        }
 
-        if (newFailedAttempts >= MAX_ATTEMPTS) {
-          // 5회 실패 시 15분 잠금
-          const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
-          await prisma.user.update({
+        const validPassword = await bcrypt.compare(password, user.password);
+
+        if (!validPassword) {
+          // 원자적 증가 (현재 DB 값 기준)
+          const updated = await tx.user.update({
             where: { id: user.id },
             data: {
-              failedLoginAttempts: newFailedAttempts,
-              lockedUntil
+              failedLoginAttempts: { increment: 1 }
+            },
+            select: { failedLoginAttempts: true }
+          });
+
+          const newFailedAttempts = updated.failedLoginAttempts;
+
+          if (newFailedAttempts >= MAX_ATTEMPTS) {
+            // 5회 이상 실패 시 잠금
+            const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
+            await tx.user.update({
+              where: { id: user.id },
+              data: { lockedUntil }
+            });
+            console.log(`계정 잠금: ${username}, 해제 시간: ${lockedUntil}`);
+            return { error: 'just_locked', lockedUntil };
+          } else {
+            const remainingAttempts = MAX_ATTEMPTS - newFailedAttempts;
+            return { error: 'wrong_password', remainingAttempts };
+          }
+        }
+
+        // 로그인 성공: 실패 횟수 초기화
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: 0,
+              lockedUntil: null
             }
           });
-          console.log(`계정 잠금: ${username}, 해제 시간: ${lockedUntil}`);
-          return res.status(423).json({
-            message: `로그인 ${MAX_ATTEMPTS}회 실패로 계정이 ${LOCK_DURATION_MINUTES}분간 잠겼습니다.`,
-            lockedUntil
-          });
-        } else {
-          // 실패 횟수만 증가
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { failedLoginAttempts: newFailedAttempts }
-          });
-          const remainingAttempts = MAX_ATTEMPTS - newFailedAttempts;
-          return res.status(401).json({
-            message: `잘못된 비밀번호입니다. ${remainingAttempts}회 더 실패하면 계정이 잠깁니다.`,
-            remainingAttempts
-          });
+        }
+
+        return { success: true, user };
+      });
+
+      // 트랜잭션 결과 처리
+      if ('error' in result) {
+        switch (result.error) {
+          case 'invalid_credentials':
+            return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
+          case 'locked':
+            return res.status(423).json({
+              message: `계정이 잠겼습니다. ${result.remainingMinutes}분 후에 다시 시도해주세요.`,
+              lockedUntil: result.lockedUntil
+            });
+          case 'just_locked':
+            return res.status(423).json({
+              message: `로그인 ${MAX_ATTEMPTS}회 실패로 계정이 ${LOCK_DURATION_MINUTES}분간 잠겼습니다.`,
+              lockedUntil: result.lockedUntil
+            });
+          case 'wrong_password':
+            return res.status(401).json({
+              message: `잘못된 비밀번호입니다. ${result.remainingAttempts}회 더 실패하면 계정이 잠깁니다.`,
+              remainingAttempts: result.remainingAttempts
+            });
         }
       }
 
-      // 로그인 성공: 실패 횟수 초기화
-      if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            failedLoginAttempts: 0,
-            lockedUntil: null
-          }
-        });
-      }
+      const { user } = result;
 
       // Set session user data
       req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };

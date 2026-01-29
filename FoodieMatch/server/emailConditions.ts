@@ -320,7 +320,7 @@ export async function checkApprovalPendingDays(
             teamName: approval.monthlyReport.team.name,
             daysPending: daysPending,
             requestedDate: new Date(approval.requestedAt).toLocaleDateString('ko-KR'),
-            approvalUrl: `${process.env.BASE_URL || 'http://localhost:5173'}/approvals/${approval.id}`,
+            approvalUrl: `${process.env.BASE_URL || 'http://localhost:5173'}/approval/${approval.id}`,
             baseUrl: process.env.BASE_URL || 'http://localhost:5173'
           }
         });
