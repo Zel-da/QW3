@@ -150,8 +150,9 @@ async function startServer() {
     await startAllSchedulers();
     log('✅ Email service initialized with schedulers');
 
-    // Start database connection health check (prevents idle connection drops)
-    startConnectionHealthCheck(5 * 60 * 1000); // 5분마다 체크
+    // Database health check 비활성화 (Neon CU 절약)
+    // Neon serverless는 연결 끊어져도 자동 재연결됨 (cold start 300ms~1초)
+    // startConnectionHealthCheck(5 * 60 * 1000);
 
     // Sync database sequences to prevent ID conflicts
     await syncSequences();
