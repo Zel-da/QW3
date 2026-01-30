@@ -5015,6 +5015,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportData = tbmReportSchema.parse(req.body);
       const { teamId, reportDate, managerName, remarks, site, results, signatures } = reportData;
 
+      // 팀 소속 검증: 해당 팀 소속 사용자만 TBM 작성 가능
+      const currentUser = req.session.user!;
+      const userRole = currentUser.role;
+      const userTeamId = currentUser.teamId;
+
+      if (userRole !== 'ADMIN' && userRole !== 'SAFETY_TEAM') {
+        // 팀 리더인 경우 leaderId 확인
+        let isTeamLeader = false;
+        if (userRole === 'TEAM_LEADER' || userRole === 'EXECUTIVE_LEADER') {
+          const targetTeam = await prisma.team.findUnique({ where: { id: teamId }, select: { leaderId: true } });
+          isTeamLeader = targetTeam?.leaderId === currentUser.id;
+        }
+
+        if (!isTeamLeader && userTeamId !== teamId) {
+          return res.status(400).json({
+            message: "해당 팀의 TBM을 작성할 권한이 없습니다",
+            userTeamId: userTeamId
+          });
+        }
+      }
+
       console.log('Creating TBM report with results:', results?.length || 0);
 
       // 먼저 팀의 유효한 템플릿 아이템들을 조회
@@ -5128,6 +5149,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const originalAuthorId = existingReport.reportDetails[0]?.authorId;
       if (currentUser.role !== 'ADMIN' && originalAuthorId && originalAuthorId !== currentUser.id) {
         return res.status(403).json({ message: "본인이 작성한 TBM만 수정할 수 있습니다." });
+      }
+
+      // 팀 소속 검증: 해당 팀 소속 사용자만 TBM 수정 가능
+      const userRole = currentUser.role;
+      const userTeamId = currentUser.teamId;
+      const reportTeamId = existingReport.teamId;
+
+      if (userRole !== 'ADMIN' && userRole !== 'SAFETY_TEAM') {
+        let isTeamLeader = false;
+        if (userRole === 'TEAM_LEADER' || userRole === 'EXECUTIVE_LEADER') {
+          const targetTeam = await prisma.team.findUnique({ where: { id: reportTeamId }, select: { leaderId: true } });
+          isTeamLeader = targetTeam?.leaderId === currentUser.id;
+        }
+
+        if (!isTeamLeader && userTeamId !== reportTeamId) {
+          return res.status(400).json({
+            message: "해당 팀의 TBM을 작성할 권한이 없습니다",
+            userTeamId: userTeamId
+          });
+        }
       }
 
       const reportData = tbmReportSchema.partial().parse(req.body);

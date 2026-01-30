@@ -806,28 +806,57 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       });
 
       const errorMessage = err.response?.data?.message || err.message || '제출 중 오류가 발생했습니다.';
+      const responseUserTeamId = err.response?.data?.userTeamId;
 
-      toast({
-        title: "제출 실패",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      // 팀 권한 오류 시 소속 팀으로 자동 전환
+      if (responseUserTeamId) {
+        const userTeam = teams.find(t => t.id === responseUserTeamId);
+        if (userTeam) {
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
+          if (dept) setSelectedDepartment(dept);
+          setSelectedTeam(responseUserTeamId);
+        }
+        toast({
+          title: "권한 없음",
+          description: "해당 팀의 TBM 작성 권한이 없습니다. 소속 팀으로 이동합니다.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "제출 실패",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
 
       setError(errorMessage);
     }
   };
 
-  // 부서별 팀 필터링
+  // 부서별 팀 필터링 + 권한 기반 필터링
   const filteredTeams = useMemo(() => {
     if (!selectedDepartment || !teams.length) return [];
     const deptConfig = getDepartments(site).find(d => d.name === selectedDepartment);
     if (!deptConfig) return [];
 
-    return teams.filter(team => {
+    const deptTeams = teams.filter(team => {
       const teamName = stripSiteSuffix(team.name);
       return deptConfig.teams.some(t => teamName.includes(t));
     });
-  }, [selectedDepartment, teams, site]);
+
+    // ADMIN / SAFETY_TEAM: 모든 팀 선택 가능
+    if (user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') {
+      return deptTeams;
+    }
+
+    // TEAM_LEADER / EXECUTIVE_LEADER: 자신이 리더인 팀 + 소속 팀
+    // 일반 사용자: 자신의 소속 팀만
+    return deptTeams.filter(team => {
+      if (team.id === user?.teamId) return true;
+      if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && team.leaderId === user?.id) return true;
+      return false;
+    });
+  }, [selectedDepartment, teams, site, user]);
 
   // 부서 변경 시 팀 선택 초기화
   const handleDepartmentChange = (dept) => {
