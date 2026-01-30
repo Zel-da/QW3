@@ -75,14 +75,17 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [apiCheckComplete, setApiCheckComplete] = useState(false);
   // 임시저장 조회 모드 (draft를 보여주는 상태)
   const [isDraftViewMode, setIsDraftViewMode] = useState(false);
+  // 작성자 선택 (기본: 로그인 사용자)
+  const [selectedAuthorId, setSelectedAuthorId] = useState(null);
 
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
-    // 뷰 모드이거나 로딩 중이면 변경사항 없음으로 처리
-    if (isViewMode || loading) return false;
+    // 뷰 모드, 임시저장 조회 모드, 로딩 중이면 변경사항 없음으로 처리
+    // isDraftViewMode: 데이터가 이미 localStorage에 있으므로 guard 불필요
+    if (isViewMode || isDraftViewMode || loading) return false;
 
     // 체크리스트 항목에 입력이 있는지 확인
     const hasFormData = Object.keys(formState).length > 0;
@@ -94,7 +97,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     const hasImages = remarksImages.length > 0;
 
     return hasFormData || hasSignatures || hasRemarks || hasImages;
-  }, [formState, signatures, remarks, remarksImages, isViewMode, loading]);
+  }, [formState, signatures, remarks, remarksImages, isViewMode, isDraftViewMode, loading]);
 
   // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
   const canEditReport = React.useMemo(() => {
@@ -106,6 +109,24 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     return originalAuthorId === user?.id;
   }, [user, reportForEdit, existingReport]);
 
+  // 관리자 여부 (ADMIN / SAFETY_TEAM만 팀 선택 드롭다운 표시)
+  const isPrivilegedUser = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
+
+  // 작성자 선택 가능한 사용자 목록 (등록된 시스템 사용자만)
+  const authorOptions = useMemo(() => {
+    const registered = teamUsers.filter(u => !u.isTeamMember);
+    const all = user ? [...registered, user] : registered;
+    return all.filter((u, i, self) => i === self.findIndex(t => t.id === u.id));
+  }, [teamUsers, user]);
+
+  // 선택된 작성자 정보
+  const selectedAuthor = useMemo(() => {
+    if (selectedAuthorId) {
+      return authorOptions.find(u => u.id === selectedAuthorId) || user;
+    }
+    return user;
+  }, [selectedAuthorId, authorOptions, user]);
+
   // 저장하지 않은 변경사항 경고 훅
   const {
     showDialog: showUnsavedDialog,
@@ -115,7 +136,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     safeNavigate,
   } = useUnsavedChanges({
     hasChanges: hasUnsavedChanges,
-    disabled: isViewMode,
+    disabled: isViewMode || isDraftViewMode,
   });
 
   // TBM 네비게이션 가드: safeNavigate를 전역 Context에 등록
@@ -730,7 +751,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     const reportData = {
       teamId: selectedTeam,
       reportDate: localDateStr,
-      managerName: user?.name || 'N/A',
+      managerName: selectedAuthor?.name || user?.name || 'N/A',
       remarks: JSON.stringify(remarksData),
       site: site,
       results: Object.entries(formState).map(([itemId, data]) => ({
@@ -738,7 +759,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         checkState: data.checkState,
         actionDescription: data.description || null,
         actionTaken: data.actionTaken || null,
-        authorId: user.id,
+        authorId: selectedAuthor?.id || user.id,
         attachments: data.attachments || []
       })),
       signatures: Object.entries(signatures).map(([userId, signatureImage]) => {
@@ -892,6 +913,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
 
     setSelectedTeam(newTeamId);
+    setSelectedAuthorId(null);
 
     // 새 팀의 캐시된 데이터가 있으면 복원
     if (newTeamId && teamDrafts[newTeamId]) {
@@ -927,39 +949,50 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-3 items-center flex-wrap">
-        {/* 부서 선택 */}
-        <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="부서 선택" />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px] overflow-y-auto">
-            {departments.map(dept => (
-              <SelectItem key={dept.name} value={dept.name}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {isPrivilegedUser ? (
+        <div className="flex gap-3 items-center flex-wrap">
+          {/* 부서 선택 (관리자용) */}
+          <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="부서 선택" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
+              {departments.map(dept => (
+                <SelectItem key={dept.name} value={dept.name}>
+                  {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* 팀 선택 */}
-        <Select
-          onValueChange={handleTeamChange}
-          value={selectedTeam || ''}
-          disabled={!selectedDepartment}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px] overflow-y-auto">
-            {filteredTeams.map(team => (
-              <SelectItem key={team.id} value={team.id}>
-                {stripSiteSuffix(team.name)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          {/* 팀 선택 (관리자용) */}
+          <Select
+            onValueChange={handleTeamChange}
+            value={selectedTeam || ''}
+            disabled={!selectedDepartment}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
+              {filteredTeams.map(team => (
+                <SelectItem key={team.id} value={team.id}>
+                  {stripSiteSuffix(team.name)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-base px-3 py-1.5">
+            {(() => {
+              const teamData = teams.find(t => t.id === selectedTeam);
+              return teamData ? stripSiteSuffix(teamData.name) : '팀 정보 로딩 중...';
+            })()}
+          </Badge>
+        </div>
+      )}
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
@@ -1074,8 +1107,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
       {!loading && checklist && (
         <>
-          <div className="mb-4">
-            <h3 className="font-semibold text-lg">작성자: {user?.name}</h3>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="font-semibold text-lg">작성자:</span>
+            <Select
+              value={selectedAuthorId || user?.id || ''}
+              onValueChange={setSelectedAuthorId}
+              disabled={isViewMode || isDraftViewMode}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {authorOptions.map(u => (
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <h3 className="font-semibold text-xl mt-6">점검항목</h3>
 
