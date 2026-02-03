@@ -22,9 +22,9 @@ export function BottomNavigation() {
     { href: '/more', icon: Menu, label: '더보기', showTo: 'all' },
   ];
 
-  // APPROVER는 TBM 숨김 (단, EXECUTIVE_LEADER는 TBM 표시)
+  // APPROVER, CONTRACTOR, PENDING은 TBM 숨김
   const visibleItems = navItems.filter(item => {
-    if (item.href === '/tbm' && user?.role === 'APPROVER') return false;
+    if (item.href === '/tbm' && (user?.role === 'APPROVER' || user?.role === 'CONTRACTOR' || user?.role === 'PENDING')) return false;
     return true;
   });
 

@@ -276,7 +276,7 @@ export default function DashboardHomePage() {
       stats: stats
         ? `이번 달 ${stats.tbm.thisMonthSubmitted}/${stats.tbm.thisMonthTotal}일 제출`
         : 'TBM 작성하기',
-      showToAll: user?.role !== 'APPROVER',
+      showToAll: user?.role !== 'APPROVER' && user?.role !== 'CONTRACTOR' && user?.role !== 'PENDING',
     },
     {
       title: '안전교육',
