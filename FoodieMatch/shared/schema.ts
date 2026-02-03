@@ -6,6 +6,7 @@ export enum Role {
   TEAM_LEADER = 'TEAM_LEADER',        // 라인/팀 관리자
   APPROVER = 'APPROVER',              // 임원/결재자
   EXECUTIVE_LEADER = 'EXECUTIVE_LEADER',  // 임원+팀장 (TBM 작성 + 결재 승인)
+  CONTRACTOR = 'CONTRACTOR',          // 협력업체 (공지사항 열람 + 안전교육 수강)
   PENDING = 'PENDING',                // 가입 대기 (홈, 공지사항만 접근 가능)
 }
 

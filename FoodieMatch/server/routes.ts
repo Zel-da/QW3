@@ -2817,9 +2817,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/notices/:noticeId/comments", requireAuth, async (req, res) => {
     try {
-      // PENDING 유저는 댓글 작성 불가
-      if (req.session.user!.role === 'PENDING') {
-        return res.status(403).json({ message: "가입 승인 대기 중에는 댓글을 작성할 수 없습니다." });
+      // PENDING, CONTRACTOR 유저는 댓글 작성 불가
+      if (req.session.user!.role === 'PENDING' || req.session.user!.role === 'CONTRACTOR') {
+        return res.status(403).json({ message: "댓글을 작성할 수 없는 권한입니다." });
       }
 
       const { content, imageUrl, attachments } = req.body;

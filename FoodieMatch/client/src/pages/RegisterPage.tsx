@@ -72,7 +72,7 @@ export default function RegisterPage() {
   };
 
   const handleSiteChange = (value: string) => {
-    setFormData({ ...formData, site: value });
+    setFormData({ ...formData, site: value, teamId: value === '협력업체' ? '' : formData.teamId });
   };
 
   const passwordStrength = calculatePasswordStrength(formData.password);
@@ -262,21 +262,27 @@ export default function RegisterPage() {
                     <RadioGroupItem value="화성" id="site-hwaseong" />
                     <Label htmlFor="site-hwaseong">화성</Label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="협력업체" id="site-contractor" />
+                    <Label htmlFor="site-contractor">협력업체</Label>
+                  </div>
                 </RadioGroup>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="team">팀 선택</Label>
-                <Select onValueChange={handleTeamChange} name="teamId">
-                  <SelectTrigger id="team">
-                    <SelectValue placeholder={isLoadingTeams ? "팀 목록 로딩 중..." : "팀을 선택하세요"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teams && sortTeams(teams, formData.site).map(team => (
-                      <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {formData.site !== '협력업체' && (
+                <div className="space-y-2">
+                  <Label htmlFor="team">팀 선택</Label>
+                  <Select onValueChange={handleTeamChange} name="teamId">
+                    <SelectTrigger id="team">
+                      <SelectValue placeholder={isLoadingTeams ? "팀 목록 로딩 중..." : "팀을 선택하세요"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px] overflow-y-auto">
+                      {teams && sortTeams(teams, formData.site).map(team => (
+                        <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {error && <p className="text-sm text-destructive">{error}</p>}
               {success && <p className="text-sm text-green-600">{success}</p>}
               <Button type="submit" className="w-full" disabled={isLoading || isLoadingTeams}>

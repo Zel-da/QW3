@@ -282,6 +282,8 @@ export function Header() {
     );
   };
 
+  const isContractor = user?.role === 'CONTRACTOR';
+
   const navLinks = (
     <>
       <Link href="/" onClick={(e) => handleNavClick(e, '/')} className={getLinkClass('/')}>
@@ -290,9 +292,11 @@ export function Header() {
       <Link href="/notices" onClick={(e) => handleNavClick(e, '/notices')} className={getLinkClass('/notices')}>
         공지사항
       </Link>
-      <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={getLinkClass('/tbm')}>
-        TBM
-      </Link>
+      {!isContractor && (
+        <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={getLinkClass('/tbm')}>
+          TBM
+        </Link>
+      )}
       <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={getLinkClass('/courses')}>
         안전교육
       </Link>
@@ -396,9 +400,11 @@ export function Header() {
                     <Link href="/notices" onClick={(e) => handleNavClick(e, '/notices')} className={`${getLinkClass('/notices')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       공지사항
                     </Link>
-                    <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={`${getLinkClass('/tbm')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
-                      TBM
-                    </Link>
+                    {!isContractor && (
+                      <Link href="/tbm" onClick={(e) => handleNavClick(e, '/tbm')} className={`${getLinkClass('/tbm')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                        TBM
+                      </Link>
+                    )}
                     <Link href="/courses" onClick={(e) => handleNavClick(e, '/courses')} className={`${getLinkClass('/courses')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
                       안전교육
                     </Link>

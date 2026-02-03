@@ -53,5 +53,6 @@ export const ROLE_LABELS = {
   TEAM_LEADER: '팀장',
   EXECUTIVE_LEADER: '임원팀장',
   APPROVER: '임원',
+  CONTRACTOR: '협력업체',
   PENDING: '가입대기',
 } as const;
