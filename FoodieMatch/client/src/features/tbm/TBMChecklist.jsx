@@ -175,17 +175,30 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
       // 사용자 팀 자동 선택 (user 로드 확인) + 부서도 자동 선택
       // 사이트 변경 시에도 사용자 팀 기반으로 부서/팀 자동 설정
+      let autoSelected = false;
       if (user?.teamId) {
         const userTeam = res.data.find(t => t.id === user.teamId);
         if (userTeam) {
           const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
           if (dept) {
-            // 부서와 팀을 함께 선택 (부서 매핑 성공 시에만)
             setSelectedDepartment(dept);
             setSelectedTeam(user.teamId);
+            autoSelected = true;
             console.log(`[TBM] 자동 선택: 부서=${dept}, 팀=${stripSiteSuffix(userTeam.name)}`);
           } else {
             console.warn(`[TBM] 부서 매핑 실패: site=${site}, team=${userTeam.name}`);
+          }
+        }
+      }
+      // teamId로 못 찾으면 leaderId로 해당 사이트의 팀 자동 선택
+      if (!autoSelected && user?.id) {
+        const leaderTeam = res.data.find(t => t.leaderId === user.id);
+        if (leaderTeam) {
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(leaderTeam.name));
+          if (dept) {
+            setSelectedDepartment(dept);
+            setSelectedTeam(leaderTeam.id);
+            console.log(`[TBM] 리더 팀 자동 선택: 부서=${dept}, 팀=${stripSiteSuffix(leaderTeam.name)}`);
           }
         }
       }
