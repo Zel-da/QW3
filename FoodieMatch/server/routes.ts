@@ -262,9 +262,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           teamId: number | null;
           name: string | null;
           site: string | null;
+          sites: string | null;
           failedLoginAttempts: number;
           lockedUntil: Date | null;
-        }>>`SELECT id, username, password, role, "teamId", name, site, "failedLoginAttempts", "lockedUntil" FROM "User" WHERE username = ${username} FOR UPDATE`;
+        }>>`SELECT id, username, password, role, "teamId", name, site, sites, "failedLoginAttempts", "lockedUntil" FROM "User" WHERE username = ${username} FOR UPDATE`;
 
         const user = users[0];
         if (!user || !user.password) {
