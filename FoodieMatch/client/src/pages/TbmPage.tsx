@@ -37,7 +37,7 @@ export default function TbmPage() {
   const [view, setView] = useState('checklist');
   const [reportForEdit, setReportForEdit] = useState<any | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const { site, setSite, initSiteFromUser } = useSite();
+  const { site, setSite, availableSites, initSiteFromUser } = useSite();
   const { user } = useAuth();
   const { setCurrentTbmInfo } = useRecording();
   const [location] = useLocation();
@@ -173,14 +173,14 @@ export default function TbmPage() {
                   />
                 </PopoverContent>
               </Popover>
-              {user?.role === 'ADMIN' && (
+              {(user?.role === 'ADMIN' || availableSites.length > 1) && (
                 <Select onValueChange={(value: Site) => setSite(value)} value={site}>
                   <SelectTrigger className="w-full sm:w-[180px] h-10 md:h-11">
                     <SelectValue placeholder="현장 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SITES.map(site => (
-                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    {(user?.role === 'ADMIN' ? SITES : availableSites).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

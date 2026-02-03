@@ -346,7 +346,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { user } = result;
 
       // Set session user data
-      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site };
+      const sitesArray = user.sites ? user.sites.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+      req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray };
 
       // Explicitly save session before sending response
       req.session.save((err) => {
@@ -354,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Session save error:', err);
           return res.status(500).json({ message: "세션 저장 중 오류가 발생했습니다" });
         }
-        res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site });
+        res.json({ id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray });
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -763,8 +764,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: Update user site
   app.put("/api/users/:userId/site", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const { site } = req.body;
-      const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { site } });
+      const { site, sites } = req.body;
+      const data: any = {};
+      if (site !== undefined) data.site = site;
+      if (sites !== undefined) data.sites = sites; // 쉼표 구분 문자열 ("아산,화성")
+      const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data });
       res.json(updatedUser);
     } catch (error) { res.status(500).json({ message: "Failed to update site" }); }
   });

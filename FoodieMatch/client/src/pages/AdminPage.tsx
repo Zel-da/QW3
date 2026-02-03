@@ -42,8 +42,8 @@ const updateUserRole = async ({ userId, role }: { userId: string; role: Role }) 
   return res.json();
 };
 
-const updateUserSite = async ({ userId, site }: { userId: string; site: string }) => {
-  const res = await apiRequest('PUT', `/api/users/${userId}/site`, { site });
+const updateUserSite = async ({ userId, site, sites }: { userId: string; site: string; sites?: string }) => {
+  const res = await apiRequest('PUT', `/api/users/${userId}/site`, { site, sites });
   return res.json();
 };
 
@@ -188,7 +188,13 @@ export default function AdminPage() {
   };
 
   const handleSiteChange = (userId: string, site: string) => {
-    siteMutation.mutate({ userId, site });
+    if (site === '전체') {
+      // 전체 선택 시: site는 아산(기본), sites에 양쪽 모두 저장
+      siteMutation.mutate({ userId, site: '아산', sites: '아산,화성' });
+    } else {
+      // 단일 사이트 선택 시: sites 초기화
+      siteMutation.mutate({ userId, site, sites: '' });
+    }
   };
 
   const handleDeleteUser = (userId: string, username: string) => {
@@ -507,7 +513,7 @@ export default function AdminPage() {
                           <TableCell>{user.username}</TableCell>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>
-                            <Select value={user.site || ''} onValueChange={(newSite) => handleSiteChange(user.id, newSite)} disabled={siteMutation.isPending}>
+                            <Select value={user.sites ? '전체' : (user.site || '')} onValueChange={(newSite) => handleSiteChange(user.id, newSite)} disabled={siteMutation.isPending}>
                               <SelectTrigger className="w-[120px]">
                                 <SelectValue placeholder="현장 선택" />
                               </SelectTrigger>
@@ -515,6 +521,7 @@ export default function AdminPage() {
                                 {SITES.map(site => (
                                   <SelectItem key={site} value={site}>{site}</SelectItem>
                                 ))}
+                                <SelectItem value="전체">전체</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
