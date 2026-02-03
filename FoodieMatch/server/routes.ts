@@ -8669,6 +8669,153 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
+  // ==================== 백업 API ====================
+  app.get("/api/admin/backup/full", async (req, res) => {
+    try {
+      // 인증: 세션(ADMIN) 또는 BACKUP_API_KEY
+      const backupKey = process.env.BACKUP_API_KEY;
+      const headerKey = req.headers["x-backup-key"] as string | undefined;
+
+      const isSessionAdmin = req.session?.user?.role === "ADMIN";
+      const isKeyValid = !!(backupKey && headerKey && headerKey === backupKey);
+
+      if (!isSessionAdmin && !isKeyValid) {
+        return res.status(403).json({ message: "권한 없음" });
+      }
+
+      // 전체 모델 조회
+      const [
+        users,
+        passwordResetTokens,
+        factories,
+        teams,
+        teamMembers,
+        teamEquipments,
+        checklistTemplates,
+        templateItems,
+        dailyReports,
+        reportDetails,
+        reportSignatures,
+        absenceRecords,
+        monthlyApprovals,
+        approvalRequests,
+        inspectionTemplates,
+        inspectionScheduleTemplates,
+        monthlyInspectionDays,
+        safetyInspections,
+        inspectionItems,
+        courses,
+        userProgresses,
+        assessments,
+        userAssessments,
+        certificates,
+        notices,
+        noticeReads,
+        comments,
+        attachments,
+        simpleEmailConfigs,
+        emailLogs,
+        holidays,
+        auditLogs,
+      ] = await Promise.all([
+        prisma.user.findMany(),
+        prisma.passwordResetToken.findMany(),
+        prisma.factory.findMany(),
+        prisma.team.findMany(),
+        prisma.teamMember.findMany(),
+        prisma.teamEquipment.findMany(),
+        prisma.checklistTemplate.findMany(),
+        prisma.templateItem.findMany(),
+        prisma.dailyReport.findMany(),
+        prisma.reportDetail.findMany(),
+        prisma.reportSignature.findMany(),
+        prisma.absenceRecord.findMany(),
+        prisma.monthlyApproval.findMany(),
+        prisma.approvalRequest.findMany(),
+        prisma.inspectionTemplate.findMany(),
+        prisma.inspectionScheduleTemplate.findMany(),
+        prisma.monthlyInspectionDay.findMany(),
+        prisma.safetyInspection.findMany(),
+        prisma.inspectionItem.findMany(),
+        prisma.course.findMany(),
+        prisma.userProgress.findMany(),
+        prisma.assessment.findMany(),
+        prisma.userAssessment.findMany(),
+        prisma.certificate.findMany(),
+        prisma.notice.findMany(),
+        prisma.noticeRead.findMany(),
+        prisma.comment.findMany(),
+        prisma.attachment.findMany(),
+        prisma.simpleEmailConfig.findMany(),
+        prisma.emailLog.findMany(),
+        prisma.holiday.findMany(),
+        prisma.auditLog.findMany(),
+      ]);
+
+      // User password 마스킹
+      const maskedUsers = users.map(({ password, ...rest }) => ({
+        ...rest,
+        password: "***",
+      }));
+
+      // PasswordResetToken 토큰값 마스킹
+      const maskedTokens = passwordResetTokens.map(({ token, ...rest }) => ({
+        ...rest,
+        token: "***",
+      }));
+
+      const backupData = {
+        exportedAt: new Date().toISOString(),
+        version: "1.0",
+        data: {
+          users: maskedUsers,
+          passwordResetTokens: maskedTokens,
+          factories,
+          teams,
+          teamMembers,
+          teamEquipments,
+          checklistTemplates,
+          templateItems,
+          dailyReports,
+          reportDetails,
+          reportSignatures,
+          absenceRecords,
+          monthlyApprovals,
+          approvalRequests,
+          inspectionTemplates,
+          inspectionScheduleTemplates,
+          monthlyInspectionDays,
+          safetyInspections,
+          inspectionItems,
+          courses,
+          userProgresses,
+          assessments,
+          userAssessments,
+          certificates,
+          notices,
+          noticeReads,
+          comments,
+          attachments,
+          simpleEmailConfigs,
+          emailLogs,
+          holidays,
+          auditLogs,
+        },
+      };
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=backup_full_${dateStr}.json`
+      );
+      res.json(backupData);
+    } catch (error) {
+      console.error("Backup export error:", error);
+      res.status(500).json({ message: "백업 생성에 실패했습니다." });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

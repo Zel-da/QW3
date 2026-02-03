@@ -77,6 +77,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [isDraftViewMode, setIsDraftViewMode] = useState(false);
   // 작성자 선택 (기본: 로그인 사용자)
   const [selectedAuthorId, setSelectedAuthorId] = useState(null);
+  // 직접입력 모드
+  const [isManualAuthor, setIsManualAuthor] = useState(false);
+  const [manualAuthorName, setManualAuthorName] = useState('');
 
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
@@ -112,20 +115,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 관리자 여부 (ADMIN / SAFETY_TEAM만 팀 선택 드롭다운 표시)
   const isPrivilegedUser = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
-  // 작성자 선택 가능한 사용자 목록 (등록된 시스템 사용자만)
+  // 작성자 선택 가능한 사용자 목록 (시스템 사용자 + 계정 없는 팀원)
   const authorOptions = useMemo(() => {
-    const registered = teamUsers.filter(u => !u.isTeamMember);
-    const all = user ? [...registered, user] : registered;
+    const all = user ? [...teamUsers, user] : [...teamUsers];
     return all.filter((u, i, self) => i === self.findIndex(t => t.id === u.id));
   }, [teamUsers, user]);
 
   // 선택된 작성자 정보
   const selectedAuthor = useMemo(() => {
+    if (isManualAuthor) {
+      return { id: null, name: manualAuthorName || '' };
+    }
     if (selectedAuthorId) {
       return authorOptions.find(u => u.id === selectedAuthorId) || user;
     }
     return user;
-  }, [selectedAuthorId, authorOptions, user]);
+  }, [selectedAuthorId, isManualAuthor, manualAuthorName, authorOptions, user]);
 
   // 저장하지 않은 변경사항 경고 훅
   const {
@@ -1109,20 +1114,52 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         <>
           <div className="mb-4 flex items-center gap-3">
             <span className="font-semibold text-lg">작성자:</span>
-            <Select
-              value={selectedAuthorId || user?.id || ''}
-              onValueChange={setSelectedAuthorId}
-              disabled={isViewMode || isDraftViewMode}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {authorOptions.map(u => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isManualAuthor ? (
+              <>
+                <Input
+                  className="w-[180px]"
+                  placeholder="이름 입력"
+                  value={manualAuthorName}
+                  onChange={(e) => setManualAuthorName(e.target.value)}
+                  disabled={isViewMode || isDraftViewMode}
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setIsManualAuthor(false); setManualAuthorName(''); }}
+                  disabled={isViewMode || isDraftViewMode}
+                >
+                  목록
+                </Button>
+              </>
+            ) : (
+              <Select
+                value={selectedAuthorId || user?.id || ''}
+                onValueChange={(val) => {
+                  if (val === '__manual__') {
+                    setIsManualAuthor(true);
+                    setSelectedAuthorId(null);
+                  } else {
+                    setSelectedAuthorId(val);
+                  }
+                }}
+                disabled={isViewMode || isDraftViewMode}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {authorOptions.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}{u.isTeamMember ? ' (팀원)' : ''}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__manual__">직접입력</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <h3 className="font-semibold text-xl mt-6">점검항목</h3>
 
