@@ -57,6 +57,12 @@ export async function sendEmailWithTemplate(
   subject: string,
   htmlContent: string
 ): Promise<{ success: boolean; messageId?: string; error?: any }> {
+  // 개발 환경에서는 이메일 발송 차단
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`📧 [DEV] 이메일 발송 차단 - 수신: ${to}, 제목: ${subject}`);
+    return { success: false, error: 'Email blocked in development environment' };
+  }
+
   try {
     const transportConfig: any = {
       host: config.host,

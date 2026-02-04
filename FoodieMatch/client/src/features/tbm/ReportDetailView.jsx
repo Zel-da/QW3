@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Terminal, ArrowLeft, X, FileAudio, Play, Pause, FileText, Clock, Copy } from "lucide-react";
+import { Terminal, ArrowLeft, X, FileAudio, Play, Pause, FileText, Clock, Copy, Loader2 } from "lucide-react";
 
 // 시간 포맷팅 함수
 const formatTime = (seconds) => {
@@ -28,6 +28,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [enlargedImage, setEnlargedImage] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isAudioPlaying, setIsAudioPlaying] = useState(false);
     const [audioPlaybackTime, setAudioPlaybackTime] = useState(0);
     const audioRef = React.useRef(null);
@@ -54,12 +55,15 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
 
     const handleDelete = async () => {
         if (window.confirm('정말로 이 점검표를 삭제하시겠습니까?')) {
+            setIsDeleting(true);
             try {
                 await apiClient.delete(`/api/tbm/${reportId}`);
                 alert('삭제되었습니다.');
-                onBackToList(); // Go back to the list view
+                onBackToList();
             } catch (err) {
                 setError('삭제 중 오류가 발생했습니다.');
+            } finally {
+                setIsDeleting(false);
             }
         }
     };
@@ -99,8 +103,8 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
                     >
                         {isLoadingModify ? '불러오는 중...' : '이 점검표 수정하기'}
                     </Button>
-                    <Button variant="destructive" onClick={handleDeleteWithCheck}>
-                        삭제
+                    <Button variant="destructive" onClick={handleDeleteWithCheck} disabled={isDeleting}>
+                        {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />삭제 중...</> : '삭제'}
                     </Button>
                 </div>
             </div>

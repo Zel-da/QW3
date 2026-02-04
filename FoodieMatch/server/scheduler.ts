@@ -8,6 +8,7 @@ import {
   sendEmailFromTemplate
 } from './emailService';
 import { executeAllConditions } from './conditionExecutor';
+import { isHoliday } from './utils/holidayUtils';
 
 // Store active cron jobs for management
 const activeCronJobs = new Map<string, cron.ScheduledTask>();
@@ -377,11 +378,34 @@ async function sendEducationReminders() {
 
 /**
  * TBM 작성 독려 알림 전송
+ * - 마지막 TBM 작성일로부터 영업일(주말·공휴일 제외) 3일이 지난 팀에게 알림
  */
 async function sendTBMReminders() {
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
 
+  // 오늘이 영업일이 아니면 스킵
+  const dayOfWeek = today.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6 || await isHoliday(today)) {
+    console.log('📧 TBM 알림: 오늘은 주말/공휴일이므로 스킵');
+    return;
+  }
+
+  // 영업일 3일 전 날짜 계산 (오늘 제외, 과거로 3영업일)
+  const d = new Date(today);
+  let bizCount = 0;
+  while (bizCount < 3) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6 && !(await isHoliday(new Date(d)))) {
+      bizCount++;
+    }
+  }
+  const cutoffDate = new Date(d);
+  cutoffDate.setHours(23, 59, 59, 999);
+
+  console.log(`📧 TBM 알림: 마지막 작성이 ${cutoffDate.toLocaleDateString('ko-KR')} 이전인 팀 대상`);
+
+  // 각 팀의 가장 최근 TBM과 팀장 정보를 조회
   const teams = await prisma.team.findMany({
     include: {
       members: {
@@ -389,38 +413,48 @@ async function sendTBMReminders() {
           role: 'TEAM_LEADER',
           email: { not: null }
         }
+      },
+      dailyReports: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { createdAt: true }
       }
     }
   });
 
+  let sentCount = 0;
   for (const team of teams) {
-    const todayTBM = await prisma.dailyReport.findFirst({
-      where: {
-        teamId: team.id,
-        createdAt: {
-          gte: new Date(todayStr)
+    const lastReport = team.dailyReports[0];
+
+    // 마지막 작성일이 cutoff 이후면 아직 3영업일 안 지남 → 스킵
+    if (lastReport && lastReport.createdAt > cutoffDate) continue;
+
+    const daysOverdue = lastReport
+      ? Math.floor((today.getTime() - lastReport.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    for (const user of team.members) {
+      if (!user.email) continue;
+
+      await sendEmailFromTemplate(
+        'TBM_REMINDER',
+        user.email,
+        {
+          managerName: user.username,
+          teamName: team.name,
+          date: today.toLocaleDateString('ko-KR'),
+          daysOverdue: daysOverdue || '기록 없음'
         }
-      }
-    });
+      );
+    }
 
-    if (!todayTBM) {
-      for (const user of team.members) {
-        if (!user.email) continue;
-
-        await sendEmailFromTemplate(
-          'TBM_REMINDER',
-          user.email,
-          {
-            managerName: user.username,
-            teamName: team.name,
-            date: today.toLocaleDateString('ko-KR')
-          }
-        );
-      }
-
-      console.log(`✅ ${team.name} - ${team.members.length}명에게 알림 전송`);
+    if (team.members.length > 0) {
+      console.log(`  📧 ${team.name} - 마지막 작성: ${lastReport ? lastReport.createdAt.toLocaleDateString('ko-KR') : '없음'}`);
+      sentCount++;
     }
   }
+
+  console.log(`📊 TBM 미작성 알림: ${sentCount}개 팀 / 전체 ${teams.length}개 팀`);
 }
 
 /**
@@ -507,10 +541,10 @@ export async function startAllSchedulers() {
   console.log('🚀 이메일 스케줄러 시작');
   console.log('='.repeat(60));
 
-  // 기존 하드코딩 스케줄러 (백업용 - 필요시 주석 해제)
-  // scheduleEducationReminders();
+  // 기존 하드코딩 스케줄러 (사용 안 함)
+  // scheduleEducationReminders();    // DB에서 비활성화됨
   // scheduleTBMReminders();
-  // scheduleSafetyInspectionReminders();
+  // scheduleSafetyInspectionReminders();  // DB에서 비활성화됨
 
   // 데이터베이스 기반 동적 스케줄러
   await loadEmailSchedulesFromDB();

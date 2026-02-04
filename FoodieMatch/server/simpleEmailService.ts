@@ -138,6 +138,12 @@ export async function sendEmail(options: {
     return { success: false, error: 'Email disabled (ENABLE_EMAIL=false)' };
   }
 
+  // 개발 환경에서는 이메일 발송 차단
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`📧 [DEV] 이메일 발송 차단 - 수신: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}, 제목: ${options.subject}`);
+    return { success: false, error: 'Email blocked in development environment' };
+  }
+
   try {
     // 사이트가 지정되면 사이트별 발신자 사용, 아니면 기본값 사용
     const fromAddress = options.from || getSenderAddress(options.site);

@@ -84,6 +84,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
 
+  // DB 웜업 (Neon 콜드스타트 방지 — 페이지 진입 시 DB 깨우기)
+  useEffect(() => {
+    apiClient.get('/api/db/warmup').catch(() => {});
+  }, []);
+
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
     // 뷰 모드, 임시저장 조회 모드, 로딩 중이면 변경사항 없음으로 처리
@@ -798,6 +803,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }),
     };
 
+    setIsSaving(true);
     try {
       console.log('TBM 제출 시작:', {
         reportForEdit: !!reportForEdit,
@@ -869,6 +875,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
 
       setError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1662,9 +1670,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           <Button
             onClick={handleSubmit}
             size="lg"
-            disabled={!checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
+            disabled={isSaving || !checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
           >
-            제출하기
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                제출 중...
+              </>
+            ) : '제출하기'}
           </Button>
         )}
       </div>
