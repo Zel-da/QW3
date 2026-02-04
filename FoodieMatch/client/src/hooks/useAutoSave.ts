@@ -205,6 +205,22 @@ export function useAutoSave<T>({
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+        // 언마운트 시 pending 변경사항이 있으면 즉시 저장
+        try {
+          const currentDataString = JSON.stringify(data);
+          if (currentDataString !== lastSavedRef.current && enabled) {
+            localStorage.setItem(
+              key,
+              JSON.stringify({
+                data,
+                timestamp: new Date().toISOString(),
+              })
+            );
+            lastSavedRef.current = currentDataString;
+          }
+        } catch (err) {
+          console.error('Failed to save on unmount:', err);
+        }
       }
     };
   }, [data, key, interval, enabled, toast]);

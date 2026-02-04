@@ -323,7 +323,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3" data-testid="logo">
-            <Link href="/" className="flex items-center space-x-3">
+            <Link href="/" onClick={(e) => handleNavClick(e, '/')} className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Shield className="text-primary-foreground w-4 h-4" />
               </div>
@@ -349,13 +349,13 @@ export function Header() {
                 <>
                   <span className="text-base font-medium whitespace-nowrap">{user.username}님</span>
                   <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
-                    <Link href="/profile">내 정보</Link>
+                    <Link href="/profile" onClick={(e) => handleNavClick(e, '/profile')}>내 정보</Link>
                   </Button>
                   <Button onClick={logout} variant="ghost" className="text-base font-medium whitespace-nowrap">로그아웃</Button>
                 </>
               ) : (
                 <Button asChild variant="ghost" className="text-base font-medium whitespace-nowrap">
-                  <Link href="/login">로그인</Link>
+                  <Link href="/login" onClick={(e) => handleNavClick(e, '/login')}>로그인</Link>
                 </Button>
               )}
             </div>
@@ -384,7 +384,7 @@ export function Header() {
                     </div>
                     <div className="mt-4 flex flex-col gap-2">
                       <Button asChild variant="outline" className="w-full justify-start" onClick={() => setIsSheetOpen(false)}>
-                        <Link href="/profile">내 정보</Link>
+                        <Link href="/profile" onClick={(e) => handleNavClick(e, '/profile')}>내 정보</Link>
                       </Button>
                       <Button onClick={() => { logout(); setIsSheetOpen(false); }} variant="ghost" className="w-full justify-start text-destructive hover:text-destructive">
                         로그아웃
@@ -428,7 +428,7 @@ export function Header() {
                 {!user && (
                   <div className="mt-6 pt-6 border-t">
                     <Button asChild className="w-full">
-                      <Link href="/login" onClick={() => setIsSheetOpen(false)}>로그인</Link>
+                      <Link href="/login" onClick={(e) => handleNavClick(e, '/login')}>로그인</Link>
                     </Button>
                   </div>
                 )}

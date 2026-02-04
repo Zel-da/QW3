@@ -4,6 +4,7 @@ import { Notice } from '@shared/schema';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
+import { useTbmNavigation } from '@/context/TbmNavigationContext';
 
 const fetchLatestNotice = async () => {
   const res = await fetch('/api/notices?latest=true');
@@ -15,9 +16,10 @@ const fetchLatestNotice = async () => {
 
 export function NoticePopup() {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: notice, error } = useQuery<Notice>({ 
-    queryKey: ['latestNotice'], 
-    queryFn: fetchLatestNotice 
+  const { safeNavigate: tbmSafeNavigate, isTbmActive } = useTbmNavigation();
+  const { data: notice, error } = useQuery<Notice>({
+    queryKey: ['latestNotice'],
+    queryFn: fetchLatestNotice
   });
 
   useEffect(() => {
@@ -56,7 +58,15 @@ export function NoticePopup() {
         </div>
         <DialogFooter className="sm:justify-between gap-2 flex-col sm:flex-row">
           <Button asChild variant="secondary" className="text-lg h-12 w-full sm:w-auto">
-            <Link href={`/notices/${notice.id}`} onClick={() => handleClose(false)}>
+            <Link href={`/notices/${notice.id}`} onClick={(e) => {
+              if (isTbmActive && tbmSafeNavigate) {
+                e.preventDefault();
+                handleClose(false);
+                tbmSafeNavigate(`/notices/${notice.id}`);
+              } else {
+                handleClose(false);
+              }
+            }}>
               자세히 보기
             </Link>
           </Button>

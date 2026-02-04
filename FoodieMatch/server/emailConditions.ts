@@ -231,6 +231,7 @@ export async function checkSafetyInspectionDue(
     const teams = await prisma.team.findMany({
       include: {
         leader: true,
+        teamEquipments: true,
         safetyInspections: {
           where: {
             year: currentYear,
@@ -241,6 +242,9 @@ export async function checkSafetyInspectionDue(
     });
 
     for (const team of teams) {
+      // 장비가 없는 팀은 점검 대상이 아니므로 스킵
+      if (!team.teamEquipments || team.teamEquipments.length === 0) continue;
+
       // 이번 달 점검이 없거나 완료되지 않은 경우
       const inspection = team.safetyInspections[0];
       const isIncomplete = !inspection || !inspection.isCompleted;

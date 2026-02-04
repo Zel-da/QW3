@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'wouter';
 import { Home, Bell, ClipboardCheck, GraduationCap, Menu } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTbmNavigation } from '@/context/TbmNavigationContext';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -13,6 +14,7 @@ interface NavItem {
 export function BottomNavigation() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { safeNavigate: tbmSafeNavigate, isTbmActive } = useTbmNavigation();
 
   const navItems: NavItem[] = [
     { href: '/', icon: Home, label: '홈', showTo: 'all' },
@@ -49,6 +51,12 @@ export function BottomNavigation() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={(e) => {
+                if (isTbmActive && tbmSafeNavigate) {
+                  e.preventDefault();
+                  tbmSafeNavigate(item.href);
+                }
+              }}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors min-w-0",
                 active

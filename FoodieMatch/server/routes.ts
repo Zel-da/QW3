@@ -11,6 +11,7 @@ import { prisma } from "./db";
 import bcrypt from "bcrypt";
 import ExcelJS from "exceljs";
 import { tbmReportSchema } from "@shared/schema";
+import { filterTeamsForReport, buildPhotoEntries } from "@shared/monthlyReportConfig";
 import sharp from "sharp";
 import rateLimit from "express-rate-limit";
 // Email services are now dynamically imported where needed
@@ -241,110 +242,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", authLimiter, async (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
       if (!username || !password) {
         return res.status(400).json({ message: "사용자명과 비밀번호를 입력해주세요" });
       }
 
-      const MAX_ATTEMPTS = 5;
-      const LOCK_DURATION_MINUTES = 15;
+      const user = await prisma.user.findFirst({ where: { username } });
 
-      // 트랜잭션으로 원자적 처리 (레이스 컨디션 방지)
-      const result = await prisma.$transaction(async (tx) => {
-        // SELECT FOR UPDATE로 행 잠금 (동시 접근 방지)
-        const users = await tx.$queryRaw<Array<{
-          id: number;
-          username: string;
-          password: string | null;
-          role: string;
-          teamId: number | null;
-          name: string | null;
-          site: string | null;
-          sites: string | null;
-          failedLoginAttempts: number;
-          lockedUntil: Date | null;
-        }>>`SELECT id, username, password, role, "teamId", name, site, sites, "failedLoginAttempts", "lockedUntil" FROM "User" WHERE username = ${username} FOR UPDATE`;
-
-        const user = users[0];
-        if (!user || !user.password) {
-          return { error: 'invalid_credentials' };
-        }
-
-        // 계정 잠금 상태 확인
-        if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-          const remainingMinutes = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
-          return { error: 'locked', remainingMinutes, lockedUntil: user.lockedUntil };
-        }
-
-        const validPassword = await bcrypt.compare(password, user.password);
-
-        if (!validPassword) {
-          // 원자적 증가 (현재 DB 값 기준)
-          const updated = await tx.user.update({
-            where: { id: user.id },
-            data: {
-              failedLoginAttempts: { increment: 1 }
-            },
-            select: { failedLoginAttempts: true }
-          });
-
-          const newFailedAttempts = updated.failedLoginAttempts;
-
-          if (newFailedAttempts >= MAX_ATTEMPTS) {
-            // 5회 이상 실패 시 잠금
-            const lockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
-            await tx.user.update({
-              where: { id: user.id },
-              data: { lockedUntil }
-            });
-            console.log(`계정 잠금: ${username}, 해제 시간: ${lockedUntil}`);
-            return { error: 'just_locked', lockedUntil };
-          } else {
-            const remainingAttempts = MAX_ATTEMPTS - newFailedAttempts;
-            return { error: 'wrong_password', remainingAttempts };
-          }
-        }
-
-        // 로그인 성공: 실패 횟수 초기화
-        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-          await tx.user.update({
-            where: { id: user.id },
-            data: {
-              failedLoginAttempts: 0,
-              lockedUntil: null
-            }
-          });
-        }
-
-        return { success: true, user };
-      });
-
-      // 트랜잭션 결과 처리
-      if ('error' in result) {
-        switch (result.error) {
-          case 'invalid_credentials':
-            return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
-          case 'locked':
-            return res.status(423).json({
-              message: `계정이 잠겼습니다. ${result.remainingMinutes}분 후에 다시 시도해주세요.`,
-              lockedUntil: result.lockedUntil
-            });
-          case 'just_locked':
-            return res.status(423).json({
-              message: `로그인 ${MAX_ATTEMPTS}회 실패로 계정이 ${LOCK_DURATION_MINUTES}분간 잠겼습니다.`,
-              lockedUntil: result.lockedUntil
-            });
-          case 'wrong_password':
-            return res.status(401).json({
-              message: `잘못된 비밀번호입니다. ${result.remainingAttempts}회 더 실패하면 계정이 잠깁니다.`,
-              remainingAttempts: result.remainingAttempts
-            });
-        }
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
 
-      const { user } = result;
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
+      }
 
       // Set session user data
       const sitesArray = user.sites ? user.sites.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
@@ -369,6 +284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(req.session.user);
     } else {
       res.status(401).json({ message: "인증되지 않은 사용자입니다" });
+    }
+  });
+
+  // DB 웜업 (Neon 콜드스타트 방지 — 페이지 진입 시 호출)
+  app.get("/api/db/warmup", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.json({ ok: true });
+    } catch (e) {
+      res.json({ ok: false });
     }
   });
 
@@ -2324,16 +2249,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let dueDate = `${thisYear}-${String(thisMonth).padStart(2, '0')}-04`;
 
       if (userTeamId) {
-        const inspection = await prisma.safetyInspection.findUnique({
-          where: {
-            teamId_year_month: {
-              teamId: userTeamId,
-              year: thisYear,
-              month: thisMonth
-            }
-          }
+        // 팀의 장비 보유 여부 확인 - 장비가 없으면 점검 대상이 아니므로 자동 완료
+        const teamEquipmentCount = await prisma.teamEquipment.count({
+          where: { teamId: userTeamId }
         });
-        thisMonthCompleted = inspection?.isCompleted || false;
+
+        if (teamEquipmentCount === 0) {
+          thisMonthCompleted = true;
+        } else {
+          const inspection = await prisma.safetyInspection.findUnique({
+            where: {
+              teamId_year_month: {
+                teamId: userTeamId,
+                year: thisYear,
+                month: thisMonth
+              }
+            }
+          });
+          thisMonthCompleted = inspection?.isCompleted || false;
+        }
       }
 
       // 결재 대기 통계 (ApprovalRequest 테이블 사용)
@@ -4177,17 +4111,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthStart = new Date(yearNum, monthNum - 1, 1);
       const monthEnd = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
 
-      // 사이트별 모든 팀 조회
-      const teams = await prisma.team.findMany({
+      // 사이트별 모든 팀 조회 후 보고서 대상 팀만 필터링
+      const allTeams = await prisma.team.findMany({
         where: { site: site as string },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
+
+      const teams = filterTeamsForReport(site as string, allTeams);
 
       if (teams.length === 0) {
         return res.status(404).json({ message: `${site} 사이트에 팀이 없습니다.` });
       }
 
-      console.log(`📋 팀 총 ${teams.length}개 발견`);
+      console.log(`📋 팀 총 ${allTeams.length}개 중 보고서 대상 ${teams.length}개 팀`);
 
       // 팀별 날짜 맵이 있으면 팀별로 다른 날짜의 보고서를 조회
       // 없으면 기존처럼 선택한 단일 날짜 사용
@@ -4692,22 +4628,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let photoRow = 1;
 
-      // 팀을 3개씩 묶어서 처리
-      for (let i = 0; i < teams.length; i += 3) {
+      // 사진 그룹핑 적용 (화성: BKT+MB+BR출하 / CR조립+CR출하+CR자재 공유)
+      const photoEntries = buildPhotoEntries(site as string, teams.map(t => t.name));
+      console.log(`  📷 사진 엔트리: ${photoEntries.length}개 (팀 ${teams.length}개에서 그룹핑 적용)`);
+
+      // 엔트리를 3개씩 묶어서 처리
+      for (let i = 0; i < photoEntries.length; i += 3) {
         const teamNameRow = photoRow;
         const teamPhotoRow = photoRow + 1;
 
-        // 3개 팀 처리 (또는 남은 팀 수만큼)
-        for (let j = 0; j < 3 && i + j < teams.length; j++) {
-          const team = teams[i + j];
-          const report = reports.find(r => r.teamId === team.id);
+        // 3개 엔트리 처리 (또는 남은 수만큼)
+        for (let j = 0; j < 3 && i + j < photoEntries.length; j++) {
+          const entry = photoEntries[i + j];
+          const report = reports.find(r => r.team?.name?.includes(entry.primaryTeamPattern) || false)
+            || reports.find(r => {
+              const team = teams.find(t => t.id === r.teamId);
+              return team?.name?.includes(entry.primaryTeamPattern) || false;
+            });
           const colStart = j * 10 + 1; // 1, 11, 21
           const colEnd = colStart + 9;  // 10, 20, 30
 
-          // 팀명 셀 (병합)
+          // 라벨 셀 (병합) — 그룹이면 "BKT조립 + MB조립 + BR출하", 개별이면 팀명
           photoSheet.mergeCells(teamNameRow, colStart, teamNameRow, colEnd);
           const teamNameCell = photoSheet.getCell(teamNameRow, colStart);
-          teamNameCell.value = team.name;
+          teamNameCell.value = entry.label;
           teamNameCell.font = { ...boldFont, size: 14 };
           teamNameCell.alignment = centerAlignment;
           teamNameCell.border = border;
@@ -4727,11 +4671,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const remarksData = JSON.parse(report.remarks);
                 if (remarksData.images && Array.isArray(remarksData.images) && remarksData.images.length > 0) {
                   tbmPhotoUrl = remarksData.images[0];
-                  console.log(`    📷 팀 ${team.name}: TBM 특이사항 사진 발견`);
+                  console.log(`    📷 ${entry.label}: TBM 특이사항 사진 발견`);
                 }
               } catch (e) {
                 // remarks가 JSON이 아닌 경우 무시 (기존 텍스트 형식)
-                console.log(`    ℹ️ 팀 ${team.name}: remarks가 텍스트 형식`);
+                console.log(`    ℹ️ ${entry.label}: remarks가 텍스트 형식`);
               }
             }
 
@@ -4739,7 +4683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               try {
                 // Path traversal 방지를 위한 안전한 파일 경로 검증
                 const fullPath = validateFilePath(tbmPhotoUrl);
-                console.log(`    📸 팀 ${team.name} TBM 사진 삽입: ${fullPath}`);
+                console.log(`    📸 ${entry.label} TBM 사진 삽입: ${fullPath}`);
 
                 // 파일 읽기 (안전한 방식)
                 const imageBuffer = safeReadFile(tbmPhotoUrl);
@@ -4768,7 +4712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`    ✅ TBM 사진 삽입 성공`);
                 }
               } catch (error) {
-                console.error(`    ❌ TBM 사진 삽입 실패 (${team.name}):`, error);
+                console.error(`    ❌ TBM 사진 삽입 실패 (${entry.label}):`, error);
                 photoCell.value = '사진 로드 실패';
                 photoCell.alignment = centerAlignment;
                 photoCell.font = font;
@@ -4780,19 +4724,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               photoCell.font = { ...font, color: { argb: '808080' } };
             }
           } else {
-            // 보고서 없음 (팀별 날짜 사용 시 해당 팀의 날짜 표시)
-            const teamDay = teamDateMap[team.id] || dateNum;
-            photoCell.value = `${teamDay}일 보고서 없음`;
+            // 보고서 없음
+            photoCell.value = '보고서 없음';
             photoCell.alignment = centerAlignment;
             photoCell.font = { ...font, color: { argb: '808080' } };
           }
         }
 
-        // 다음 팀 그룹으로 (팀명 1행 + 사진 21행 + 여백 1행 = 23행)
+        // 다음 그룹으로 (라벨 1행 + 사진 21행 + 여백 1행 = 23행)
         photoRow += 23;
       }
 
-      console.log(`  ✅ 팀별 사진 생성 완료 (총 ${teams.length}개 팀)`);
+      console.log(`  ✅ 팀별 사진 생성 완료 (${photoEntries.length}개 엔트리)`);
 
       // ===== 시트 3~: 각 팀 서명 시트 =====
       console.log('\n✍️  시트 3~: 서명 시트 생성...');
@@ -5063,19 +5006,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (results && results.length > 0) {
-        for (const r of results) {
-          try {
-            // itemId 유효성 검사
-            if (!validItemIds.has(r.itemId)) {
-              console.warn(`⚠️ Skipping invalid itemId ${r.itemId} for team ${teamId}`);
-              continue;
-            }
+        // 유효한 항목만 필터링
+        const validResults = results.filter(r => {
+          if (!validItemIds.has(r.itemId)) {
+            console.warn(`⚠️ Skipping invalid itemId ${r.itemId} for team ${teamId}`);
+            return false;
+          }
+          return true;
+        });
 
-            const hasAttachments = r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0;
+        // 첨부파일 유무로 분리
+        const withoutAttachments = validResults.filter(
+          r => !r.attachments || !Array.isArray(r.attachments) || r.attachments.length === 0
+        );
+        const withAttachments = validResults.filter(
+          r => r.attachments && Array.isArray(r.attachments) && r.attachments.length > 0
+        );
 
-            console.log(`Creating reportDetail for item ${r.itemId}, attachments: ${hasAttachments ? r.attachments!.length : 0}`);
+        console.log(`Creating reportDetails: ${withoutAttachments.length}개 일괄, ${withAttachments.length}개 첨부파일 포함`);
 
-            await prisma.reportDetail.create({
+        // 첨부파일 없는 항목: createMany로 일괄 삽입
+        if (withoutAttachments.length > 0) {
+          await prisma.reportDetail.createMany({
+            data: withoutAttachments.map(r => ({
+              reportId: newReport.id,
+              itemId: r.itemId,
+              checkState: r.checkState || undefined,
+              actionDescription: r.actionDescription,
+              actionTaken: r.actionTaken,
+              authorId: r.authorId,
+            }))
+          });
+        }
+
+        // 첨부파일 있는 항목: Promise.all로 병렬 처리
+        if (withAttachments.length > 0) {
+          await Promise.all(withAttachments.map(r =>
+            prisma.reportDetail.create({
               data: {
                 reportId: newReport.id,
                 itemId: r.itemId,
@@ -5083,7 +5050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 actionDescription: r.actionDescription,
                 actionTaken: r.actionTaken,
                 authorId: r.authorId,
-                attachments: hasAttachments && r.attachments ? {
+                attachments: {
                   create: r.attachments!.map((att: any) => ({
                     url: att.url,
                     name: att.name,
@@ -5091,14 +5058,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     size: att.size || 0,
                     mimeType: att.mimeType || 'image/jpeg'
                   }))
-                } : undefined
+                }
               }
-            });
-          } catch (detailError) {
-            console.error(`Error creating reportDetail for item ${r.itemId}:`, detailError);
-            // 개별 아이템 실패 시 계속 진행
-            console.error(`⚠️ Continuing despite error for item ${r.itemId}`);
-          }
+            }).catch(err => {
+              console.error(`Error creating reportDetail for item ${r.itemId}:`, err);
+            })
+          ));
         }
       }
 

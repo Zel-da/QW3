@@ -690,7 +690,8 @@ export default function SafetyInspectionPage() {
                         {overviewData.teams.map((team) => {
                           // 팀의 점검 완료 여부 확인
                           const hasAnyEquipment = Object.values(team.equipmentStatus).some(s => s.hasEquipment);
-                          const allCompleted = hasAnyEquipment && Object.values(team.equipmentStatus).every(status => {
+                          // 장비가 없는 팀은 점검 대상이 아니므로 자동 완료 처리
+                          const allCompleted = !hasAnyEquipment || Object.values(team.equipmentStatus).every(status => {
                             if (!status.hasEquipment) return true; // 장비 없으면 완료로 간주
                             return status.uploadedPhotoCount >= status.requiredPhotoCount;
                           });
@@ -729,12 +730,12 @@ export default function SafetyInspectionPage() {
                             {/* 전체 열 */}
                             <TableCell className={cn(
                               "text-center font-medium",
-                              totalRequired === 0 && "bg-gray-100 text-gray-400",
+                              totalRequired === 0 && "bg-green-100 text-green-700",
                               totalCompleted && "bg-green-100 text-green-700",
                               totalPartial && "bg-yellow-100 text-yellow-700",
                               !totalCompleted && !totalPartial && totalRequired > 0 && "bg-red-100 text-red-700"
                             )}>
-                              {totalRequired === 0 ? '-' : `(${totalUploaded}/${totalRequired})`}
+                              {totalRequired === 0 ? '완료' : `(${totalUploaded}/${totalRequired})`}
                             </TableCell>
                             {overviewData.equipmentTypes.map((equipment) => {
                               const status = team.equipmentStatus[equipment];

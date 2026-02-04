@@ -169,6 +169,7 @@ export async function getSafetyInspectionStats(site?: string) {
   const teams = await prisma.team.findMany({
     where: site ? { site } : undefined,
     include: {
+      teamEquipments: true,
       safetyInspections: {
         where: { year, month }
       }
@@ -176,6 +177,8 @@ export async function getSafetyInspectionStats(site?: string) {
   });
 
   const completed = teams.filter(t =>
+    // 장비가 없는 팀은 점검 대상이 아니므로 자동 완료 처리
+    t.teamEquipments.length === 0 ||
     t.safetyInspections.some(i => i.isCompleted)
   ).length;
 
@@ -191,7 +194,7 @@ export async function getSafetyInspectionStats(site?: string) {
     teams: teams.map(t => ({
       teamName: t.name,
       site: t.site,
-      isCompleted: t.safetyInspections.some(i => i.isCompleted)
+      isCompleted: t.teamEquipments.length === 0 || t.safetyInspections.some(i => i.isCompleted)
     }))
   };
 }
