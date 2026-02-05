@@ -392,42 +392,79 @@ export function InlineAudioPanel({
         }}
       />
 
-      {/* IDLE 상태 - FileDropzone 스타일 */}
+      {/* IDLE 상태 - RecordingContext 상태 표시 또는 헤더 안내 */}
       {state === 'idle' && (
-        <Card className="border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="p-3 rounded-full bg-muted">
-              <Mic className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium">음성 녹음</p>
-              <p className="text-xs text-muted-foreground mt-1">버튼을 눌러 녹음하거나 파일을 업로드하세요</p>
-            </div>
-            <div className="flex gap-2 w-full">
-              <Button
-                onClick={startRecording}
-                variant="destructive"
-                size="sm"
-                className="flex-1"
-              >
-                <Mic className="h-4 w-4 mr-1" />
-                녹음
-              </Button>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                size="sm"
-                className="flex-1"
-              >
-                <Upload className="h-4 w-4 mr-1" />
-                업로드
-              </Button>
-            </div>
-          </div>
-        </Card>
+        <>
+          {/* 녹음 중 (RecordingContext) */}
+          {recordingState.status === 'recording' && (
+            <Card className="border-2 border-red-200 bg-red-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+              <div className="flex items-center gap-2 text-red-500 animate-pulse">
+                <div className="w-3 h-3 bg-red-500 rounded-full" />
+                <span className="font-mono text-lg font-bold">{formatRecordingTime(recordingState.duration)}</span>
+              </div>
+              <p className="text-sm text-red-600 font-medium">녹음 중...</p>
+              <p className="text-xs text-muted-foreground">헤더의 일시정지 버튼을 누르세요</p>
+            </Card>
+          )}
+
+          {/* 일시정지 상태 (RecordingContext) */}
+          {recordingState.status === 'paused' && (
+            <Card className="border-2 border-amber-200 bg-amber-50/50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+              <div className="flex items-center gap-2 text-amber-600">
+                <div className="w-3 h-3 bg-amber-500 rounded-full" />
+                <span className="font-mono text-lg font-bold">{formatRecordingTime(recordingState.duration)}</span>
+              </div>
+              <p className="text-sm text-amber-700 font-medium">녹음 일시정지</p>
+              <p className="text-xs text-muted-foreground">헤더에서 재개/저장/삭제할 수 있습니다</p>
+            </Card>
+          )}
+
+          {/* 저장 중 (RecordingContext) */}
+          {recordingState.status === 'saving' && (
+            <Card className="border-2 border-primary/30 bg-primary/5 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-primary font-medium">녹음 저장 중...</p>
+            </Card>
+          )}
+
+          {/* 저장 완료 (RecordingContext) */}
+          {recordingState.status === 'success' && (
+            <Card className="border-2 border-green-300 bg-green-50 p-6 flex flex-col items-center justify-center min-h-[120px] gap-2 animate-pulse">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <p className="text-base text-green-700 font-bold">녹음 저장 완료!</p>
+              <p className="text-sm text-green-600">잠시 후 녹음이 표시됩니다...</p>
+            </Card>
+          )}
+
+          {/* 기본 idle 상태 - 헤더 녹음 안내 + 파일 업로드만 가능 */}
+          {(recordingState.status === 'idle' || recordingState.status === 'error') && (
+            <Card className="border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6">
+              <div className="flex flex-col items-center gap-3">
+                <div className="p-3 rounded-full bg-muted">
+                  <Mic className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium">녹음 없음</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    상단 헤더의 <span className="font-semibold text-primary">🎙️ 녹음</span> 버튼을 눌러주세요
+                  </p>
+                </div>
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  파일 업로드
+                </Button>
+              </div>
+            </Card>
+          )}
+        </>
       )}
 
-      {/* 녹음 중 상태 */}
+      {/* 자체 녹음 중 상태 - 더 이상 사용하지 않음 (레거시 호환용) */}
       {state === 'recording' && (
         <Card className="border-2 border-destructive bg-destructive/5 p-6">
           <div className="flex flex-col items-center gap-3">

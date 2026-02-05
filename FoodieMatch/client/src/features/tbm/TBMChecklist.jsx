@@ -32,7 +32,7 @@ import { format } from 'date-fns';
 const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { setCurrentTbmInfo, lastSavedRecording, clearLastSavedRecording } = useRecording();
+  const { setCurrentTbmInfo, lastSavedRecording, clearLastSavedRecording, state: recordingState } = useRecording();
   const { registerSafeNavigate, unregisterSafeNavigate } = useTbmNavigation();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -119,6 +119,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 관리자 여부 (ADMIN / SAFETY_TEAM만 팀 선택 드롭다운 표시)
   const isPrivilegedUser = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
+
+  // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
+  const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
 
   // 작성자 선택 가능한 사용자 목록 (시스템 사용자 + 계정 없는 팀원)
   const authorOptions = useMemo(() => {
@@ -975,11 +978,22 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   return (
     <div className="space-y-6">
+      {/* 녹음 중 잠금 알림 */}
+      {isRecordingActive && (
+        <Alert className="border-red-200 bg-red-50">
+          <Mic className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-800">녹음 진행 중</AlertTitle>
+          <AlertDescription className="text-red-700">
+            녹음 중에는 팀을 변경할 수 없습니다. 헤더에서 녹음을 저장하거나 삭제한 후 변경하세요.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isPrivilegedUser ? (
         <div className="flex gap-3 items-center flex-wrap">
           {/* 부서 선택 (관리자용) */}
-          <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''}>
-            <SelectTrigger className="w-[150px]">
+          <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''} disabled={isRecordingActive}>
+            <SelectTrigger className={`w-[150px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <SelectValue placeholder="부서 선택" />
             </SelectTrigger>
             <SelectContent className="max-h-[300px] overflow-y-auto">
@@ -995,9 +1009,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           <Select
             onValueChange={handleTeamChange}
             value={selectedTeam || ''}
-            disabled={!selectedDepartment}
+            disabled={!selectedDepartment || isRecordingActive}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className={`w-[200px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
             </SelectTrigger>
             <SelectContent className="max-h-[300px] overflow-y-auto">

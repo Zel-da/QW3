@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { format } from "date-fns";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { format, parseISO } from "date-fns";
 import apiClient from '../features/tbm/apiConfig';
 import { Header } from "@/components/header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import TBMChecklist from "../features/tbm/TBMChecklist.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "../components/ui/button";
-import { Calendar as CalendarIcon, Settings } from "lucide-react"
+import { Calendar as CalendarIcon, Settings, Mic } from "lucide-react"
 import { Link, useLocation } from "wouter";
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -26,6 +26,7 @@ import { stripSiteSuffix } from '@/lib/utils';
 import { SITES } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface DailyStats {
   전체: { submitted: number; required: number };
@@ -39,18 +40,49 @@ export default function TbmPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const { site, setSite, availableSites, initSiteFromUser } = useSite();
   const { user } = useAuth();
-  const { setCurrentTbmInfo } = useRecording();
+  const { setCurrentTbmInfo, state: recordingState } = useRecording();
   const [location] = useLocation();
   const { toast } = useToast();
   const [isLoadingModify, setIsLoadingModify] = useState(false);
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
 
-  // TBM 페이지를 벗어날 때 녹음 컨텍스트 초기화
+  // 녹음 상태 날짜 복원 플래그 (한 번만 실행)
+  const recordingDateRestoredRef = useRef(false);
+
+  // 녹음 중/일시정지 상태 확인
+  const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
+
+  // 녹음 중인 경우 해당 날짜로 자동 이동 (페이지 진입 시)
+  useEffect(() => {
+    if (isRecordingActive && recordingState.startedFrom?.date && !recordingDateRestoredRef.current) {
+      const recordingDate = parseISO(recordingState.startedFrom.date);
+      const currentDateStr = date ? format(date, 'yyyy-MM-dd') : null;
+      const recordingDateStr = recordingState.startedFrom.date;
+
+      if (currentDateStr !== recordingDateStr) {
+        setDate(recordingDate);
+        toast({
+          title: "녹음 중인 날짜로 이동",
+          description: `${recordingState.startedFrom.teamName} 팀의 녹음이 진행 중입니다.`,
+        });
+      }
+      recordingDateRestoredRef.current = true;
+    }
+
+    // 녹음이 끝나면 플래그 리셋
+    if (!isRecordingActive) {
+      recordingDateRestoredRef.current = false;
+    }
+  }, [isRecordingActive, recordingState.startedFrom, date, toast]);
+
+  // TBM 페이지를 벗어날 때 녹음 컨텍스트 초기화 (녹음 중이 아닐 때만)
   useEffect(() => {
     return () => {
-      setCurrentTbmInfo(null);
+      if (!isRecordingActive) {
+        setCurrentTbmInfo(null);
+      }
     };
-  }, [setCurrentTbmInfo]);
+  }, [setCurrentTbmInfo, isRecordingActive]);
 
   // 일일 작성 현황 조회
   useEffect(() => {
@@ -148,15 +180,29 @@ export default function TbmPage() {
         <Card>
           <CardHeader className="p-4 md:p-6">
             <CardTitle className="text-lg md:text-2xl">TBM 일지</CardTitle>
+
+            {/* 녹음 중 잠금 알림 */}
+            {isRecordingActive && (
+              <Alert className="border-red-200 bg-red-50 mt-3">
+                <Mic className="h-4 w-4 text-red-600" />
+                <AlertTitle className="text-red-800">녹음 진행 중 - {recordingState.startedFrom?.teamName}</AlertTitle>
+                <AlertDescription className="text-red-700">
+                  녹음 중에는 날짜와 현장을 변경할 수 없습니다. 헤더에서 녹음을 저장하거나 삭제한 후 변경하세요.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 mt-3 md:mt-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
                     variant={"outline"}
+                    disabled={isRecordingActive}
                     className={cn(
                       "w-full sm:w-[240px] h-10 md:h-11 justify-start text-left font-normal text-sm md:text-base",
-                      !date && "text-muted-foreground"
+                      !date && "text-muted-foreground",
+                      isRecordingActive && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -170,12 +216,13 @@ export default function TbmPage() {
                     mode="single"
                     selected={date}
                     onSelect={setDate}
+                    disabled={isRecordingActive}
                   />
                 </PopoverContent>
               </Popover>
               {(user?.role === 'ADMIN' || availableSites.length > 1) && (
-                <Select onValueChange={(value: Site) => setSite(value)} value={site}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-10 md:h-11">
+                <Select onValueChange={(value: Site) => setSite(value)} value={site} disabled={isRecordingActive}>
+                  <SelectTrigger className={cn("w-full sm:w-[180px] h-10 md:h-11", isRecordingActive && "opacity-50 cursor-not-allowed")}>
                     <SelectValue placeholder="현장 선택" />
                   </SelectTrigger>
                   <SelectContent>
