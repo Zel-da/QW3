@@ -1713,7 +1713,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           <Button
             onClick={handleSubmit}
             size="lg"
-            disabled={isSaving || !checklist || Object.keys(formState).length === 0 || Object.keys(signatures).length === 0}
+            disabled={isSaving || !checklist || Object.keys(formState).length === 0}
           >
             {isSaving ? (
               <>
