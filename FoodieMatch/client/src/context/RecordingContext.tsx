@@ -247,12 +247,17 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     checkPausedRecording();
   }, []);
 
-  // 페이지 이동/새로고침 시 경고 (녹음 중일 때만)
+  // 페이지 이동/새로고침 시 경고 (녹음 중 또는 일시정지 상태)
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (state.status === 'recording') {
         e.preventDefault();
         e.returnValue = '녹음이 진행 중입니다. 페이지를 나가면 현재 세션이 일시정지됩니다.';
+        return e.returnValue;
+      }
+      if (state.status === 'paused') {
+        e.preventDefault();
+        e.returnValue = '저장되지 않은 녹음이 있습니다. 저장 버튼을 눌러 서버에 저장하세요.';
         return e.returnValue;
       }
     };
@@ -355,19 +360,19 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       }
 
       mediaRecorderRef.current.onstop = async () => {
-        try {
-          const mimeType = mimeTypeRef.current;
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const mimeType = mimeTypeRef.current;
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
 
-          // 스트림 정리
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-          }
+        // 스트림 정리
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
 
-          // IndexedDB에 저장
-          const pausedId = `paused_${Date.now()}`;
-          if (startInfo) {
+        // IndexedDB에 저장 시도
+        const pausedId = `paused_${Date.now()}`;
+        if (startInfo) {
+          try {
             await savePausedRecordingToDB({
               id: pausedId,
               blob,
@@ -395,13 +400,36 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
             });
 
             console.log('[Recording] 녹음 일시정지됨:', { pausedId, duration: finalDuration });
-          }
+          } catch (error) {
+            console.error('녹음 일시정지 IndexedDB 저장 실패:', error);
 
-          resolve();
-        } catch (error) {
-          console.error('녹음 일시정지 저장 실패:', error);
-          resolve();
+            // IndexedDB 저장 실패 시에도 메모리에 blob 유지하고 paused 상태로 전환
+            // audioChunksRef에 blob이 남아있으므로 저장 버튼으로 재시도 가능
+            toast({
+              title: '녹음 임시저장 실패',
+              description: '브라우저 저장소에 문제가 있습니다. 저장 버튼을 눌러 서버에 저장하세요.',
+              variant: 'destructive',
+            });
+
+            // 메모리 기반 임시 상태 저장 (IndexedDB 없이)
+            setState({
+              status: 'paused',
+              startedFrom: startInfo,
+              duration: finalDuration,
+              saveError: 'IndexedDB 저장 실패 - 서버에 직접 저장하세요',
+              pausedInfo: {
+                id: pausedId,
+                duration: finalDuration,
+                teamId: startInfo.teamId,
+                teamName: startInfo.teamName,
+                date: startInfo.date,
+                pausedAt: new Date().toISOString(),
+              },
+            });
+          }
         }
+
+        resolve();
       };
 
       mediaRecorderRef.current.stop();
@@ -490,28 +518,68 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     }));
 
     try {
-      // IndexedDB에서 로드
-      const pausedData = await loadPausedRecordingFromDB(state.pausedInfo.id);
+      // IndexedDB에서 로드 시도, 실패 시 메모리에서 blob 사용
+      let pausedData = await loadPausedRecordingFromDB(state.pausedInfo.id);
+
+      // IndexedDB에서 못 찾으면 메모리에 있는 chunks로 blob 생성
+      if (!pausedData && audioChunksRef.current.length > 0) {
+        console.log('[Recording] IndexedDB에서 찾지 못함, 메모리에서 blob 생성');
+        const mimeType = mimeTypeRef.current;
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        pausedData = {
+          id: state.pausedInfo.id,
+          blob,
+          duration: state.pausedInfo.duration,
+          teamId: state.pausedInfo.teamId,
+          teamName: state.pausedInfo.teamName,
+          date: state.pausedInfo.date,
+          pausedAt: state.pausedInfo.pausedAt,
+          mimeType,
+        };
+      }
+
       if (!pausedData) {
         throw new Error('녹음 데이터를 찾을 수 없습니다.');
       }
 
-      // 파일 업로드
-      const formData = new FormData();
+      // 파일 업로드 (재시도 로직 포함)
       const fileName = `${pausedData.teamName}_녹음_${pausedData.date}.webm`;
-      formData.append('file', pausedData.blob, fileName);
+      let uploadResult: { url: string } | null = null;
+      let lastError: Error | null = null;
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const formData = new FormData();
+          formData.append('file', pausedData.blob, fileName);
 
-      if (!response.ok) {
-        throw new Error('업로드 실패');
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            uploadResult = await response.json();
+            break;
+          } else {
+            lastError = new Error(`업로드 실패 (HTTP ${response.status})`);
+          }
+        } catch (fetchError) {
+          lastError = fetchError instanceof Error ? fetchError : new Error('네트워크 오류');
+          console.error(`[Recording] 업로드 시도 ${attempt + 1}/3 실패:`, fetchError);
+        }
+
+        // 마지막 시도가 아니면 1초 대기 후 재시도
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
 
-      const result = await response.json();
+      if (!uploadResult) {
+        throw lastError || new Error('업로드 실패');
+      }
+
+      const result = uploadResult;
 
       const recordingData: AudioRecordingData = {
         url: result.url,

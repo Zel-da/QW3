@@ -144,6 +144,7 @@ export function Header() {
     // 일시정지 상태 - 재개/저장/삭제 버튼
     if (status === 'paused') {
       if (isMobile) {
+        // 모바일: [재개] [저장] [시간] [삭제]
         return (
           <div className="flex items-center gap-1">
             <Button
@@ -155,9 +156,6 @@ export function Header() {
             >
               <Play className="h-4 w-4" />
             </Button>
-            <div className="px-2 py-1 bg-amber-100 text-amber-700 rounded font-mono text-sm">
-              {formatTime(recordingState.duration)}
-            </div>
             <Button
               onClick={handleSaveRecording}
               variant="outline"
@@ -167,6 +165,10 @@ export function Header() {
             >
               <Save className="h-4 w-4" />
             </Button>
+            <div className="px-2 py-1 bg-amber-100 text-amber-700 rounded font-mono text-sm">
+              {formatTime(recordingState.duration)}
+            </div>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
             <Button
               onClick={handleDiscardRecording}
               variant="outline"
@@ -179,13 +181,9 @@ export function Header() {
           </div>
         );
       } else {
+        // 데스크톱: [재개] [저장] [시간] | [삭제]
         return (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-md">
-              <Pause className="h-4 w-4" />
-              <span className="font-mono">{formatTime(recordingState.duration)}</span>
-              <span className="text-xs ml-1">일시정지</span>
-            </div>
             <Button
               onClick={handleResumeRecording}
               variant="outline"
@@ -204,6 +202,12 @@ export function Header() {
               <Save className="h-4 w-4" />
               저장
             </Button>
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-md">
+              <Pause className="h-4 w-4" />
+              <span className="font-mono">{formatTime(recordingState.duration)}</span>
+              <span className="text-xs ml-1">일시정지</span>
+            </div>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
             <Button
               onClick={handleDiscardRecording}
               variant="ghost"
