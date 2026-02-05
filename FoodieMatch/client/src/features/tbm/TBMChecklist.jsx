@@ -91,9 +91,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
   const hasUnsavedChanges = React.useMemo(() => {
-    // 뷰 모드, 임시저장 조회 모드, 로딩 중이면 변경사항 없음으로 처리
+    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
     // isDraftViewMode: 데이터가 이미 localStorage에 있으므로 guard 불필요
-    if (isViewMode || isDraftViewMode || loading) return false;
+    if (isViewMode || isDraftViewMode || isOtherTeamView || isOtherTeamView || loading) return false;
 
     // 체크리스트 항목에 입력이 있는지 확인
     const hasFormData = Object.keys(formState).length > 0;
@@ -117,8 +117,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     return originalAuthorId === user?.id;
   }, [user, reportForEdit, existingReport]);
 
-  // 관리자 여부 (ADMIN / SAFETY_TEAM만 팀 선택 드롭다운 표시)
+  // 관리자 여부 (ADMIN / SAFETY_TEAM은 모든 팀 수정 가능)
   const isPrivilegedUser = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
+
+  // 팀 선택 드롭다운 표시 여부 (모든 사용자에게 표시 - 다른 팀 조회 허용)
+  const canSelectTeam = true;
+
+  // 자기 팀인지 확인 (수정 권한 체크용)
+  const isOwnTeam = useMemo(() => {
+    if (!selectedTeam || !user) return false;
+    // ADMIN / SAFETY_TEAM은 모든 팀에 대해 수정 가능
+    if (isPrivilegedUser) return true;
+    // 자신이 리더인 팀
+    const selectedTeamData = teams.find(t => t.id === selectedTeam);
+    if (selectedTeamData?.leaderId === user.id) return true;
+    // 자신이 소속된 팀
+    if (user.teamId === selectedTeam) return true;
+    return false;
+  }, [selectedTeam, user, teams, isPrivilegedUser]);
+
+  // 다른 팀 조회 모드 (읽기 전용)
+  const isOtherTeamView = selectedTeam && !isOwnTeam;
 
   // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
   const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
@@ -149,7 +168,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     safeNavigate,
   } = useUnsavedChanges({
     hasChanges: hasUnsavedChanges,
-    disabled: isViewMode || isDraftViewMode,
+    disabled: isViewMode || isDraftViewMode || isOtherTeamView,
   });
 
   // TBM 네비게이션 가드: safeNavigate를 전역 Context에 등록
@@ -233,9 +252,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   }, [date, site]);
 
   // 선택된 팀 정보를 RecordingContext에 업데이트
-  // 조회 모드나 임시저장 조회 모드에서는 녹음 비활성화
+  // 조회 모드, 임시저장 조회 모드, 다른 팀 조회 모드에서는 녹음 비활성화
   useEffect(() => {
-    if (selectedTeam && date && !isViewMode && !isDraftViewMode) {
+    if (selectedTeam && date && !isViewMode && !isDraftViewMode && !isOtherTeamView) {
       const selectedTeamData = teams.find(t => t.id === selectedTeam);
       if (selectedTeamData) {
         const d = new Date(date);
@@ -249,7 +268,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     } else {
       setCurrentTbmInfo(null);
     }
-  }, [selectedTeam, date, teams, isViewMode, isDraftViewMode, setCurrentTbmInfo]);
+  }, [selectedTeam, date, teams, isViewMode, isDraftViewMode, isOtherTeamView, setCurrentTbmInfo]);
 
   // 팀/날짜 변경 시 삭제 플래그 리셋
   useEffect(() => {
@@ -883,7 +902,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   };
 
-  // 부서별 팀 필터링 + 권한 기반 필터링
+  // 부서별 팀 필터링 (모든 팀 표시, 자기 팀 상단에)
   const filteredTeams = useMemo(() => {
     if (!selectedDepartment || !teams.length) return [];
     const deptConfig = getDepartments(site).find(d => d.name === selectedDepartment);
@@ -894,17 +913,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return deptConfig.teams.some(t => teamName.includes(t));
     });
 
-    // ADMIN / SAFETY_TEAM: 모든 팀 선택 가능
-    if (user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM') {
-      return deptTeams;
-    }
-
-    // TEAM_LEADER / EXECUTIVE_LEADER: 자신이 리더인 팀 + 소속 팀
-    // 일반 사용자: 자신의 소속 팀만
-    return deptTeams.filter(team => {
-      if (team.id === user?.teamId) return true;
-      if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && team.leaderId === user?.id) return true;
-      return false;
+    // 모든 팀을 표시하되, 자기 팀을 상단에 정렬
+    return deptTeams.sort((a, b) => {
+      const aIsOwn = a.id === user?.teamId || a.leaderId === user?.id;
+      const bIsOwn = b.id === user?.teamId || b.leaderId === user?.id;
+      if (aIsOwn && !bIsOwn) return -1;
+      if (!aIsOwn && bIsOwn) return 1;
+      return 0;
     });
   }, [selectedDepartment, teams, site, user]);
 
@@ -989,50 +1004,62 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </Alert>
       )}
 
-      {isPrivilegedUser ? (
-        <div className="flex gap-3 items-center flex-wrap">
-          {/* 부서 선택 (관리자용) */}
-          <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''} disabled={isRecordingActive}>
-            <SelectTrigger className={`w-[150px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              <SelectValue placeholder="부서 선택" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px] overflow-y-auto">
-              {departments.map(dept => (
-                <SelectItem key={dept.name} value={dept.name}>
-                  {dept.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* 팀 선택 (관리자용) */}
-          <Select
-            onValueChange={handleTeamChange}
-            value={selectedTeam || ''}
-            disabled={!selectedDepartment || isRecordingActive}
-          >
-            <SelectTrigger className={`w-[200px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px] overflow-y-auto">
-              {filteredTeams.map(team => (
-                <SelectItem key={team.id} value={team.id}>
-                  {stripSiteSuffix(team.name)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-base px-3 py-1.5">
-            {(() => {
-              const teamData = teams.find(t => t.id === selectedTeam);
-              return teamData ? stripSiteSuffix(teamData.name) : '팀 정보 로딩 중...';
-            })()}
-          </Badge>
-        </div>
+      {/* 다른 팀 조회 모드 알림 */}
+      {isOtherTeamView && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <Terminal className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800">다른 팀 TBM 조회 중</AlertTitle>
+          <AlertDescription className="text-blue-700">
+            다른 팀의 TBM은 조회만 가능합니다. 수정하려면 본인 팀을 선택하세요.
+          </AlertDescription>
+        </Alert>
       )}
+
+      {/* 부서/팀 선택 - 모든 사용자에게 표시 */}
+      <div className="flex gap-3 items-center flex-wrap">
+        {/* 부서 선택 */}
+        <Select onValueChange={handleDepartmentChange} value={selectedDepartment || ''} disabled={isRecordingActive}>
+          <SelectTrigger className={`w-[150px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <SelectValue placeholder="부서 선택" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
+            {departments.map(dept => (
+              <SelectItem key={dept.name} value={dept.name}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* 팀 선택 */}
+        <Select
+          onValueChange={handleTeamChange}
+          value={selectedTeam || ''}
+          disabled={!selectedDepartment || isRecordingActive}
+        >
+          <SelectTrigger className={`w-[200px] ${isRecordingActive ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <SelectValue placeholder={selectedDepartment ? "팀 선택" : "부서를 먼저 선택하세요"} />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
+            {filteredTeams.map(team => (
+              <SelectItem key={team.id} value={team.id}>
+                {stripSiteSuffix(team.name)}
+                {/* 자기 팀 표시 */}
+                {(team.leaderId === user?.id || team.id === user?.teamId) && (
+                  <span className="ml-2 text-xs text-primary">(내 팀)</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* 현재 선택된 팀이 자기 팀인지 표시 */}
+        {selectedTeam && (
+          <Badge variant={isOwnTeam ? "default" : "secondary"} className="text-sm">
+            {isOwnTeam ? "수정 가능" : "조회 전용"}
+          </Badge>
+        )}
+      </div>
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
@@ -1156,7 +1183,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   placeholder="이름 입력"
                   value={manualAuthorName}
                   onChange={(e) => setManualAuthorName(e.target.value)}
-                  disabled={isViewMode || isDraftViewMode}
+                  disabled={isViewMode || isDraftViewMode || isOtherTeamView}
                   autoFocus
                 />
                 <Button
@@ -1164,7 +1191,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   variant="outline"
                   size="sm"
                   onClick={() => { setIsManualAuthor(false); setManualAuthorName(''); }}
-                  disabled={isViewMode || isDraftViewMode}
+                  disabled={isViewMode || isDraftViewMode || isOtherTeamView}
                 >
                   목록
                 </Button>
@@ -1180,7 +1207,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     setSelectedAuthorId(val);
                   }
                 }}
-                disabled={isViewMode || isDraftViewMode}
+                disabled={isViewMode || isDraftViewMode || isOtherTeamView}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
@@ -1254,10 +1281,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                       )}
                       <TableCell className="border-r border-gray-200">{item.description}</TableCell>
                       <TableCell className="border-r border-gray-200">
-                        <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode || isDraftViewMode}>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode || isDraftViewMode} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
+                        <RadioGroup value={currentItemState.checkState || null} onValueChange={(value) => updateFormState(item.id, 'checkState', value)} className="flex justify-center gap-4" disabled={isViewMode || isDraftViewMode || isOtherTeamView}>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="O" id={`r-${item.id}-o`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} /><Label htmlFor={`r-${item.id}-o`}>O</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="△" id={`r-${item.id}-d`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} /><Label htmlFor={`r-${item.id}-d`}>△</Label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="X" id={`r-${item.id}-x`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} /><Label htmlFor={`r-${item.id}-x`}>X</Label></div>
                         </RadioGroup>
                       </TableCell>
                       <TableCell className="text-center">
@@ -1357,18 +1384,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                           value={currentItemState.checkState || null}
                           onValueChange={(value) => updateFormState(item.id, 'checkState', value)}
                           className="flex gap-3"
-                          disabled={isViewMode || isDraftViewMode}
+                          disabled={isViewMode || isDraftViewMode || isOtherTeamView}
                         >
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="O" id={`m-${item.id}-o`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="O" id={`m-${item.id}-o`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-o`} className="text-xs mt-1 text-green-600 font-medium">O</Label>
                           </div>
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="△" id={`m-${item.id}-d`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="△" id={`m-${item.id}-d`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-d`} className="text-xs mt-1 text-yellow-600 font-medium">△</Label>
                           </div>
                           <div className="flex flex-col items-center">
-                            <RadioGroupItem value="X" id={`m-${item.id}-x`} disabled={isViewMode || isDraftViewMode} className="h-6 w-6" />
+                            <RadioGroupItem value="X" id={`m-${item.id}-x`} disabled={isViewMode || isDraftViewMode || isOtherTeamView} className="h-6 w-6" />
                             <Label htmlFor={`m-${item.id}-x`} className="text-xs mt-1 text-red-600 font-medium">X</Label>
                           </div>
                         </RadioGroup>
@@ -1450,7 +1477,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={6}
                 className="w-full min-h-[180px]"
-                disabled={isViewMode || isDraftViewMode}
+                disabled={isViewMode || isDraftViewMode || isOtherTeamView}
               />
             </div>
 
@@ -1465,7 +1492,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 existingTranscription={transcription}
                 maxDurationSeconds={1800}
                 disabled={false}
-                playbackOnly={isViewMode || isDraftViewMode}
+                playbackOnly={isViewMode || isDraftViewMode || isOtherTeamView}
               />
             </div>
 
@@ -1554,7 +1581,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     <Select
                       value={absentUsers[worker.id] || 'PRESENT'}
                       onValueChange={(value) => handleAbsentChange(worker.id, value === 'PRESENT' ? '' : value)}
-                      disabled={isViewMode || isDraftViewMode}
+                      disabled={isViewMode || isDraftViewMode || isOtherTeamView}
                     >
                       <SelectTrigger className="w-[150px]">
                         <SelectValue placeholder="출근" />
@@ -1593,7 +1620,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     ) : (
                       <Button
                         onClick={() => { setSigningUser(worker); setIsSigDialogOpen(true); }}
-                        disabled={isViewMode || isDraftViewMode || (absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id]))}
+                        disabled={isViewMode || isDraftViewMode || isOtherTeamView || (absentUsers[worker.id] && !['오전 반차', '오후 반차'].includes(absentUsers[worker.id]))}
                         size="sm"
                       >
                         서명
@@ -1658,7 +1685,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       />
 
       <div className="flex justify-end mt-6 gap-3">
-        {isViewMode ? (
+        {isOtherTeamView ? (
+          /* 다른 팀 조회 모드 - 조회 전용 안내 */
+          <div className="text-sm text-muted-foreground px-4 py-2 bg-muted rounded-md">
+            다른 팀의 TBM은 조회만 가능합니다
+          </div>
+        ) : isViewMode ? (
           <>
             <Button
               variant="outline"
