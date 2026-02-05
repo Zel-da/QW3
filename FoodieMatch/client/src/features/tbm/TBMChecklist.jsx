@@ -89,39 +89,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     apiClient.get('/api/db/warmup').catch(() => {});
   }, []);
 
-  // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
-  const hasUnsavedChanges = React.useMemo(() => {
-    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
-    // isDraftViewMode: 데이터가 이미 localStorage에 있으므로 guard 불필요
-    if (isViewMode || isDraftViewMode || isOtherTeamView || isOtherTeamView || loading) return false;
-
-    // 체크리스트 항목에 입력이 있는지 확인
-    const hasFormData = Object.keys(formState).length > 0;
-    // 서명이 있는지 확인
-    const hasSignatures = Object.keys(signatures).length > 0;
-    // 비고란에 내용이 있는지 확인
-    const hasRemarks = remarks.trim().length > 0;
-    // 비고란 이미지가 있는지 확인
-    const hasImages = remarksImages.length > 0;
-
-    return hasFormData || hasSignatures || hasRemarks || hasImages;
-  }, [formState, signatures, remarks, remarksImages, isViewMode, isDraftViewMode, loading]);
-
-  // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
-  const canEditReport = React.useMemo(() => {
-    if (user?.role === 'ADMIN') return true;
-    const report = reportForEdit || existingReport;
-    if (!report?.reportDetails?.length) return true; // 작성자 정보 없으면 허용
-    const originalAuthorId = report.reportDetails[0]?.authorId;
-    if (!originalAuthorId) return true;
-    return originalAuthorId === user?.id;
-  }, [user, reportForEdit, existingReport]);
-
   // 관리자 여부 (ADMIN / SAFETY_TEAM은 모든 팀 수정 가능)
   const isPrivilegedUser = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
-
-  // 팀 선택 드롭다운 표시 여부 (모든 사용자에게 표시 - 다른 팀 조회 허용)
-  const canSelectTeam = true;
 
   // 자기 팀인지 확인 (수정 권한 체크용)
   const isOwnTeam = useMemo(() => {
@@ -141,6 +110,34 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
   const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
+
+  // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
+  const hasUnsavedChanges = React.useMemo(() => {
+    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
+    // isDraftViewMode: 데이터가 이미 localStorage에 있으므로 guard 불필요
+    if (isViewMode || isDraftViewMode || isOtherTeamView || loading) return false;
+
+    // 체크리스트 항목에 입력이 있는지 확인
+    const hasFormData = Object.keys(formState).length > 0;
+    // 서명이 있는지 확인
+    const hasSignatures = Object.keys(signatures).length > 0;
+    // 비고란에 내용이 있는지 확인
+    const hasRemarks = remarks.trim().length > 0;
+    // 비고란 이미지가 있는지 확인
+    const hasImages = remarksImages.length > 0;
+
+    return hasFormData || hasSignatures || hasRemarks || hasImages;
+  }, [formState, signatures, remarks, remarksImages, isViewMode, isDraftViewMode, isOtherTeamView, loading]);
+
+  // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
+  const canEditReport = React.useMemo(() => {
+    if (user?.role === 'ADMIN') return true;
+    const report = reportForEdit || existingReport;
+    if (!report?.reportDetails?.length) return true; // 작성자 정보 없으면 허용
+    const originalAuthorId = report.reportDetails[0]?.authorId;
+    if (!originalAuthorId) return true;
+    return originalAuthorId === user?.id;
+  }, [user, reportForEdit, existingReport]);
 
   // 작성자 선택 가능한 사용자 목록 (시스템 사용자 + 계정 없는 팀원)
   const authorOptions = useMemo(() => {
