@@ -526,6 +526,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       absentUsers,
       audioRecording,
       transcription,
+      // 작성자 정보
+      selectedAuthorId,
+      isManualAuthor,
+      manualAuthorName,
     },
     // 팀이 선택되고 수정/조회/draft조회 모드가 아닐 때만 자동저장
     enabled: !!selectedTeam && !reportForEdit && !isViewMode && !isDraftViewMode,
@@ -541,6 +545,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
       if (restored.audioRecording) setAudioRecording(restored.audioRecording);
       if (restored.transcription) setTranscription(restored.transcription);
+      // 작성자 정보 복원
+      if (restored.selectedAuthorId) setSelectedAuthorId(restored.selectedAuthorId);
+      if (restored.isManualAuthor !== undefined) setIsManualAuthor(restored.isManualAuthor);
+      if (restored.manualAuthorName) setManualAuthorName(restored.manualAuthorName);
       // 임시저장 데이터 복원 시 draft 조회 모드로 전환
       setIsDraftViewMode(true);
     },
