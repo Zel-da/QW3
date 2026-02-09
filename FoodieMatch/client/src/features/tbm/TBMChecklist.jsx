@@ -751,11 +751,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
     });
 
-    // Validate that at least one person has signed
-    const signatureCount = Object.keys(signatures).length;
-    if (signatureCount === 0) {
-      validationErrors.push('최소 1명 이상의 서명이 필요합니다.');
-    }
+    // 서명은 선택사항으로 변경 (1인 팀이 전원 연차인 경우 등)
+    // const signatureCount = Object.keys(signatures).length;
+    // if (signatureCount === 0) {
+    //   validationErrors.push('최소 1명 이상의 서명이 필요합니다.');
+    // }
 
     if (validationErrors.length > 0) {
       toast({
