@@ -67,6 +67,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [isSaving, setIsSaving] = useState(false);
   // 사진 업로드 중 상태
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  // 다른 사이트 복사 관련 state (김동현 차장 전용)
+  const [otherSiteTeam, setOtherSiteTeam] = useState(null);
+  const [isCopyingToOtherSite, setIsCopyingToOtherSite] = useState(false);
+  const [lastSubmittedReportId, setLastSubmittedReportId] = useState(null);
   // 팀별 draft 캐시 (메모리) - 팀 전환 시 작성 중인 내용 유지
   const [teamDrafts, setTeamDrafts] = useState({});
   // 페이지 이탈 시 자동 임시저장 중 상태
@@ -843,14 +847,33 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       // 수정 모드인지 확인 (reportForEdit 또는 existingReport가 있는 경우)
       const reportIdToUpdate = reportForEdit?.id || existingReport?.id;
 
+      let newReportId = null;
       if (reportIdToUpdate) {
         await apiClient.put(`/api/tbm/${reportIdToUpdate}`, reportData);
         toast({ title: "TBM 일지가 성공적으로 수정되었습니다." });
+        newReportId = reportIdToUpdate;
       } else {
-        await apiClient.post('/api/reports', reportData);
+        const response = await apiClient.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
         // 제출 성공 시 임시저장 데이터 삭제
         clearSaved();
+        newReportId = response.data?.id;
+      }
+      setLastSubmittedReportId(newReportId);
+
+      // seeyou.kim 사용자인 경우 같은 이름의 다른 사이트 팀 확인
+      if (user?.username === 'seeyou.kim' && selectedTeam) {
+        try {
+          const otherSiteRes = await apiClient.get(`/api/teams/${selectedTeam}/same-name-other-site`);
+          if (otherSiteRes.data.exists && otherSiteRes.data.team) {
+            setOtherSiteTeam(otherSiteRes.data.team);
+          } else {
+            setOtherSiteTeam(null);
+          }
+        } catch (err) {
+          console.log('다른 사이트 팀 조회 실패 (무시):', err);
+          setOtherSiteTeam(null);
+        }
       }
 
       // 제출 성공 후 pending 녹음 삭제 (새 작성/수정 모두 해당)
@@ -904,6 +927,45 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       setError(errorMessage);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 다른 사이트로 TBM 복사 (김동현 차장 전용)
+  const handleCopyToOtherSite = async () => {
+    if (!lastSubmittedReportId || !otherSiteTeam) return;
+
+    setIsCopyingToOtherSite(true);
+    try {
+      const res = await apiClient.post(`/api/tbm/${lastSubmittedReportId}/copy-to-site`, {
+        targetTeamId: otherSiteTeam.id
+      });
+
+      toast({
+        title: "복사 완료",
+        description: `${otherSiteTeam.site}에도 TBM이 제출되었습니다.`,
+      });
+
+      // 복사 완료 후 상태 초기화
+      setOtherSiteTeam(null);
+    } catch (err) {
+      console.error('TBM 복사 실패:', err);
+
+      // 이미 존재하는 경우
+      if (err.response?.status === 409) {
+        toast({
+          title: "복사 실패",
+          description: `${otherSiteTeam.site}에 해당 날짜의 TBM이 이미 존재합니다.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "복사 실패",
+          description: err.response?.data?.message || "TBM 복사 중 오류가 발생했습니다.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsCopyingToOtherSite(false);
     }
   };
 
@@ -1745,11 +1807,40 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               TBM 일지가 성공적으로 제출되었습니다.
             </DialogDescription>
           </DialogHeader>
+
+          {/* 김동현 차장 전용: 다른 사이트에도 제출 버튼 */}
+          {user?.username === 'seeyou.kim' && otherSiteTeam && (
+            <div className="my-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 mb-3">
+                <strong>{otherSiteTeam.site}</strong>에도 동일한 TBM을 제출하시겠습니까?
+              </p>
+              <Button
+                onClick={handleCopyToOtherSite}
+                disabled={isCopyingToOtherSite}
+                className="w-full"
+                variant="secondary"
+              >
+                {isCopyingToOtherSite ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    복사 중...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    {otherSiteTeam.site}에도 동일하게 제출
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => {
                 setShowSuccessDialog(false);
+                setOtherSiteTeam(null);
                 onFinishEditing();
               }}
             >
@@ -1758,6 +1849,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             <Button
               onClick={() => {
                 setShowSuccessDialog(false);
+                setOtherSiteTeam(null);
                 navigate('/monthly-report');
               }}
             >

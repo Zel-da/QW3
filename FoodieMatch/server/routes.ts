@@ -1357,6 +1357,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 같은 이름의 다른 사이트 팀 조회 (김동현 차장 전용 기능)
+  app.get("/api/teams/:teamId/same-name-other-site", requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const currentUser = req.session.user!;
+
+      // seeyou.kim 사용자만 이 기능 사용 가능
+      if (currentUser.username !== 'seeyou.kim') {
+        return res.status(403).json({ message: "이 기능은 사용할 수 없습니다" });
+      }
+
+      // 현재 팀 조회
+      const currentTeam = await prisma.team.findUnique({
+        where: { id: parseInt(teamId) }
+      });
+
+      if (!currentTeam) {
+        return res.status(404).json({ message: "팀을 찾을 수 없습니다" });
+      }
+
+      // 같은 이름이지만 다른 사이트에 있는 팀 조회
+      const otherSiteTeam = await prisma.team.findFirst({
+        where: {
+          name: currentTeam.name,
+          site: { not: currentTeam.site }
+        }
+      });
+
+      if (!otherSiteTeam) {
+        return res.json({ exists: false, team: null });
+      }
+
+      res.json({ exists: true, team: otherSiteTeam });
+    } catch (error) {
+      console.error("Failed to find same-name other-site team:", error);
+      res.status(500).json({ message: "팀 조회에 실패했습니다" });
+    }
+  });
+
   // SAFETY INSPECTION MANAGEMENT (월별 안전점검)
   // 안전점검 목록 조회
   app.get("/api/safety-inspections", requireAuth, async (req, res) => {
@@ -5308,6 +5347,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to delete report" }); }
   });
 
+  // TBM 다른 사이트로 복사 (김동현 차장 전용 기능)
+  app.post("/api/tbm/:reportId/copy-to-site", requireAuth, async (req, res) => {
+    try {
+      const { reportId } = req.params;
+      const { targetTeamId } = req.body;
+      const currentUser = req.session.user!;
+
+      // seeyou.kim 사용자만 이 기능 사용 가능
+      if (currentUser.username !== 'seeyou.kim') {
+        return res.status(403).json({ message: "이 기능은 사용할 수 없습니다" });
+      }
+
+      if (!targetTeamId) {
+        return res.status(400).json({ message: "대상 팀 ID가 필요합니다" });
+      }
+
+      // 원본 TBM 조회 (모든 데이터 포함)
+      const originalReport = await prisma.dailyReport.findUnique({
+        where: { id: parseInt(reportId) },
+        include: {
+          reportDetails: {
+            include: { attachments: true }
+          },
+          absenceRecords: true
+        }
+      });
+
+      if (!originalReport) {
+        return res.status(404).json({ message: "원본 TBM을 찾을 수 없습니다" });
+      }
+
+      // 대상 팀 조회
+      const targetTeam = await prisma.team.findUnique({
+        where: { id: parseInt(targetTeamId) }
+      });
+
+      if (!targetTeam) {
+        return res.status(404).json({ message: "대상 팀을 찾을 수 없습니다" });
+      }
+
+      // 대상 팀에 같은 날짜의 TBM이 이미 있는지 확인
+      const existingReport = await prisma.dailyReport.findFirst({
+        where: {
+          teamId: parseInt(targetTeamId),
+          reportDate: originalReport.reportDate
+        }
+      });
+
+      if (existingReport) {
+        return res.status(409).json({
+          message: "해당 날짜에 이미 TBM이 존재합니다",
+          existingReportId: existingReport.id
+        });
+      }
+
+      // 대상 팀의 템플릿 아이템 ID 조회
+      const targetTemplateItems = await prisma.templateItem.findMany({
+        where: {
+          template: { teamId: parseInt(targetTeamId) }
+        },
+        select: { id: true, category: true, description: true }
+      });
+
+      // 원본 팀의 템플릿 아이템과 대상 팀의 템플릿 아이템 매핑 (category + description 기준)
+      const originalTemplateItems = await prisma.templateItem.findMany({
+        where: {
+          template: { teamId: originalReport.teamId }
+        },
+        select: { id: true, category: true, description: true }
+      });
+
+      const itemIdMapping: { [key: number]: number | null } = {};
+      for (const origItem of originalTemplateItems) {
+        const matchingItem = targetTemplateItems.find(
+          t => t.category === origItem.category && t.description === origItem.description
+        );
+        itemIdMapping[origItem.id] = matchingItem ? matchingItem.id : null;
+      }
+
+      // 새 TBM 생성
+      const newReport = await prisma.dailyReport.create({
+        data: {
+          teamId: parseInt(targetTeamId),
+          reportDate: originalReport.reportDate,
+          managerName: originalReport.managerName,
+          remarks: originalReport.remarks,
+          site: targetTeam.site
+        }
+      });
+
+      // ReportDetail 복사 (서명은 제외)
+      for (const detail of originalReport.reportDetails) {
+        const mappedItemId = itemIdMapping[detail.itemId];
+        if (!mappedItemId) {
+          console.log(`Skipping detail for itemId ${detail.itemId} - no matching template item in target team`);
+          continue;
+        }
+
+        const newDetail = await prisma.reportDetail.create({
+          data: {
+            reportId: newReport.id,
+            itemId: mappedItemId,
+            checkState: detail.checkState,
+            authorId: detail.authorId,
+            actionDescription: detail.actionDescription,
+            actionTaken: detail.actionTaken,
+            actionStatus: detail.actionStatus
+          }
+        });
+
+        // 첨부파일 복사
+        if (detail.attachments && detail.attachments.length > 0) {
+          await prisma.attachment.createMany({
+            data: detail.attachments.map(att => ({
+              url: att.url,
+              name: att.name,
+              type: att.type,
+              size: att.size,
+              mimeType: att.mimeType,
+              rotation: att.rotation,
+              reportDetailId: newDetail.id
+            }))
+          });
+        }
+      }
+
+      // AbsenceRecord는 팀원(memberId)이 다르므로 복사하지 않음
+      // (같은 팀 이름이라도 다른 사이트의 팀원은 다른 사람일 수 있음)
+
+      console.log(`TBM 복사 완료: ${originalReport.id} -> ${newReport.id} (${targetTeam.name} - ${targetTeam.site})`);
+
+      res.status(201).json({
+        message: "TBM이 성공적으로 복사되었습니다",
+        newReportId: newReport.id,
+        targetSite: targetTeam.site
+      });
+    } catch (error) {
+      console.error("Failed to copy TBM to other site:", error);
+      res.status(500).json({ message: "TBM 복사에 실패했습니다" });
+    }
+  });
+
   // EDUCATION & COURSE MANAGEMENT
   app.get("/api/courses", async (req, res) => {
     try {
@@ -5783,7 +5964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingCert) {
           // 수료증 번호 생성: CERT-YYYYMMDD-courseId-index
           const today = new Date();
-          const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+          const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
 
           // 오늘 발급된 수료증 수 조회하여 index 생성
           const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -8241,7 +8422,8 @@ ${JSON.stringify(toolResults, null, 2)}
       console.log("Backup complete. Record counts:", backupData.counts);
 
       // JSON 파일로 다운로드
-      const filename = `backup_${new Date().toISOString().split('T')[0]}.json`;
+      const now = new Date();
+      const filename = `backup_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.json`;
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(JSON.stringify(backupData, null, 2));
@@ -8630,7 +8812,9 @@ ${JSON.stringify(toolResults, null, 2)}
       await logExport(req, 'SESSION', 'xlsx', logs.length, { startDate, endDate, action, entityType });
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=audit_logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const auditNow = new Date();
+      const auditDateStr = `${auditNow.getFullYear()}-${String(auditNow.getMonth()+1).padStart(2,'0')}-${String(auditNow.getDate()).padStart(2,'0')}`;
+      res.setHeader('Content-Disposition', `attachment; filename=audit_logs_${auditDateStr}.xlsx`);
       await workbook.xlsx.write(res);
       res.end();
     } catch (error) {
@@ -8640,6 +8824,7 @@ ${JSON.stringify(toolResults, null, 2)}
   });
 
   // ==================== 백업 API ====================
+  // ?since=ISO_TIMESTAMP 로 증분 백업 지원
   app.get("/api/admin/backup/full", async (req, res) => {
     try {
       // 인증: 세션(ADMIN) 또는 BACKUP_API_KEY
@@ -8653,7 +8838,16 @@ ${JSON.stringify(toolResults, null, 2)}
         return res.status(403).json({ message: "권한 없음" });
       }
 
-      // 전체 모델 조회
+      // 증분 백업: since 파라미터가 있으면 해당 시점 이후 데이터만 조회
+      const sinceParam = req.query.since as string | undefined;
+      const sinceDate = sinceParam ? new Date(sinceParam) : null;
+      const isIncremental = !!sinceDate;
+
+      // updatedAt 기준 필터 (신규 + 수정 감지)
+      const updatedFilter = sinceDate ? { updatedAt: { gte: sinceDate } } : {};
+      // createdAt 기준 필터 (신규만 감지)
+      const createdFilter = sinceDate ? { createdAt: { gte: sinceDate } } : {};
+
       const [
         users,
         passwordResetTokens,
@@ -8688,38 +8882,58 @@ ${JSON.stringify(toolResults, null, 2)}
         holidays,
         auditLogs,
       ] = await Promise.all([
-        prisma.user.findMany(),
-        prisma.passwordResetToken.findMany(),
-        prisma.factory.findMany(),
+        // createdAt만 있는 테이블
+        prisma.user.findMany({ where: createdFilter }),
+        prisma.passwordResetToken.findMany({ where: createdFilter }),
+        prisma.factory.findMany({ where: createdFilter }),
+        // 타임스탬프 없는 테이블 (항상 전체)
         prisma.team.findMany(),
-        prisma.teamMember.findMany(),
-        prisma.teamEquipment.findMany(),
+        // updatedAt 있는 테이블
+        prisma.teamMember.findMany({ where: updatedFilter }),
+        prisma.teamEquipment.findMany({ where: updatedFilter }),
+        // 타임스탬프 없는 테이블 (항상 전체)
         prisma.checklistTemplate.findMany(),
         prisma.templateItem.findMany(),
-        prisma.dailyReport.findMany(),
+        // updatedAt 있는 테이블
+        prisma.dailyReport.findMany({ where: updatedFilter }),
+        // 타임스탬프 없는 테이블 (항상 전체)
         prisma.reportDetail.findMany(),
         prisma.reportSignature.findMany(),
-        prisma.absenceRecord.findMany(),
+        // createdAt만 있는 테이블
+        prisma.absenceRecord.findMany({ where: createdFilter }),
+        // 타임스탬프 없는 테이블
         prisma.monthlyApproval.findMany(),
-        prisma.approvalRequest.findMany(),
-        prisma.inspectionTemplate.findMany(),
-        prisma.inspectionScheduleTemplate.findMany(),
-        prisma.monthlyInspectionDay.findMany(),
-        prisma.safetyInspection.findMany(),
+        // createdAt만 있는 테이블
+        prisma.approvalRequest.findMany({ where: createdFilter }),
+        prisma.inspectionTemplate.findMany({ where: createdFilter }),
+        // updatedAt 있는 테이블
+        prisma.inspectionScheduleTemplate.findMany({ where: updatedFilter }),
+        prisma.monthlyInspectionDay.findMany({ where: updatedFilter }),
+        prisma.safetyInspection.findMany({ where: updatedFilter }),
+        // 타임스탬프 없는 테이블
         prisma.inspectionItem.findMany(),
-        prisma.course.findMany(),
+        // updatedAt 있는 테이블
+        prisma.course.findMany({ where: updatedFilter }),
+        // 타임스탬프 없는 테이블
         prisma.userProgress.findMany(),
         prisma.assessment.findMany(),
         prisma.userAssessment.findMany(),
         prisma.certificate.findMany(),
-        prisma.notice.findMany(),
+        // updatedAt 있는 테이블
+        prisma.notice.findMany({ where: updatedFilter }),
+        // 타임스탬프 없는 테이블
         prisma.noticeRead.findMany(),
-        prisma.comment.findMany(),
-        prisma.attachment.findMany(),
-        prisma.simpleEmailConfig.findMany(),
-        prisma.emailLog.findMany(),
-        prisma.holiday.findMany(),
-        prisma.auditLog.findMany(),
+        // createdAt만 있는 테이블
+        prisma.comment.findMany({ where: createdFilter }),
+        prisma.attachment.findMany({ where: createdFilter }),
+        // updatedAt 있는 테이블
+        prisma.simpleEmailConfig.findMany({ where: updatedFilter }),
+        // createdAt만 있는 테이블
+        prisma.emailLog.findMany({ where: createdFilter }),
+        // updatedAt 있는 테이블
+        prisma.holiday.findMany({ where: updatedFilter }),
+        // createdAt만 있는 테이블
+        prisma.auditLog.findMany({ where: createdFilter }),
       ]);
 
       // User password 마스킹
@@ -8737,6 +8951,8 @@ ${JSON.stringify(toolResults, null, 2)}
       const backupData = {
         exportedAt: new Date().toISOString(),
         version: "1.0",
+        type: isIncremental ? "incremental" : "full",
+        ...(isIncremental ? { since: sinceParam } : {}),
         data: {
           users: maskedUsers,
           passwordResetTokens: maskedTokens,
@@ -8773,11 +8989,13 @@ ${JSON.stringify(toolResults, null, 2)}
         },
       };
 
-      const dateStr = new Date().toISOString().split("T")[0];
+      const nowDate = new Date();
+      const dateStr = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,'0')}-${String(nowDate.getDate()).padStart(2,'0')}`;
+      const prefix = isIncremental ? "backup_incr" : "backup_full";
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=backup_full_${dateStr}.json`
+        `attachment; filename=${prefix}_${dateStr}.json`
       );
       res.json(backupData);
     } catch (error) {
