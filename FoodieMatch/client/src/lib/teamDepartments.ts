@@ -21,7 +21,7 @@ export const ASAN_DEPARTMENTS: DepartmentConfig[] = [
 
 // 화성 부서 매핑 (순서 중요)
 export const HWASEONG_DEPARTMENTS: DepartmentConfig[] = [
-  { name: 'BR생산팀', teams: ['선삭', '연삭', 'MB', 'BKT', '열처리', 'BR출하', 'BR생산관리', 'BR총괄'] },
+  { name: 'BR생산팀', teams: ['선삭', '연삭', 'MB', 'BKT', '열처리 1조', '열처리 2조', '열처리 3조', 'BR출하', 'BR생산관리', 'BR총괄'] },
   { name: 'BR생산', teams: ['BR자재부품팀', 'BR품질서비스', '로드생산팀'] },
   { name: 'CR생산팀', teams: ['CR조립', 'CR출하', 'CR생산관리'] },
   { name: 'CR생산', teams: ['CR자재'] },

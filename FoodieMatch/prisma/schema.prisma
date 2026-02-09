@@ -333,6 +333,7 @@ model DailyReport {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   site             String?
+  shift            String?           // 'day' | 'night' (열처리팀 교대근무용)
   team             Team              @relation(fields: [teamId], references: [id], onDelete: NoAction)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]

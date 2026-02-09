@@ -5000,7 +5000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reports", requireAuth, async (req, res) => {
     try {
       const reportData = tbmReportSchema.parse(req.body);
-      const { teamId, reportDate, managerName, remarks, site, results, signatures } = reportData;
+      const { teamId, reportDate, managerName, remarks, site, shift, results, signatures } = reportData;
 
       // 팀 소속 검증: 해당 팀 소속 사용자만 TBM 작성 가능
       const currentUser = req.session.user!;
@@ -5041,7 +5041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Found ${validItemIds.size} valid template items for team ${teamId}`);
 
       const newReport = await prisma.dailyReport.create({
-        data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site }
+        data: { teamId, reportDate: new Date(reportDate), managerName, remarks, site, shift }
       });
 
       if (results && results.length > 0) {
@@ -5181,7 +5181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const reportData = tbmReportSchema.partial().parse(req.body);
-      const { results, signatures, remarks, reportDate } = reportData;
+      const { results, signatures, remarks, reportDate, shift } = reportData;
 
       // 날짜 문자열을 로컬 시간대로 파싱 (시간대 문제 방지)
       let parsedDate = undefined;
@@ -5203,6 +5203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: {
             remarks,
             reportDate: parsedDate,
+            shift,
           },
         });
 

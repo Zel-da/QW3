@@ -130,6 +130,7 @@ export const tbmReportSchema = z.object({
   managerName: z.string(),
   remarks: z.string().optional(),
   site: z.string(),
+  shift: z.enum(['day', 'night']).optional(),  // 열처리팀 교대근무용 (주간/야간)
   results: z.array(reportResultSchema),
   signatures: z.array(reportSignatureSchema),
 });

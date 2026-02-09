@@ -84,6 +84,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 직접입력 모드
   const [isManualAuthor, setIsManualAuthor] = useState(false);
   const [manualAuthorName, setManualAuthorName] = useState('');
+  // 열처리팀 교대근무 (주간/야간)
+  const [shift, setShift] = useState(null); // 'day' | 'night'
 
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
@@ -111,6 +113,15 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 다른 팀 조회 모드 (읽기 전용)
   const isOtherTeamView = selectedTeam && !isOwnTeam;
+
+  // 열처리팀 여부 확인 (교대근무 주간/야간 선택 표시용)
+  const isHeatTreatmentTeam = useMemo(() => {
+    if (!selectedTeam) return false;
+    const selectedTeamData = teams.find(t => t.id === selectedTeam);
+    if (!selectedTeamData) return false;
+    const teamName = stripSiteSuffix(selectedTeamData.name);
+    return teamName.includes('열처리');
+  }, [selectedTeam, teams]);
 
   // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
   const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
@@ -275,6 +286,18 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   useEffect(() => {
     audioDeletedRef.current = false;
   }, [selectedTeam, date]);
+
+  // 열처리팀 선택 시 시간 기반으로 주간/야간 자동 설정
+  useEffect(() => {
+    if (isHeatTreatmentTeam && !isViewMode && !isDraftViewMode) {
+      const currentHour = new Date().getHours();
+      // 00:00~12:00 → 주간, 12:00~24:00 → 야간
+      const autoShift = currentHour < 12 ? 'day' : 'night';
+      setShift(autoShift);
+    } else if (!isHeatTreatmentTeam) {
+      setShift(null);
+    }
+  }, [isHeatTreatmentTeam, isViewMode, isDraftViewMode]);
 
   // 팀/날짜 선택 시 임시 저장된 녹음 확인
   useEffect(() => {
@@ -808,6 +831,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       managerName: selectedAuthor?.name || user?.name || 'N/A',
       remarks: JSON.stringify(remarksData),
       site: site,
+      shift: isHeatTreatmentTeam ? shift : undefined,  // 열처리팀만 주간/야간 저장
       results: Object.entries(formState).map(([itemId, data]) => ({
         itemId: parseInt(itemId),
         checkState: data.checkState,
@@ -1288,6 +1312,33 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   <SelectItem value="__manual__">직접입력</SelectItem>
                 </SelectContent>
               </Select>
+            )}
+
+            {/* 열처리팀 주간/야간 선택 */}
+            {isHeatTreatmentTeam && (
+              <div className="flex items-center gap-3 ml-6 border-l pl-6">
+                <span className="font-semibold">근무:</span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={shift === 'day' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShift('day')}
+                    disabled={isViewMode || isDraftViewMode || isOtherTeamView}
+                  >
+                    주간
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={shift === 'night' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShift('night')}
+                    disabled={isViewMode || isDraftViewMode || isOtherTeamView}
+                  >
+                    야간
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
           <h3 className="font-semibold text-xl mt-6">점검항목</h3>
