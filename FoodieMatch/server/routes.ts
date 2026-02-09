@@ -3518,13 +3518,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sigDateColMap[day] = col;
       }
 
+      // 열처리팀 여부 확인 (1조/2조/3조 통합 서명)
+      const isHeatTreatmentTeam = team.name.includes('열처리');
+      let allTeamUsers = teamUsers;
+      let allTeamMembers = teamMembers;
+      let allDailyReports = dailyReports;
+
+      if (isHeatTreatmentTeam) {
+        // 열처리 3개 조 모두 조회
+        const heatTreatmentTeams = await prisma.team.findMany({
+          where: {
+            site: team.site,
+            name: { startsWith: '열처리' }
+          }
+        });
+
+        const htTeamIds = heatTreatmentTeams.map(t => t.id);
+
+        // 3개 조의 모든 사용자와 팀원 조회
+        const [htUsers, htMembers, htReports] = await Promise.all([
+          prisma.user.findMany({ where: { teamId: { in: htTeamIds } } }),
+          prisma.teamMember.findMany({ where: { teamId: { in: htTeamIds }, isActive: true } }),
+          prisma.dailyReport.findMany({
+            where: {
+              teamId: { in: htTeamIds },
+              reportDate: { gte: startDate, lte: endDate }
+            },
+            include: {
+              reportSignatures: { include: { user: true, member: true } },
+              team: true
+            },
+            orderBy: { reportDate: 'asc' }
+          })
+        ]);
+
+        // 중복 제거 (같은 이름이 여러 조에 있을 수 있음 - 예: 최영삼)
+        const uniqueUserMap = new Map<string, typeof htUsers[0]>();
+        htUsers.forEach(u => {
+          if (!uniqueUserMap.has(u.id)) {
+            uniqueUserMap.set(u.id, u);
+          }
+        });
+        allTeamUsers = Array.from(uniqueUserMap.values());
+
+        // 팀원도 이름 기준으로 중복 제거 (최영삼이 3개 조에 있음)
+        const uniqueMemberMap = new Map<string, typeof htMembers[0]>();
+        htMembers.forEach(m => {
+          if (!uniqueMemberMap.has(m.name)) {
+            uniqueMemberMap.set(m.name, m);
+          }
+        });
+        allTeamMembers = Array.from(uniqueMemberMap.values());
+
+        allDailyReports = htReports;
+
+        console.log(`[Excel] 열처리팀 통합: ${htTeamIds.length}개 조, ${allTeamUsers.length}명 사용자, ${allTeamMembers.length}명 팀원`);
+      }
+
       // User와 TeamMember를 모두 포함
       const userRowMap: Record<string, number> = {};
       const memberRowMap: Record<number, number> = {};
+      const memberNameRowMap: Record<string, number> = {};  // 이름 기준 매핑 (열처리팀용)
       let currentRow = 2;
 
       // 먼저 User(계정 있는 사용자) 추가
-      teamUsers.forEach((u) => {
+      allTeamUsers.forEach((u) => {
         userRowMap[u.id] = currentRow;
         sheet2.getRow(currentRow).height = 30;
         sheet2.getCell(currentRow, 1).value = u.name;
@@ -3535,8 +3593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // 그 다음 TeamMember(계정 없는 사용자) 추가
-      teamMembers.forEach((m) => {
+      allTeamMembers.forEach((m) => {
         memberRowMap[m.id] = currentRow;
+        memberNameRowMap[m.name] = currentRow;  // 이름으로도 매핑
         sheet2.getRow(currentRow).height = 30;
         sheet2.getCell(currentRow, 1).value = m.name;
         sheet2.getCell(currentRow, 1).font = font;
@@ -3545,10 +3604,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentRow++;
       });
 
-      dailyReports.forEach(report => {
+      // 휴일 정보 조회 (열처리팀 최영삼 서명 조건용)
+      const holidays = await prisma.holiday.findMany({
+        where: {
+          date: { gte: startDate, lte: endDate }
+        }
+      });
+      const holidayDays = new Set(holidays.map(h => new Date(h.date).getDate()));
+
+      allDailyReports.forEach(report => {
         const day = new Date(report.reportDate).getDate();
         const col = sigDateColMap[day];
         if (!col) return;
+
+        const dayOfWeek = new Date(report.reportDate).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isHoliday = holidayDays.has(day);
+        const isWorkday = !isWeekend && !isHoliday;
+        const isDayShift = report.shift === 'day';
 
         report.reportSignatures.forEach(sig => {
           let row: number | undefined;
@@ -3557,7 +3630,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (sig.userId) {
             row = userRowMap[sig.userId];
           } else if (sig.memberId) {
-            row = memberRowMap[sig.memberId];
+            // 열처리팀의 경우 같은 이름의 팀원이 여러 조에 있을 수 있으므로 이름으로 매핑
+            if (isHeatTreatmentTeam && sig.member?.name) {
+              row = memberNameRowMap[sig.member.name];
+            } else {
+              row = memberRowMap[sig.memberId];
+            }
+          }
+
+          // 열처리팀 최영삼: 평일 주간에만 서명 표시
+          if (isHeatTreatmentTeam && sig.member?.name === '최영삼') {
+            if (!isWorkday || !isDayShift) {
+              return; // 주말/휴일 또는 야간이면 서명 표시 안함
+            }
           }
 
           if (row && sig.signatureImage) {
@@ -3576,7 +3661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // User와 TeamMember를 모두 포함한 총 행 수
-      const totalRows = teamUsers.length + teamMembers.length;
+      const totalRows = allTeamUsers.length + allTeamMembers.length;
       for (let r = 2; r <= totalRows + 1; r++) {
           for (let c = 2; c <= lastDayOfMonth + 1; c++) {
               sheet2.getCell(r, c).border = border;
