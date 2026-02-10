@@ -82,11 +82,9 @@ export function useAutoSave<T>({
     }
   }, [key]);
 
-  // 초기 로드 시 저장된 데이터 확인
+  // 초기 로드 시 저장된 데이터 확인 (enabled와 무관하게 항상 확인)
+  // 저장은 enabled가 true일 때만, 복원 체크는 항상 수행
   useEffect(() => {
-    // enabled가 false면 복원 로직 스킵
-    if (!enabled) return;
-
     // 같은 key에 대해 이미 초기화됐으면 스킵
     if (hasInitializedForKey.current === key) return;
     hasInitializedForKey.current = key;
@@ -109,7 +107,7 @@ export function useAutoSave<T>({
       console.error('Failed to check auto-save:', err);
       localStorage.removeItem(key);
     }
-  }, [key, enabled, autoRestore]);
+  }, [key, autoRestore]);
 
   // 자동 복원 처리 (readyToRestore가 true일 때만)
   useEffect(() => {
