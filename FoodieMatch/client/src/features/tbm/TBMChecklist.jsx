@@ -137,23 +137,34 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
   const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
 
-  // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인
-  const hasUnsavedChanges = React.useMemo(() => {
-    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
-    // isDraftViewMode: 데이터가 이미 localStorage에 있으므로 guard 불필요
-    if (isViewMode || isDraftViewMode || isOtherTeamView || loading) return false;
-
-    // 체크리스트 항목에 입력이 있는지 확인
-    const hasFormData = Object.keys(formState).length > 0;
+  // 실제 의미 있는 데이터가 있는지 확인 (임시저장 조건)
+  const hasActualData = React.useMemo(() => {
+    // 체크리스트 항목에 실제 입력이 있는지 확인 (빈 객체가 아닌 실제 값)
+    const hasFormData = Object.values(formState).some(item =>
+      item.checkState ||
+      (item.description && item.description.trim()) ||
+      (item.actionTaken && item.actionTaken.trim()) ||
+      (item.attachments && item.attachments.length > 0)
+    );
     // 서명이 있는지 확인
     const hasSignatures = Object.keys(signatures).length > 0;
     // 비고란에 내용이 있는지 확인
     const hasRemarks = remarks.trim().length > 0;
     // 비고란 이미지가 있는지 확인
     const hasImages = remarksImages.length > 0;
+    // 녹음이 있는지 확인
+    const hasAudio = !!audioRecording;
 
-    return hasFormData || hasSignatures || hasRemarks || hasImages;
-  }, [formState, signatures, remarks, remarksImages, isViewMode, isDraftViewMode, isOtherTeamView, loading]);
+    return hasFormData || hasSignatures || hasRemarks || hasImages || hasAudio;
+  }, [formState, signatures, remarks, remarksImages, audioRecording]);
+
+  // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인 (페이지 이탈 경고용)
+  const hasUnsavedChanges = React.useMemo(() => {
+    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
+    if (isViewMode || isDraftViewMode || isOtherTeamView || loading) return false;
+
+    return hasActualData;
+  }, [hasActualData, isViewMode, isDraftViewMode, isOtherTeamView, loading]);
 
   // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
   const canEditReport = React.useMemo(() => {
@@ -566,8 +577,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       isManualAuthor,
       manualAuthorName,
     },
-    // 새 작성 또는 수정 모드일 때만 자동저장 (mode 기반)
-    enabled: !!selectedTeam && !reportForEdit && (mode === 'new' || mode === 'edit'),
+    // 새 작성 또는 수정 모드일 때만 자동저장 (mode 기반) + 실제 데이터가 있을 때만
+    enabled: !!selectedTeam && !reportForEdit && (mode === 'new' || mode === 'edit') && hasActualData,
     // 자동 복원 모드 사용 (다이얼로그 없이)
     autoRestore: true,
     // 새 작성 모드일 때만 draft 복원
@@ -1840,18 +1851,36 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
             </Button>
           </>
         ) : (
-          <Button
-            onClick={handleSubmit}
-            size="lg"
-            disabled={isSaving || !checklist || Object.keys(formState).length === 0}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                제출 중...
-              </>
-            ) : '제출하기'}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={isSaving || !hasActualData}
+              onClick={async () => {
+                const saved = await saveNow();
+                if (saved) {
+                  toast({ title: "임시저장 완료", description: "작성 중인 내용이 저장되었습니다." });
+                } else {
+                  toast({ title: "임시저장 실패", description: "저장할 내용이 없습니다.", variant: "destructive" });
+                }
+              }}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              임시저장
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              size="lg"
+              disabled={isSaving || !checklist || Object.keys(formState).length === 0}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  제출 중...
+                </>
+              ) : '제출하기'}
+            </Button>
+          </>
         )}
       </div>
 
