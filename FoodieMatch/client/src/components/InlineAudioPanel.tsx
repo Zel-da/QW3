@@ -274,6 +274,43 @@ export function InlineAudioPanel({
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
 
+  // 시간 이동 (초 단위)
+  const seekBy = useCallback((seconds: number) => {
+    if (!audioRef.current) return;
+    const newTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + seconds));
+    audioRef.current.currentTime = newTime;
+    setPlaybackTime(newTime);
+  }, [duration]);
+
+  // 특정 시간으로 이동 (0~1 비율)
+  const seekToRatio = useCallback((ratio: number) => {
+    if (!audioRef.current || !duration) return;
+    const newTime = Math.max(0, Math.min(duration, ratio * duration));
+    audioRef.current.currentTime = newTime;
+    setPlaybackTime(newTime);
+  }, [duration]);
+
+  // 프로그레스 바 클릭 핸들러
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    seekToRatio(ratio);
+  }, [seekToRatio]);
+
+  // 키보드 핸들러 (방향키로 5초씩 이동)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      seekBy(-5);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      seekBy(5);
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      togglePlayback();
+    }
+  }, [seekBy, togglePlayback]);
+
   // RecordingContext에서 녹음 상태 가져오기 (hook은 항상 최상단에서 호출)
   const { state: recordingState } = useRecording();
 
@@ -541,18 +578,38 @@ export function InlineAudioPanel({
             <Button onClick={togglePlayback} variant="outline" size="icon" className="h-10 w-10 shrink-0">
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </Button>
-            <div className="flex-1 min-w-0">
+            <div
+              className="flex-1 min-w-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-lg p-1 -m-1"
+              tabIndex={0}
+              onKeyDown={handleKeyDown}
+              role="slider"
+              aria-label="오디오 재생 위치"
+              aria-valuemin={0}
+              aria-valuemax={duration}
+              aria-valuenow={playbackTime}
+            >
               <div className="text-sm font-mono text-muted-foreground mb-1">
                 {formatTime(playbackTime)} / {formatTime(duration)}
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
+              <div
+                className="w-full bg-muted rounded-full h-3 hover:h-4 transition-all relative group"
+                onClick={handleProgressClick}
+              >
                 <div
                   className={cn(
-                    "h-2 rounded-full transition-all",
+                    "h-full rounded-full transition-all",
                     playbackOnly && existingAudio ? "bg-green-600" : "bg-primary"
                   )}
                   style={{ width: duration > 0 ? `${(playbackTime / duration) * 100}%` : '0%' }}
                 />
+                {/* 현재 위치 표시 핸들 */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ left: duration > 0 ? `calc(${(playbackTime / duration) * 100}% - 6px)` : '0' }}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                클릭하여 이동 · 방향키 ←→ 5초 이동
               </div>
             </div>
           </div>
