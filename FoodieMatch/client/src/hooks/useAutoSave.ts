@@ -57,6 +57,8 @@ export function useAutoSave<T>({
   const hasInitializedForKey = useRef<string | null>(null);
   // 자동 복원이 완료되었는지 추적
   const hasAutoRestoredForKey = useRef<string | null>(null);
+  // pendingData가 어떤 key에서 로드되었는지 추적 (race condition 방지)
+  const pendingDataKeyRef = useRef<string | null>(null);
 
   // 저장된 데이터 상태
   const [hasSavedData, setHasSavedData] = useState(false);
@@ -75,6 +77,7 @@ export function useAutoSave<T>({
     if (hasInitializedForKey.current !== key) {
       hasInitializedForKey.current = null;
       hasAutoRestoredForKey.current = null;
+      pendingDataKeyRef.current = null; // pendingData의 key도 리셋
       setWasAutoRestored(false);
       setShowRestoreDialog(false);
       setPendingData(null);
@@ -96,6 +99,7 @@ export function useAutoSave<T>({
         setHasSavedData(true);
         setSavedTimestamp(parsed.timestamp);
         setPendingData(parsed.data);
+        pendingDataKeyRef.current = key; // 어떤 key에서 로드했는지 기록
 
         // autoRestore가 아닌 경우에만 다이얼로그 표시
         if (!autoRestore) {
@@ -113,6 +117,8 @@ export function useAutoSave<T>({
   useEffect(() => {
     if (!autoRestore || !readyToRestore || !pendingData) return;
     if (hasAutoRestoredForKey.current === key) return;
+    // pendingData가 현재 key에서 로드된 것인지 확인 (race condition 방지)
+    if (pendingDataKeyRef.current !== key) return;
 
     // 자동 복원 실행
     if (onRestoreRef.current) {
