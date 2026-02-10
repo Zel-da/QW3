@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { useAuth } from '@/context/AuthContext';
@@ -100,6 +100,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 녹음 삭제 상태 추적 - pending 복원 방지용
   const audioDeletedRef = useRef(false);
+  // audioRecording 현재값 참조 (useEffect 의존성 제거용)
+  const audioRecordingRef = useRef(audioRecording);
+  useEffect(() => { audioRecordingRef.current = audioRecording; }, [audioRecording]);
 
   // DB 웜업 (Neon 콜드스타트 방지 — 페이지 진입 시 DB 깨우기)
   useEffect(() => {
@@ -160,11 +163,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
   // 변경사항 감지 - 폼에 입력된 내용이 있는지 확인 (페이지 이탈 경고용)
   const hasUnsavedChanges = React.useMemo(() => {
-    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드, 로딩 중이면 변경사항 없음으로 처리
-    if (isViewMode || isDraftViewMode || isOtherTeamView || loading) return false;
+    // 뷰 모드, 임시저장 조회 모드, 다른 팀 조회 모드면 변경사항 없음으로 처리
+    // loading 중에도 변경사항 감지 (데이터 손실 방지)
+    if (isViewMode || isDraftViewMode || isOtherTeamView) return false;
 
     return hasActualData;
-  }, [hasActualData, isViewMode, isDraftViewMode, isOtherTeamView, loading]);
+  }, [hasActualData, isViewMode, isDraftViewMode, isOtherTeamView]);
 
   // 작성자 본인 또는 ADMIN만 수정 가능 여부 판별
   const canEditReport = React.useMemo(() => {
@@ -192,6 +196,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
     return user;
   }, [selectedAuthorId, isManualAuthor, manualAuthorName, authorOptions, user]);
+
+  // 폼 상태 초기화 함수 (중복 코드 통합)
+  const clearFormState = useCallback(() => {
+    setFormState({});
+    setSignatures({});
+    setAbsentUsers({});
+    setRemarks('');
+    setRemarksImages([]);
+    setAudioRecording(null);
+    setTranscription(null);
+    setExistingReport(null);
+    audioDeletedRef.current = false;
+  }, []);
 
   // 저장하지 않은 변경사항 경고 훅
   const {
@@ -331,14 +348,15 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     const d = new Date(date);
     const dateStr = format(d, 'yyyy-MM-dd');
     const pending = getPendingRecording(selectedTeam, dateStr);
-    if (pending && !audioRecording) {
+    // audioRecordingRef 사용하여 의존성 배열에서 제거 (무한 루프 방지)
+    if (pending && !audioRecordingRef.current) {
       setAudioRecording(pending);
       toast({
         title: "녹음 불러옴",
         description: "이전에 녹음한 내용이 적용되었습니다.",
       });
     }
-  }, [mode, selectedTeam, date, audioRecording, toast]);
+  }, [mode, selectedTeam, date, toast]); // audioRecording 의존성 제거
 
   // RecordingContext에서 새 녹음이 저장되면 자동으로 audioRecording 업데이트
   useEffect(() => {
@@ -363,16 +381,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     // 상태 머신을 loading으로 전환
     setMode('loading');
     // 이전 날짜/팀의 데이터가 넘어오지 않도록 즉시 초기화
-    audioDeletedRef.current = false;
-    setAudioRecording(null);
-    setTranscription(null);
-    setFormState({});
-    setSignatures({});
-    setAbsentUsers({});
-    setRemarks('');
-    setRemarksImages([]);
-    setExistingReport(null);
-  }, [selectedTeam, date]);
+    clearFormState();
+  }, [selectedTeam, date, clearFormState]);
 
   // 날짜 변경 시 팀별 메모리 캐시 초기화 (다른 날짜로 녹음 데이터가 넘어가는 것 방지)
   useEffect(() => {
@@ -391,11 +401,21 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
+    // draft 모드가 이미 복원되었으면 API로 덮어쓰기 방지
+    if (mode === 'draft') {
+      return;
+    }
+
     // 로컬 시간대 기준 날짜 문자열 생성
     const d = new Date(date);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-    apiClient.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
+    // AbortController로 이전 API 요청 취소 (race condition 방지)
+    const abortController = new AbortController();
+
+    apiClient.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`, {
+      signal: abortController.signal
+    })
       .then(res => {
         if (res.data.exists && res.data.report) {
           // 기존 TBM 있음 → 조회 모드 (또는 다른 팀이면 other-team)
@@ -423,11 +443,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         }
       })
       .catch(err => {
+        // AbortError는 정상적인 취소이므로 무시
+        if (err.name === 'AbortError' || err.name === 'CanceledError') {
+          console.log('[TBM] API 요청 취소됨 (팀/날짜 변경)');
+          return;
+        }
         console.error('Failed to check existing TBM:', err);
         // 에러 시에도 새 작성 모드로 전환
         setMode(isOwnTeam ? 'new' : 'other-team');
       });
-  }, [selectedTeam, date, reportForEdit, isOwnTeam, toast]);
+
+    // cleanup: 팀/날짜 변경 시 이전 API 요청 취소
+    return () => abortController.abort();
+  }, [selectedTeam, date, reportForEdit, isOwnTeam, mode, toast]);
 
   // 리포트 데이터로 폼 초기화하는 함수
   const initializeFormFromReport = (report) => {
@@ -623,8 +651,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         confirmNavigation();
       };
 
-      // 약간의 딜레이로 UI 표시 후 저장
-      setTimeout(doSaveAndNavigate, 100);
+      // 약간의 딜레이로 UI 표시 후 저장 (cleanup 함수로 메모리 누수 방지)
+      const timerId = setTimeout(doSaveAndNavigate, 100);
+
+      return () => {
+        clearTimeout(timerId);
+        autoSaveInProgressRef.current = false;
+      };
     }
   }, [showUnsavedDialog, saveNow, confirmNavigation]);
 
@@ -763,7 +796,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       }
       return { ...prev, [userId]: absenceType };
     });
-    if (absenceType && absenceType !== '') {
+    // 전일 결근인 경우에만 서명 삭제 (반차는 서명 가능)
+    if (absenceType === '결근') {
       const newSignatures = { ...signatures };
       delete newSignatures[userId];
       setSignatures(newSignatures);
@@ -1040,18 +1074,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     setSelectedTeam(null);
   };
 
-  // 팀 변경 시 현재 팀 데이터 캐싱 후 새 팀 데이터 복원
+  // 팀 변경 시 현재 팀 데이터 캐싱 (복원은 useEffect에서 처리)
   const handleTeamChange = (newTeamId) => {
-    // 다른 팀으로 변경될 때만 처리
+    // 다른 팀으로 변경될 때만 캐싱
     if (newTeamId !== selectedTeam && selectedTeam) {
       // 현재 팀 데이터를 캐시에 저장 (작성 중인 내용이 있을 때만)
-      const hasData = Object.keys(formState).length > 0 ||
-                      Object.keys(signatures).length > 0 ||
-                      remarks.trim().length > 0 ||
-                      remarksImages.length > 0 ||
-                      audioRecording;
-
-      if (hasData && !isViewMode) {
+      if (hasActualData && mode !== 'view' && mode !== 'other-team') {
         setTeamDrafts(prev => ({
           ...prev,
           [selectedTeam]: {
@@ -1069,35 +1097,34 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
     setSelectedTeam(newTeamId);
     setSelectedAuthorId(null);
-
-    // 새 팀의 캐시된 데이터가 있으면 복원
-    if (newTeamId && teamDrafts[newTeamId]) {
-      const cached = teamDrafts[newTeamId];
-      setFormState(cached.formState || {});
-      setSignatures(cached.signatures || {});
-      setAbsentUsers(cached.absentUsers || {});
-      setRemarks(cached.remarks || '');
-      setRemarksImages(cached.remarksImages || []);
-      setAudioRecording(cached.audioRecording || null);
-      setTranscription(cached.transcription || null);
-
-      // 중요: 메모리 캐시 복원 시 localStorage draft 삭제하여 중복 복원 방지
-      if (date) {
-        const draftKey = `tbm_draft_${newTeamId}_${getLocalDateStr(date)}`;
-        localStorage.removeItem(draftKey);
-        console.log('[TBM] 메모리 캐시에서 복원, localStorage draft 삭제:', draftKey);
-      }
-    } else {
-      // 캐시 없으면 초기화 (useAutoSave가 localStorage에서 복원)
-      setFormState({});
-      setSignatures({});
-      setAbsentUsers({});
-      setRemarks('');
-      setRemarksImages([]);
-      setAudioRecording(null);
-      setTranscription(null);
-    }
+    // 복원은 useEffect에서 처리 (초기화 useEffect 이후에 실행되어야 함)
   };
+
+  // 팀 캐시 복원 (mode가 'new'로 전환된 후 실행)
+  useEffect(() => {
+    // 새 작성 모드일 때만 캐시 복원
+    if (mode !== 'new') return;
+    if (!selectedTeam || !teamDrafts[selectedTeam]) return;
+
+    const cached = teamDrafts[selectedTeam];
+    setFormState(cached.formState || {});
+    setSignatures(cached.signatures || {});
+    setAbsentUsers(cached.absentUsers || {});
+    setRemarks(cached.remarks || '');
+    setRemarksImages(cached.remarksImages || []);
+    if (cached.audioRecording) setAudioRecording(cached.audioRecording);
+    if (cached.transcription) setTranscription(cached.transcription);
+
+    // 캐시에서 복원했으므로 draft 모드로 전환
+    setMode('draft');
+
+    // localStorage draft 삭제하여 중복 복원 방지
+    if (date) {
+      const draftKey = `tbm_draft_${selectedTeam}_${getLocalDateStr(date)}`;
+      localStorage.removeItem(draftKey);
+      console.log('[TBM] 메모리 캐시에서 복원, localStorage draft 삭제:', draftKey);
+    }
+  }, [mode, selectedTeam, teamDrafts, date]);
 
   // 사이트별 부서 목록
   const departments = getDepartments(site);
@@ -1264,14 +1291,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 if (confirm('임시저장 데이터를 삭제하시겠습니까?')) {
                   discardSaved();
                   setMode('new');
-                  // 폼 초기화
-                  setFormState({});
-                  setSignatures({});
-                  setAbsentUsers({});
-                  setRemarks('');
-                  setRemarksImages([]);
-                  setAudioRecording(null);
-                  setTranscription(null);
+                  clearFormState();
                 }
               }}
             >
