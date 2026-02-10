@@ -91,7 +91,7 @@ export function InlineAudioPanel({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 기존 오디오가 변경되면 (새 녹음 저장됨) UI 업데이트
+  // 기존 오디오가 변경되면 UI 업데이트
   const prevAudioUrlRef = useRef<string | null>(null);
   useEffect(() => {
     if (existingAudio) {
@@ -101,6 +101,8 @@ export function InlineAudioPanel({
       setAudioUrl(existingAudio.url);
       setDuration(existingAudio.duration);
       setState('recorded');
+      setPlaybackTime(0);
+      setIsPlaying(false);
 
       // 새 녹음이 저장된 경우 "방금 저장됨" 표시
       if (isNewRecording) {
@@ -109,6 +111,18 @@ export function InlineAudioPanel({
       }
 
       prevAudioUrlRef.current = existingAudio.url;
+    } else {
+      // existingAudio가 null이 되면 (날짜/팀 변경 등) 상태 초기화
+      if (prevAudioUrlRef.current !== null) {
+        setAudioUrl(null);
+        setAudioBlob(null);
+        setDuration(0);
+        setPlaybackTime(0);
+        setIsPlaying(false);
+        setState('idle');
+        setJustSaved(false);
+        prevAudioUrlRef.current = null;
+      }
     }
   }, [existingAudio]);
 
@@ -406,14 +420,25 @@ export function InlineAudioPanel({
       {/* 숨겨진 오디오/파일 인풋 */}
       {audioUrl && (
         <audio
+          key={audioUrl}
           ref={audioRef}
           src={audioUrl}
+          preload="auto"
           onTimeUpdate={() => setPlaybackTime(audioRef.current?.currentTime || 0)}
           onEnded={() => setIsPlaying(false)}
           onLoadedMetadata={() => {
             if (audioRef.current && isFinite(audioRef.current.duration)) {
               setDuration(audioRef.current.duration);
             }
+          }}
+          onDurationChange={() => {
+            // webm 파일의 경우 duration이 나중에 업데이트될 수 있음
+            if (audioRef.current && isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
+              setDuration(audioRef.current.duration);
+            }
+          }}
+          onError={(e) => {
+            console.error('Audio load error:', e);
           }}
         />
       )}
