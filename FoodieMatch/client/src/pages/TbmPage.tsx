@@ -215,7 +215,10 @@ export default function TbmPage() {
                     initialFocus
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(newDate) => {
+                      setDate(newDate);
+                      setReportForEdit(null);  // 날짜 변경 시 수정 모드 해제
+                    }}
                     disabled={isRecordingActive}
                   />
                 </PopoverContent>
