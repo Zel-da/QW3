@@ -337,10 +337,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [lastSavedRecording, selectedTeam, date, clearLastSavedRecording, toast]);
 
-  // 팀/날짜 변경 시 API 체크 상태 초기화
+  // 팀/날짜 변경 시 API 체크 상태 및 폼 초기화
   useEffect(() => {
     setApiCheckComplete(false);
     setIsDraftViewMode(false);
+    setIsViewMode(false);  // API 체크 전까지 조회모드 해제
+    // 이전 날짜/팀의 데이터가 넘어오지 않도록 즉시 초기화
+    setAudioRecording(null);
+    setTranscription(null);
   }, [selectedTeam, date]);
 
   // 날짜 변경 시 팀별 메모리 캐시 초기화 (다른 날짜로 녹음 데이터가 넘어가는 것 방지)
@@ -1610,7 +1614,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 existingTranscription={transcription}
                 maxDurationSeconds={1800}
                 disabled={false}
-                playbackOnly={isViewMode || isDraftViewMode || isOtherTeamView}
+                playbackOnly={isViewMode || isDraftViewMode || isOtherTeamView || !apiCheckComplete}
               />
             </div>
 
