@@ -53,7 +53,21 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [remarksImages, setRemarksImages] = useState([]);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [existingReport, setExistingReport] = useState(null);
-  const [isViewMode, setIsViewMode] = useState(false);
+
+  // TBM 모드 상태 머신 (loading → view/edit/draft/new/other-team)
+  // 'loading': API 체크 중
+  // 'view': 기존 TBM 조회 모드
+  // 'edit': 기존 TBM 수정 모드
+  // 'draft': 임시저장 복원 모드
+  // 'new': 새 작성 모드
+  // 'other-team': 다른 팀 조회 (읽기 전용)
+  const [mode, setMode] = useState('loading');
+
+  // 기존 boolean들을 mode에서 파생 (하위 호환성)
+  const isViewMode = mode === 'view' || mode === 'other-team';
+  const isDraftViewMode = mode === 'draft';
+  const apiCheckComplete = mode !== 'loading';
+
   // 음성 녹음 관련 state
   const [audioRecording, setAudioRecording] = useState(null);
   const [transcription, setTranscription] = useState(null);
@@ -75,10 +89,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [teamDrafts, setTeamDrafts] = useState({});
   // 페이지 이탈 시 자동 임시저장 중 상태
   const [isAutoSavingOnLeave, setIsAutoSavingOnLeave] = useState(false);
-  // API 체크 완료 여부 (draft 복원 타이밍 제어용)
-  const [apiCheckComplete, setApiCheckComplete] = useState(false);
-  // 임시저장 조회 모드 (draft를 보여주는 상태)
-  const [isDraftViewMode, setIsDraftViewMode] = useState(false);
+  // (mode에서 파생됨 - apiCheckComplete, isDraftViewMode)
   // 작성자 선택 (기본: 로그인 사용자)
   const [selectedAuthorId, setSelectedAuthorId] = useState(null);
   // 직접입력 모드
@@ -264,9 +275,11 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   }, [date, site]);
 
   // 선택된 팀 정보를 RecordingContext에 업데이트
-  // 조회 모드, 임시저장 조회 모드, 다른 팀 조회 모드에서는 녹음 비활성화
+  // 'new' 또는 'edit' 모드에서만 녹음 가능
   useEffect(() => {
-    if (selectedTeam && date && !isViewMode && !isDraftViewMode && !isOtherTeamView) {
+    const canRecord = (mode === 'new' || mode === 'edit') && selectedTeam && date;
+
+    if (canRecord) {
       const selectedTeamData = teams.find(t => t.id === selectedTeam);
       if (selectedTeamData) {
         const d = new Date(date);
@@ -280,16 +293,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     } else {
       setCurrentTbmInfo(null);
     }
-  }, [selectedTeam, date, teams, isViewMode, isDraftViewMode, isOtherTeamView, setCurrentTbmInfo]);
+  }, [mode, selectedTeam, date, teams, setCurrentTbmInfo]);
 
-  // 팀/날짜 변경 시 삭제 플래그 리셋
-  useEffect(() => {
-    audioDeletedRef.current = false;
-  }, [selectedTeam, date]);
+  // (팀/날짜 변경 시 삭제 플래그 리셋은 통합 초기화에서 처리)
 
   // 열처리팀 선택 시 시간 기반으로 주간/야간 자동 설정
   useEffect(() => {
-    if (isHeatTreatmentTeam && !isViewMode && !isDraftViewMode) {
+    // 새 작성 또는 수정 모드에서만 자동 설정
+    if (isHeatTreatmentTeam && (mode === 'new' || mode === 'edit')) {
       const currentHour = new Date().getHours();
       // 00:00~12:00 → 주간, 12:00~24:00 → 야간
       const autoShift = currentHour < 12 ? 'day' : 'night';
@@ -297,27 +308,26 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     } else if (!isHeatTreatmentTeam) {
       setShift(null);
     }
-  }, [isHeatTreatmentTeam, isViewMode, isDraftViewMode]);
+  }, [isHeatTreatmentTeam, mode]);
 
-  // 팀/날짜 선택 시 임시 저장된 녹음 확인
+  // 새 작성 모드에서만 임시 저장된 녹음 복원 (mode가 'new'일 때만)
   useEffect(() => {
-    if (selectedTeam && date && !isViewMode && !isDraftViewMode) {
-      // 사용자가 명시적으로 삭제한 경우 복원 안 함
-      if (audioDeletedRef.current) return;
+    // mode가 'new'가 아니면 복원하지 않음 (API 체크 완료 후에만 실행)
+    if (mode !== 'new' || !selectedTeam || !date) return;
+    // 사용자가 명시적으로 삭제한 경우 복원 안 함
+    if (audioDeletedRef.current) return;
 
-      const d = new Date(date);
-      const dateStr = format(d, 'yyyy-MM-dd');
-      const pending = getPendingRecording(selectedTeam, dateStr);
-      if (pending && !audioRecording) {
-        setAudioRecording(pending);
-        // 임시 저장 데이터는 제출 성공 시에만 삭제 (복원 후 바로 삭제하지 않음)
-        toast({
-          title: "녹음 불러옴",
-          description: "이전에 녹음한 내용이 적용되었습니다.",
-        });
-      }
+    const d = new Date(date);
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const pending = getPendingRecording(selectedTeam, dateStr);
+    if (pending && !audioRecording) {
+      setAudioRecording(pending);
+      toast({
+        title: "녹음 불러옴",
+        description: "이전에 녹음한 내용이 적용되었습니다.",
+      });
     }
-  }, [selectedTeam, date, isViewMode, audioRecording, toast]);
+  }, [mode, selectedTeam, date, audioRecording, toast]);
 
   // RecordingContext에서 새 녹음이 저장되면 자동으로 audioRecording 업데이트
   useEffect(() => {
@@ -337,14 +347,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [lastSavedRecording, selectedTeam, date, clearLastSavedRecording, toast]);
 
-  // 팀/날짜 변경 시 API 체크 상태 및 폼 초기화
+  // 팀/날짜 변경 시 모드 및 폼 초기화 (통합 초기화)
   useEffect(() => {
-    setApiCheckComplete(false);
-    setIsDraftViewMode(false);
-    setIsViewMode(false);  // API 체크 전까지 조회모드 해제
+    // 상태 머신을 loading으로 전환
+    setMode('loading');
     // 이전 날짜/팀의 데이터가 넘어오지 않도록 즉시 초기화
+    audioDeletedRef.current = false;
     setAudioRecording(null);
     setTranscription(null);
+    setFormState({});
+    setSignatures({});
+    setAbsentUsers({});
+    setRemarks('');
+    setRemarksImages([]);
+    setExistingReport(null);
   }, [selectedTeam, date]);
 
   // 날짜 변경 시 팀별 메모리 캐시 초기화 (다른 날짜로 녹음 데이터가 넘어가는 것 방지)
@@ -352,63 +368,55 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     setTeamDrafts({});
   }, [date]);
 
-  // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인
+  // 팀과 날짜가 선택되면 기존 TBM이 있는지 확인 → 모드 결정
   useEffect(() => {
-    if (selectedTeam && date && !reportForEdit) {
-      // 로컬 시간대 기준 날짜 문자열 생성 (UTC 변환 시 날짜가 바뀌는 문제 방지)
-      const d = new Date(date);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      apiClient.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
-        .then(res => {
-          if (res.data.exists && res.data.report) {
-            setExistingReport(res.data.report);
-            setIsViewMode(true);
-            setIsDraftViewMode(false);
-            // 기존 데이터로 폼 초기화
-            initializeFormFromReport(res.data.report);
-
-            // 서버에 저장된 TBM이 있으면 localStorage 임시저장 삭제
-            const draftKey = `tbm_draft_${selectedTeam}_${dateStr}`;
-            localStorage.removeItem(draftKey);
-            console.log('[TBM] 기존 TBM 발견, localStorage draft 삭제:', draftKey);
-
-            // pending 녹음도 삭제 (서버에 저장된 녹음이 우선)
-            clearPendingRecording(selectedTeam, dateStr);
-
-            toast({
-              title: "기존 TBM 발견",
-              description: "해당 날짜에 이미 작성된 TBM이 있어 조회 모드로 표시합니다.",
-            });
-          } else {
-            setExistingReport(null);
-            setIsViewMode(false);
-            setIsDraftViewMode(false);
-            // 이전 날짜 데이터가 남지 않도록 폼 초기화
-            setFormState({});
-            setSignatures({});
-            setAbsentUsers({});
-            setRemarks('');
-            setRemarksImages([]);
-            setAudioRecording(null);
-            setTranscription(null);
-          }
-          // API 체크 완료 표시 (draft 복원 트리거)
-          setApiCheckComplete(true);
-        })
-        .catch(err => {
-          console.error('Failed to check existing TBM:', err);
-          setApiCheckComplete(true); // 에러가 나도 체크는 완료로 표시
-        });
-    } else if (!selectedTeam) {
-      // 팀이 선택 해제되면 초기화 (녹음/STT 포함)
-      setExistingReport(null);
-      setIsViewMode(false);
-      setIsDraftViewMode(false);
-      setApiCheckComplete(false);
-      setAudioRecording(null);
-      setTranscription(null);
+    if (!selectedTeam || !date) {
+      // 팀/날짜 미선택 시 loading 상태 유지
+      return;
     }
-  }, [selectedTeam, date, reportForEdit, toast]);
+
+    // reportForEdit가 있으면 별도 처리 (아래 useEffect에서)
+    if (reportForEdit) {
+      return;
+    }
+
+    // 로컬 시간대 기준 날짜 문자열 생성
+    const d = new Date(date);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    apiClient.get(`/api/tbm/check-existing?teamId=${selectedTeam}&date=${dateStr}`)
+      .then(res => {
+        if (res.data.exists && res.data.report) {
+          // 기존 TBM 있음 → 조회 모드 (또는 다른 팀이면 other-team)
+          setExistingReport(res.data.report);
+          setMode(isOwnTeam ? 'view' : 'other-team');
+          initializeFormFromReport(res.data.report);
+
+          // 서버에 저장된 TBM이 있으면 localStorage 임시저장 삭제
+          const draftKey = `tbm_draft_${selectedTeam}_${dateStr}`;
+          localStorage.removeItem(draftKey);
+          console.log('[TBM] 기존 TBM 발견, localStorage draft 삭제:', draftKey);
+
+          // pending 녹음도 삭제 (서버에 저장된 녹음이 우선)
+          clearPendingRecording(selectedTeam, dateStr);
+
+          toast({
+            title: "기존 TBM 발견",
+            description: "해당 날짜에 이미 작성된 TBM이 있어 조회 모드로 표시합니다.",
+          });
+        } else {
+          // 기존 TBM 없음 → 새 작성 모드 (또는 다른 팀이면 other-team)
+          setExistingReport(null);
+          setMode(isOwnTeam ? 'new' : 'other-team');
+          // 폼은 이미 초기화 useEffect에서 처리됨
+        }
+      })
+      .catch(err => {
+        console.error('Failed to check existing TBM:', err);
+        // 에러 시에도 새 작성 모드로 전환
+        setMode(isOwnTeam ? 'new' : 'other-team');
+      });
+  }, [selectedTeam, date, reportForEdit, isOwnTeam, toast]);
 
   // 리포트 데이터로 폼 초기화하는 함수
   const initializeFormFromReport = (report) => {
@@ -479,18 +487,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   };
 
+  // reportForEdit가 전달되면 조회 모드로 진입 (수정 버튼 클릭 시 edit 모드로 전환)
   useEffect(() => {
     if (reportForEdit) {
       initializeFormFromReport(reportForEdit);
-      setIsViewMode(true); // 항상 조회 모드로 먼저 표시, 수정하기 버튼 클릭 시 수정 모드 전환
-    } else if (!existingReport) {
-      // 새 작성 모드일 때만 초기화
-      setFormState({});
-      setSignatures({});
-      setAbsentUsers({});
-      setRemarks('');
-      setRemarksImages([]);
+      setExistingReport(reportForEdit);
+      setMode('view');
     }
+    // 폼 초기화는 통합 초기화 useEffect에서 처리
   }, [reportForEdit]);
 
   useEffect(() => {
@@ -562,26 +566,27 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       isManualAuthor,
       manualAuthorName,
     },
-    // 팀이 선택되고 수정/조회/draft조회 모드가 아닐 때만 자동저장
-    enabled: !!selectedTeam && !reportForEdit && !isViewMode && !isDraftViewMode,
+    // 새 작성 또는 수정 모드일 때만 자동저장 (mode 기반)
+    enabled: !!selectedTeam && !reportForEdit && (mode === 'new' || mode === 'edit'),
     // 자동 복원 모드 사용 (다이얼로그 없이)
     autoRestore: true,
-    // API 체크 완료되고 기존 TBM이 없을 때만 복원
-    readyToRestore: apiCheckComplete && !existingReport,
+    // 새 작성 모드일 때만 draft 복원
+    readyToRestore: mode === 'new' && !existingReport,
     onRestore: (restored) => {
       if (restored.formState) setFormState(restored.formState);
       if (restored.signatures) setSignatures(restored.signatures);
       if (restored.remarks) setRemarks(restored.remarks);
       if (restored.remarksImages) setRemarksImages(restored.remarksImages);
       if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
-      if (restored.audioRecording) setAudioRecording(restored.audioRecording);
-      if (restored.transcription) setTranscription(restored.transcription);
+      // 이미 새 녹음이 있으면 draft 녹음 무시 (race condition 방지)
+      if (restored.audioRecording && !audioRecording) setAudioRecording(restored.audioRecording);
+      if (restored.transcription && !transcription) setTranscription(restored.transcription);
       // 작성자 정보 복원
       if (restored.selectedAuthorId) setSelectedAuthorId(restored.selectedAuthorId);
       if (restored.isManualAuthor !== undefined) setIsManualAuthor(restored.isManualAuthor);
       if (restored.manualAuthorName) setManualAuthorName(restored.manualAuthorName);
       // 임시저장 데이터 복원 시 draft 조회 모드로 전환
-      setIsDraftViewMode(true);
+      setMode('draft');
     },
   });
 
@@ -1198,7 +1203,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   toast({ title: "권한이 없습니다", description: "본인이 작성한 TBM만 수정할 수 있습니다.", variant: "destructive" });
                   return;
                 }
-                setIsViewMode(false);
+                setMode('edit');
               }}
             >
               수정하기
@@ -1230,7 +1235,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               size="sm"
               variant="default"
               onClick={() => {
-                setIsDraftViewMode(false);
+                setMode('edit');
                 toast({
                   title: "수정 모드로 전환",
                   description: "임시저장된 내용을 수정할 수 있습니다.",
@@ -1247,7 +1252,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               onClick={() => {
                 if (confirm('임시저장 데이터를 삭제하시겠습니까?')) {
                   discardSaved();
-                  setIsDraftViewMode(false);
+                  setMode('new');
                   // 폼 초기화
                   setFormState({});
                   setSignatures({});
@@ -1828,7 +1833,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                   toast({ title: "권한이 없습니다", description: "본인이 작성한 TBM만 수정할 수 있습니다.", variant: "destructive" });
                   return;
                 }
-                setIsViewMode(false);
+                setMode('edit');
               }}
             >
               수정하기
