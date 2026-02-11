@@ -12,33 +12,43 @@ import type { Course, Assessment } from '@shared/schema';
 import { FileDropzone } from '@/components/FileDropzone';
 import { apiRequest } from '@/lib/queryClient';
 
-// CSV 파싱 함수 - 따옴표로 감싼 필드 내 콤마 처리
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
+// CSV 파싱 함수 - 퀴즈 CSV 전용 (question,options,correctAnswer)
+// options 필드는 항상 따옴표로 감싸져 있고, question은 따옴표 없이 콤마 포함 가능
+function parseQuizCSVLine(line: string): { question: string; options: string; correctAnswer: string } | null {
+  // 패턴: question,"options",correctAnswer
+  // options는 항상 따옴표로 감싸져 있음 (세미콜론으로 구분된 선택지 포함)
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        // 이스케이프된 따옴표 ("") -> 하나의 따옴표로
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
+  // 첫 번째 ," 를 찾아서 options 시작점 확인
+  const optionsStart = line.indexOf(',"');
+  if (optionsStart === -1) {
+    // 따옴표가 없는 경우 기본 파싱 시도
+    const parts = line.split(',');
+    if (parts.length >= 3) {
+      return {
+        question: parts[0].trim(),
+        options: parts[1].trim(),
+        correctAnswer: parts[parts.length - 1].trim()
+      };
     }
+    return null;
   }
 
-  result.push(current.trim());
-  return result;
+  // question은 ," 이전 부분
+  const question = line.substring(0, optionsStart).trim();
+
+  // options 끝나는 지점 찾기 (마지막 ", 찾기)
+  const optionsEnd = line.lastIndexOf('",');
+  if (optionsEnd === -1 || optionsEnd <= optionsStart) {
+    return null;
+  }
+
+  // options는 따옴표 사이 내용 (따옴표 제거)
+  const options = line.substring(optionsStart + 2, optionsEnd).trim();
+
+  // correctAnswer는 ", 이후 부분
+  const correctAnswer = line.substring(optionsEnd + 2).trim();
+
+  return { question, options, correctAnswer };
 }
 
 interface CourseEditDialogProps {
@@ -206,9 +216,13 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                     if (typeof text !== 'string') return;
                     const questions = text.split('\n').slice(1).map(line => {
                         if (!line.trim()) return null;
-                        const fields = parseCSVLine(line);
-                        const [question, options, correctAnswer] = fields;
-                        return { question, options, correctAnswer: parseInt(correctAnswer, 10) };
+                        const parsed = parseQuizCSVLine(line);
+                        if (!parsed) return null;
+                        return {
+                          question: parsed.question,
+                          options: parsed.options,
+                          correctAnswer: parseInt(parsed.correctAnswer, 10)
+                        };
                     }).filter((q): q is { question: string; options: string; correctAnswer: number } =>
                         q !== null && !!q.question && !!q.options && !isNaN(q.correctAnswer));
 
