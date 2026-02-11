@@ -488,7 +488,18 @@ export default function EducationManagementPage() {
               <div className="space-y-2">
                 <Label htmlFor="quizFile">퀴즈 파일 (CSV)</Label>
                 <Input id="quizFile" type="file" accept=".csv" onChange={(e) => setQuizFile(e.target.files ? e.target.files[0] : null)} />
-                <p className="text-sm text-muted-foreground">CSV 파일 형식: question,options (세미콜론으로 구분),correctAnswer (0-based index)</p>
+                <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-md">
+                  <p className="font-medium text-foreground">CSV 파일 형식</p>
+                  <div className="space-y-1">
+                    <p><span className="font-mono bg-muted px-1 rounded">question</span> - 질문 내용</p>
+                    <p><span className="font-mono bg-muted px-1 rounded">options</span> - 선택지 (세미콜론 ; 으로 구분, 따옴표로 감싸기)</p>
+                    <p><span className="font-mono bg-muted px-1 rounded">correctAnswer</span> - 정답 번호 (0부터 시작: 첫번째=0, 두번째=1, ...)</p>
+                  </div>
+                  <p className="font-medium text-foreground mt-2">예시:</p>
+                  <div className="p-2 bg-background rounded border text-xs font-mono whitespace-pre-wrap">question,options,correctAnswer
+안전모 착용이 필수인 장소는?,"사무실;공장;휴게실;식당",1
+끼임 사고 예방법은?,"보호구 착용;규정 속도 준수;안전 교육",0</div>
+                </div>
               </div>
               <Button
                 type="submit"

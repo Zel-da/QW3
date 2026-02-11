@@ -450,7 +450,8 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                     <p><span className="font-mono bg-muted px-1 rounded">options</span> - 선택지 (세미콜론 ; 으로 구분, 따옴표로 감싸기)</p>
                     <p><span className="font-mono bg-muted px-1 rounded">correctAnswer</span> - 정답 번호 (0부터 시작: 첫번째=0, 두번째=1, ...)</p>
                   </div>
-                  <div className="mt-2 p-2 bg-background rounded border text-xs font-mono whitespace-pre-wrap">question,options,correctAnswer
+                  <p className="font-medium text-foreground mt-2">예시:</p>
+                  <div className="p-2 bg-background rounded border text-xs font-mono whitespace-pre-wrap">question,options,correctAnswer
 안전모 착용이 필수인 장소는?,"사무실;공장;휴게실;식당",1
 끼임 사고 예방법은?,"보호구 착용;규정 속도 준수;안전 교육",0</div>
                   <p className="text-destructive mt-2">* 업로드 시 기존 퀴즈는 모두 삭제됩니다.</p>
