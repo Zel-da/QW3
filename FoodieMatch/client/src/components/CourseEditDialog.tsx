@@ -12,6 +12,35 @@ import type { Course, Assessment } from '@shared/schema';
 import { FileDropzone } from '@/components/FileDropzone';
 import { apiRequest } from '@/lib/queryClient';
 
+// CSV 파싱 함수 - 따옴표로 감싼 필드 내 콤마 처리
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // 이스케이프된 따옴표 ("") -> 하나의 따옴표로
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
 interface CourseEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -176,9 +205,12 @@ export function CourseEditDialog({ isOpen, onClose, course }: CourseEditDialogPr
                     const text = event.target?.result;
                     if (typeof text !== 'string') return;
                     const questions = text.split('\n').slice(1).map(line => {
-                        const [question, options, correctAnswer] = line.split(',');
+                        if (!line.trim()) return null;
+                        const fields = parseCSVLine(line);
+                        const [question, options, correctAnswer] = fields;
                         return { question, options, correctAnswer: parseInt(correctAnswer, 10) };
-                    }).filter(q => q.question && q.options && !isNaN(q.correctAnswer));
+                    }).filter((q): q is { question: string; options: string; correctAnswer: number } =>
+                        q !== null && !!q.question && !!q.options && !isNaN(q.correctAnswer));
 
                     if (questions.length > 0) {
                         assessmentUpdateMutation.mutate({ courseId: updatedCourse.id, questions }, {
