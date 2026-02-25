@@ -253,6 +253,7 @@ export default function Dashboard() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[60px] text-center">번호</TableHead>
                           <TableHead className="w-[250px]">과정명</TableHead>
                           <TableHead className="min-w-[150px] max-w-[200px]">설명</TableHead>
                           <TableHead className="w-[120px] text-center">유형</TableHead>
@@ -263,14 +264,16 @@ export default function Dashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedCourses.map((course) => {
+                        {paginatedCourses.map((course, index) => {
                           const progress = userProgress.find(p => p.courseId === course.id);
                           const assessment = userAssessments.find(a => a.courseId === course.id);
                           const progressPercent = progress?.progress || 0;
                           const isCompleted = progress?.completed || false;
+                          const courseNumber = sortedCourses.length - ((currentPage - 1) * ITEMS_PER_PAGE + index);
 
                           return (
                             <TableRow key={course.id} className="hover:bg-muted/50">
+                              <TableCell className="text-center text-muted-foreground">{courseNumber}</TableCell>
                               <TableCell className="font-medium">{course.title}</TableCell>
                               <TableCell className="text-muted-foreground min-w-[150px] max-w-[200px]">
                               <span className="line-clamp-2">{course.description}</span>
@@ -309,10 +312,11 @@ export default function Dashboard() {
 
                   {/* 모바일 카드 리스트 뷰 */}
                   <div className="md:hidden space-y-3 mb-6">
-                    {paginatedCourses.map((course) => {
+                    {paginatedCourses.map((course, index) => {
                       const progress = userProgress.find(p => p.courseId === course.id);
                       const progressPercent = progress?.progress || 0;
                       const isCompleted = progress?.completed || false;
+                      const courseNumber = sortedCourses.length - ((currentPage - 1) * ITEMS_PER_PAGE + index);
 
                       return (
                         <Card
@@ -335,7 +339,7 @@ export default function Dashboard() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="font-medium text-sm truncate">{course.title}</h3>
+                                  <h3 className="font-medium text-sm truncate">{courseNumber}. {course.title}</h3>
                                   <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                     isCompleted ? 'bg-green-100 text-green-800' :
                                     progressPercent > 0 ? 'bg-orange-100 text-orange-800' :
