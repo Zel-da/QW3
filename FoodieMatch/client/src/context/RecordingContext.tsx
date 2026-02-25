@@ -205,6 +205,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const durationRef = useRef<number>(0);
   const mimeTypeRef = useRef<string>('audio/webm');
   const saveStatusTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoPausedRef = useRef<boolean>(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   // 녹음 시작 가능 여부 체크
   const canStartRecording = state.status === 'idle' && currentTbmInfo !== null;
@@ -264,6 +266,37 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state.status]);
+
+  // 녹음 중 화면 꺼짐 방지 (Wake Lock API)
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if (!('wakeLock' in navigator)) return;
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+      } catch (e) {
+        console.log('[Recording] Wake Lock 요청 실패:', e);
+      }
+    };
+
+    const releaseWakeLock = async () => {
+      if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+        } catch (e) {
+          // ignore
+        }
+        wakeLockRef.current = null;
+      }
+    };
+
+    if (state.status === 'recording') {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => { releaseWakeLock(); };
   }, [state.status]);
 
   // 컴포넌트 언마운트 시 정리
@@ -498,6 +531,29 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   }, [state.pausedInfo, state.status]);
+
+  // 화면 이탈 시 자동 일시정지 + 복귀 시 자동 재개 (백그라운드 무음 녹음 방지)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && state.status === 'recording') {
+        autoPausedRef.current = true;
+        pauseRecording();
+        toast({
+          title: '녹음 일시정지',
+          description: '화면 이탈로 녹음이 자동 일시정지되었습니다.',
+        });
+      } else if (!document.hidden && state.status === 'paused' && autoPausedRef.current) {
+        autoPausedRef.current = false;
+        resumeRecording().then((success) => {
+          if (success) {
+            toast({ title: '녹음 재개', description: '녹음이 자동으로 재개되었습니다.' });
+          }
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [state.status, pauseRecording, resumeRecording]);
 
   // 저장 (일시정지 상태에서)
   const saveRecording = useCallback(async (): Promise<AudioRecordingData | null> => {

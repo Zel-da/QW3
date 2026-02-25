@@ -803,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           duration: true,
           type: true
         },
-        orderBy: { title: 'asc' }
+        orderBy: { createdAt: 'desc' }
       });
 
       // Fetch all user progress records
@@ -5579,7 +5579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/courses", async (req, res) => {
     try {
       const courses = await prisma.course.findMany({
-        orderBy: { title: 'asc' },
+        orderBy: { createdAt: 'desc' },
         include: { attachments: true }
       });
       res.json(courses);
