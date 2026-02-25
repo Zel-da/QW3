@@ -77,6 +77,7 @@ export interface Course {
   color: string;
   icon: string;
   isActive: boolean;
+  createdAt: string;
   attachments?: Array<{         // 신규: 다중 미디어 첨부 파일
     url: string;
     name: string;

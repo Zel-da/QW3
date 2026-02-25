@@ -1,3 +1,7 @@
+// 서버 타임존을 한국 시간(KST)으로 설정
+// 모든 new Date(), getDate(), getMonth() 등이 한국 시간 기준으로 동작
+process.env.TZ = 'Asia/Seoul';
+
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import MemoryStore from "memorystore";
@@ -56,7 +60,7 @@ app.set('trust proxy', 1);
 
 app.use(session({
   store: new MemStore({
-    checkPeriod: 86400000, // 24시간마다 만료된 세션 정리
+    checkPeriod: 3600000, // 1시간마다 만료된 세션 정리
   }),
   secret: sessionSecret,
   resave: false,
@@ -82,13 +86,6 @@ app.get('/api/ping', (_req, res) => {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
@@ -108,17 +105,7 @@ app.use((req, res, next) => {
         userId: (req.session as any)?.user?.id,
       });
 
-      // Also log to console for backward compatibility
-      let logLine = message;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      log(message);
     }
   });
 

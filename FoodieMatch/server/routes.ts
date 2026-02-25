@@ -7718,7 +7718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   const chatHistories = new Map<string, ChatMessage[]>();
   const MAX_HISTORY = 10; // 세션당 최대 10개 대화 유지
-  const HISTORY_TTL = 30 * 60 * 1000; // 30분 후 자동 삭제
+  const HISTORY_TTL = 10 * 60 * 1000; // 10분 후 자동 삭제
 
   // 히스토리 정리 함수
   function cleanupHistory(sessionId: string) {
@@ -7738,12 +7738,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // 주기적 히스토리 정리 (5분마다)
+  // 주기적 히스토리 정리 (2분마다)
   setInterval(() => {
     for (const sessionId of chatHistories.keys()) {
       cleanupHistory(sessionId);
     }
-  }, 5 * 60 * 1000);
+  }, 2 * 60 * 1000);
 
   // Gemini AI 챗봇 Rate Limiter (분당 10회 제한)
   const chatbotLimiter = rateLimit({

@@ -77,8 +77,8 @@ export default function Dashboard() {
       const progressB = userProgress.find(p => p.courseId === b.id)?.progress || 0;
       return progressB - progressA; // 높은 진행률부터
     } else {
-      // latest: 과정 ID 역순 (최근 생성된 것부터)
-      return b.id.localeCompare(a.id);
+      // latest: 최신 생성일순
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
   });
 
