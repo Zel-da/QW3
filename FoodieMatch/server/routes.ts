@@ -6932,15 +6932,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Match schedule items with team equipments
       const requiredItems = [];
 
+      // 장비명 정규화 (공백, 콤마/슬래시 차이 무시)
+      const normalizeEquipName = (s: string) => s.replace(/[\s,/]/g, '').toLowerCase();
+
       for (const template of scheduleTemplates) {
         // Extract base equipment name from template
         // "지게차 점검" -> "지게차"
-        const baseName = template.equipmentName.replace(/ 점검$/, '').trim();
+        const baseName = template.equipmentName.replace(/ ?점검$/, '').trim();
+        const normalizedBase = normalizeEquipName(baseName);
 
-        // Find matching equipment in team
+        // Find matching equipment in team (정규화 비교)
         const matchingEquipment = teamEquipments.find(eq => {
-          const eqBaseName = eq.equipmentName.replace(/,/g, ',').trim();
-          return eqBaseName.includes(baseName) || baseName.includes(eqBaseName);
+          const normalizedEq = normalizeEquipName(eq.equipmentName);
+          return normalizedEq.includes(normalizedBase) || normalizedBase.includes(normalizedEq);
         });
 
         if (matchingEquipment) {
@@ -7040,14 +7044,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requiredPhotoCount?: number;
         }> = {};
 
+        // 장비명 정규화 (공백, 콤마/슬래시 차이 무시)
+        const normalizeEquipName2 = (s: string) => s.replace(/[\s,/]/g, '').toLowerCase();
+
         for (const equipmentType of equipmentTypes) {
           // Extract base name from template
-          const baseName = equipmentType.replace(/ 점검$/, '').trim();
+          const baseName = equipmentType.replace(/ ?점검$/, '').trim();
+          const normalizedBase = normalizeEquipName2(baseName);
 
-          // Find matching equipment in team
+          // Find matching equipment in team (정규화 비교)
           const teamEquipment = team.teamEquipments.find(eq => {
-            const eqBaseName = eq.equipmentName.trim();
-            return eqBaseName.includes(baseName) || baseName.includes(eqBaseName);
+            const normalizedEq = normalizeEquipName2(eq.equipmentName);
+            return normalizedEq.includes(normalizedBase) || normalizedBase.includes(normalizedEq);
           });
 
           if (!teamEquipment) {

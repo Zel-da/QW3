@@ -242,7 +242,10 @@ export default function InspectionSchedulePage() {
         updateScheduleMutation.mutateAsync({
           factoryCode: selectedFactory,
           month: selectedMonth,
-          schedules: editedSchedules,
+          schedules: editedSchedules.map(s => ({
+            ...s,
+            equipmentName: s.equipmentName.includes('점검') ? s.equipmentName : `${s.equipmentName} 점검`,
+          })),
         }),
       ]);
 
@@ -416,16 +419,23 @@ export default function InspectionSchedulePage() {
                             {editMode ? (
                               availableEquipments ? (
                                 (() => {
-                                  // 현재 값에서 " 점검" 제거
-                                  const currentValue = item.equipmentName.replace(' 점검', '');
+                                  // 현재 값에서 "점검" 제거 (공백 유무 모두 처리)
+                                  const currentValue = item.equipmentName.replace(/ ?점검$/, '').trim();
+                                  // 장비명 정규화 (공백, 콤마/슬래시 차이 무시)
+                                  const normalize = (s: string) => s.replace(/[\s,/]/g, '').toLowerCase();
+                                  const normalizedCurrent = normalize(currentValue);
                                   // 빈 값 필터링 후 선택지에 현재 값이 없으면 추가 (중복 방지)
                                   const filteredEquipments = availableEquipments.filter(eq => eq && eq.trim() !== '');
+                                  const hasMatch = filteredEquipments.some(eq => {
+                                    const normalizedEq = normalize(eq);
+                                    return normalizedEq.includes(normalizedCurrent) || normalizedCurrent.includes(normalizedEq);
+                                  });
                                   const allOptions = filteredEquipments.includes(currentValue)
                                     ? filteredEquipments
                                     : currentValue && currentValue.trim() !== ''
                                       ? [currentValue, ...filteredEquipments]
                                       : filteredEquipments;
-                                  const isNotInList = !filteredEquipments.includes(currentValue);
+                                  const isNotInList = !hasMatch;
 
                                   return (
                                     <div className="space-y-1">
@@ -459,7 +469,7 @@ export default function InspectionSchedulePage() {
                                 </div>
                               )
                             ) : (
-                              <span>{item.equipmentName}</span>
+                              <span>{item.equipmentName.includes('점검') ? item.equipmentName : `${item.equipmentName} 점검`}</span>
                             )}
                           </TableCell>
                           {editMode && (
