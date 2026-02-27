@@ -6978,8 +6978,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 안전점검이 필요한 팀 목록 (아산 전용)
       const ASAN_SAFETY_INSPECTION_TEAMS = [
         '조립1라인', '조립2라인', '조립3라인', '전기라인', '제관라인', '가공라인',
-        '자재팀', '고객지원팀', '부품팀', '품질관리팀', '연구소', '안전환경보건팀'
+        '자재팀', '고객지원팀', '부품팀', '품질관리팀', '연구소'
       ];
+
+      // 점검 대상에서 제외할 팀
+      const EXCLUDED_TEAMS = ['안전환경보건팀'];
 
       // Factory 정보 조회하여 사이트 확인
       const factory = await prisma.factory.findUnique({
@@ -6987,25 +6990,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const isAsan = factory?.code === 'ASAN';
 
-      // Get teams in the factory (아산은 필터링, 화성은 전체)
-      const teamsRaw = await prisma.team.findMany({
+      // Get teams in the factory (아산은 필터링, 화성은 전체, 안전환경보건팀은 항상 제외)
+      const teams = await prisma.team.findMany({
         where: {
           factoryId: parseInt(factoryId),
-          ...(isAsan ? { name: { in: ASAN_SAFETY_INSPECTION_TEAMS } } : {})
+          name: {
+            ...(isAsan ? { in: ASAN_SAFETY_INSPECTION_TEAMS } : {}),
+            notIn: EXCLUDED_TEAMS,
+          },
         },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         include: {
           teamEquipments: true,
         }
-      });
-
-      // 안전환경보건팀을 맨 아래로 정렬
-      const teams = teamsRaw.sort((a, b) => {
-        const aIsSafety = a.name.includes('안전환경보건팀');
-        const bIsSafety = b.name.includes('안전환경보건팀');
-        if (aIsSafety && !bIsSafety) return 1;
-        if (!aIsSafety && bIsSafety) return -1;
-        return 0;
       });
 
       // Get month schedule template for this factory
@@ -7088,7 +7085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               completed: inspectionItem?.isCompleted || false,
               hasEquipment: true,
               uploadedPhotoCount: uploadedPhotoCount,
-              requiredPhotoCount: inspectionItem?.requiredPhotoCount || teamEquipment.quantity
+              requiredPhotoCount: teamEquipment.quantity
             };
           }
         }
