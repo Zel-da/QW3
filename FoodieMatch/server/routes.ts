@@ -787,7 +787,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             select: {
               id: true,
               name: true,
-              site: true
+              site: true,
+              leaderId: true
             }
           }
         },

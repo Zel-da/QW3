@@ -129,57 +129,75 @@ export default function EducationMonitoringPage() {
     });
   }, [data]);
 
-  // Calculate team statistics (라인별 통계)
+  // 제외할 팀 목록
+  const EXCLUDED_TEAMS = ['안전환경보건팀'];
+
+  // Calculate team statistics (팀장 기준)
   const teamStatistics = React.useMemo(() => {
     if (!data) return [];
 
-    // Group users by team
-    const teamMap = new Map<string, User[]>();
+    // Group users by team (팀 미지정, 제외 팀 제거)
+    const teamMap = new Map<string, { site?: string; leaderId?: string | null; users: (User & { team?: Team })[] }>();
     data.users.forEach(user => {
-      const teamName = user.team?.name || '팀 미지정';
+      const teamName = user.team?.name;
+      if (!teamName) return; // 팀 미지정 제외
+      if (EXCLUDED_TEAMS.includes(teamName)) return; // 제외 팀
       if (!teamMap.has(teamName)) {
-        teamMap.set(teamName, []);
+        teamMap.set(teamName, { site: user.team?.site || undefined, leaderId: user.team?.leaderId, users: [] });
       }
-      teamMap.get(teamName)!.push(user);
+      teamMap.get(teamName)!.users.push(user);
     });
 
-    // Calculate statistics for each team
-    return Array.from(teamMap.entries()).map(([teamName, teamUsers]) => {
-      const teamUserIds = teamUsers.map(u => u.id);
-      const teamUserStats = userStatistics.filter(s => teamUserIds.includes(s.userId));
-
-      const totalMembers = teamUsers.length;
+    // Calculate statistics for each team (팀장 기준)
+    return Array.from(teamMap.entries()).map(([teamName, teamInfo]) => {
       const totalCourses = data.courses.length;
-      const completedMembers = teamUserStats.filter(u => u.completedCourses === totalCourses && totalCourses > 0).length;
-      const inProgressMembers = teamUserStats.filter(u => u.inProgressCourses > 0 || (u.completedCourses > 0 && u.completedCourses < totalCourses)).length;
-      const notStartedMembers = teamUserStats.filter(u => u.completedCourses === 0 && u.inProgressCourses === 0).length;
 
-      const avgProgress = teamUserStats.length > 0
-        ? teamUserStats.reduce((sum, u) => sum + u.avgProgress, 0) / teamUserStats.length
-        : 0;
+      // 팀장 찾기: leaderId 매칭 → 없으면 TEAM_LEADER 역할
+      let leader = teamInfo.leaderId
+        ? teamInfo.users.find(u => u.id === teamInfo.leaderId)
+        : undefined;
+      if (!leader) {
+        leader = teamInfo.users.find(u => u.role === 'TEAM_LEADER');
+      }
+      if (!leader && teamInfo.users.length > 0) {
+        leader = teamInfo.users[0]; // 둘 다 없으면 첫 번째 유저
+      }
 
-      const completionRate = totalMembers > 0 ? Math.round((completedMembers / totalMembers) * 100) : 0;
+      const leaderStats = leader ? userStatistics.find(s => s.userId === leader!.id) : undefined;
+
+      const completedCourses = leaderStats?.completedCourses || 0;
+      const inProgressCourses = leaderStats?.inProgressCourses || 0;
+      const notStartedCourses = leaderStats?.notStartedCourses || totalCourses;
+      const avgProgress = leaderStats?.avgProgress || 0;
+      const completionRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
 
       return {
         teamName,
-        totalMembers,
-        completedMembers,
-        inProgressMembers,
-        notStartedMembers,
-        avgProgress: Math.round(avgProgress),
+        site: teamInfo.site,
+        leaderName: leader?.name || leader?.username || '-',
+        completedCourses,
+        inProgressCourses,
+        notStartedCourses,
+        avgProgress,
         completionRate,
       };
-    }).sort((a, b) => b.completionRate - a.completionRate); // Sort by completion rate descending
+    }).sort((a, b) => b.completionRate - a.completionRate);
   }, [data, userStatistics]);
 
-  // Overall statistics
+  // Overall statistics (팀 미지정, 제외 팀 제외)
   const overallStats = React.useMemo(() => {
     if (!data) return { total: 0, completed: 0, inProgress: 0, notStarted: 0 };
 
-    const total = data.users.length;
-    const completed = userStatistics.filter(u => u.completedCourses === u.totalCourses && u.totalCourses > 0).length;
-    const inProgress = userStatistics.filter(u => u.inProgressCourses > 0 || (u.completedCourses > 0 && u.completedCourses < u.totalCourses)).length;
-    const notStarted = userStatistics.filter(u => u.completedCourses === 0 && u.inProgressCourses === 0).length;
+    const validStats = userStatistics.filter(u => {
+      if (!u.teamName) return false;
+      if (EXCLUDED_TEAMS.includes(u.teamName)) return false;
+      return true;
+    });
+
+    const total = validStats.length;
+    const completed = validStats.filter(u => u.completedCourses === u.totalCourses && u.totalCourses > 0).length;
+    const inProgress = validStats.filter(u => u.inProgressCourses > 0 || (u.completedCourses > 0 && u.completedCourses < u.totalCourses)).length;
+    const notStarted = validStats.filter(u => u.completedCourses === 0 && u.inProgressCourses === 0).length;
 
     return { total, completed, inProgress, notStarted };
   }, [data, userStatistics]);
@@ -193,7 +211,8 @@ export default function EducationMonitoringPage() {
 
   const teams = React.useMemo(() => {
     if (!data) return [];
-    const uniqueTeams = Array.from(new Set(data.users.map(u => u.team?.name).filter(Boolean)));
+    const uniqueTeams = Array.from(new Set(data.users.map(u => u.team?.name).filter(Boolean)))
+      .filter(name => !EXCLUDED_TEAMS.includes(name!));
     return uniqueTeams.sort();
   }, [data]);
 
@@ -607,67 +626,78 @@ export default function EducationMonitoringPage() {
           </Card>
         )}
 
-        {/* Team Statistics (라인별 수강 현황) */}
+        {/* Team Statistics (라인별 수강 현황 - 팀장 기준) */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>라인별 수강 현황</CardTitle>
-            <CardDescription>각 라인(팀)별 교육 진행 상황을 비교합니다.</CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle>라인별 수강 현황 (팀장 기준)</CardTitle>
+                <CardDescription>각 라인(팀) 팀장의 안전교육 이수 현황입니다.</CardDescription>
+              </div>
+              <SiteSelector />
+            </div>
           </CardHeader>
           <CardContent>
-            {teamStatistics.length === 0 ? (
-              <EmptyState
-                icon={UsersIcon}
-                title="팀 정보가 없습니다"
-                description="팀을 추가하면 여기에 표시됩니다."
-              />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>팀명</TableHead>
-                    <TableHead className="text-center">총 인원</TableHead>
-                    <TableHead className="text-center">완료</TableHead>
-                    <TableHead className="text-center">진행중</TableHead>
-                    <TableHead className="text-center">미시작</TableHead>
-                    <TableHead className="text-center">평균 진행률</TableHead>
-                    <TableHead className="text-center">완료율</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamStatistics.map((stat) => (
-                    <TableRow key={stat.teamName}>
-                      <TableCell className="font-medium">{stat.teamName}</TableCell>
-                      <TableCell className="text-center">{stat.totalMembers}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge className="bg-green-500">{stat.completedMembers}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge className="bg-blue-500">{stat.inProgressMembers}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline">{stat.notStartedMembers}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center gap-2">
-                          <Progress value={stat.avgProgress} className="h-2 w-20" />
-                          <span className="text-sm font-medium">{stat.avgProgress}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          className={
-                            stat.completionRate >= 80 ? "bg-green-600" :
-                            stat.completionRate >= 50 ? "bg-yellow-500" : "bg-red-500"
-                          }
-                        >
-                          {stat.completionRate}%
-                        </Badge>
-                      </TableCell>
+            {(() => {
+              const filtered = selectedSite === '전체'
+                ? teamStatistics
+                : teamStatistics.filter(s => s.site === selectedSite);
+
+              return filtered.length === 0 ? (
+                <EmptyState
+                  icon={UsersIcon}
+                  title="팀 정보가 없습니다"
+                  description="해당 현장에 팀이 없거나 팀을 추가하면 여기에 표시됩니다."
+                />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>팀명</TableHead>
+                      <TableHead>팀장</TableHead>
+                      <TableHead className="text-center">완료</TableHead>
+                      <TableHead className="text-center">진행중</TableHead>
+                      <TableHead className="text-center">미시작</TableHead>
+                      <TableHead className="text-center">진행률</TableHead>
+                      <TableHead className="text-center">이수율</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((stat) => (
+                      <TableRow key={stat.teamName}>
+                        <TableCell className="font-medium">{stat.teamName}</TableCell>
+                        <TableCell className="text-muted-foreground">{stat.leaderName}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-green-500">{stat.completedCourses}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-blue-500">{stat.inProgressCourses}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">{stat.notStartedCourses}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center gap-2">
+                            <Progress value={stat.avgProgress} className="h-2 w-20" />
+                            <span className="text-sm font-medium">{stat.avgProgress}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            className={
+                              stat.completionRate === 100 ? "bg-green-600" :
+                              stat.completionRate >= 50 ? "bg-yellow-500" : "bg-red-500"
+                            }
+                          >
+                            {stat.completionRate}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              );
+            })()}
           </CardContent>
         </Card>
     </AdminPageLayout>
