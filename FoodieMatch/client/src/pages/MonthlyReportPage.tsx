@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSite, Site } from '@/hooks/use-site';
 import { stripSiteSuffix, getInspectionYearRange } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X, Undo2 } from 'lucide-react';
+import { Loader2, Filter, Search, FileDown, UserCheck, AlertTriangle, CheckCircle, XCircle, Clock, BookOpen, History, X, Undo2, Send } from 'lucide-react';
 import type { DailyReport, User, Team, Course, UserProgress, UserAssessment, TeamMember } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 import { SignatureDialog } from '@/components/SignatureDialog';
@@ -103,6 +103,40 @@ const createApprovalRequest = async (payload: {
     console.error('[createApprovalRequest] 에러 발생:', error);
     throw error;
   }
+};
+
+// Education approval API
+interface EducationApprovalStatus {
+  id: string;
+  site: string;
+  year: number;
+  month: number;
+  status: string;
+  requestedAt: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  requester: { id: string; name: string; username: string };
+  approver: { id: string; name: string; username: string };
+}
+
+const fetchEducationApprovalStatus = async (site: string, year: number, month: number): Promise<EducationApprovalStatus | null> => {
+  const res = await apiRequest('GET', `/api/education-approvals/status?site=${site}&year=${year}&month=${month}`);
+  return res.json();
+};
+
+const createEducationApprovalRequest = async (payload: {
+  site: string;
+  year: number;
+  month: number;
+  requesterSignature?: string;
+}) => {
+  const res = await apiRequest('POST', '/api/education-approvals/request', payload);
+  return res.json();
+};
+
+const withdrawEducationApproval = async (id: string) => {
+  const res = await apiRequest('POST', `/api/education-approvals/${id}/withdraw`);
+  return res.json();
 };
 
 // ==================== Helper Functions ====================
@@ -192,6 +226,7 @@ export default function MonthlyReportPage() {
   const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
+  const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 교육 결재 서명
 
   // ==================== Queries ====================
 
@@ -275,6 +310,13 @@ export default function MonthlyReportPage() {
     enabled: !!selectedTeam,
   });
 
+  // Education approval status query
+  const { data: eduApprovalStatus, refetch: refetchEduApproval } = useQuery<EducationApprovalStatus | null>({
+    queryKey: ['education-approval-status', site, downloadYear, downloadMonth],
+    queryFn: () => fetchEducationApprovalStatus(site!, downloadYear, downloadMonth),
+    enabled: !!site,
+  });
+
   // ==================== Approval Mutation ====================
 
   const approvalMutation = useMutation({
@@ -322,6 +364,65 @@ export default function MonthlyReportPage() {
         description: errorMessage,
         variant: 'destructive'
       });
+    },
+  });
+
+  // Education approval mutation
+  const eduApprovalMutation = useMutation({
+    mutationFn: createEducationApprovalRequest,
+    onSuccess: () => {
+      toast({
+        title: '교육 결재 요청 완료',
+        description: '결재 요청이 제출되었습니다. 결재자에게 알림이 발송되었습니다.'
+      });
+      refetchEduApproval();
+      setShowEduApprovalSignature(false);
+    },
+    onError: (error: any) => {
+      let errorMessage = '교육 결재 요청 중 오류가 발생했습니다.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        try {
+          const match = error.message.match(/^\d+:\s*(.+)$/);
+          if (match) {
+            const parsed = JSON.parse(match[1]);
+            errorMessage = parsed.message || match[1];
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+      toast({ title: '교육 결재 요청 실패', description: errorMessage, variant: 'destructive' });
+    },
+  });
+
+  const eduWithdrawMutation = useMutation({
+    mutationFn: withdrawEducationApproval,
+    onSuccess: () => {
+      toast({ title: '결재 회수 완료', description: '교육 결재 요청이 회수되었습니다.' });
+      refetchEduApproval();
+    },
+    onError: (error: any) => {
+      let errorMessage = '결재 회수 중 오류가 발생했습니다.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        try {
+          const match = error.message.match(/^\d+:\s*(.+)$/);
+          if (match) {
+            const parsed = JSON.parse(match[1]);
+            errorMessage = parsed.message || match[1];
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+      toast({ title: '결재 회수 실패', description: errorMessage, variant: 'destructive' });
     },
   });
 
@@ -668,8 +769,8 @@ export default function MonthlyReportPage() {
     setShowEducationDatePicker(true);
   }, [site, toast]);
 
-  // 날짜 선택 후 서명 다이얼로그 열기
-  const handleEducationExcelDownloadConfirm = useCallback(() => {
+  // 날짜 선택 후 서명 다이얼로그 열기 (또는 승인된 결재가 있으면 바로 다운로드)
+  const handleEducationExcelDownloadConfirm = useCallback(async () => {
     if (!site) {
       toast({
         title: "오류",
@@ -679,10 +780,53 @@ export default function MonthlyReportPage() {
       return;
     }
 
+    // 승인된 결재가 있으면 서명 없이 바로 다운로드
+    if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED'
+        && eduApprovalStatus.year === downloadYear && eduApprovalStatus.month === downloadMonth) {
+      setShowEducationDatePicker(false);
+
+      toast({
+        title: "안전교육 현황 다운로드 중...",
+        description: "교육 데이터를 수집하고 있습니다."
+      });
+
+      try {
+        const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
+        const params = new URLSearchParams({
+          site: site || '',
+          year: String(downloadYear),
+          month: String(downloadMonth),
+          date: String(downloadDay),
+          educationApprovalId: eduApprovalStatus.id,
+        });
+        if (teamDatesParam) params.append('teamDates', teamDatesParam);
+
+        const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Download failed');
+        const blob = await response.blob();
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        if (link.parentNode) link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
+      } catch (error) {
+        console.error("Failed to download education Excel:", error);
+        toast({ title: "오류", description: "안전교육 현황을 다운로드하는 중 오류가 발생했습니다.", variant: "destructive" });
+      }
+      return;
+    }
+
     setShowEducationDatePicker(false);
     // 서명 다이얼로그 열기
     setShowEducationSignature(true);
-  }, [site, toast]);
+  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap]);
 
   // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
   const handleEducationSignatureSave = useCallback(async (managerSignature: string, approverSignature: string) => {
@@ -813,6 +957,31 @@ export default function MonthlyReportPage() {
       requesterSignature: signature,
     });
   }, [selectedTeam, date, approvalMutation]);
+
+  const handleEduApprovalRequest = useCallback(() => {
+    if (!site) {
+      toast({ title: "오류", description: "현장을 선택해주세요.", variant: "destructive" });
+      return;
+    }
+    setShowEduApprovalSignature(true);
+  }, [site, toast]);
+
+  const handleEduApprovalSignatureSave = useCallback((signature: string) => {
+    if (!site) return;
+    setShowEduApprovalSignature(false);
+    eduApprovalMutation.mutate({
+      site,
+      year: downloadYear,
+      month: downloadMonth,
+      requesterSignature: signature,
+    });
+  }, [site, downloadYear, downloadMonth, eduApprovalMutation]);
+
+  const handleEduWithdraw = useCallback(() => {
+    if (!eduApprovalStatus?.id) return;
+    if (!confirm('교육 결재 요청을 회수하시겠습니까?')) return;
+    eduWithdrawMutation.mutate(eduApprovalStatus.id);
+  }, [eduApprovalStatus, eduWithdrawMutation]);
 
   const handleClearFilters = useCallback(() => {
     setFilterNoApproval(false);
@@ -1779,6 +1948,54 @@ export default function MonthlyReportPage() {
                     <FileDown className="h-4 w-4 mr-2" />
                     안전교육 현황 다운로드
                   </Button>
+
+                  {/* 교육 결재 영역 */}
+                  {site && (() => {
+                    const status = eduApprovalStatus?.status;
+                    const isCurrentPeriod = eduApprovalStatus && eduApprovalStatus.year === downloadYear && eduApprovalStatus.month === downloadMonth;
+
+                    if (isCurrentPeriod && status === 'PENDING') {
+                      return (
+                        <>
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 gap-1">
+                            <Clock className="h-3 w-3" />
+                            교육 결재 대기중
+                          </Badge>
+                          <Button
+                            onClick={handleEduWithdraw}
+                            disabled={eduWithdrawMutation.isPending}
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Undo2 className="h-4 w-4 mr-1" />
+                            {eduWithdrawMutation.isPending ? '회수 중...' : '회수'}
+                          </Button>
+                        </>
+                      );
+                    }
+                    if (isCurrentPeriod && status === 'APPROVED') {
+                      return (
+                        <Badge variant="default" className="bg-green-600 gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          교육 결재 승인
+                        </Badge>
+                      );
+                    }
+                    // 미요청, 반려, 회수 → 요청 버튼
+                    return (
+                      <Button
+                        onClick={handleEduApprovalRequest}
+                        disabled={!site || eduApprovalMutation.isPending}
+                        variant="default"
+                        size="sm"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {eduApprovalMutation.isPending ? '요청 중...' : '교육 결재 요청'}
+                      </Button>
+                    );
+                  })()}
+
                   <div className="ml-auto text-sm text-muted-foreground">
                     {site ? `선택된 현장: ${site}` : '현장을 선택해주세요'}
                   </div>
@@ -2156,6 +2373,14 @@ export default function MonthlyReportPage() {
           isOpen={showApprovalSignature}
           onClose={() => setShowApprovalSignature(false)}
           onSave={handleApprovalSignatureSave}
+          userName={user?.name || user?.username || ''}
+        />
+
+        {/* 교육 결재 요청 서명 다이얼로그 */}
+        <SignatureDialog
+          isOpen={showEduApprovalSignature}
+          onClose={() => setShowEduApprovalSignature(false)}
+          onSave={handleEduApprovalSignatureSave}
           userName={user?.name || user?.username || ''}
         />
 

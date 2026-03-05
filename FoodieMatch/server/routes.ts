@@ -2175,6 +2175,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== EDUCATION APPROVAL SYSTEM (안전교육 현황 결재 시스템) ==========
+
+  // 교육 결재 상태 조회 (site/year/month별)
+  app.get("/api/education-approvals/status", requireAuth, async (req, res) => {
+    try {
+      const { site, year, month } = req.query;
+      if (!site || !year || !month) {
+        return res.status(400).json({ message: "site, year, month are required" });
+      }
+
+      const approval = await prisma.educationApproval.findUnique({
+        where: {
+          site_year_month: {
+            site: site as string,
+            year: parseInt(year as string),
+            month: parseInt(month as string)
+          }
+        },
+        include: {
+          requester: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } }
+        }
+      });
+
+      res.json(approval);
+    } catch (error) {
+      console.error("Failed to fetch education approval status:", error);
+      res.status(500).json({ message: "교육 결재 상태 조회에 실패했습니다" });
+    }
+  });
+
+  // 교육 결재 요청 생성
+  app.post("/api/education-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
+    try {
+      const { site, year, month, requesterSignature } = req.body;
+      const requesterId = req.session.user!.id;
+
+      if (!site || !year || !month) {
+        return res.status(400).json({ message: "site, year, month are required" });
+      }
+
+      // 요청자의 팀 → approverId 조회
+      const requesterUser = await prisma.user.findUnique({
+        where: { id: requesterId },
+        include: { team: { include: { approver: true } } }
+      });
+
+      if (!requesterUser?.team) {
+        return res.status(400).json({ message: "소속 팀이 없습니다" });
+      }
+
+      if (!requesterUser.team.approverId) {
+        return res.status(400).json({ message: "결재자가 설정되지 않았습니다. 팀 관리에서 결재자를 먼저 설정해주세요." });
+      }
+
+      const approverId = requesterUser.team.approverId;
+
+      // 기존 결재 확인
+      const existing = await prisma.educationApproval.findUnique({
+        where: {
+          site_year_month: {
+            site: site as string,
+            year: parseInt(year),
+            month: parseInt(month)
+          }
+        }
+      });
+
+      if (existing) {
+        if (existing.status === 'WITHDRAWN' || existing.status === 'REJECTED') {
+          await prisma.educationApproval.delete({ where: { id: existing.id } });
+        } else if (existing.status === 'APPROVED') {
+          return res.status(400).json({ message: "이미 승인된 결재입니다." });
+        } else {
+          return res.status(400).json({ message: "결재 대기 중입니다. 기존 요청을 회수한 후 다시 요청해주세요." });
+        }
+      }
+
+      const approval = await prisma.educationApproval.create({
+        data: {
+          site: site as string,
+          year: parseInt(year),
+          month: parseInt(month),
+          requesterId,
+          approverId,
+          status: 'PENDING',
+          requesterSignature: requesterSignature || null
+        },
+        include: {
+          requester: { select: { id: true, name: true, username: true, email: true } },
+          approver: { select: { id: true, name: true, username: true, email: true } }
+        }
+      });
+
+      // 이메일 발송
+      if (approval.approver?.email) {
+        try {
+          const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
+          const approvalUrl = `${baseUrl}/education-approval/${approval.id}`;
+
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('EDU_APPROVAL_REQUEST', approval.approver.email, approval.approverId, {
+            APPROVER_NAME: approval.approver.name || approval.approver.username,
+            REQUESTER_NAME: approval.requester.name || approval.requester.username,
+            SITE: approval.site,
+            YEAR: String(approval.year),
+            MONTH: String(approval.month),
+            APPROVAL_URL: approvalUrl,
+          });
+          console.log(`[Education Approval] Email sent to ${approval.approver.email}`);
+        } catch (emailError) {
+          console.error(`[Education Approval] Email sending failed:`, emailError);
+        }
+      }
+
+      res.status(201).json(approval);
+    } catch (error) {
+      console.error("Failed to create education approval request:", error);
+      res.status(500).json({ message: "교육 결재 요청 생성에 실패했습니다" });
+    }
+  });
+
+  // 교육 결재 상세 조회
+  app.get("/api/education-approvals/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const approval = await prisma.educationApproval.findUnique({
+        where: { id },
+        include: {
+          requester: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } }
+        }
+      });
+
+      if (!approval) {
+        return res.status(404).json({ message: "교육 결재 요청을 찾을 수 없습니다" });
+      }
+
+      res.json(approval);
+    } catch (error) {
+      console.error("Failed to fetch education approval:", error);
+      res.status(500).json({ message: "교육 결재 정보를 불러오는데 실패했습니다" });
+    }
+  });
+
+  // 교육 결재 승인
+  app.post("/api/education-approvals/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { signature } = req.body;
+      const userId = req.session.user!.id;
+
+      const approval = await prisma.educationApproval.findUnique({ where: { id } });
+
+      if (!approval) {
+        return res.status(404).json({ message: "교육 결재 요청을 찾을 수 없습니다" });
+      }
+      if (approval.approverId !== userId) {
+        return res.status(403).json({ message: "결재 권한이 없습니다" });
+      }
+      if (approval.status !== 'PENDING') {
+        return res.status(400).json({ message: "이미 처리된 결재입니다" });
+      }
+
+      const updated = await prisma.educationApproval.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          approvedAt: new Date(),
+          executiveSignature: signature || null
+        },
+        include: {
+          requester: { select: { id: true, name: true, username: true, email: true } },
+          approver: { select: { id: true, name: true, username: true, email: true } }
+        }
+      });
+
+      // 요청자에게 승인 알림 이메일
+      if (updated.requester?.email) {
+        try {
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('EDU_APPROVAL_APPROVED', updated.requester.email, updated.requesterId, {
+            REQUESTER_NAME: updated.requester.name || updated.requester.username,
+            APPROVER_NAME: updated.approver.name || updated.approver.username,
+            SITE: updated.site,
+            YEAR: String(updated.year),
+            MONTH: String(updated.month),
+            APPROVED_AT: updated.approvedAt ? new Date(updated.approvedAt).toLocaleString('ko-KR') : '',
+          });
+        } catch (emailError) {
+          console.error(`[Education Approval] Approval email failed:`, emailError);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to approve education approval:", error);
+      res.status(500).json({ message: "교육 결재 승인에 실패했습니다" });
+    }
+  });
+
+  // 교육 결재 반려
+  app.post("/api/education-approvals/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rejectionReason } = req.body;
+      const userId = req.session.user!.id;
+
+      const approval = await prisma.educationApproval.findUnique({ where: { id } });
+
+      if (!approval) {
+        return res.status(404).json({ message: "교육 결재 요청을 찾을 수 없습니다" });
+      }
+      if (approval.approverId !== userId) {
+        return res.status(403).json({ message: "결재 권한이 없습니다" });
+      }
+      if (approval.status !== 'PENDING') {
+        return res.status(400).json({ message: "이미 처리된 결재입니다" });
+      }
+
+      const updated = await prisma.educationApproval.update({
+        where: { id },
+        data: {
+          status: 'REJECTED',
+          approvedAt: new Date(),
+          rejectionReason: rejectionReason || '승인 거부'
+        },
+        include: {
+          requester: { select: { id: true, name: true, username: true, email: true } },
+          approver: { select: { id: true, name: true, username: true, email: true } }
+        }
+      });
+
+      // 요청자에게 반려 알림 이메일
+      if (updated.requester?.email) {
+        try {
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('EDU_APPROVAL_REJECTED', updated.requester.email, updated.requesterId, {
+            REQUESTER_NAME: updated.requester.name || updated.requester.username,
+            APPROVER_NAME: updated.approver.name || updated.approver.username,
+            SITE: updated.site,
+            YEAR: String(updated.year),
+            MONTH: String(updated.month),
+            REJECTION_REASON: updated.rejectionReason || '사유 없음',
+          });
+        } catch (emailError) {
+          console.error(`[Education Approval] Rejection email failed:`, emailError);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to reject education approval:", error);
+      res.status(500).json({ message: "교육 결재 반려에 실패했습니다" });
+    }
+  });
+
+  // 교육 결재 회수
+  app.post("/api/education-approvals/:id/withdraw", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.user!.id;
+
+      const approval = await prisma.educationApproval.findUnique({
+        where: { id },
+        include: {
+          requester: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } }
+        }
+      });
+
+      if (!approval) {
+        return res.status(404).json({ message: "교육 결재 요청을 찾을 수 없습니다" });
+      }
+      if (approval.requesterId !== userId) {
+        return res.status(403).json({ message: "본인이 요청한 결재만 회수할 수 있습니다" });
+      }
+      if (approval.status !== 'PENDING') {
+        return res.status(400).json({ message: "대기 중인 결재만 회수할 수 있습니다" });
+      }
+
+      const updated = await prisma.educationApproval.update({
+        where: { id },
+        data: {
+          status: 'WITHDRAWN',
+          approvedAt: new Date()
+        },
+        include: {
+          requester: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } }
+        }
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to withdraw education approval:", error);
+      res.status(500).json({ message: "교육 결재 회수에 실패했습니다" });
+    }
+  });
+
   // DASHBOARD STATS (대시보드 통계)
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
@@ -4242,7 +4542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
   app.get("/api/tbm/safety-education-excel", requireAuth, async (req, res) => {
     try {
-      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates } = req.query;
+      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId } = req.query;
 
       // 파라미터 검증
       if (!site || !year || !month || !date) {
@@ -4405,13 +4705,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // 담당자/승인자 및 서명 데이터 파싱
-      const managerName = manager ? decodeURIComponent(manager as string) : '';
-      const approverName = approver ? decodeURIComponent(approver as string) : '';
+      let managerName = manager ? decodeURIComponent(manager as string) : '';
+      let approverName = approver ? decodeURIComponent(approver as string) : '';
 
       let managerSigBuffer: Buffer | null = null;
       let approverSigBuffer: Buffer | null = null;
 
-      if (managerSignature) {
+      // educationApprovalId가 있으면 DB에서 서명 조회 (결재 완료된 경우)
+      if (educationApprovalId) {
+        try {
+          const eduApproval = await prisma.educationApproval.findUnique({
+            where: { id: educationApprovalId as string },
+            include: {
+              requester: { select: { name: true, username: true } },
+              approver: { select: { name: true, username: true } }
+            }
+          });
+          if (eduApproval && eduApproval.status === 'APPROVED') {
+            managerName = eduApproval.requester.name || eduApproval.requester.username;
+            approverName = eduApproval.approver.name || eduApproval.approver.username;
+            if (eduApproval.requesterSignature) {
+              try {
+                const base64Data = eduApproval.requesterSignature.replace(/^data:image\/\w+;base64,/, '');
+                managerSigBuffer = Buffer.from(base64Data, 'base64');
+              } catch (e) {
+                console.error('DB 담당 서명 파싱 실패:', e);
+              }
+            }
+            if (eduApproval.executiveSignature) {
+              try {
+                const base64Data = eduApproval.executiveSignature.replace(/^data:image\/\w+;base64,/, '');
+                approverSigBuffer = Buffer.from(base64Data, 'base64');
+              } catch (e) {
+                console.error('DB 승인 서명 파싱 실패:', e);
+              }
+            }
+            console.log(`📋 결재 승인 서명 DB에서 로드: 담당=${managerName}, 승인=${approverName}`);
+          }
+        } catch (e) {
+          console.error('교육 결재 조회 실패:', e);
+        }
+      }
+
+      // DB에서 로드되지 않은 경우 query param 방식 사용
+      if (!managerSigBuffer && managerSignature) {
         try {
           const base64Data = (managerSignature as string).replace(/^data:image\/\w+;base64,/, '');
           managerSigBuffer = Buffer.from(base64Data, 'base64');
@@ -4420,7 +4757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (approverSignature) {
+      if (!approverSigBuffer && approverSignature) {
         try {
           const base64Data = (approverSignature as string).replace(/^data:image\/\w+;base64,/, '');
           approverSigBuffer = Buffer.from(base64Data, 'base64');

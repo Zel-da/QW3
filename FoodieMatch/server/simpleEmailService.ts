@@ -466,6 +466,50 @@ export async function ensureEmailConfigs() {
 </div>`,
       sendTiming: 'IMMEDIATE',
     },
+    {
+      emailType: 'EDU_APPROVAL_REQUEST',
+      subject: '[교육결재요청] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 결재',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #2563eb;">안전교육 현황 결재 요청</h2>
+  <p>{{APPROVER_NAME}}님, 안녕하세요.</p>
+  <p>{{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 결재가 요청되었습니다.</p>
+  <p><strong>요청자:</strong> {{REQUESTER_NAME}}</p>
+  <p><strong>현장:</strong> {{SITE}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p>아래 버튼을 클릭하여 확인하고 서명해주세요.</p>
+  <p><a href="{{APPROVAL_URL}}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">결재하러 가기</a></p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'EDU_APPROVAL_APPROVED',
+      subject: '[교육결재승인] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 승인 완료',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #16a34a;">안전교육 현황 결재 승인 완료</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황이 승인되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>현장:</strong> {{SITE}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p><strong>승인 일시:</strong> {{APPROVED_AT}}</p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
+    {
+      emailType: 'EDU_APPROVAL_REJECTED',
+      subject: '[교육결재반려] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 반려',
+      content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #dc2626;">안전교육 현황 결재 반려</h2>
+  <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
+  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황이 반려되었습니다.</p>
+  <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
+  <p><strong>현장:</strong> {{SITE}}</p>
+  <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
+  <p style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 12px 0;"><strong>반려 사유:</strong> {{REJECTION_REASON}}</p>
+  <p>수정한 후 다시 결재 요청해주세요.</p>
+</div>`,
+      sendTiming: 'IMMEDIATE',
+    },
   ];
 
   let created = 0;

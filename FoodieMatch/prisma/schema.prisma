@@ -37,6 +37,8 @@ model User {
   lockedUntil            DateTime?                       // 계정 잠금 해제 시간
   passwordResetTokens    PasswordResetToken[]            // 비밀번호 재설정 토큰
   auditLogs              AuditLog[]        @relation("AuditLogUser") // 감사 로그
+  educationApprovalRequests   EducationApproval[] @relation("EducationApprovalRequester")
+  educationApprovalsToApprove EducationApproval[] @relation("EducationApprovalApprover")
 
   @@index([teamId])
   @@index([role])
@@ -645,4 +647,29 @@ model AuditLog {
   @@index([createdAt])
   @@index([entityType, createdAt])
   @@map("AuditLogs")
+}
+
+// ========== 안전교육 현황 결재 시스템 ==========
+
+model EducationApproval {
+  id                 String   @id @default(uuid())
+  site               String   // '아산' or '화성'
+  year               Int
+  month              Int
+  requesterId        String
+  approverId         String
+  status             String   @default("PENDING") // PENDING, APPROVED, REJECTED, WITHDRAWN
+  requesterSignature String?  // base64 담당 서명
+  executiveSignature String?  // base64 승인 서명
+  requestedAt        DateTime @default(now())
+  approvedAt         DateTime?
+  rejectionReason    String?
+  requester          User     @relation("EducationApprovalRequester", fields: [requesterId], references: [id])
+  approver           User     @relation("EducationApprovalApprover", fields: [approverId], references: [id])
+
+  @@unique([site, year, month])
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@map("EducationApprovals")
 }

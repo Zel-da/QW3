@@ -50,6 +50,7 @@ const InspectionGalleryPage = lazy(() => import("./pages/InspectionGalleryPage")
 // 결재 관련
 const ApprovalPage = lazy(() => import("./pages/ApprovalPage"));
 const ApprovalHistoryPage = lazy(() => import("./pages/ApprovalHistoryPage"));
+const EducationApprovalPage = lazy(() => import("./pages/EducationApprovalPage"));
 
 // 관리 페이지
 const TeamManagementPage = lazy(() => import("./pages/TeamManagementPage"));
@@ -176,6 +177,11 @@ function App() {
               <Route path="/approval-history">
                 <ProtectedRoute roles={ACTIVE_ROLES}>
                   <ApprovalHistoryPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/education-approval/:id">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <EducationApprovalPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/inspection-gallery">
