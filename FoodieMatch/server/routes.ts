@@ -4923,17 +4923,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const lastDayOfMonth = new Date(yearNum, monthNum, 0).getDate();
 
-      for (const team of teams) {
-        try {
-          console.log(`  🔄 팀 ${team.name} 서명 시트 생성 중...`);
+      // 열처리 팀 통합 처리: 열처리 1조/2조/3조를 하나의 "열처리" 시트로 합침
+      const heatTreatmentTeams = teams.filter(t => t.name.includes('열처리'));
+      const nonHeatTreatmentTeams = teams.filter(t => !t.name.includes('열처리'));
+      const processedHeatTreatment = heatTreatmentTeams.length > 0;
 
-          // 해당 팀의 User와 TeamMember 조회
+      // 열처리 통합 + 나머지 팀 목록 구성
+      interface SignatureSheetEntry {
+        sheetLabel: string;
+        teamIds: number[];
+      }
+      const sheetEntries: SignatureSheetEntry[] = [];
+
+      if (processedHeatTreatment) {
+        sheetEntries.push({
+          sheetLabel: '열처리',
+          teamIds: heatTreatmentTeams.map(t => t.id),
+        });
+        console.log(`  🔄 열처리팀 통합: ${heatTreatmentTeams.map(t => t.name).join(', ')} → "열처리" 시트 1개`);
+      }
+
+      nonHeatTreatmentTeams.forEach(t => {
+        sheetEntries.push({ sheetLabel: t.name, teamIds: [t.id] });
+      });
+
+      for (const entry of sheetEntries) {
+        try {
+          console.log(`  🔄 ${entry.sheetLabel} 서명 시트 생성 중...`);
+
+          // 해당 팀(들)의 User와 TeamMember 조회
           const [teamUsers, teamMembers, monthlyReports] = await Promise.all([
-            prisma.user.findMany({ where: { teamId: team.id } }),
-            prisma.teamMember.findMany({ where: { teamId: team.id, isActive: true } }),
+            prisma.user.findMany({ where: { teamId: { in: entry.teamIds } } }),
+            prisma.teamMember.findMany({ where: { teamId: { in: entry.teamIds }, isActive: true } }),
             prisma.dailyReport.findMany({
               where: {
-                teamId: team.id,
+                teamId: { in: entry.teamIds },
                 reportDate: { gte: monthStart, lte: monthEnd }
               },
               include: {
@@ -4945,8 +4969,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
           ]);
 
+          // 열처리 통합 시 중복 제거 (같은 사람이 여러 조에 있을 수 있음)
+          let uniqueUsers = teamUsers;
+          let uniqueMembers = teamMembers;
+
+          if (entry.teamIds.length > 1) {
+            const userMap = new Map<string, typeof teamUsers[0]>();
+            teamUsers.forEach(u => { if (!userMap.has(u.id)) userMap.set(u.id, u); });
+            uniqueUsers = Array.from(userMap.values());
+
+            const memberMap = new Map<string, typeof teamMembers[0]>();
+            teamMembers.forEach(m => { if (!memberMap.has(m.name)) memberMap.set(m.name, m); });
+            uniqueMembers = Array.from(memberMap.values());
+          }
+
           // 서명 시트 생성
-          const sanitizedName = team.name.replace(/[*?:\\/\[\]]/g, '-');
+          const sanitizedName = entry.sheetLabel.replace(/[*?:\\/\[\]]/g, '-');
           const sheetName = `${sanitizedName}_서명`.substring(0, 31);
           const signatureSheet = workbook.addWorksheet(sheetName);
 
@@ -4972,32 +5010,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // User와 TeamMember 이름 행 추가
           const userRowMap: Record<string, number> = {};
           const memberRowMap: Record<number, number> = {};
+          const memberNameRowMap: Record<string, number> = {};
           let currentRow = 2;
 
           // User (계정 있는 사용자)
-          teamUsers.forEach((u) => {
+          uniqueUsers.forEach((u) => {
             userRowMap[u.id] = currentRow;
             signatureSheet.getRow(currentRow).height = 30;
             signatureSheet.getCell(currentRow, 1).value = u.name;
             signatureSheet.getCell(currentRow, 1).font = font;
             signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
             signatureSheet.getCell(currentRow, 1).border = border;
+            if (u.name) memberNameRowMap[u.name] = currentRow;
             currentRow++;
           });
 
           // TeamMember (계정 없는 사용자)
-          teamMembers.forEach((m) => {
+          uniqueMembers.forEach((m) => {
             memberRowMap[m.id] = currentRow;
             signatureSheet.getRow(currentRow).height = 30;
             signatureSheet.getCell(currentRow, 1).value = m.name;
             signatureSheet.getCell(currentRow, 1).font = font;
             signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
             signatureSheet.getCell(currentRow, 1).border = border;
+            memberNameRowMap[m.name] = currentRow;
             currentRow++;
           });
 
           // 서명 이미지 삽입
-          console.log(`    📊 팀 ${team.name}: 보고서 ${monthlyReports.length}개, User ${teamUsers.length}명, Member ${teamMembers.length}명`);
+          console.log(`    📊 ${entry.sheetLabel}: 보고서 ${monthlyReports.length}개, User ${uniqueUsers.length}명, Member ${uniqueMembers.length}명`);
           let insertedSignatures = 0;
 
           monthlyReports.forEach(report => {
@@ -5011,8 +5052,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // User 서명인지 TeamMember 서명인지 확인
               if (sig.userId) {
                 row = userRowMap[sig.userId];
+                // 열처리 통합: userId가 다른 조에 있을 수 있으므로 이름으로도 매핑
+                if (!row && sig.user?.name) {
+                  row = memberNameRowMap[sig.user.name];
+                }
               } else if (sig.memberId) {
                 row = memberRowMap[sig.memberId];
+                // 열처리 통합: memberId가 다른 조에 있을 수 있으므로 이름으로도 매핑
+                if (!row && sig.member?.name) {
+                  row = memberNameRowMap[sig.member.name];
+                }
               }
 
               if (row && sig.signatureImage) {
@@ -5027,31 +5076,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   insertedSignatures++;
                 } catch (e) {
-                  console.error(`    ⚠️  서명 이미지 삽입 실패 (${team.name}):`, e);
+                  console.error(`    ⚠️  서명 이미지 삽입 실패 (${entry.sheetLabel}):`, e);
                 }
               }
             });
           });
 
-          console.log(`    📝 팀 ${team.name}: 서명 ${insertedSignatures}개 삽입됨`);
+          console.log(`    📝 ${entry.sheetLabel}: 서명 ${insertedSignatures}개 삽입됨`);
 
           // 모든 셀에 테두리 적용
-          const totalRows = teamUsers.length + teamMembers.length;
+          const totalRows = uniqueUsers.length + uniqueMembers.length;
           for (let r = 2; r <= totalRows + 1; r++) {
             for (let c = 2; c <= lastDayOfMonth + 1; c++) {
               signatureSheet.getCell(r, c).border = border;
             }
           }
 
-          console.log(`    ✅ 팀 ${team.name} 서명 시트 완료`);
+          console.log(`    ✅ ${entry.sheetLabel} 서명 시트 완료`);
         } catch (error) {
-          console.error(`    ❌ 팀 ${team.name} 서명 시트 생성 실패:`, error);
-          // 한 팀 실패해도 계속 진행
+          console.error(`    ❌ ${entry.sheetLabel} 서명 시트 생성 실패:`, error);
           continue;
         }
       }
 
-      console.log(`\n  ✅ 서명 시트 생성 완료 (총 ${teams.length}개 팀)`);
+      console.log(`\n  ✅ 서명 시트 생성 완료 (총 ${sheetEntries.length}개 시트)`);
 
       // 파일 전송
       const filename = `${site}_안전교육_${year}년${month}월${date}일.xlsx`;
