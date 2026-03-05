@@ -5302,18 +5302,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
           ]);
 
-          // 열처리 통합 시 중복 제거 (같은 사람이 여러 조에 있을 수 있음)
+          // 열처리 통합 시 중복 제거 + 정렬 (최영삼 → 1조 → 2조 → 3조)
           let uniqueUsers = teamUsers;
           let uniqueMembers = teamMembers;
 
-          if (entry.teamIds.length > 1) {
+          // 열처리 통합 시 (여러 조 합침) - 이름 기준 중복 제거 + 조별 정렬
+          const isHeatTreatmentMerged = entry.teamIds.length > 1;
+
+          if (isHeatTreatmentMerged) {
+            // User 중복 제거 (ID 기준)
             const userMap = new Map<string, typeof teamUsers[0]>();
             teamUsers.forEach(u => { if (!userMap.has(u.id)) userMap.set(u.id, u); });
             uniqueUsers = Array.from(userMap.values());
 
+            // TeamMember 중복 제거 (이름 기준)
             const memberMap = new Map<string, typeof teamMembers[0]>();
             teamMembers.forEach(m => { if (!memberMap.has(m.name)) memberMap.set(m.name, m); });
             uniqueMembers = Array.from(memberMap.values());
+
+            // User와 TeamMember 간 이름 중복 제거 (User 우선 - 같은 이름이면 TeamMember 제거)
+            const userNames = new Set(uniqueUsers.map(u => u.name).filter(Boolean));
+            uniqueMembers = uniqueMembers.filter(m => !userNames.has(m.name));
           }
 
           // 서명 시트 생성
@@ -5346,29 +5355,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const memberNameRowMap: Record<string, number> = {};
           let currentRow = 2;
 
-          // User (계정 있는 사용자)
-          uniqueUsers.forEach((u) => {
-            userRowMap[u.id] = currentRow;
-            signatureSheet.getRow(currentRow).height = 30;
-            signatureSheet.getCell(currentRow, 1).value = u.name;
-            signatureSheet.getCell(currentRow, 1).font = font;
-            signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
-            signatureSheet.getCell(currentRow, 1).border = border;
-            if (u.name) memberNameRowMap[u.name] = currentRow;
-            currentRow++;
-          });
+          if (isHeatTreatmentMerged) {
+            // 열처리 통합: User + TeamMember를 합쳐서 최영삼 → 1조 → 2조 → 3조 순으로 정렬
+            interface PersonEntry { name: string; userId?: string; memberId?: number; teamId: number; }
+            const allPeople: PersonEntry[] = [];
+            const seenNames = new Set<string>();
 
-          // TeamMember (계정 없는 사용자)
-          uniqueMembers.forEach((m) => {
-            memberRowMap[m.id] = currentRow;
-            signatureSheet.getRow(currentRow).height = 30;
-            signatureSheet.getCell(currentRow, 1).value = m.name;
-            signatureSheet.getCell(currentRow, 1).font = font;
-            signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
-            signatureSheet.getCell(currentRow, 1).border = border;
-            memberNameRowMap[m.name] = currentRow;
-            currentRow++;
-          });
+            uniqueUsers.forEach(u => {
+              if (u.name && !seenNames.has(u.name)) {
+                seenNames.add(u.name);
+                allPeople.push({ name: u.name, userId: u.id, teamId: u.teamId! });
+              }
+            });
+            uniqueMembers.forEach(m => {
+              if (!seenNames.has(m.name)) {
+                seenNames.add(m.name);
+                allPeople.push({ name: m.name, memberId: m.id, teamId: m.teamId });
+              }
+            });
+
+            // 팀 순서 매핑 (열처리 1조=0, 2조=1, 3조=2)
+            const teamOrderMap = new Map<number, number>();
+            heatTreatmentTeams.forEach((t, idx) => teamOrderMap.set(t.id, idx));
+
+            allPeople.sort((a, b) => {
+              if (a.name === '최영삼') return -1;
+              if (b.name === '최영삼') return 1;
+              const orderA = teamOrderMap.get(a.teamId) ?? 999;
+              const orderB = teamOrderMap.get(b.teamId) ?? 999;
+              if (orderA !== orderB) return orderA - orderB;
+              return a.name.localeCompare(b.name, 'ko');
+            });
+
+            allPeople.forEach(person => {
+              if (person.userId) userRowMap[person.userId] = currentRow;
+              if (person.memberId) memberRowMap[person.memberId] = currentRow;
+              memberNameRowMap[person.name] = currentRow;
+              signatureSheet.getRow(currentRow).height = 30;
+              signatureSheet.getCell(currentRow, 1).value = person.name;
+              signatureSheet.getCell(currentRow, 1).font = font;
+              signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
+              signatureSheet.getCell(currentRow, 1).border = border;
+              currentRow++;
+            });
+          } else {
+            // 일반 팀: User → TeamMember 순서
+            uniqueUsers.forEach((u) => {
+              userRowMap[u.id] = currentRow;
+              signatureSheet.getRow(currentRow).height = 30;
+              signatureSheet.getCell(currentRow, 1).value = u.name;
+              signatureSheet.getCell(currentRow, 1).font = font;
+              signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
+              signatureSheet.getCell(currentRow, 1).border = border;
+              if (u.name) memberNameRowMap[u.name] = currentRow;
+              currentRow++;
+            });
+
+            uniqueMembers.forEach((m) => {
+              memberRowMap[m.id] = currentRow;
+              signatureSheet.getRow(currentRow).height = 30;
+              signatureSheet.getCell(currentRow, 1).value = m.name;
+              signatureSheet.getCell(currentRow, 1).font = font;
+              signatureSheet.getCell(currentRow, 1).alignment = centerAlignment;
+              signatureSheet.getCell(currentRow, 1).border = border;
+              memberNameRowMap[m.name] = currentRow;
+              currentRow++;
+            });
+          }
 
           // 서명 이미지 삽입
           console.log(`    📊 ${entry.sheetLabel}: 보고서 ${monthlyReports.length}개, User ${uniqueUsers.length}명, Member ${uniqueMembers.length}명`);
