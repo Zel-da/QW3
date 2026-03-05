@@ -1674,7 +1674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 월별보고서 결재 요청 생성 (MonthlyApproval + ApprovalRequest 자동 생성)
   app.post("/api/monthly-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
-      const { teamId, year, month } = req.body;
+      const { teamId, year, month, requesterSignature } = req.body;
       const requesterId = req.session.user!.id;
 
       console.log(`[Monthly Approval Request] teamId: ${teamId}, year: ${year}, month: ${month}, requester: ${requesterId}`);
@@ -1754,7 +1754,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reportId: monthlyApproval.id,
           requesterId,
           approverId: team.approverId,
-          status: 'PENDING'
+          status: 'PENDING',
+          requesterSignature: requesterSignature || null
         },
         include: {
           requester: true,
@@ -3332,15 +3333,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? new Date(approvalRequest.approvedAt).toLocaleDateString('ko-KR')
           : '';
 
-        // 관리감독자 이름과 날짜 (T3:Z4 영역)
-        sheet1.getCell('T3').value = `${approverName}\n${approvedDate}`;
+        // 관리감독자(T3): 요청자(팀장) 이름과 날짜
+        const requesterName = approvalRequest.requester?.name || approvalRequest.requester?.username || '';
+        sheet1.getCell('T3').value = `${requesterName}\n${approvedDate}`;
         sheet1.getCell('T3').alignment = centerAlignment;
 
-        // 승인/확인 서명 이미지 추가 (AA3:AG4 영역)
-        if (approvalRequest.approverSignature) {
+        // 관리감독자(T3) 서명 이미지 추가
+        if (approvalRequest.requesterSignature) {
           try {
-            // base64 문자열에서 데이터 URL 프리픽스 제거
-            const base64Data = approvalRequest.approverSignature.replace(/^data:image\/\w+;base64,/, '');
+            const base64Data = (approvalRequest.requesterSignature as string).replace(/^data:image\/\w+;base64,/, '');
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+
+            const imageId = workbook.addImage({
+              buffer: imageBuffer,
+              extension: 'png',
+            });
+
+            sheet1.addImage(imageId, {
+              tl: { col: 19, row: 2 }, // T3 (col 19 = T, row 2 = 3행)
+              br: { col: 26, row: 4 }, // Z4 (col 26 = Z, row 4 = 5행)
+              editAs: 'oneCell'
+            });
+          } catch (imgError) {
+            console.error('[Excel] Failed to add requester signature image:', imgError);
+          }
+        }
+
+        // 승인/확인(AA3): 승인자(임원) 이름
+        sheet1.getCell('AA3').value = `${approverName}`;
+        sheet1.getCell('AA3').alignment = centerAlignment;
+
+        // 승인/확인(AA3) 서명 이미지 추가
+        if (approvalRequest.executiveSignature) {
+          try {
+            const base64Data = (approvalRequest.executiveSignature as string).replace(/^data:image\/\w+;base64,/, '');
             const imageBuffer = Buffer.from(base64Data, 'base64');
 
             const imageId = workbook.addImage({
@@ -3354,9 +3380,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               editAs: 'oneCell'
             });
           } catch (imgError) {
-            console.error('[Excel] Failed to add signature image:', imgError);
-            // 서명 이미지 추가 실패 시 텍스트로 대체
-            sheet1.getCell('AA3').value = '(서명)';
+            console.error('[Excel] Failed to add executive signature image:', imgError);
+            sheet1.getCell('AA3').value = `${approverName}\n(서명)`;
             sheet1.getCell('AA3').alignment = centerAlignment;
           }
         }
@@ -3850,7 +3875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 month: monthNum
               },
               include: {
-                approvalRequest: { include: { approver: true } }
+                approvalRequest: { include: { approver: true, requester: true } }
               }
             })
           ]);
@@ -3900,17 +3925,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sheet1.mergeCells('T3:Z4');
           sheet1.mergeCells('AA3:AG4');
 
-          // 임원 이름 및 서명 추가
-          // 우선순위: ApprovalRequest에서 결재한 임원 > 팀에 지정된 결재 임원
+          // 관리감독자(T3): 요청자(팀장) 이름 + 서명
+          const requesterName = monthlyApproval?.approvalRequest?.requester?.name;
+          const requesterSignature = monthlyApproval?.approvalRequest?.requesterSignature;
+
+          if (requesterName) {
+            sheet1.getCell('T3').value = requesterName;
+            sheet1.getCell('T3').font = font;
+            sheet1.getCell('T3').alignment = centerAlignment;
+            console.log(`  ✅ 관리감독자(팀장) 이름 추가: ${requesterName}`);
+          }
+
+          if (requesterSignature) {
+            try {
+              const base64Data = requesterSignature.includes('base64,')
+                ? requesterSignature.split('base64,')[1]
+                : requesterSignature;
+
+              const imageId = workbook.addImage({
+                base64: base64Data,
+                extension: 'png'
+              });
+
+              sheet1.addImage(imageId, {
+                tl: { col: 19, row: 2 }, // T3
+                ext: { width: 150, height: 50 }
+              });
+              console.log(`  ✅ 관리감독자(팀장) 서명 이미지 추가됨`);
+            } catch (err) {
+              console.error(`  ⚠️  관리감독자 서명 이미지 삽입 실패:`, err);
+            }
+          }
+
+          // 승인/확인(AA3): 승인자(임원) 이름 + 서명
           const approverName = monthlyApproval?.approvalRequest?.approver?.name
             || team.approver?.name;
           const executiveSignature = monthlyApproval?.approvalRequest?.executiveSignature;
 
           if (approverName) {
-            sheet1.getCell('T3').value = approverName;
-            sheet1.getCell('T3').font = font;
-            sheet1.getCell('T3').alignment = centerAlignment;
-            console.log(`  ✅ 임원 이름 추가: ${approverName}`);
+            sheet1.getCell('AA3').value = approverName;
+            sheet1.getCell('AA3').font = font;
+            sheet1.getCell('AA3').alignment = centerAlignment;
+            console.log(`  ✅ 승인/확인(임원) 이름 추가: ${approverName}`);
           }
 
           if (executiveSignature) {
@@ -3928,9 +3984,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 tl: { col: 26, row: 2 }, // AA3
                 ext: { width: 150, height: 50 }
               });
-              console.log(`  ✅ 임원 서명 이미지 추가됨`);
+              console.log(`  ✅ 승인/확인(임원) 서명 이미지 추가됨`);
             } catch (err) {
-              console.error(`  ⚠️  서명 이미지 삽입 실패:`, err);
+              console.error(`  ⚠️  승인/확인 서명 이미지 삽입 실패:`, err);
             }
           }
 

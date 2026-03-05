@@ -416,6 +416,7 @@ model ApprovalRequest {
   approvedAt         DateTime?
   rejectionReason    String?         // 반려 사유
   executiveSignature String?         // 임원 서명 이미지 (base64)
+  requesterSignature String?         // 요청자(팀장) 서명 이미지 (base64)
   monthlyReport      MonthlyApproval @relation(fields: [reportId], references: [id], onDelete: Cascade)
   requester          User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
   approver           User            @relation("ApprovalApprover", fields: [approverId], references: [id])

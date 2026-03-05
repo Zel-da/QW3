@@ -90,6 +90,7 @@ const createApprovalRequest = async (payload: {
   teamId: number;
   year: number;
   month: number;
+  requesterSignature?: string;
 }) => {
   console.log('[createApprovalRequest] 함수 시작', payload);
   try {
@@ -175,6 +176,7 @@ export default function MonthlyReportPage() {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [executiveName, setExecutiveName] = useState('');
   const [executiveSignature, setExecutiveSignature] = useState('');
+  const [showApprovalSignature, setShowApprovalSignature] = useState(false);
 
   // Download states
   const [downloadYear, setDownloadYear] = useState(new Date().getFullYear());
@@ -791,19 +793,26 @@ export default function MonthlyReportPage() {
       }
     }
 
-    console.log('[결재 요청] mutation 실행 중...', {
+    // 서명 다이얼로그 표시
+    setShowApprovalSignature(true);
+  }, [selectedTeam, date, toast, report, teamLeaderEducationStat, problematicItems]);
+
+  const handleApprovalSignatureSave = useCallback((signature: string) => {
+    if (!selectedTeam) return;
+
+    console.log('[결재 요청] 서명 완료, mutation 실행 중...', {
       teamId: selectedTeam,
       year: date.year,
       month: date.month,
     });
 
-    // 즉시 결재 요청 전송 (Team.approverId 자동 사용)
     approvalMutation.mutate({
       teamId: selectedTeam,
       year: date.year,
       month: date.month,
+      requesterSignature: signature,
     });
-  }, [selectedTeam, date, approvalMutation, toast, report, teamLeaderEducationStat, problematicItems]);
+  }, [selectedTeam, date, approvalMutation]);
 
   const handleClearFilters = useCallback(() => {
     setFilterNoApproval(false);
@@ -2141,6 +2150,14 @@ export default function MonthlyReportPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 결재 요청 서명 다이얼로그 */}
+        <SignatureDialog
+          isOpen={showApprovalSignature}
+          onClose={() => setShowApprovalSignature(false)}
+          onSave={handleApprovalSignatureSave}
+          userName={user?.name || user?.username || ''}
+        />
 
         {/* Education Dual Signature Dialog (담당 + 승인) */}
         <DualSignatureDialog

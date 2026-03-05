@@ -34,10 +34,14 @@ export const useSite = create<SiteState>()(
         if (userSites && userSites.length > 0) {
           const validSites = userSites.filter(s => s === '아산' || s === '화성') as Site[];
           if (validSites.length > 0) {
+            // 복수 사이트 접근 가능하면 '전체' 옵션 추가
+            const sitesWithAll: Site[] = validSites.length > 1
+              ? ['전체', ...validSites]
+              : validSites;
             set({
-              availableSites: validSites,
+              availableSites: sitesWithAll,
               // 현재 선택된 사이트가 접근 불가면 첫 번째 사이트로 변경
-              site: validSites.includes(get().site) ? get().site : validSites[0]
+              site: sitesWithAll.includes(get().site) ? get().site : validSites[0]
             });
             return;
           }
