@@ -377,12 +377,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   }, [lastSavedRecording, selectedTeam, date, clearLastSavedRecording, toast]);
 
   // 팀/날짜 변경 시 모드 및 폼 초기화 (통합 초기화)
+  // reportForEdit가 있으면 수정 모드 초기화를 reportForEdit useEffect에서 처리하므로 건너뜀
   useEffect(() => {
+    if (reportForEdit) return;
     // 상태 머신을 loading으로 전환
     setMode('loading');
     // 이전 날짜/팀의 데이터가 넘어오지 않도록 즉시 초기화
     clearFormState();
-  }, [selectedTeam, date, clearFormState]);
+  }, [selectedTeam, date, clearFormState, reportForEdit]);
 
   // 날짜 변경 시 팀별 메모리 캐시 초기화 (다른 날짜로 녹음 데이터가 넘어가는 것 방지)
   useEffect(() => {
@@ -526,14 +528,13 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   };
 
-  // reportForEdit가 전달되면 조회 모드로 진입 (수정 버튼 클릭 시 edit 모드로 전환)
+  // reportForEdit가 전달되면 수정 모드로 진입
   useEffect(() => {
     if (reportForEdit) {
       initializeFormFromReport(reportForEdit);
       setExistingReport(reportForEdit);
-      setMode('view');
+      setMode('edit');
     }
-    // 폼 초기화는 통합 초기화 useEffect에서 처리
   }, [reportForEdit]);
 
   useEffect(() => {
