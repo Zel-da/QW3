@@ -184,13 +184,14 @@ export default function EducationMonitoringPage() {
     }).sort((a, b) => b.completionRate - a.completionRate);
   }, [data, userStatistics]);
 
-  // Overall statistics (팀 미지정, 제외 팀 제외)
+  // Overall statistics (팀 미지정, 제외 팀 제외 + site 필터 적용)
   const overallStats = React.useMemo(() => {
     if (!data) return { total: 0, completed: 0, inProgress: 0, notStarted: 0 };
 
     const validStats = userStatistics.filter(u => {
       if (!u.teamName) return false;
       if (EXCLUDED_TEAMS.includes(u.teamName)) return false;
+      if (selectedSite !== '전체' && u.site !== selectedSite) return false;
       return true;
     });
 
@@ -200,7 +201,7 @@ export default function EducationMonitoringPage() {
     const notStarted = validStats.filter(u => u.completedCourses === 0 && u.inProgressCourses === 0).length;
 
     return { total, completed, inProgress, notStarted };
-  }, [data, userStatistics]);
+  }, [data, userStatistics, selectedSite]);
 
   // Get unique sites and teams for filtering
   const sites = React.useMemo(() => {
@@ -402,6 +403,9 @@ export default function EducationMonitoringPage() {
       />
 
       {/* Overall Statistics Cards */}
+        <div className="flex justify-end mb-4">
+          <SiteSelector />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
@@ -629,13 +633,8 @@ export default function EducationMonitoringPage() {
         {/* Team Statistics (라인별 수강 현황 - 팀장 기준) */}
         <Card className="mb-8">
           <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <CardTitle>라인별 수강 현황 (팀장 기준)</CardTitle>
-                <CardDescription>각 라인(팀) 팀장의 안전교육 이수 현황입니다.</CardDescription>
-              </div>
-              <SiteSelector />
-            </div>
+            <CardTitle>라인별 수강 현황 (팀장 기준)</CardTitle>
+            <CardDescription>각 라인(팀) 팀장의 안전교육 이수 현황입니다.</CardDescription>
           </CardHeader>
           <CardContent>
             {(() => {

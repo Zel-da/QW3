@@ -24,9 +24,9 @@ export const useSite = create<SiteState>()(
         }
       },
       initSiteFromUser: (userSite, userSites, isAdmin) => {
-        // 관리자: 모든 사이트 접근 가능
+        // 관리자: 모든 사이트 접근 가능 (전체 포함)
         if (isAdmin) {
-          set({ availableSites: ['아산', '화성'] });
+          set({ availableSites: ['전체', '아산', '화성'] });
           return;
         }
 
