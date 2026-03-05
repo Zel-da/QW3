@@ -401,8 +401,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
-    // draft 모드가 이미 복원되었으면 API로 덮어쓰기 방지
-    if (mode === 'draft') {
+    // draft/edit 모드가 이미 설정되었으면 API로 덮어쓰기 방지
+    if (mode === 'draft' || mode === 'edit') {
       return;
     }
 
