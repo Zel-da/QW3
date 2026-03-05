@@ -137,6 +137,26 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     return teamName.includes('열처리');
   }, [selectedTeam, teams]);
 
+  // 열처리 조별 멤버 매핑 (기타 기본값 설정용)
+  // 1조: 이상현, 이덕표 / 2조: 유자현, 안태영 / 3조: 심윤근, 원정환
+  const heatTreatmentActiveMembers = useMemo(() => {
+    if (!isHeatTreatmentTeam || !selectedTeam) return null;
+    const selectedTeamData = teams.find(t => t.id === selectedTeam);
+    if (!selectedTeamData) return null;
+    const teamName = stripSiteSuffix(selectedTeamData.name);
+
+    const teamMemberMap = {
+      '1조': ['이상현', '이덕표'],
+      '2조': ['유자현', '안태영'],
+      '3조': ['심윤근', '원정환'],
+    };
+
+    for (const [jo, members] of Object.entries(teamMemberMap)) {
+      if (teamName.includes(jo)) return members;
+    }
+    return null;
+  }, [isHeatTreatmentTeam, selectedTeam, teams]);
+
   // 녹음 중/일시정지 상태 확인 (팀 변경 잠금용)
   const isRecordingActive = recordingState.status === 'recording' || recordingState.status === 'paused' || recordingState.status === 'saving';
 
@@ -338,51 +358,47 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [isHeatTreatmentTeam, mode]);
 
-  // 열처리팀 야간/주말/공휴일: 최영삼 기본 "기타" 설정 (서명 불필요)
+  // 열처리팀: 해당 조 멤버 외 나머지는 기본 "기타" 설정
+  // 최영삼은 주간+평일에만 출근, 야간/주말/공휴일에는 기타
   useEffect(() => {
-    if (!isHeatTreatmentTeam) return;
+    if (!isHeatTreatmentTeam || !heatTreatmentActiveMembers) return;
     if (mode !== 'new') return; // 새 작성 시에만 기본값 적용
     if (!teamUsers.length) return;
 
     const isNightOrNonWorkday = shift === 'night' || holidayInfo?.isNonWorkday;
 
-    if (isNightOrNonWorkday) {
-      // 최영삼을 기타로 기본 설정
-      const defaultAbsent = {};
-      teamUsers.forEach(worker => {
-        if (worker.name === '최영삼') {
-          defaultAbsent[worker.id] = '기타';
-        }
-      });
-      // 로그인 사용자가 최영삼인 경우도 처리
-      if (user?.name === '최영삼') {
-        defaultAbsent[user.id] = '기타';
-      }
-
-      if (Object.keys(defaultAbsent).length > 0) {
-        setAbsentUsers(prev => {
-          // 사용자가 이미 변경한 값은 유지 (기본값만 설정)
-          const merged = { ...defaultAbsent };
-          Object.keys(prev).forEach(key => { merged[key] = prev[key]; });
-          return merged;
-        });
-      }
-    } else {
-      // 주간 + 평일: 최영삼 기타 해제 (사용자가 직접 변경하지 않은 경우)
-      setAbsentUsers(prev => {
-        const updated = { ...prev };
-        teamUsers.forEach(worker => {
-          if (worker.name === '최영삼' && updated[worker.id] === '기타') {
-            delete updated[worker.id];
-          }
-        });
-        if (user?.name === '최영삼' && updated[user.id] === '기타') {
-          delete updated[user.id];
-        }
-        return updated;
-      });
+    // 이 조의 활성 멤버 목록 (최영삼은 주간+평일만)
+    const activeNames = new Set(heatTreatmentActiveMembers);
+    if (!isNightOrNonWorkday) {
+      activeNames.add('최영삼'); // 주간 + 평일: 최영삼 출근
     }
-  }, [isHeatTreatmentTeam, shift, holidayInfo?.isNonWorkday, teamUsers, mode]);
+
+    // 활성 멤버가 아닌 사람은 기타로 기본 설정
+    const defaultAbsent = {};
+    const allWorkers = [...teamUsers, user].filter(Boolean);
+    allWorkers.forEach(worker => {
+      if (worker?.name && !activeNames.has(worker.name)) {
+        defaultAbsent[worker.id] = '기타';
+      }
+    });
+
+    setAbsentUsers(prev => {
+      // 활성 멤버: 이전에 자동 설정된 기타 해제
+      const updated = { ...prev };
+      allWorkers.forEach(worker => {
+        if (worker?.name && activeNames.has(worker.name) && updated[worker.id] === '기타') {
+          delete updated[worker.id];
+        }
+      });
+      // 비활성 멤버: 기타 기본값 설정 (사용자가 이미 다른 값으로 변경한 경우 유지)
+      Object.entries(defaultAbsent).forEach(([id, val]) => {
+        if (!updated[id]) {
+          updated[id] = val;
+        }
+      });
+      return updated;
+    });
+  }, [isHeatTreatmentTeam, heatTreatmentActiveMembers, shift, holidayInfo?.isNonWorkday, teamUsers, mode]);
 
   // 새 작성 모드에서만 임시 저장된 녹음 복원 (mode가 'new'일 때만)
   useEffect(() => {

@@ -3883,14 +3883,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         allTeamUsers = Array.from(uniqueUserMap.values());
 
-        // 팀원도 이름 기준으로 중복 제거 (최영삼이 3개 조에 있음)
+        // 팀원도 이름 기준으로 중복 제거
         const uniqueMemberMap = new Map<string, typeof htMembers[0]>();
         htMembers.forEach(m => {
           if (!uniqueMemberMap.has(m.name)) {
             uniqueMemberMap.set(m.name, m);
           }
         });
-        allTeamMembers = Array.from(uniqueMemberMap.values());
+        // User와 TeamMember 간 이름 중복 제거 (User 우선)
+        const htUserNames = new Set(allTeamUsers.map(u => u.name).filter(Boolean));
+        allTeamMembers = Array.from(uniqueMemberMap.values()).filter(m => !htUserNames.has(m.name));
 
         allDailyReports = htReports;
 
@@ -3903,28 +3905,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const memberNameRowMap: Record<string, number> = {};  // 이름 기준 매핑 (열처리팀용)
       let currentRow = 2;
 
-      // 먼저 User(계정 있는 사용자) 추가
-      allTeamUsers.forEach((u) => {
-        userRowMap[u.id] = currentRow;
-        sheet2.getRow(currentRow).height = 30;
-        sheet2.getCell(currentRow, 1).value = u.name;
-        sheet2.getCell(currentRow, 1).font = font;
-        sheet2.getCell(currentRow, 1).alignment = centerAlignment;
-        sheet2.getCell(currentRow, 1).border = border;
-        currentRow++;
-      });
+      if (isHeatTreatmentTeam) {
+        // 열처리팀: User + TeamMember 합쳐서 고정 순서로 정렬
+        interface MonthlyPersonEntry { name: string; userId?: string; memberId?: number; }
+        const allPeople: MonthlyPersonEntry[] = [];
+        const seenNames = new Set<string>();
 
-      // 그 다음 TeamMember(계정 없는 사용자) 추가
-      allTeamMembers.forEach((m) => {
-        memberRowMap[m.id] = currentRow;
-        memberNameRowMap[m.name] = currentRow;  // 이름으로도 매핑
-        sheet2.getRow(currentRow).height = 30;
-        sheet2.getCell(currentRow, 1).value = m.name;
-        sheet2.getCell(currentRow, 1).font = font;
-        sheet2.getCell(currentRow, 1).alignment = centerAlignment;
-        sheet2.getCell(currentRow, 1).border = border;
-        currentRow++;
-      });
+        allTeamUsers.forEach(u => {
+          if (u.name && !seenNames.has(u.name)) {
+            seenNames.add(u.name);
+            allPeople.push({ name: u.name, userId: u.id });
+          }
+        });
+        allTeamMembers.forEach(m => {
+          if (!seenNames.has(m.name)) {
+            seenNames.add(m.name);
+            allPeople.push({ name: m.name, memberId: m.id });
+          }
+        });
+
+        // 고정 순서: 최영삼 → 1조(이상현, 이덕표) → 2조(유자현, 안태영) → 3조(심윤근, 원정환)
+        const HEAT_TREATMENT_ORDER = ['최영삼', '이상현', '이덕표', '유자현', '안태영', '심윤근', '원정환'];
+        allPeople.sort((a, b) => {
+          const idxA = HEAT_TREATMENT_ORDER.indexOf(a.name);
+          const idxB = HEAT_TREATMENT_ORDER.indexOf(b.name);
+          const orderA = idxA >= 0 ? idxA : 999;
+          const orderB = idxB >= 0 ? idxB : 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.name.localeCompare(b.name, 'ko');
+        });
+
+        allPeople.forEach(person => {
+          if (person.userId) userRowMap[person.userId] = currentRow;
+          if (person.memberId) { memberRowMap[person.memberId] = currentRow; }
+          memberNameRowMap[person.name] = currentRow;
+          sheet2.getRow(currentRow).height = 30;
+          sheet2.getCell(currentRow, 1).value = person.name;
+          sheet2.getCell(currentRow, 1).font = font;
+          sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+          sheet2.getCell(currentRow, 1).border = border;
+          currentRow++;
+        });
+      } else {
+        // 일반 팀: User → TeamMember 순서
+        allTeamUsers.forEach((u) => {
+          userRowMap[u.id] = currentRow;
+          sheet2.getRow(currentRow).height = 30;
+          sheet2.getCell(currentRow, 1).value = u.name;
+          sheet2.getCell(currentRow, 1).font = font;
+          sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+          sheet2.getCell(currentRow, 1).border = border;
+          currentRow++;
+        });
+
+        allTeamMembers.forEach((m) => {
+          memberRowMap[m.id] = currentRow;
+          memberNameRowMap[m.name] = currentRow;
+          sheet2.getRow(currentRow).height = 30;
+          sheet2.getCell(currentRow, 1).value = m.name;
+          sheet2.getCell(currentRow, 1).font = font;
+          sheet2.getCell(currentRow, 1).alignment = centerAlignment;
+          sheet2.getCell(currentRow, 1).border = border;
+          currentRow++;
+        });
+      }
 
       // 휴일 정보 조회 (열처리팀 최영삼 서명 조건용)
       const holidays = await prisma.holiday.findMany({
@@ -5374,15 +5418,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
 
-            // 팀 순서 매핑 (열처리 1조=0, 2조=1, 3조=2)
-            const teamOrderMap = new Map<number, number>();
-            heatTreatmentTeams.forEach((t, idx) => teamOrderMap.set(t.id, idx));
-
+            // 고정 순서: 최영삼 → 1조(이상현, 이덕표) → 2조(유자현, 안태영) → 3조(심윤근, 원정환)
+            const HEAT_TREATMENT_ORDER = ['최영삼', '이상현', '이덕표', '유자현', '안태영', '심윤근', '원정환'];
             allPeople.sort((a, b) => {
-              if (a.name === '최영삼') return -1;
-              if (b.name === '최영삼') return 1;
-              const orderA = teamOrderMap.get(a.teamId) ?? 999;
-              const orderB = teamOrderMap.get(b.teamId) ?? 999;
+              const idxA = HEAT_TREATMENT_ORDER.indexOf(a.name);
+              const idxB = HEAT_TREATMENT_ORDER.indexOf(b.name);
+              const orderA = idxA >= 0 ? idxA : 999;
+              const orderB = idxB >= 0 ? idxB : 999;
               if (orderA !== orderB) return orderA - orderB;
               return a.name.localeCompare(b.name, 'ko');
             });
