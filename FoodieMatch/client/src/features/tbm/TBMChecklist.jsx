@@ -1795,7 +1795,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...teamUsers, ...(mode === 'edit' ? [] : [user])].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'APPROVER').map(worker => (
+              {(() => {
+                const HEAT_TREATMENT_ORDER = ['최영삼', '이상현', '이덕표', '유자현', '안태영', '심윤근', '원정환'];
+                const workers = [...teamUsers, ...(mode === 'edit' ? [] : [user])].filter((u, i, self) => i === self.findIndex(t => t.id === u.id)).filter(u => u.role !== 'APPROVER');
+                if (isHeatTreatmentTeam) {
+                  workers.sort((a, b) => {
+                    const idxA = HEAT_TREATMENT_ORDER.indexOf(a.name);
+                    const idxB = HEAT_TREATMENT_ORDER.indexOf(b.name);
+                    const orderA = idxA >= 0 ? idxA : 999;
+                    const orderB = idxB >= 0 ? idxB : 999;
+                    return orderA - orderB;
+                  });
+                }
+                return workers;
+              })().map(worker => (
                 <TableRow key={worker.id} className={`border-b border-gray-200 ${absentUsers[worker.id] ? 'bg-gray-100' : ''}`}>
                   <TableCell className="font-semibold border-r border-gray-200">{worker.name}</TableCell>
                   <TableCell className="border-r border-gray-200">
