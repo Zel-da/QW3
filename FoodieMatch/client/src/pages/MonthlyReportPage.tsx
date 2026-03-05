@@ -129,6 +129,7 @@ const createEducationApprovalRequest = async (payload: {
   year: number;
   month: number;
   requesterSignature?: string;
+  approverName?: string;
 }) => {
   const res = await apiRequest('POST', '/api/education-approvals/request', payload);
   return res.json();
@@ -227,6 +228,8 @@ export default function MonthlyReportPage() {
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
   const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 교육 결재 서명
+  const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 교육 결재 요청 다이얼로그
+  const [showEduPendingDialog, setShowEduPendingDialog] = useState(false); // 교육 결재 진행중 다이얼로그
 
   // ==================== Queries ====================
 
@@ -310,12 +313,19 @@ export default function MonthlyReportPage() {
     enabled: !!selectedTeam,
   });
 
-  // Education approval status query
+  // Education approval status query (현재 보고 기간 기준)
   const { data: eduApprovalStatus, refetch: refetchEduApproval } = useQuery<EducationApprovalStatus | null>({
-    queryKey: ['education-approval-status', site, downloadYear, downloadMonth],
-    queryFn: () => fetchEducationApprovalStatus(site!, downloadYear, downloadMonth),
+    queryKey: ['education-approval-status', site, date.year, date.month],
+    queryFn: () => fetchEducationApprovalStatus(site!, date.year, date.month),
     enabled: !!site,
   });
+
+  // 사이트별 담당자 자동 설정
+  const eduManagerAutoName = useMemo(() => {
+    if (site === '아산') return '김문현';
+    if (site === '화성') return '표경윤';
+    return '';
+  }, [site]);
 
   // ==================== Approval Mutation ====================
 
@@ -780,9 +790,10 @@ export default function MonthlyReportPage() {
       return;
     }
 
-    // 승인된 결재가 있으면 서명 없이 바로 다운로드
+    // 승인된 결재가 있고 같은 기간이면 서명 없이 바로 다운로드
     if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED'
-        && eduApprovalStatus.year === downloadYear && eduApprovalStatus.month === downloadMonth) {
+        && eduApprovalStatus.year === date.year && eduApprovalStatus.month === date.month
+        && downloadYear === date.year && downloadMonth === date.month) {
       setShowEducationDatePicker(false);
 
       toast({
@@ -963,19 +974,36 @@ export default function MonthlyReportPage() {
       toast({ title: "오류", description: "현장을 선택해주세요.", variant: "destructive" });
       return;
     }
-    setShowEduApprovalSignature(true);
-  }, [site, toast]);
+
+    // PENDING 상태면 진행중 다이얼로그 표시
+    if (eduApprovalStatus && eduApprovalStatus.status === 'PENDING') {
+      setShowEduPendingDialog(true);
+      return;
+    }
+
+    // APPROVED 상태면 안내
+    if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED') {
+      toast({ title: "이미 승인됨", description: "교육 결재가 이미 승인되었습니다." });
+      return;
+    }
+
+    // 결재 요청 다이얼로그 표시 (날짜/담당자 입력)
+    setDownloadYear(date.year);
+    setDownloadMonth(date.month);
+    setShowEduApprovalRequestDialog(true);
+  }, [site, toast, eduApprovalStatus, date.year, date.month]);
 
   const handleEduApprovalSignatureSave = useCallback((signature: string) => {
     if (!site) return;
     setShowEduApprovalSignature(false);
     eduApprovalMutation.mutate({
       site,
-      year: downloadYear,
-      month: downloadMonth,
+      year: date.year,
+      month: date.month,
       requesterSignature: signature,
+      approverName: '정상배',
     });
-  }, [site, downloadYear, downloadMonth, eduApprovalMutation]);
+  }, [site, date.year, date.month, eduApprovalMutation]);
 
   const handleEduWithdraw = useCallback(() => {
     if (!eduApprovalStatus?.id) return;
@@ -1950,17 +1978,19 @@ export default function MonthlyReportPage() {
                   </Button>
 
                   {/* 교육 결재 영역 */}
-                  {site && (() => {
-                    const status = eduApprovalStatus?.status;
-                    const isCurrentPeriod = eduApprovalStatus && eduApprovalStatus.year === downloadYear && eduApprovalStatus.month === downloadMonth;
-
-                    if (isCurrentPeriod && status === 'PENDING') {
-                      return (
+                  {site && (
+                    <>
+                      {eduApprovalStatus?.status === 'PENDING' ? (
                         <>
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 gap-1">
-                            <Clock className="h-3 w-3" />
+                          <Button
+                            onClick={handleEduApprovalRequest}
+                            variant="outline"
+                            size="sm"
+                            className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
+                          >
+                            <Clock className="h-4 w-4 mr-2" />
                             교육 결재 대기중
-                          </Badge>
+                          </Button>
                           <Button
                             onClick={handleEduWithdraw}
                             disabled={eduWithdrawMutation.isPending}
@@ -1972,29 +2002,24 @@ export default function MonthlyReportPage() {
                             {eduWithdrawMutation.isPending ? '회수 중...' : '회수'}
                           </Button>
                         </>
-                      );
-                    }
-                    if (isCurrentPeriod && status === 'APPROVED') {
-                      return (
+                      ) : eduApprovalStatus?.status === 'APPROVED' ? (
                         <Badge variant="default" className="bg-green-600 gap-1">
                           <CheckCircle className="h-3 w-3" />
                           교육 결재 승인
                         </Badge>
-                      );
-                    }
-                    // 미요청, 반려, 회수 → 요청 버튼
-                    return (
-                      <Button
-                        onClick={handleEduApprovalRequest}
-                        disabled={!site || eduApprovalMutation.isPending}
-                        variant="default"
-                        size="sm"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        {eduApprovalMutation.isPending ? '요청 중...' : '교육 결재 요청'}
-                      </Button>
-                    );
-                  })()}
+                      ) : (
+                        <Button
+                          onClick={handleEduApprovalRequest}
+                          disabled={!site || eduApprovalMutation.isPending}
+                          variant="default"
+                          size="sm"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {eduApprovalMutation.isPending ? '요청 중...' : '교육 결재 요청'}
+                        </Button>
+                      )}
+                    </>
+                  )}
 
                   <div className="ml-auto text-sm text-muted-foreground">
                     {site ? `선택된 현장: ${site}` : '현장을 선택해주세요'}
@@ -2381,8 +2406,193 @@ export default function MonthlyReportPage() {
           isOpen={showEduApprovalSignature}
           onClose={() => setShowEduApprovalSignature(false)}
           onSave={handleEduApprovalSignatureSave}
-          userName={user?.name || user?.username || ''}
+          userName={eduManagerAutoName || user?.name || user?.username || ''}
         />
+
+        {/* 교육 결재 요청 다이얼로그 (날짜/담당자 입력) */}
+        <Dialog open={showEduApprovalRequestDialog} onOpenChange={setShowEduApprovalRequestDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>안전교육 현황 결재 요청</DialogTitle>
+              <DialogDescription>
+                날짜와 담당자 정보를 확인하고 결재를 요청해주세요.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>년도</Label>
+                  <Select
+                    value={downloadYear.toString()}
+                    onValueChange={(v) => setDownloadYear(parseInt(v))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {getInspectionYearRange().map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}년</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>월</Label>
+                  <Select
+                    value={downloadMonth.toString()}
+                    onValueChange={(v) => setDownloadMonth(parseInt(v))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                        <SelectItem key={month} value={month.toString()}>{month}월</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>기본 날짜</Label>
+                  <Select
+                    value={downloadDay.toString()}
+                    onValueChange={(v) => {
+                      const newDay = parseInt(v);
+                      setDownloadDay(newDay);
+                      if (!useTeamSpecificDates && teams) {
+                        const newMap: Record<number, number> = {};
+                        teams.forEach((team) => { newMap[team.id] = newDay; });
+                        setTeamDateMap(newMap);
+                      }
+                    }}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>{day}일</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>담당자</Label>
+                  <Input value={eduManagerAutoName} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>결재자</Label>
+                  <Input value="정상배" disabled className="bg-muted" />
+                </div>
+              </div>
+
+              {/* 팀별 날짜 선택 */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="edu-approval-team-dates"
+                    checked={useTeamSpecificDates}
+                    onCheckedChange={(checked) => {
+                      setUseTeamSpecificDates(!!checked);
+                      if (!checked && teams) {
+                        const newMap: Record<number, number> = {};
+                        teams.forEach((team) => { newMap[team.id] = downloadDay; });
+                        setTeamDateMap(newMap);
+                      }
+                    }}
+                  />
+                  <Label htmlFor="edu-approval-team-dates" className="text-sm cursor-pointer font-medium">
+                    팀별로 다른 날짜 사용
+                  </Label>
+                </div>
+
+                {useTeamSpecificDates && teams && teams.length > 0 && (
+                  <div className="space-y-2 max-h-[250px] overflow-y-auto border rounded-md p-3 bg-gray-50">
+                    <div className="text-xs text-muted-foreground mb-2">각 팀의 교육 날짜를 개별적으로 설정합니다.</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {teams.map((team) => (
+                        <div key={team.id} className="flex items-center gap-2 bg-white p-2 rounded border">
+                          <span className="text-sm flex-1 truncate" title={stripSiteSuffix(team.name)}>
+                            {stripSiteSuffix(team.name)}
+                          </span>
+                          <Select
+                            value={(teamDateMap[team.id] || downloadDay).toString()}
+                            onValueChange={(v) => {
+                              setTeamDateMap(prev => ({ ...prev, [team.id]: parseInt(v) }));
+                            }}
+                          >
+                            <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                            <SelectContent className="max-h-[200px] overflow-y-auto scrollbar-visible">
+                              {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(day => (
+                                <SelectItem key={day} value={day.toString()}>{day}일</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">취소</Button>
+              </DialogClose>
+              <Button onClick={() => {
+                setShowEduApprovalRequestDialog(false);
+                setShowEduApprovalSignature(true);
+              }}>
+                다음 (서명)
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 교육 결재 진행중 다이얼로그 */}
+        <Dialog open={showEduPendingDialog} onOpenChange={setShowEduPendingDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>진행중인 교육 결재</DialogTitle>
+              <DialogDescription>현재 교육 결재가 진행중입니다.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <span className="font-medium text-yellow-700">결재 대기중</span>
+              </div>
+              {eduApprovalStatus && (
+                <div className="text-sm text-muted-foreground space-y-1 bg-muted/50 p-3 rounded-md">
+                  <p><span className="font-medium text-foreground">현장:</span> {eduApprovalStatus.site}</p>
+                  <p><span className="font-medium text-foreground">기간:</span> {eduApprovalStatus.year}년 {eduApprovalStatus.month}월</p>
+                  <p><span className="font-medium text-foreground">요청자:</span> {eduApprovalStatus.requester?.name}</p>
+                  <p><span className="font-medium text-foreground">결재자:</span> {eduApprovalStatus.approver?.name}</p>
+                  <p><span className="font-medium text-foreground">요청일:</span> {new Date(eduApprovalStatus.requestedAt).toLocaleString('ko-KR')}</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex gap-2 sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEduPendingDialog(false);
+                  handleEducationExcelDownload();
+                }}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                다운로드
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setShowEduPendingDialog(false);
+                  handleEduWithdraw();
+                }}
+                disabled={eduWithdrawMutation.isPending}
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                회수하기
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Education Dual Signature Dialog (담당 + 승인) */}
         <DualSignatureDialog

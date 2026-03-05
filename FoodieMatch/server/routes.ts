@@ -2209,28 +2209,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 교육 결재 요청 생성
   app.post("/api/education-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
-      const { site, year, month, requesterSignature } = req.body;
+      const { site, year, month, requesterSignature, approverName } = req.body;
       const requesterId = req.session.user!.id;
 
       if (!site || !year || !month) {
         return res.status(400).json({ message: "site, year, month are required" });
       }
 
-      // 요청자의 팀 → approverId 조회
-      const requesterUser = await prisma.user.findUnique({
-        where: { id: requesterId },
-        include: { team: { include: { approver: true } } }
+      // 결재자 조회: approverName으로 사용자 검색 (기본: 정상배)
+      const searchName = approverName || '정상배';
+      const approverUser = await prisma.user.findFirst({
+        where: { name: searchName }
       });
 
-      if (!requesterUser?.team) {
-        return res.status(400).json({ message: "소속 팀이 없습니다" });
+      if (!approverUser) {
+        return res.status(400).json({ message: `결재자(${searchName})를 찾을 수 없습니다` });
       }
 
-      if (!requesterUser.team.approverId) {
-        return res.status(400).json({ message: "결재자가 설정되지 않았습니다. 팀 관리에서 결재자를 먼저 설정해주세요." });
-      }
-
-      const approverId = requesterUser.team.approverId;
+      const approverId = approverUser.id;
 
       // 기존 결재 확인
       const existing = await prisma.educationApproval.findUnique({
