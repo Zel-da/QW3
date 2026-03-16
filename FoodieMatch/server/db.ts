@@ -11,6 +11,8 @@ declare global {
 // Initialize Prisma Client with singleton pattern
 // Neon serverless 환경을 위한 최적화된 설정
 const prismaClientSingleton = () => {
+  // Neon serverless: 연결 풀 크기 제한 (메모리 절약)
+  // DATABASE_URL에 ?connection_limit=5 추가 권장 (512MB 인스턴스 최적화)
   const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development'
       ? [{ emit: 'event', level: 'error' }]

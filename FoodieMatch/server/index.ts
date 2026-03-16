@@ -86,11 +86,16 @@ app.get('/api/ping', (_req, res) => {
 // Memory usage endpoint (관리자용)
 app.get('/api/memory', (_req, res) => {
   const mem = process.memoryUsage();
+  const uptime = process.uptime();
+  const hours = Math.floor(uptime / 3600);
+  const minutes = Math.floor((uptime % 3600) / 60);
   res.json({
     rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
     heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
     heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
     external: `${Math.round(mem.external / 1024 / 1024)}MB`,
+    arrayBuffers: `${Math.round(mem.arrayBuffers / 1024 / 1024)}MB`,
+    uptime: `${hours}h ${minutes}m`,
   });
 });
 

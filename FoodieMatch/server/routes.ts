@@ -8284,8 +8284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   const chatHistories = new Map<string, ChatMessage[]>();
   const MAX_HISTORY = 10; // 세션당 최대 10개 대화 유지
-  const HISTORY_TTL = 10 * 60 * 1000; // 10분 후 자동 삭제
-  const MAX_CHAT_SESSIONS = 50; // 최대 동시 채팅 세션 수 (메모리 보호)
+  const HISTORY_TTL = 5 * 60 * 1000; // 5분 후 자동 삭제 (10분→5분, 메모리 절약)
+  const MAX_CHAT_SESSIONS = 20; // 최대 동시 채팅 세션 수 (50→20, 메모리 절약)
 
   // 히스토리 정리 함수
   function cleanupHistory(sessionId: string) {
@@ -9564,6 +9564,7 @@ ${JSON.stringify(toolResults, null, 2)}
         { name: 'emailLogs', query: () => prisma.emailLog.findMany({ where: createdFilter }) },
         { name: 'holidays', query: () => prisma.holiday.findMany({ where: updatedFilter }) },
         { name: 'auditLogs', query: () => prisma.auditLog.findMany({ where: createdFilter }) },
+        { name: 'educationApprovals', query: () => prisma.educationApproval.findMany({ where: updatedFilter }) },
       ];
 
       for (let i = 0; i < tables.length; i++) {

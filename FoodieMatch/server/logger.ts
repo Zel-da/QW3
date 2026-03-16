@@ -51,71 +51,72 @@ const consoleFormat = winston.format.combine(
   )
 );
 
+// Render.com uses ephemeral filesystem - file logs disappear on restart
+// Only use file logging in non-Render environments (로컬/자체서버)
+const isRender = process.env.RENDER === 'true';
+
 // Define transports
-const transports = [
-  // Console transport
+const transports: winston.transport[] = [
+  // Console transport (항상 사용)
   new winston.transports.Console({
     format: consoleFormat,
   }),
-
-  // Error log file transport (daily rotation)
-  new DailyRotateFile({
-    filename: path.join(__dirname, '../logs/error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'error',
-    format,
-    maxSize: '20m',
-    maxFiles: '30d',
-    zippedArchive: true,
-  }),
-
-  // Combined log file transport (daily rotation)
-  new DailyRotateFile({
-    filename: path.join(__dirname, '../logs/combined-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    format,
-    maxSize: '20m',
-    maxFiles: '30d',
-    zippedArchive: true,
-  }),
-
-  // HTTP log file transport (daily rotation)
-  new DailyRotateFile({
-    filename: path.join(__dirname, '../logs/http-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'http',
-    format,
-    maxSize: '20m',
-    maxFiles: '14d',
-    zippedArchive: true,
-  }),
 ];
 
+// 파일 로깅은 Render가 아닌 환경에서만 사용 (메모리 절약)
+if (!isRender) {
+  transports.push(
+    new DailyRotateFile({
+      filename: path.join(__dirname, '../logs/error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      level: 'error',
+      format,
+      maxSize: '20m',
+      maxFiles: '14d',
+      zippedArchive: true,
+    }),
+    new DailyRotateFile({
+      filename: path.join(__dirname, '../logs/combined-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      format,
+      maxSize: '20m',
+      maxFiles: '14d',
+      zippedArchive: true,
+    }),
+  );
+}
+
 // Create logger
-const logger = winston.createLogger({
+const loggerOptions: winston.LoggerOptions = {
   level: level(),
   levels,
   format,
   transports,
-  exceptionHandlers: [
+  exitOnError: false,
+};
+
+// Exception/rejection handlers only for non-Render (파일 기반)
+if (!isRender) {
+  loggerOptions.exceptionHandlers = [
     new DailyRotateFile({
       filename: path.join(__dirname, '../logs/exceptions-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
-      maxFiles: '30d',
+      maxFiles: '14d',
       zippedArchive: true,
     }),
-  ],
-  rejectionHandlers: [
+  ];
+  loggerOptions.rejectionHandlers = [
     new DailyRotateFile({
       filename: path.join(__dirname, '../logs/rejections-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
-      maxFiles: '30d',
+      maxFiles: '14d',
       zippedArchive: true,
     }),
-  ],
-  exitOnError: false,
-});
+  ];
+}
+
+const logger = winston.createLogger(loggerOptions);
 
 export default logger;

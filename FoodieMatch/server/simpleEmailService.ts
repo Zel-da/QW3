@@ -1,7 +1,5 @@
 import nodemailer from 'nodemailer';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './db'; // 싱글턴 PrismaClient 사용 (별도 인스턴스 생성 금지 - 메모리 절약)
 
 // 사이트별 발신자 이름 매핑
 const SITE_SENDER_NAMES: Record<string, string> = {
@@ -77,18 +75,29 @@ function getEmailConfig() {
 }
 
 /**
- * Transporter를 동적으로 생성 (매번 최신 환경변수 사용)
+ * SMTP Transporter 캐싱 (매번 새로 생성하면 소켓 누수 발생)
+ * 환경변수 변경 시 서버 재시작하면 반영됨
  */
-function createTransporter() {
-  const config = getEmailConfig();
-  console.log('Creating SMTP transporter with config:', {
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    hasAuth: !!config.auth,
-    user: config.auth?.user || 'not set'
-  });
-  return nodemailer.createTransport(config);
+let cachedTransporter: nodemailer.Transporter | null = null;
+
+function getTransporter() {
+  if (!cachedTransporter) {
+    const config = getEmailConfig();
+    console.log('Creating SMTP transporter with config:', {
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      hasAuth: !!config.auth,
+      user: config.auth?.user || 'not set'
+    });
+    cachedTransporter = nodemailer.createTransport({
+      ...config,
+      pool: true, // 연결 풀 사용 (소켓 재사용)
+      maxConnections: 3, // 최대 동시 연결 수
+      maxMessages: 100, // 연결당 최대 메시지 수
+    });
+  }
+  return cachedTransporter;
 }
 
 /**
@@ -96,7 +105,7 @@ function createTransporter() {
  */
 export async function verifyEmailConnection(): Promise<{ success: boolean; error?: string }> {
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
     await transporter.verify();
     console.log('✅ Email service is ready');
     return { success: true };
@@ -157,8 +166,8 @@ export async function sendEmail(options: {
       ...(replyTo && { replyTo }),
     };
 
-    // 매번 새로운 transporter 생성 (환경변수 변경 반영)
-    const transporter = createTransporter();
+    // 캐시된 transporter 사용 (소켓 재사용, 메모리 절약)
+    const transporter = getTransporter();
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent:', info.messageId, 'to:', mailOptions.to);
 
