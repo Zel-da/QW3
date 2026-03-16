@@ -9491,6 +9491,7 @@ ${JSON.stringify(toolResults, null, 2)}
 
   // ==================== 백업 API ====================
   // ?since=ISO_TIMESTAMP 로 증분 백업 지원
+  // 스트리밍 방식으로 테이블별 순차 조회 → 메모리 절약
   app.get("/api/admin/backup/full", async (req, res) => {
     try {
       // 인증: 세션(ADMIN) 또는 BACKUP_API_KEY
@@ -9509,164 +9510,81 @@ ${JSON.stringify(toolResults, null, 2)}
       const sinceDate = sinceParam ? new Date(sinceParam) : null;
       const isIncremental = !!sinceDate;
 
-      // updatedAt 기준 필터 (신규 + 수정 감지)
       const updatedFilter = sinceDate ? { updatedAt: { gte: sinceDate } } : {};
-      // createdAt 기준 필터 (신규만 감지)
       const createdFilter = sinceDate ? { createdAt: { gte: sinceDate } } : {};
-
-      const [
-        users,
-        passwordResetTokens,
-        factories,
-        teams,
-        teamMembers,
-        teamEquipments,
-        checklistTemplates,
-        templateItems,
-        dailyReports,
-        reportDetails,
-        reportSignatures,
-        absenceRecords,
-        monthlyApprovals,
-        approvalRequests,
-        inspectionTemplates,
-        inspectionScheduleTemplates,
-        monthlyInspectionDays,
-        safetyInspections,
-        inspectionItems,
-        courses,
-        userProgresses,
-        assessments,
-        userAssessments,
-        certificates,
-        notices,
-        noticeReads,
-        comments,
-        attachments,
-        simpleEmailConfigs,
-        emailLogs,
-        holidays,
-        auditLogs,
-      ] = await Promise.all([
-        // createdAt만 있는 테이블
-        prisma.user.findMany({ where: createdFilter }),
-        prisma.passwordResetToken.findMany({ where: createdFilter }),
-        prisma.factory.findMany({ where: createdFilter }),
-        // 타임스탬프 없는 테이블 (항상 전체)
-        prisma.team.findMany(),
-        // updatedAt 있는 테이블
-        prisma.teamMember.findMany({ where: updatedFilter }),
-        prisma.teamEquipment.findMany({ where: updatedFilter }),
-        // 타임스탬프 없는 테이블 (항상 전체)
-        prisma.checklistTemplate.findMany(),
-        prisma.templateItem.findMany(),
-        // updatedAt 있는 테이블
-        prisma.dailyReport.findMany({ where: updatedFilter }),
-        // 타임스탬프 없는 테이블 (항상 전체)
-        prisma.reportDetail.findMany(),
-        prisma.reportSignature.findMany(),
-        // createdAt만 있는 테이블
-        prisma.absenceRecord.findMany({ where: createdFilter }),
-        // 타임스탬프 없는 테이블
-        prisma.monthlyApproval.findMany(),
-        // createdAt만 있는 테이블
-        prisma.approvalRequest.findMany({ where: createdFilter }),
-        prisma.inspectionTemplate.findMany({ where: createdFilter }),
-        // updatedAt 있는 테이블
-        prisma.inspectionScheduleTemplate.findMany({ where: updatedFilter }),
-        prisma.monthlyInspectionDay.findMany({ where: updatedFilter }),
-        prisma.safetyInspection.findMany({ where: updatedFilter }),
-        // 타임스탬프 없는 테이블
-        prisma.inspectionItem.findMany(),
-        // updatedAt 있는 테이블
-        prisma.course.findMany({ where: updatedFilter }),
-        // 타임스탬프 없는 테이블
-        prisma.userProgress.findMany(),
-        prisma.assessment.findMany(),
-        prisma.userAssessment.findMany(),
-        prisma.certificate.findMany(),
-        // updatedAt 있는 테이블
-        prisma.notice.findMany({ where: updatedFilter }),
-        // 타임스탬프 없는 테이블
-        prisma.noticeRead.findMany(),
-        // createdAt만 있는 테이블
-        prisma.comment.findMany({ where: createdFilter }),
-        prisma.attachment.findMany({ where: createdFilter }),
-        // updatedAt 있는 테이블
-        prisma.simpleEmailConfig.findMany({ where: updatedFilter }),
-        // createdAt만 있는 테이블
-        prisma.emailLog.findMany({ where: createdFilter }),
-        // updatedAt 있는 테이블
-        prisma.holiday.findMany({ where: updatedFilter }),
-        // createdAt만 있는 테이블
-        prisma.auditLog.findMany({ where: createdFilter }),
-      ]);
-
-      // User password 마스킹
-      const maskedUsers = users.map(({ password, ...rest }) => ({
-        ...rest,
-        password: "***",
-      }));
-
-      // PasswordResetToken 토큰값 마스킹
-      const maskedTokens = passwordResetTokens.map(({ token, ...rest }) => ({
-        ...rest,
-        token: "***",
-      }));
-
-      const backupData = {
-        exportedAt: new Date().toISOString(),
-        version: "1.0",
-        type: isIncremental ? "incremental" : "full",
-        ...(isIncremental ? { since: sinceParam } : {}),
-        data: {
-          users: maskedUsers,
-          passwordResetTokens: maskedTokens,
-          factories,
-          teams,
-          teamMembers,
-          teamEquipments,
-          checklistTemplates,
-          templateItems,
-          dailyReports,
-          reportDetails,
-          reportSignatures,
-          absenceRecords,
-          monthlyApprovals,
-          approvalRequests,
-          inspectionTemplates,
-          inspectionScheduleTemplates,
-          monthlyInspectionDays,
-          safetyInspections,
-          inspectionItems,
-          courses,
-          userProgresses,
-          assessments,
-          userAssessments,
-          certificates,
-          notices,
-          noticeReads,
-          comments,
-          attachments,
-          simpleEmailConfigs,
-          emailLogs,
-          holidays,
-          auditLogs,
-        },
-      };
 
       const nowDate = new Date();
       const dateStr = `${nowDate.getFullYear()}-${String(nowDate.getMonth()+1).padStart(2,'0')}-${String(nowDate.getDate()).padStart(2,'0')}`;
       const prefix = isIncremental ? "backup_incr" : "backup_full";
+
       res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=${prefix}_${dateStr}.json`
-      );
-      res.json(backupData);
+      res.setHeader("Content-Disposition", `attachment; filename=${prefix}_${dateStr}.json`);
+
+      // 스트리밍 JSON 출력 (테이블별 순차 조회 → 즉시 출력 → 메모리 해제)
+      res.write('{\n');
+      res.write(`"exportedAt":"${nowDate.toISOString()}",\n`);
+      res.write(`"version":"1.0",\n`);
+      res.write(`"type":"${isIncremental ? 'incremental' : 'full'}",\n`);
+      if (isIncremental) res.write(`"since":"${sinceParam}",\n`);
+      res.write('"data":{\n');
+
+      // 테이블별 순차 조회 + 스트리밍 (메모리에 전체 데이터를 한번에 올리지 않음)
+      const tables: { name: string; query: () => Promise<any[]>; mask?: (rows: any[]) => any[] }[] = [
+        { name: 'users', query: () => prisma.user.findMany({ where: createdFilter }),
+          mask: (rows) => rows.map(({ password, ...rest }: any) => ({ ...rest, password: '***' })) },
+        { name: 'passwordResetTokens', query: () => prisma.passwordResetToken.findMany({ where: createdFilter }),
+          mask: (rows) => rows.map(({ token, ...rest }: any) => ({ ...rest, token: '***' })) },
+        { name: 'factories', query: () => prisma.factory.findMany({ where: createdFilter }) },
+        { name: 'teams', query: () => prisma.team.findMany() },
+        { name: 'teamMembers', query: () => prisma.teamMember.findMany({ where: updatedFilter }) },
+        { name: 'teamEquipments', query: () => prisma.teamEquipment.findMany({ where: updatedFilter }) },
+        { name: 'checklistTemplates', query: () => prisma.checklistTemplate.findMany() },
+        { name: 'templateItems', query: () => prisma.templateItem.findMany() },
+        { name: 'dailyReports', query: () => prisma.dailyReport.findMany({ where: updatedFilter }) },
+        { name: 'reportDetails', query: () => prisma.reportDetail.findMany() },
+        { name: 'reportSignatures', query: () => prisma.reportSignature.findMany() },
+        { name: 'absenceRecords', query: () => prisma.absenceRecord.findMany({ where: createdFilter }) },
+        { name: 'monthlyApprovals', query: () => prisma.monthlyApproval.findMany() },
+        { name: 'approvalRequests', query: () => prisma.approvalRequest.findMany({ where: createdFilter }) },
+        { name: 'inspectionTemplates', query: () => prisma.inspectionTemplate.findMany({ where: createdFilter }) },
+        { name: 'inspectionScheduleTemplates', query: () => prisma.inspectionScheduleTemplate.findMany({ where: updatedFilter }) },
+        { name: 'monthlyInspectionDays', query: () => prisma.monthlyInspectionDay.findMany({ where: updatedFilter }) },
+        { name: 'safetyInspections', query: () => prisma.safetyInspection.findMany({ where: updatedFilter }) },
+        { name: 'inspectionItems', query: () => prisma.inspectionItem.findMany() },
+        { name: 'courses', query: () => prisma.course.findMany({ where: updatedFilter }) },
+        { name: 'userProgresses', query: () => prisma.userProgress.findMany() },
+        { name: 'assessments', query: () => prisma.assessment.findMany() },
+        { name: 'userAssessments', query: () => prisma.userAssessment.findMany() },
+        { name: 'certificates', query: () => prisma.certificate.findMany() },
+        { name: 'notices', query: () => prisma.notice.findMany({ where: updatedFilter }) },
+        { name: 'noticeReads', query: () => prisma.noticeRead.findMany() },
+        { name: 'comments', query: () => prisma.comment.findMany({ where: createdFilter }) },
+        { name: 'attachments', query: () => prisma.attachment.findMany({ where: createdFilter }) },
+        { name: 'simpleEmailConfigs', query: () => prisma.simpleEmailConfig.findMany({ where: updatedFilter }) },
+        { name: 'emailLogs', query: () => prisma.emailLog.findMany({ where: createdFilter }) },
+        { name: 'holidays', query: () => prisma.holiday.findMany({ where: updatedFilter }) },
+        { name: 'auditLogs', query: () => prisma.auditLog.findMany({ where: createdFilter }) },
+      ];
+
+      for (let i = 0; i < tables.length; i++) {
+        const table = tables[i];
+        const rows = await table.query();
+        const data = table.mask ? table.mask(rows) : rows;
+        const comma = i < tables.length - 1 ? ',' : '';
+        res.write(`"${table.name}":${JSON.stringify(data)}${comma}\n`);
+        // 각 테이블 데이터를 즉시 GC 가능하도록 참조 해제
+      }
+
+      res.write('}\n}');
+      res.end();
+      tryGC();
     } catch (error) {
       console.error("Backup export error:", error);
-      res.status(500).json({ message: "백업 생성에 실패했습니다." });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "백업 생성에 실패했습니다." });
+      } else {
+        res.end();
+      }
     }
   });
 
