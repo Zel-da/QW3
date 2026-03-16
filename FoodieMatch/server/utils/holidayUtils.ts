@@ -18,6 +18,7 @@ const cache: HolidayCache = {
 };
 
 const CACHE_TTL = 60 * 60 * 1000; // 1시간
+const MAX_CACHE_ENTRIES = 20; // 최대 캐시 항목 수 (메모리 보호)
 
 /**
  * 캐시에서 월별 공휴일 조회 (없으면 DB 조회 후 캐시)
@@ -49,6 +50,17 @@ async function getCachedMonthlyHolidays(
     },
     orderBy: { date: 'asc' }
   });
+
+  // 캐시 크기 제한 - 오래된 항목 정리
+  if (cache.data.size >= MAX_CACHE_ENTRIES) {
+    const expired = Array.from(cache.expiry.entries())
+      .sort((a, b) => a[1] - b[1]);
+    const toRemove = Math.max(1, expired.length - MAX_CACHE_ENTRIES + 1);
+    for (let i = 0; i < toRemove; i++) {
+      cache.data.delete(expired[i][0]);
+      cache.expiry.delete(expired[i][0]);
+    }
+  }
 
   // 캐시에 저장
   cache.data.set(key, holidays);

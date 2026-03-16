@@ -60,7 +60,8 @@ app.set('trust proxy', 1);
 
 app.use(session({
   store: new MemStore({
-    checkPeriod: 3600000, // 1시간마다 만료된 세션 정리
+    checkPeriod: 600000, // 10분마다 만료된 세션 정리 (메모리 절약)
+    max: 100, // 최대 세션 수 제한
   }),
   secret: sessionSecret,
   resave: false,
@@ -71,7 +72,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production' && process.env.RENDER === 'true',
     httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
     sameSite: 'lax', // Allow cookies in same-site requests
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days (reduced from 30 for better security)
+    maxAge: 1000 * 60 * 60 * 24 * 1 // 1일 (메모리 절약 - 7일→1일)
   },
   name: 'sessionId', // Custom name instead of default 'connect.sid' for security through obscurity
   rolling: true, // Reset maxAge on every response (keep active sessions alive)
@@ -156,6 +157,21 @@ async function startServer() {
     await syncSequences();
 
     const port = parseInt(process.env.PORT || '5000', 10);
+
+    // 주기적 메모리 모니터링 + GC (5분마다)
+    setInterval(() => {
+      const mem = process.memoryUsage();
+      const rss = Math.round(mem.rss / 1024 / 1024);
+      const heap = Math.round(mem.heapUsed / 1024 / 1024);
+      if (rss > 350) {
+        console.warn(`⚠️  메모리 경고: RSS ${rss}MB, Heap ${heap}MB`);
+        if (global.gc) {
+          global.gc();
+          const after = process.memoryUsage();
+          console.log(`  🧹 GC 실행: ${rss}MB → ${Math.round(after.rss / 1024 / 1024)}MB`);
+        }
+      }
+    }, 5 * 60 * 1000);
 
     server.listen({
       port,

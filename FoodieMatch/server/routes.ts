@@ -54,6 +54,13 @@ declare module "express-session" {
 let activeExcelJobs = 0;
 const MAX_CONCURRENT_EXCEL = 1; // 동시 Excel 생성 1개로 제한
 
+// GC 강제 실행 (--expose-gc 플래그 필요)
+function tryGC() {
+  if (global.gc) {
+    try { global.gc(); } catch (e) { /* ignore */ }
+  }
+}
+
 function excelMemoryGuard(req: Request, res: Response, next: NextFunction) {
   if (activeExcelJobs >= MAX_CONCURRENT_EXCEL) {
     return res.status(503).json({
@@ -61,7 +68,11 @@ function excelMemoryGuard(req: Request, res: Response, next: NextFunction) {
     });
   }
   activeExcelJobs++;
-  const cleanup = () => { activeExcelJobs = Math.max(0, activeExcelJobs - 1); };
+  const cleanup = () => {
+    activeExcelJobs = Math.max(0, activeExcelJobs - 1);
+    // Excel 생성 후 GC 강제 실행으로 메모리 즉시 회수
+    setTimeout(tryGC, 1000);
+  };
   res.on('finish', cleanup);
   res.on('close', cleanup);
   next();
