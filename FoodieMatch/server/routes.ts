@@ -50,6 +50,23 @@ declare module "express-session" {
   }
 }
 
+// Excel 동시 생성 제한 (메모리 보호 - 512MB 인스턴스)
+let activeExcelJobs = 0;
+const MAX_CONCURRENT_EXCEL = 1; // 동시 Excel 생성 1개로 제한
+
+function excelMemoryGuard(req: Request, res: Response, next: NextFunction) {
+  if (activeExcelJobs >= MAX_CONCURRENT_EXCEL) {
+    return res.status(503).json({
+      message: '다른 사용자가 Excel 파일을 생성 중입니다. 잠시 후 다시 시도해주세요.'
+    });
+  }
+  activeExcelJobs++;
+  const cleanup = () => { activeExcelJobs = Math.max(0, activeExcelJobs - 1); };
+  res.on('finish', cleanup);
+  res.on('close', cleanup);
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -63,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const upload = multer({
     dest: uploadDir,
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB limit (비디오 파일 고려)
+      fileSize: 20 * 1024 * 1024, // 20MB limit
       files: 50 // Maximum 50 files (공지사항 등 대량 업로드 지원)
     },
     fileFilter: (req, file, cb) => {
@@ -3551,7 +3568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tbm/monthly-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/monthly-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
       const { teamId, year, month } = req.query;
       const currentUser = req.session.user;
@@ -4113,7 +4130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 종합 엑셀 생성 API (사이트별 모든 팀의 월별보고서를 하나의 엑셀로)
-  app.get("/api/tbm/comprehensive-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/comprehensive-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
       const { site, year, month } = req.query;
 
@@ -4580,7 +4597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
-  app.get("/api/tbm/safety-education-excel", requireAuth, async (req, res) => {
+  app.get("/api/tbm/safety-education-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
       const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId } = req.query;
 
@@ -8257,6 +8274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const chatHistories = new Map<string, ChatMessage[]>();
   const MAX_HISTORY = 10; // 세션당 최대 10개 대화 유지
   const HISTORY_TTL = 10 * 60 * 1000; // 10분 후 자동 삭제
+  const MAX_CHAT_SESSIONS = 50; // 최대 동시 채팅 세션 수 (메모리 보호)
 
   // 히스토리 정리 함수
   function cleanupHistory(sessionId: string) {
@@ -8280,6 +8298,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setInterval(() => {
     for (const sessionId of chatHistories.keys()) {
       cleanupHistory(sessionId);
+    }
+    // 세션 수 제한 초과 시 가장 오래된 세션부터 삭제
+    if (chatHistories.size > MAX_CHAT_SESSIONS) {
+      const entries = Array.from(chatHistories.entries());
+      entries.sort((a, b) => {
+        const lastA = a[1][a[1].length - 1]?.timestamp?.getTime() || 0;
+        const lastB = b[1][b[1].length - 1]?.timestamp?.getTime() || 0;
+        return lastA - lastB;
+      });
+      const toRemove = entries.length - MAX_CHAT_SESSIONS;
+      for (let i = 0; i < toRemove; i++) {
+        chatHistories.delete(entries[i][0]);
+      }
     }
   }, 2 * 60 * 1000);
 
@@ -9372,7 +9403,7 @@ ${JSON.stringify(toolResults, null, 2)}
   });
 
   // 감사 로그 Excel 내보내기
-  app.get("/api/audit-logs/export", requireAuth, async (req, res) => {
+  app.get("/api/audit-logs/export", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
       if (req.session.user?.role !== 'ADMIN') {
         return res.status(403).json({ message: "관리자 권한이 필요합니다." });

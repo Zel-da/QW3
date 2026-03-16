@@ -45,8 +45,8 @@ app.use(helmet({
 // Compression middleware - 응답 gzip 압축 (번들 크기 ~70% 감소)
 app.use(compression());
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
@@ -80,6 +80,17 @@ app.use(session({
 // Health check endpoint - DB 조회 없음 (Cron용)
 app.get('/api/ping', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Memory usage endpoint (관리자용)
+app.get('/api/memory', (_req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
+    heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+    heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+    external: `${Math.round(mem.external / 1024 / 1024)}MB`,
+  });
 });
 
 // HTTP request logging middleware with Winston
