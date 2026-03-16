@@ -9520,7 +9520,9 @@ ${JSON.stringify(toolResults, null, 2)}
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename=${prefix}_${dateStr}.json`);
 
-      // 스트리밍 JSON 출력 (테이블별 순차 조회 → 즉시 출력 → 메모리 해제)
+      // 배치 단위 스트리밍 JSON 출력 (500건씩 조회 → 즉시 출력 → 메모리 해제)
+      const BATCH_SIZE = 500;
+
       res.write('{\n');
       res.write(`"exportedAt":"${nowDate.toISOString()}",\n`);
       res.write(`"version":"1.0",\n`);
@@ -9528,52 +9530,91 @@ ${JSON.stringify(toolResults, null, 2)}
       if (isIncremental) res.write(`"since":"${sinceParam}",\n`);
       res.write('"data":{\n');
 
-      // 테이블별 순차 조회 + 스트리밍 (메모리에 전체 데이터를 한번에 올리지 않음)
-      const tables: { name: string; query: () => Promise<any[]>; mask?: (rows: any[]) => any[] }[] = [
-        { name: 'users', query: () => prisma.user.findMany({ where: createdFilter }),
-          mask: (rows) => rows.map(({ password, ...rest }: any) => ({ ...rest, password: '***' })) },
-        { name: 'passwordResetTokens', query: () => prisma.passwordResetToken.findMany({ where: createdFilter }),
-          mask: (rows) => rows.map(({ token, ...rest }: any) => ({ ...rest, token: '***' })) },
-        { name: 'factories', query: () => prisma.factory.findMany({ where: createdFilter }) },
-        { name: 'teams', query: () => prisma.team.findMany() },
-        { name: 'teamMembers', query: () => prisma.teamMember.findMany({ where: updatedFilter }) },
-        { name: 'teamEquipments', query: () => prisma.teamEquipment.findMany({ where: updatedFilter }) },
-        { name: 'checklistTemplates', query: () => prisma.checklistTemplate.findMany() },
-        { name: 'templateItems', query: () => prisma.templateItem.findMany() },
-        { name: 'dailyReports', query: () => prisma.dailyReport.findMany({ where: updatedFilter }) },
-        { name: 'reportDetails', query: () => prisma.reportDetail.findMany() },
-        { name: 'reportSignatures', query: () => prisma.reportSignature.findMany() },
-        { name: 'absenceRecords', query: () => prisma.absenceRecord.findMany({ where: createdFilter }) },
-        { name: 'monthlyApprovals', query: () => prisma.monthlyApproval.findMany() },
-        { name: 'approvalRequests', query: () => prisma.approvalRequest.findMany({ where: createdFilter }) },
-        { name: 'inspectionTemplates', query: () => prisma.inspectionTemplate.findMany({ where: createdFilter }) },
-        { name: 'inspectionScheduleTemplates', query: () => prisma.inspectionScheduleTemplate.findMany({ where: updatedFilter }) },
-        { name: 'monthlyInspectionDays', query: () => prisma.monthlyInspectionDay.findMany({ where: updatedFilter }) },
-        { name: 'safetyInspections', query: () => prisma.safetyInspection.findMany({ where: updatedFilter }) },
-        { name: 'inspectionItems', query: () => prisma.inspectionItem.findMany() },
-        { name: 'courses', query: () => prisma.course.findMany({ where: updatedFilter }) },
-        { name: 'userProgresses', query: () => prisma.userProgress.findMany() },
-        { name: 'assessments', query: () => prisma.assessment.findMany() },
-        { name: 'userAssessments', query: () => prisma.userAssessment.findMany() },
-        { name: 'certificates', query: () => prisma.certificate.findMany() },
-        { name: 'notices', query: () => prisma.notice.findMany({ where: updatedFilter }) },
-        { name: 'noticeReads', query: () => prisma.noticeRead.findMany() },
-        { name: 'comments', query: () => prisma.comment.findMany({ where: createdFilter }) },
-        { name: 'attachments', query: () => prisma.attachment.findMany({ where: createdFilter }) },
-        { name: 'simpleEmailConfigs', query: () => prisma.simpleEmailConfig.findMany({ where: updatedFilter }) },
-        { name: 'emailLogs', query: () => prisma.emailLog.findMany({ where: createdFilter }) },
-        { name: 'holidays', query: () => prisma.holiday.findMany({ where: updatedFilter }) },
-        { name: 'auditLogs', query: () => prisma.auditLog.findMany({ where: createdFilter }) },
-        { name: 'educationApprovals', query: () => prisma.educationApproval.findMany({ where: updatedFilter }) },
+      // 배치 스트리밍 헬퍼: 테이블을 BATCH_SIZE씩 조회하여 행 단위로 출력
+      async function streamTable(
+        name: string,
+        model: any,
+        where: any,
+        options?: { mask?: (row: any) => any; orderBy?: any }
+      ) {
+        res.write(`"${name}":[`);
+        let skip = 0;
+        let isFirst = true;
+        const orderBy = options?.orderBy || { id: 'asc' };
+
+        while (true) {
+          const batch = await model.findMany({
+            where: Object.keys(where).length > 0 ? where : undefined,
+            orderBy,
+            skip,
+            take: BATCH_SIZE,
+          });
+
+          for (const row of batch) {
+            const data = options?.mask ? options.mask(row) : row;
+            res.write(isFirst ? '' : ',');
+            res.write(JSON.stringify(data));
+            isFirst = false;
+          }
+
+          if (batch.length < BATCH_SIZE) break;
+          skip += BATCH_SIZE;
+        }
+
+        res.write(']');
+      }
+
+      // 테이블 정의: [이름, Prisma 모델, where 조건, 옵션]
+      const tableConfigs: Array<{
+        name: string; model: any; where: any;
+        mask?: (row: any) => any; orderBy?: any;
+      }> = [
+        { name: 'users', model: prisma.user, where: createdFilter,
+          mask: ({ password, ...rest }: any) => ({ ...rest, password: '***' }) },
+        { name: 'passwordResetTokens', model: prisma.passwordResetToken, where: createdFilter,
+          mask: ({ token, ...rest }: any) => ({ ...rest, token: '***' }) },
+        { name: 'factories', model: prisma.factory, where: createdFilter },
+        { name: 'teams', model: prisma.team, where: {} },
+        { name: 'teamMembers', model: prisma.teamMember, where: updatedFilter },
+        { name: 'teamEquipments', model: prisma.teamEquipment, where: updatedFilter },
+        { name: 'checklistTemplates', model: prisma.checklistTemplate, where: {} },
+        { name: 'templateItems', model: prisma.templateItem, where: {} },
+        { name: 'dailyReports', model: prisma.dailyReport, where: updatedFilter },
+        { name: 'reportDetails', model: prisma.reportDetail, where: {} },
+        { name: 'reportSignatures', model: prisma.reportSignature, where: {} },
+        { name: 'absenceRecords', model: prisma.absenceRecord, where: createdFilter },
+        { name: 'monthlyApprovals', model: prisma.monthlyApproval, where: {} },
+        { name: 'approvalRequests', model: prisma.approvalRequest, where: createdFilter },
+        { name: 'inspectionTemplates', model: prisma.inspectionTemplate, where: createdFilter },
+        { name: 'inspectionScheduleTemplates', model: prisma.inspectionScheduleTemplate, where: updatedFilter },
+        { name: 'monthlyInspectionDays', model: prisma.monthlyInspectionDay, where: updatedFilter },
+        { name: 'safetyInspections', model: prisma.safetyInspection, where: updatedFilter },
+        { name: 'inspectionItems', model: prisma.inspectionItem, where: {} },
+        { name: 'courses', model: prisma.course, where: updatedFilter },
+        { name: 'userProgresses', model: prisma.userProgress, where: {} },
+        { name: 'assessments', model: prisma.assessment, where: {} },
+        { name: 'userAssessments', model: prisma.userAssessment, where: {} },
+        { name: 'certificates', model: prisma.certificate, where: {} },
+        { name: 'notices', model: prisma.notice, where: updatedFilter },
+        { name: 'noticeReads', model: prisma.noticeRead, where: {} },
+        { name: 'comments', model: prisma.comment, where: createdFilter },
+        { name: 'attachments', model: prisma.attachment, where: createdFilter },
+        { name: 'simpleEmailConfigs', model: prisma.simpleEmailConfig, where: updatedFilter },
+        { name: 'emailLogs', model: prisma.emailLog, where: createdFilter,
+          orderBy: { sentAt: 'asc' } },
+        { name: 'holidays', model: prisma.holiday, where: updatedFilter },
+        { name: 'auditLogs', model: prisma.auditLog, where: createdFilter,
+          orderBy: { timestamp: 'asc' } },
+        { name: 'educationApprovals', model: prisma.educationApproval, where: updatedFilter,
+          orderBy: { requestedAt: 'asc' } },
       ];
 
-      for (let i = 0; i < tables.length; i++) {
-        const table = tables[i];
-        const rows = await table.query();
-        const data = table.mask ? table.mask(rows) : rows;
-        const comma = i < tables.length - 1 ? ',' : '';
-        res.write(`"${table.name}":${JSON.stringify(data)}${comma}\n`);
-        // 각 테이블 데이터를 즉시 GC 가능하도록 참조 해제
+      for (let i = 0; i < tableConfigs.length; i++) {
+        const t = tableConfigs[i];
+        await streamTable(t.name, t.model, t.where, { mask: t.mask, orderBy: t.orderBy });
+        res.write(i < tableConfigs.length - 1 ? ',\n' : '\n');
+        // 배치마다 GC 기회 제공
+        if (i % 5 === 4) tryGC();
       }
 
       res.write('}\n}');
