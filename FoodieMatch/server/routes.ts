@@ -91,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const upload = multer({
     dest: uploadDir,
     limits: {
-      fileSize: 20 * 1024 * 1024, // 20MB limit
+      fileSize: 50 * 1024 * 1024, // 50MB limit (녹음 파일 등 대용량 지원)
       files: 50 // Maximum 50 files (공지사항 등 대량 업로드 지원)
     },
     fileFilter: (req, file, cb) => {

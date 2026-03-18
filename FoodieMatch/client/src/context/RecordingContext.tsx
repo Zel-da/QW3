@@ -337,7 +337,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
       mimeTypeRef.current = mimeType;
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 64000, // 64kbps (음성 녹음 충분, 30분 ≈ 14MB)
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       durationRef.current = 0;
@@ -608,11 +611,17 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
           const formData = new FormData();
           formData.append('file', pausedData.blob, fileName);
 
+          // 대용량 오디오 업로드를 위한 2분 타임아웃
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000);
+
           const response = await fetch('/api/upload', {
             method: 'POST',
             body: formData,
             credentials: 'include',
+            signal: controller.signal,
           });
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             uploadResult = await response.json();

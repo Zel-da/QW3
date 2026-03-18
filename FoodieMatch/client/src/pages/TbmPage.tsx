@@ -34,10 +34,25 @@ interface DailyStats {
   화성: { submitted: number; required: number };
 }
 
+/**
+ * TBM 날짜 기준: 오전 6시에 날짜 변경
+ * 00:00~05:59 → 전날 날짜, 06:00~23:59 → 오늘 날짜
+ * (야간 근무자가 자정 이후에도 전날 TBM으로 작성)
+ */
+function getTbmDate(): Date {
+  const now = new Date();
+  if (now.getHours() < 6) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+  }
+  return now;
+}
+
 export default function TbmPage() {
   const [view, setView] = useState('checklist');
   const [reportForEdit, setReportForEdit] = useState<any | null>(null);
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<Date | undefined>(getTbmDate());
   const { site, setSite, availableSites, initSiteFromUser } = useSite();
   const { user } = useAuth();
   const { setCurrentTbmInfo, state: recordingState } = useRecording();

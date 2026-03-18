@@ -145,7 +145,10 @@ export function InlineAudioPanel({
         ? 'audio/mp4'
         : 'audio/ogg';
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 64000, // 64kbps (음성 녹음 충분, 30분 ≈ 14MB)
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -212,8 +215,8 @@ export function InlineAudioPanel({
       alert('오디오 파일만 업로드 가능합니다.');
       return;
     }
-    if (file.size > 100 * 1024 * 1024) {
-      alert('파일 크기는 100MB 이하여야 합니다.');
+    if (file.size > 50 * 1024 * 1024) {
+      alert('파일 크기는 50MB 이하여야 합니다.');
       return;
     }
 
