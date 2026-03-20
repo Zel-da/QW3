@@ -1,12 +1,6 @@
 import * as cron from 'node-cron';
 import { prisma } from './db';
-import {
-  sendEmail,
-  getEducationReminderTemplate,
-  getTBMReminderTemplate,
-  getSafetyInspectionReminderTemplate,
-  sendEmailFromTemplate
-} from './emailService';
+import { sendEmailByType } from './simpleEmailService';
 import { executeAllConditions } from './conditionExecutor';
 import { isHoliday } from './utils/holidayUtils';
 
@@ -91,9 +85,10 @@ export function scheduleEducationReminders() {
           for (const user of incompleteUsers) {
             if (!user.email) continue;
 
-            await sendEmailFromTemplate(
+            await sendEmailByType(
               'EDUCATION_REMINDER',
               user.email,
+              user.id,
               {
                 userName: user.username,
                 courseName: course.title,
@@ -123,12 +118,12 @@ export function scheduleTBMReminders() {
 
     try {
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
       // [최적화] 오늘 TBM 작성한 팀 ID를 한 번에 조회
       const todayTBMs = await prisma.dailyReport.findMany({
         where: {
-          createdAt: { gte: new Date(todayStr) }
+          createdAt: { gte: startOfToday }
         },
         select: { teamId: true }
       });
@@ -153,9 +148,10 @@ export function scheduleTBMReminders() {
         for (const user of team.members) {
           if (!user.email) continue;
 
-          await sendEmailFromTemplate(
+          await sendEmailByType(
             'TBM_REMINDER',
             user.email,
+            user.id,
             {
               managerName: user.username,
               teamName: team.name,
@@ -203,9 +199,10 @@ export function scheduleSafetyInspectionReminders() {
         if (!manager.email) continue;
 
         // Use template from database
-        await sendEmailFromTemplate(
+        await sendEmailByType(
           'INSPECTION_REMINDER',
           manager.email,
+          manager.id,
           {
             managerName: manager.username,
             month
@@ -361,9 +358,10 @@ async function sendEducationReminders() {
     for (const user of incompleteUsers) {
       if (!user.email) continue;
 
-      await sendEmailFromTemplate(
+      await sendEmailByType(
         'EDUCATION_REMINDER',
         user.email,
+        user.id,
         {
           userName: user.username,
           courseName: course.title,
@@ -436,9 +434,10 @@ async function sendTBMReminders() {
     for (const user of team.members) {
       if (!user.email) continue;
 
-      await sendEmailFromTemplate(
+      await sendEmailByType(
         'TBM_REMINDER',
         user.email,
+        user.id,
         {
           managerName: user.username,
           teamName: team.name,
@@ -477,9 +476,10 @@ async function sendSafetyInspectionReminders() {
   for (const manager of managers) {
     if (!manager.email) continue;
 
-    await sendEmailFromTemplate(
+    await sendEmailByType(
       'INSPECTION_REMINDER',
       manager.email,
+      manager.id,
       {
         managerName: manager.username,
         month

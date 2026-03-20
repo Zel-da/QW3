@@ -682,14 +682,10 @@ export default function EducationMonitoringPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge
-                            className={
-                              stat.completionRate === 100 ? "bg-green-600" :
-                              stat.completionRate >= 50 ? "bg-yellow-500" : "bg-red-500"
-                            }
-                          >
-                            {stat.completionRate}%
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Progress value={stat.completionRate} className="h-2 w-20" />
+                            <span className="text-sm font-medium">{stat.completionRate}%</span>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
