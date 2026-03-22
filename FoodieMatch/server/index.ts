@@ -154,8 +154,10 @@ async function startServer() {
     await startAllSchedulers();
     log('✅ Email service initialized with schedulers');
 
-    // Database health check (4분마다) - Neon 유휴 타임아웃(5분) 전에 ping
-    startConnectionHealthCheck(4 * 60 * 1000);
+    // Database health check 비활성화 (Neon CU 절약)
+    // Neon은 유휴 시 auto-suspend하여 CU를 절약함
+    // Prisma는 연결 끊어져도 다음 요청 시 자동 재연결하므로 health check 불필요
+    // startConnectionHealthCheck(4 * 60 * 1000);
 
     // Sync database sequences to prevent ID conflicts
     await syncSequences();
