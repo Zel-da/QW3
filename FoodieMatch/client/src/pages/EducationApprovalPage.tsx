@@ -15,6 +15,7 @@ import {
   User,
   Clock,
   MapPin,
+  Download,
 } from 'lucide-react';
 import {
   Dialog,
@@ -66,6 +67,7 @@ export default function EducationApprovalPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalComplete, setApprovalComplete] = useState<'approved' | 'rejected' | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: approval, isLoading, error } = useQuery<EducationApprovalData>({
     queryKey: ['educationApproval', approvalId],
@@ -135,6 +137,47 @@ export default function EducationApprovalPage() {
       return;
     }
     await rejectMutation.mutateAsync(rejectionReason);
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!approval) return;
+    setIsDownloading(true);
+    try {
+      toast({ title: "안전교육 현황 다운로드 중...", description: "데이터를 수집하고 있습니다." });
+
+      const today = new Date();
+      const day = (approval.year === today.getFullYear() && approval.month === today.getMonth() + 1)
+        ? today.getDate()
+        : new Date(approval.year, approval.month, 0).getDate(); // 해당 월 마지막 날
+
+      const params = new URLSearchParams({
+        site: approval.site,
+        year: String(approval.year),
+        month: String(approval.month),
+        date: String(day),
+        educationApprovalId: approval.id,
+      });
+
+      const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Safety_Education_${approval.site}_${approval.year}-${String(approval.month).padStart(2, '0')}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      if (link.parentNode) link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
+    } catch (error) {
+      console.error("Failed to download education Excel:", error);
+      toast({ title: "오류", description: "다운로드 중 오류가 발생했습니다.", variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isLoading) {
@@ -310,6 +353,16 @@ export default function EducationApprovalPage() {
               <p className="text-xs text-muted-foreground">
                 결재 완료 시 해당 월 종합 보고서에 결재자 서명이 반영됩니다.
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-2"
+                onClick={handleDownloadExcel}
+                disabled={isDownloading}
+              >
+                <Download className="h-4 w-4" />
+                {isDownloading ? '다운로드 중...' : '안전교육 현황 다운로드'}
+              </Button>
             </div>
           </CardContent>
         </Card>

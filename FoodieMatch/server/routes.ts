@@ -2300,8 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const approvalUrl = `${baseUrl}/education-approval/${approval.id}`;
 
           const { sendEmailByType } = await import('./simpleEmailService');
-          const testEmail = 'yj.an1@soosan.co.kr'; // TODO: 테스트 후 approval.approver.email로 복구
-          await sendEmailByType('EDU_APPROVAL_REQUEST', testEmail, approval.approverId, {
+          await sendEmailByType('EDU_APPROVAL_REQUEST', approval.approver.email, approval.approverId, {
             APPROVER_NAME: approval.approver.name || approval.approver.username,
             REQUESTER_NAME: approval.requester.name || approval.requester.username,
             SITE: approval.site,
@@ -2357,7 +2356,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!approval) {
         return res.status(404).json({ message: "월간 결재 요청을 찾을 수 없습니다" });
       }
-      // TODO: 테스트 후 복구 - if (approval.approverId !== userId) { return res.status(403).json({ message: "결재 권한이 없습니다" }); }
+      if (approval.approverId !== userId) {
+        return res.status(403).json({ message: "결재 권한이 없습니다" });
+      }
 
       if (approval.status !== 'PENDING') {
         return res.status(400).json({ message: "이미 처리된 결재입니다" });
@@ -2412,7 +2413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!approval) {
         return res.status(404).json({ message: "월간 결재 요청을 찾을 수 없습니다" });
       }
-      // TODO: 테스트 후 복구 - if (approval.approverId !== userId) { return res.status(403).json({ message: "결재 권한이 없습니다" }); }
+      if (approval.approverId !== userId) {
+        return res.status(403).json({ message: "결재 권한이 없습니다" });
+      }
 
       if (approval.status !== 'PENDING') {
         return res.status(400).json({ message: "이미 처리된 결재입니다" });
