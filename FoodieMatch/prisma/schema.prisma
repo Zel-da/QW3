@@ -661,6 +661,8 @@ model EducationApproval {
   status             String   @default("PENDING") // PENDING, APPROVED, REJECTED, WITHDRAWN
   requesterSignature String?  // base64 담당 서명
   executiveSignature String?  // base64 승인 서명
+  downloadDay        Int?     // 다운로드 기준 일자
+  teamDates          String?  // 팀별 날짜 JSON (예: {"35":15,"68":20})
   requestedAt        DateTime @default(now())
   approvedAt         DateTime?
   rejectionReason    String?

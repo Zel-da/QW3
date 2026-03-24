@@ -130,6 +130,8 @@ const createEducationApprovalRequest = async (payload: {
   month: number;
   requesterSignature?: string;
   approverName?: string;
+  downloadDay?: number;
+  teamDates?: string;
 }) => {
   const res = await apiRequest('POST', '/api/education-approvals/request', payload);
   return res.json();
@@ -996,12 +998,15 @@ export default function MonthlyReportPage() {
   const handleEduApprovalSignatureSave = useCallback((signature: string) => {
     if (!site) return;
     setShowEduApprovalSignature(false);
+    const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : undefined;
     eduApprovalMutation.mutate({
       site,
       year: date.year,
       month: date.month,
       requesterSignature: signature,
       approverName: '정상배',
+      downloadDay,
+      teamDates: teamDatesParam,
     });
   }, [site, date.year, date.month, eduApprovalMutation]);
 

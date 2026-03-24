@@ -2237,7 +2237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 교육 결재 요청 생성
   app.post("/api/education-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
-      const { site, year, month, requesterSignature, approverName } = req.body;
+      const { site, year, month, requesterSignature, approverName, downloadDay, teamDates } = req.body;
       const requesterId = req.session.user!.id;
 
       if (!site || !year || !month) {
@@ -2285,7 +2285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requesterId,
           approverId,
           status: 'PENDING',
-          requesterSignature: requesterSignature || null
+          requesterSignature: requesterSignature || null,
+          downloadDay: downloadDay ? parseInt(downloadDay) : null,
+          teamDates: teamDates || null,
         },
         include: {
           requester: { select: { id: true, name: true, username: true, email: true } },
@@ -2459,22 +2461,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 교육 결재 회수
-  // TODO: 임시 - 결재 삭제 (테스트 후 제거)
-  app.delete("/api/education-approvals/:id", requireAuth, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const user = req.session.user!;
-      if (user.role !== 'ADMIN') {
-        return res.status(403).json({ message: "관리자만 삭제할 수 있습니다" });
-      }
-      await prisma.educationApproval.delete({ where: { id } });
-      res.json({ message: "결재 삭제 완료" });
-    } catch (error) {
-      console.error("Failed to delete education approval:", error);
-      res.status(500).json({ message: "삭제 실패" });
-    }
-  });
-
   app.post("/api/education-approvals/:id/withdraw", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;

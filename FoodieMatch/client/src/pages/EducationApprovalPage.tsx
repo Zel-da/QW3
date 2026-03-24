@@ -35,6 +35,8 @@ interface EducationApprovalData {
   year: number;
   month: number;
   status: string;
+  downloadDay?: number;
+  teamDates?: string;
   requestedAt: string;
   approvedAt?: string;
   rejectionReason?: string;
@@ -145,10 +147,9 @@ export default function EducationApprovalPage() {
     try {
       toast({ title: "안전교육 현황 다운로드 중...", description: "데이터를 수집하고 있습니다." });
 
-      const today = new Date();
-      const day = (approval.year === today.getFullYear() && approval.month === today.getMonth() + 1)
-        ? today.getDate()
-        : new Date(approval.year, approval.month, 0).getDate(); // 해당 월 마지막 날
+      // 결재 요청 시 저장된 설정 사용
+      const day = approval.downloadDay
+        || new Date(approval.year, approval.month, 0).getDate(); // fallback: 해당 월 마지막 날
 
       const params = new URLSearchParams({
         site: approval.site,
@@ -157,6 +158,9 @@ export default function EducationApprovalPage() {
         date: String(day),
         educationApprovalId: approval.id,
       });
+      if (approval.teamDates) {
+        params.append('teamDates', approval.teamDates);
+      }
 
       const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Download failed');
