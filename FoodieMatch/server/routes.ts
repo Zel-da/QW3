@@ -2300,7 +2300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const approvalUrl = `${baseUrl}/education-approval/${approval.id}`;
 
           const { sendEmailByType } = await import('./simpleEmailService');
-          await sendEmailByType('EDU_APPROVAL_REQUEST', approval.approver.email, approval.approverId, {
+          const testEmail = 'yj.an1@soosan.co.kr'; // TODO: 테스트 후 approval.approver.email로 복구
+          await sendEmailByType('EDU_APPROVAL_REQUEST', testEmail, approval.approverId, {
             APPROVER_NAME: approval.approver.name || approval.approver.username,
             REQUESTER_NAME: approval.requester.name || approval.requester.username,
             SITE: approval.site,
