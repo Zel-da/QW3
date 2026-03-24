@@ -477,11 +477,11 @@ export async function ensureEmailConfigs() {
     },
     {
       emailType: 'EDU_APPROVAL_REQUEST',
-      subject: '[교육결재요청] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 결재',
+      subject: '[월간결재요청] {{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재',
       content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #2563eb;">안전교육 현황 결재 요청</h2>
+  <h2 style="color: #2563eb;">월간 결재 요청</h2>
   <p>{{APPROVER_NAME}}님, 안녕하세요.</p>
-  <p>{{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 결재가 요청되었습니다.</p>
+  <p>{{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재가 요청되었습니다.</p>
   <p><strong>요청자:</strong> {{REQUESTER_NAME}}</p>
   <p><strong>현장:</strong> {{SITE}}</p>
   <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
@@ -492,11 +492,11 @@ export async function ensureEmailConfigs() {
     },
     {
       emailType: 'EDU_APPROVAL_APPROVED',
-      subject: '[교육결재승인] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 승인 완료',
+      subject: '[월간결재승인] {{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재 승인 완료',
       content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #16a34a;">안전교육 현황 결재 승인 완료</h2>
+  <h2 style="color: #16a34a;">월간 결재 승인 완료</h2>
   <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
-  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황이 승인되었습니다.</p>
+  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재가 승인되었습니다.</p>
   <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
   <p><strong>현장:</strong> {{SITE}}</p>
   <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>
@@ -506,11 +506,11 @@ export async function ensureEmailConfigs() {
     },
     {
       emailType: 'EDU_APPROVAL_REJECTED',
-      subject: '[교육결재반려] {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황 반려',
+      subject: '[월간결재반려] {{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재 반려',
       content: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #dc2626;">안전교육 현황 결재 반려</h2>
+  <h2 style="color: #dc2626;">월간 결재 반려</h2>
   <p>{{REQUESTER_NAME}}님, 안녕하세요.</p>
-  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 안전교육 현황이 반려되었습니다.</p>
+  <p>요청하신 {{SITE}} {{YEAR}}년 {{MONTH}}월 월간 결재가 반려되었습니다.</p>
   <p><strong>결재자:</strong> {{APPROVER_NAME}}</p>
   <p><strong>현장:</strong> {{SITE}}</p>
   <p><strong>보고 기간:</strong> {{YEAR}}년 {{MONTH}}월</p>

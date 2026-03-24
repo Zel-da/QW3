@@ -83,7 +83,7 @@ export default function EducationApprovalPage() {
       queryClient.invalidateQueries({ queryKey: ['educationApproval', approvalId] });
       toast({
         title: "결재 완료",
-        description: "교육 결재가 성공적으로 완료되었습니다.",
+        description: "월간 결재가 성공적으로 완료되었습니다.",
       });
       setApprovalComplete('approved');
     },
@@ -106,7 +106,7 @@ export default function EducationApprovalPage() {
       queryClient.invalidateQueries({ queryKey: ['educationApproval', approvalId] });
       toast({
         title: "반려 완료",
-        description: "교육 결재가 반려되었습니다.",
+        description: "월간 결재가 반려되었습니다.",
       });
       setShowRejectDialog(false);
       setApprovalComplete('rejected');
@@ -196,8 +196,8 @@ export default function EducationApprovalPage() {
               </h2>
               <p className="text-muted-foreground mb-4">
                 {approvalComplete === 'approved'
-                  ? '교육 결재가 성공적으로 완료되었습니다. 요청자에게 알림이 발송되었습니다.'
-                  : '교육 결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.'}
+                  ? '월간 결재가 성공적으로 완료되었습니다. 요청자에게 알림이 발송되었습니다.'
+                  : '월간 결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.'}
               </p>
               <Button onClick={() => navigate('/')}>대시보드로 이동</Button>
             </div>
@@ -263,7 +263,7 @@ export default function EducationApprovalPage() {
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl lg:text-2xl">안전교육 현황 결재</CardTitle>
+                <CardTitle className="text-xl lg:text-2xl">월간 결재</CardTitle>
                 <Badge variant="outline" className="mt-1">결재 대기</Badge>
               </div>
             </div>
@@ -292,6 +292,24 @@ export default function EducationApprovalPage() {
                   {new Date(approval.requestedAt).toLocaleString('ko-KR')}
                 </span>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 결재 대상 확인 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">결재 대상</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="p-4 bg-muted/30 rounded-lg border space-y-2">
+              <p className="text-sm">
+                <span className="font-semibold">{approval.site}</span> 현장의{' '}
+                <span className="font-semibold">{approval.year}년 {approval.month}월</span> 안전교육 현황 및 TBM 종합 보고서에 대한 월간 결재입니다.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                결재 완료 시 해당 월 종합 보고서에 결재자 서명이 반영됩니다.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -227,9 +227,9 @@ export default function MonthlyReportPage() {
   const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
-  const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 교육 결재 서명
-  const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 교육 결재 요청 다이얼로그
-  const [showEduPendingDialog, setShowEduPendingDialog] = useState(false); // 교육 결재 진행중 다이얼로그
+  const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 월간 결재 서명
+  const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 월간 결재 요청 다이얼로그
+  const [showEduPendingDialog, setShowEduPendingDialog] = useState(false); // 월간 결재 진행중 다이얼로그
 
   // ==================== Queries ====================
 
@@ -382,14 +382,14 @@ export default function MonthlyReportPage() {
     mutationFn: createEducationApprovalRequest,
     onSuccess: () => {
       toast({
-        title: '교육 결재 요청 완료',
+        title: '월간 결재 요청 완료',
         description: '결재 요청이 제출되었습니다. 결재자에게 알림이 발송되었습니다.'
       });
       refetchEduApproval();
       setShowEduApprovalSignature(false);
     },
     onError: (error: any) => {
-      let errorMessage = '교육 결재 요청 중 오류가 발생했습니다.';
+      let errorMessage = '월간 결재 요청 중 오류가 발생했습니다.';
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
@@ -405,14 +405,14 @@ export default function MonthlyReportPage() {
           errorMessage = error.message;
         }
       }
-      toast({ title: '교육 결재 요청 실패', description: errorMessage, variant: 'destructive' });
+      toast({ title: '월간 결재 요청 실패', description: errorMessage, variant: 'destructive' });
     },
   });
 
   const eduWithdrawMutation = useMutation({
     mutationFn: withdrawEducationApproval,
     onSuccess: () => {
-      toast({ title: '결재 회수 완료', description: '교육 결재 요청이 회수되었습니다.' });
+      toast({ title: '결재 회수 완료', description: '월간 결재 요청이 회수되었습니다.' });
       refetchEduApproval();
     },
     onError: (error: any) => {
@@ -983,7 +983,7 @@ export default function MonthlyReportPage() {
 
     // APPROVED 상태면 안내
     if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED') {
-      toast({ title: "이미 승인됨", description: "교육 결재가 이미 승인되었습니다." });
+      toast({ title: "이미 승인됨", description: "월간 결재가 이미 승인되었습니다." });
       return;
     }
 
@@ -1007,7 +1007,7 @@ export default function MonthlyReportPage() {
 
   const handleEduWithdraw = useCallback(() => {
     if (!eduApprovalStatus?.id) return;
-    if (!confirm('교육 결재 요청을 회수하시겠습니까?')) return;
+    if (!confirm('월간 결재 요청을 회수하시겠습니까?')) return;
     eduWithdrawMutation.mutate(eduApprovalStatus.id);
   }, [eduApprovalStatus, eduWithdrawMutation]);
 
@@ -1977,7 +1977,7 @@ export default function MonthlyReportPage() {
                     안전교육 현황 다운로드
                   </Button>
 
-                  {/* 교육 결재 영역 */}
+                  {/* 월간 결재 영역 */}
                   {site && (
                     <>
                       {eduApprovalStatus?.status === 'PENDING' ? (
@@ -1989,7 +1989,7 @@ export default function MonthlyReportPage() {
                             className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
                           >
                             <Clock className="h-4 w-4 mr-2" />
-                            교육 결재 대기중
+                            월간 결재 대기중
                           </Button>
                           <Button
                             onClick={handleEduWithdraw}
@@ -2005,7 +2005,7 @@ export default function MonthlyReportPage() {
                       ) : eduApprovalStatus?.status === 'APPROVED' ? (
                         <Badge variant="default" className="bg-green-600 gap-1">
                           <CheckCircle className="h-3 w-3" />
-                          교육 결재 승인
+                          월간 결재 승인
                         </Badge>
                       ) : (
                         <Button
@@ -2015,7 +2015,7 @@ export default function MonthlyReportPage() {
                           size="sm"
                         >
                           <Send className="h-4 w-4 mr-2" />
-                          {eduApprovalMutation.isPending ? '요청 중...' : '교육 결재 요청'}
+                          {eduApprovalMutation.isPending ? '요청 중...' : '월간 결재 요청'}
                         </Button>
                       )}
                     </>
@@ -2401,7 +2401,7 @@ export default function MonthlyReportPage() {
           userName={user?.name || user?.username || ''}
         />
 
-        {/* 교육 결재 요청 서명 다이얼로그 */}
+        {/* 월간 결재 요청 서명 다이얼로그 */}
         <SignatureDialog
           isOpen={showEduApprovalSignature}
           onClose={() => setShowEduApprovalSignature(false)}
@@ -2409,7 +2409,7 @@ export default function MonthlyReportPage() {
           userName={eduManagerAutoName || user?.name || user?.username || ''}
         />
 
-        {/* 교육 결재 요청 다이얼로그 (날짜/담당자 입력) */}
+        {/* 월간 결재 요청 다이얼로그 (날짜/담당자 입력) */}
         <Dialog open={showEduApprovalRequestDialog} onOpenChange={setShowEduApprovalRequestDialog}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -2546,12 +2546,12 @@ export default function MonthlyReportPage() {
           </DialogContent>
         </Dialog>
 
-        {/* 교육 결재 진행중 다이얼로그 */}
+        {/* 월간 결재 진행중 다이얼로그 */}
         <Dialog open={showEduPendingDialog} onOpenChange={setShowEduPendingDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>진행중인 교육 결재</DialogTitle>
-              <DialogDescription>현재 교육 결재가 진행중입니다.</DialogDescription>
+              <DialogTitle>진행중인 월간 결재</DialogTitle>
+              <DialogDescription>현재 월간 결재가 진행중입니다.</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-3">
               <div className="flex items-center gap-2">
