@@ -73,6 +73,7 @@ interface AttendanceOverviewData {
   teams: AttendanceOverviewTeam[];
   daysInMonth: number;
   nonWorkdays?: { [day: number]: NonWorkdayInfo };
+  alwaysWorkTeamIds?: number[]; // 주말에도 근무하는 팀 (열처리 등)
 }
 
 const fetchAttendanceOverview = async (year: number, month: number, site: Site): Promise<AttendanceOverviewData | null> => {
@@ -161,24 +162,29 @@ function isFutureDate(year: number, month: number, day: number): boolean {
   return cellDate > today;
 }
 
-function getStatusColor(status: 'not-submitted' | 'completed' | 'has-issues' | undefined): string {
+type DayStatus = 'not-submitted' | 'completed' | 'has-issues' | 'off-duty' | undefined;
+
+function getStatusColor(status: DayStatus): string {
   if (!status || status === 'completed') return 'bg-white';
   if (status === 'has-issues') return 'bg-yellow-200';
   if (status === 'not-submitted') return 'bg-red-200';
+  if (status === 'off-duty') return 'bg-gray-100';
   return 'bg-white';
 }
 
-function getStatusSymbol(status: 'not-submitted' | 'completed' | 'has-issues' | undefined): string {
+function getStatusSymbol(status: DayStatus): string {
   if (!status || status === 'completed') return '✓';
   if (status === 'has-issues') return '△';
   if (status === 'not-submitted') return '✗';
+  if (status === 'off-duty') return '-';
   return '';
 }
 
-function getStatusText(status: 'not-submitted' | 'completed' | 'has-issues' | undefined): string {
+function getStatusText(status: DayStatus): string {
   if (!status || status === 'completed') return '작성완료';
   if (status === 'has-issues') return '문제점 및 위험예측 사항';
   if (status === 'not-submitted') return '미작성';
+  if (status === 'off-duty') return '비근무 (다른 조 작성완료)';
   return '';
 }
 
@@ -1444,6 +1450,7 @@ export default function MonthlyReportPage() {
                             const isWknd = nonWorkday?.isWeekend || isWeekend(date.year, date.month, day);
                             const isHoliday = nonWorkday?.isHoliday;
                             const isFuture = isFutureDate(date.year, date.month, day);
+                            const isAlwaysWork = attendanceOverview.alwaysWorkTeamIds?.includes(team.teamId);
 
                             if (isFuture) {
                               return (
@@ -1457,29 +1464,31 @@ export default function MonthlyReportPage() {
                               );
                             }
 
-                            // 공휴일 표시 (주말보다 우선)
-                            if (isHoliday) {
-                              return (
-                                <TableCell
-                                  key={day}
-                                  className="border border-slate-300 text-center p-1 bg-red-50 text-red-500"
-                                  title={nonWorkday?.holidayName || '공휴일'}
-                                >
-                                  -
-                                </TableCell>
-                              );
-                            }
+                            // 공휴일/주말 표시 (열처리 등 상시근무 팀은 건너뜀)
+                            if (!isAlwaysWork) {
+                              if (isHoliday) {
+                                return (
+                                  <TableCell
+                                    key={day}
+                                    className="border border-slate-300 text-center p-1 bg-red-50 text-red-500"
+                                    title={nonWorkday?.holidayName || '공휴일'}
+                                  >
+                                    -
+                                  </TableCell>
+                                );
+                              }
 
-                            if (isWknd) {
-                              return (
-                                <TableCell
-                                  key={day}
-                                  className="border border-slate-300 text-center p-1 bg-blue-50 text-blue-500"
-                                  title="주말"
-                                >
-                                  -
-                                </TableCell>
-                              );
+                              if (isWknd) {
+                                return (
+                                  <TableCell
+                                    key={day}
+                                    className="border border-slate-300 text-center p-1 bg-blue-50 text-blue-500"
+                                    title="주말"
+                                  >
+                                    -
+                                  </TableCell>
+                                );
+                              }
                             }
 
                             const statusData = team.dailyStatuses[day];

@@ -3535,9 +3535,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }) : [];
       const progressMap = new Map(leaderProgressCounts.map(p => [p.userId, p._count.userId]));
 
+      // 열처리 팀 식별 (24시간 근무, 주말 포함, 3팀 중 2팀만 작성)
+      const heatTreatTeams = teams.filter(t => t.name.includes('열처리'));
+      const heatTreatTeamIds = new Set(heatTreatTeams.map(t => t.id));
+
       // 6. 각 팀별 출석 현황 계산 (Map 조회로 O(1))
       const attendanceData = teams.map(team => {
-        const dailyStatuses: { [day: number]: { status: 'not-submitted' | 'completed' | 'has-issues', reportId: number | null } } = {};
+        const dailyStatuses: { [day: number]: { status: 'not-submitted' | 'completed' | 'has-issues' | 'off-duty', reportId: number | null } } = {};
 
         for (let day = 1; day <= daysInMonth; day++) {
           const key = `${team.id}-${day}`;
@@ -3553,6 +3557,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: hasIssues ? 'has-issues' : 'completed',
               reportId: report.id
             };
+          }
+        }
+
+        // 열처리팀: 3팀 중 2팀 작성 시 나머지 1팀은 off-duty
+        if (heatTreatTeamIds.has(team.id) && heatTreatTeams.length >= 3) {
+          for (let day = 1; day <= daysInMonth; day++) {
+            if (dailyStatuses[day].status === 'not-submitted') {
+              // 같은 날 다른 열처리 팀의 작성 수 확인
+              const submittedCount = heatTreatTeams.filter(ht => {
+                const htKey = `${ht.id}-${day}`;
+                return reportMap.has(htKey);
+              }).length;
+              if (submittedCount >= 2) {
+                dailyStatuses[day] = { status: 'off-duty', reportId: null };
+              }
+            }
           }
         }
 
@@ -3576,7 +3596,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
-      res.json({ teams: attendanceData, daysInMonth, nonWorkdays });
+      // 열처리팀 ID 목록을 클라이언트에 전달 (주말에도 근무하는 팀)
+      res.json({ teams: attendanceData, daysInMonth, nonWorkdays, alwaysWorkTeamIds: Array.from(heatTreatTeamIds) });
     } catch (error) {
       console.error('Failed to fetch attendance overview:', error);
       res.status(500).json({ message: "Failed to fetch attendance overview" });

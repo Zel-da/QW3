@@ -1264,22 +1264,28 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
       {error && <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>오류</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
-      {/* 공휴일/휴무일 알림 */}
-      {holidayInfo?.isNonWorkday && (
-        <Alert className="border-amber-200 bg-amber-50">
-          <CalendarOff className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">
-            {holidayInfo.isHoliday
-              ? `🗓️ 오늘은 공휴일입니다: ${holidayInfo.holidayInfo?.name || '휴무일'}`
-              : '📅 오늘은 주말입니다'}
-          </AlertTitle>
-          <AlertDescription className="text-amber-700">
-            {holidayInfo.isHoliday
-              ? 'TBM 작성이 필요 없는 날입니다. 필요한 경우에만 작성해주세요.'
-              : '주말에는 TBM 작성이 필요 없습니다. 필요한 경우에만 작성해주세요.'}
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* 공휴일/휴무일 알림 (열처리팀은 24시간 근무이므로 주말 경고 제외) */}
+      {holidayInfo?.isNonWorkday && (() => {
+        const currentTeamData = teams.find(t => t.id === selectedTeam);
+        const isHeatTreatTeam = currentTeamData?.name?.includes('열처리');
+        // 열처리팀: 주말은 경고 안 함, 공휴일만 경고
+        if (isHeatTreatTeam && !holidayInfo.isHoliday) return null;
+        return (
+          <Alert className="border-amber-200 bg-amber-50">
+            <CalendarOff className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800">
+              {holidayInfo.isHoliday
+                ? `🗓️ 오늘은 공휴일입니다: ${holidayInfo.holidayInfo?.name || '휴무일'}`
+                : '📅 오늘은 주말입니다'}
+            </AlertTitle>
+            <AlertDescription className="text-amber-700">
+              {holidayInfo.isHoliday
+                ? 'TBM 작성이 필요 없는 날입니다. 필요한 경우에만 작성해주세요.'
+                : '주말에는 TBM 작성이 필요 없습니다. 필요한 경우에만 작성해주세요.'}
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       {/* 기존 TBM 발견 시 알림 */}
       {isViewMode && (existingReport || reportForEdit) && (
