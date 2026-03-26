@@ -845,57 +845,52 @@ export default function MonthlyReportPage() {
       return;
     }
 
-    // 승인된 결재가 있고 같은 기간이면 서명 없이 바로 다운로드
-    if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED'
-        && eduApprovalStatus.year === date.year && eduApprovalStatus.month === date.month
-        && downloadYear === date.year && downloadMonth === date.month) {
-      setShowEducationDatePicker(false);
-
-      const doDownload = async () => {
-        toast({
-          title: "안전교육 현황 다운로드 중...",
-          description: "교육 데이터를 수집하고 있습니다."
-        });
-
-        try {
-          const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
-          const params = new URLSearchParams({
-            site: site || '',
-            year: String(downloadYear),
-            month: String(downloadMonth),
-            date: String(downloadDay),
-            educationApprovalId: eduApprovalStatus.id,
-          });
-          if (teamDatesParam) params.append('teamDates', teamDatesParam);
-
-          const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
-          if (!response.ok) throw new Error('Download failed');
-          const blob = await response.blob();
-
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;
-          link.setAttribute('download', fileName);
-          document.body.appendChild(link);
-          link.click();
-          if (link.parentNode) link.parentNode.removeChild(link);
-          window.URL.revokeObjectURL(url);
-
-          toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
-        } catch (error) {
-          console.error("Failed to download education Excel:", error);
-          toast({ title: "오류", description: "안전교육 현황을 다운로드하는 중 오류가 발생했습니다.", variant: "destructive" });
-        }
-      };
-
-      await checkPhotosAndProceed(doDownload);
-      return;
-    }
-
+    // 서명 없이 바로 다운로드 (결재 승인됐으면 서명 자동 포함, 아니면 서명 없이)
     setShowEducationDatePicker(false);
-    // 사진 체크 후 서명 다이얼로그 열기
-    await checkPhotosAndProceed(() => setShowEducationSignature(true));
+
+    const doDownload = async () => {
+      toast({
+        title: "안전교육 현황 다운로드 중...",
+        description: "교육 데이터를 수집하고 있습니다."
+      });
+
+      try {
+        const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
+        const params = new URLSearchParams({
+          site: site || '',
+          year: String(downloadYear),
+          month: String(downloadMonth),
+          date: String(downloadDay),
+        });
+        // 승인된 결재가 있으면 서명 포함
+        if (eduApprovalStatus && eduApprovalStatus.status === 'APPROVED'
+            && eduApprovalStatus.year === downloadYear && eduApprovalStatus.month === downloadMonth) {
+          params.append('educationApprovalId', eduApprovalStatus.id);
+        }
+        if (teamDatesParam) params.append('teamDates', teamDatesParam);
+
+        const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Download failed');
+        const blob = await response.blob();
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        if (link.parentNode) link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
+      } catch (error) {
+        console.error("Failed to download education Excel:", error);
+        toast({ title: "오류", description: "안전교육 현황을 다운로드하는 중 오류가 발생했습니다.", variant: "destructive" });
+      }
+    };
+
+    await checkPhotosAndProceed(doDownload);
   }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed]);
 
   // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
