@@ -232,6 +232,10 @@ export default function MonthlyReportPage() {
   const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 월간 결재 서명
   const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 월간 결재 요청 다이얼로그
   const [showEduPendingDialog, setShowEduPendingDialog] = useState(false); // 월간 결재 진행중 다이얼로그
+  const [showMissingPhotoDialog, setShowMissingPhotoDialog] = useState(false); // 사진 없는 팀 경고
+  const [missingPhotoEntries, setMissingPhotoEntries] = useState<Array<{ teamId: number | null; teamName: string; label: string; hasPhoto: boolean }>>([]);
+  const [missingPhotoDateOverrides, setMissingPhotoDateOverrides] = useState<Record<string, number>>({}); // label → day
+  const [pendingDownloadAction, setPendingDownloadAction] = useState<(() => void) | null>(null);
 
   // ==================== Queries ====================
 
@@ -781,6 +785,49 @@ export default function MonthlyReportPage() {
     setShowEducationDatePicker(true);
   }, [site, toast]);
 
+  // 사진 체크 후 다운로드 진행하는 공통 함수
+  const checkPhotosAndProceed = useCallback(async (proceedFn: () => void) => {
+    try {
+      const checkParams = new URLSearchParams({
+        site: site || '',
+        year: String(downloadYear),
+        month: String(downloadMonth),
+        date: String(downloadDay),
+      });
+      const checkRes = await fetch(`/api/tbm/check-photos?${checkParams}`, { credentials: 'include' });
+      if (checkRes.ok) {
+        const { entries } = await checkRes.json();
+        const missing = entries.filter((e: any) => !e.hasPhoto);
+        if (missing.length > 0) {
+          setMissingPhotoEntries(entries);
+          setMissingPhotoDateOverrides({});
+          setPendingDownloadAction(() => proceedFn);
+          setShowMissingPhotoDialog(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Photo check failed, proceeding anyway:", err);
+    }
+    proceedFn();
+  }, [site, downloadYear, downloadMonth, downloadDay]);
+
+  // 사진 경고에서 날짜 변경 후 다운로드
+  const handleMissingPhotoConfirm = useCallback(() => {
+    // 변경된 날짜를 teamDateMap에 반영
+    const updatedMap = { ...teamDateMap };
+    for (const [label, day] of Object.entries(missingPhotoDateOverrides)) {
+      const entry = missingPhotoEntries.find(e => e.label === label);
+      if (entry?.teamId) {
+        updatedMap[entry.teamId] = day;
+      }
+    }
+    setTeamDateMap(updatedMap);
+    setUseTeamSpecificDates(true);
+    setShowMissingPhotoDialog(false);
+    if (pendingDownloadAction) pendingDownloadAction();
+  }, [teamDateMap, missingPhotoDateOverrides, missingPhotoEntries, pendingDownloadAction]);
+
   // 날짜 선택 후 서명 다이얼로그 열기 (또는 승인된 결재가 있으면 바로 다운로드)
   const handleEducationExcelDownloadConfirm = useCallback(async () => {
     if (!site) {
@@ -798,48 +845,52 @@ export default function MonthlyReportPage() {
         && downloadYear === date.year && downloadMonth === date.month) {
       setShowEducationDatePicker(false);
 
-      toast({
-        title: "안전교육 현황 다운로드 중...",
-        description: "교육 데이터를 수집하고 있습니다."
-      });
-
-      try {
-        const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
-        const params = new URLSearchParams({
-          site: site || '',
-          year: String(downloadYear),
-          month: String(downloadMonth),
-          date: String(downloadDay),
-          educationApprovalId: eduApprovalStatus.id,
+      const doDownload = async () => {
+        toast({
+          title: "안전교육 현황 다운로드 중...",
+          description: "교육 데이터를 수집하고 있습니다."
         });
-        if (teamDatesParam) params.append('teamDates', teamDatesParam);
 
-        const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
-        if (!response.ok) throw new Error('Download failed');
-        const blob = await response.blob();
+        try {
+          const teamDatesParam = useTeamSpecificDates ? JSON.stringify(teamDateMap) : null;
+          const params = new URLSearchParams({
+            site: site || '',
+            year: String(downloadYear),
+            month: String(downloadMonth),
+            date: String(downloadDay),
+            educationApprovalId: eduApprovalStatus.id,
+          });
+          if (teamDatesParam) params.append('teamDates', teamDatesParam);
 
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        if (link.parentNode) link.parentNode.removeChild(link);
-        window.URL.revokeObjectURL(url);
+          const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
+          if (!response.ok) throw new Error('Download failed');
+          const blob = await response.blob();
 
-        toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
-      } catch (error) {
-        console.error("Failed to download education Excel:", error);
-        toast({ title: "오류", description: "안전교육 현황을 다운로드하는 중 오류가 발생했습니다.", variant: "destructive" });
-      }
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          const fileName = `Safety_Education_${site}_${downloadYear}-${String(downloadMonth).padStart(2, '0')}-${String(downloadDay).padStart(2, '0')}.xlsx`;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          if (link.parentNode) link.parentNode.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          toast({ title: "성공", description: "안전교육 현황이 다운로드되었습니다." });
+        } catch (error) {
+          console.error("Failed to download education Excel:", error);
+          toast({ title: "오류", description: "안전교육 현황을 다운로드하는 중 오류가 발생했습니다.", variant: "destructive" });
+        }
+      };
+
+      await checkPhotosAndProceed(doDownload);
       return;
     }
 
     setShowEducationDatePicker(false);
-    // 서명 다이얼로그 열기
-    setShowEducationSignature(true);
-  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap]);
+    // 사진 체크 후 서명 다이얼로그 열기
+    await checkPhotosAndProceed(() => setShowEducationSignature(true));
+  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed]);
 
   // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
   const handleEducationSignatureSave = useCallback(async (managerSignature: string, approverSignature: string) => {
@@ -2594,6 +2645,60 @@ export default function MonthlyReportPage() {
               >
                 <Undo2 className="h-4 w-4 mr-2" />
                 회수하기
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 사진 없는 팀 경고 다이얼로그 */}
+        <Dialog open={showMissingPhotoDialog} onOpenChange={setShowMissingPhotoDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>사진 없는 팀이 있습니다</DialogTitle>
+              <DialogDescription>
+                {downloadDay}일 기준으로 TBM 사진이 없는 팀이 있습니다. 해당 팀의 날짜를 변경할 수 있습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2 space-y-3 max-h-[300px] overflow-y-auto">
+              {missingPhotoEntries.filter(e => !e.hasPhoto).map((entry) => (
+                <div key={entry.label} className="flex items-center justify-between gap-3 p-2 bg-red-50 rounded-md border border-red-200">
+                  <span className="text-sm font-medium text-red-700 flex-1 truncate">{entry.label}</span>
+                  <Select
+                    value={String(missingPhotoDateOverrides[entry.label] || downloadDay)}
+                    onValueChange={(v) => setMissingPhotoDateOverrides(prev => ({ ...prev, [entry.label]: parseInt(v) }))}
+                  >
+                    <SelectTrigger className="w-24 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(d => (
+                        <SelectItem key={d} value={String(d)}>{d}일</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              {missingPhotoEntries.filter(e => e.hasPhoto).length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  사진 있는 팀: {missingPhotoEntries.filter(e => e.hasPhoto).length}개
+                </p>
+              )}
+            </div>
+            <DialogFooter className="flex gap-2 sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowMissingPhotoDialog(false);
+                  if (pendingDownloadAction) pendingDownloadAction();
+                }}
+              >
+                그대로 다운로드
+              </Button>
+              <Button
+                onClick={handleMissingPhotoConfirm}
+                disabled={Object.keys(missingPhotoDateOverrides).length === 0}
+              >
+                날짜 변경 후 다운로드
               </Button>
             </DialogFooter>
           </DialogContent>

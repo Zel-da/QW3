@@ -4579,6 +4579,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 사진 유무 확인 API (다운로드 전 체크용)
+  app.get("/api/tbm/check-photos", requireAuth, async (req, res) => {
+    try {
+      const { site, year, month, date } = req.query;
+      if (!site || !year || !month || !date) {
+        return res.status(400).json({ message: "site, year, month, date 필수" });
+      }
+
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+      const dateNum = parseInt(date as string);
+
+      const allTeams = await prisma.team.findMany({
+        where: { site: site as string },
+        select: { id: true, name: true }
+      });
+
+      const teams = filterTeamsForReport(site as string, allTeams);
+      const photoEntries = buildPhotoEntries(site as string, teams.map(t => t.name));
+
+      const selectedDate = new Date(yearNum, monthNum - 1, dateNum, 0, 0, 0);
+      const selectedDateEnd = new Date(yearNum, monthNum - 1, dateNum, 23, 59, 59, 999);
+
+      const reports = await prisma.dailyReport.findMany({
+        where: {
+          teamId: { in: teams.map(t => t.id) },
+          reportDate: { gte: selectedDate, lte: selectedDateEnd }
+        },
+        select: { id: true, teamId: true, remarks: true, team: { select: { id: true, name: true } } }
+      });
+
+      const results = photoEntries.map(entry => {
+        const report = reports.find(r => r.team?.name?.includes(entry.primaryTeamPattern))
+          || reports.find(r => {
+            const team = teams.find(t => t.id === r.teamId);
+            return team?.name?.includes(entry.primaryTeamPattern) || false;
+          });
+
+        let hasPhoto = false;
+        if (report?.remarks) {
+          try {
+            const remarksData = JSON.parse(report.remarks);
+            hasPhoto = !!(remarksData.images && Array.isArray(remarksData.images) && remarksData.images.length > 0);
+          } catch { /* not JSON */ }
+        }
+
+        const primaryTeam = teams.find(t => t.name.includes(entry.primaryTeamPattern));
+        return {
+          teamId: primaryTeam?.id || null,
+          teamName: primaryTeam?.name || entry.primaryTeamPattern,
+          label: entry.label,
+          hasPhoto,
+        };
+      });
+
+      res.json({ entries: results });
+    } catch (error) {
+      console.error("Failed to check photos:", error);
+      res.status(500).json({ message: "사진 확인 실패" });
+    }
+  });
+
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
   app.get("/api/tbm/safety-education-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
@@ -5239,30 +5301,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (tbmPhotoUrl) {
               try {
-                // Path traversal 방지를 위한 안전한 파일 경로 검증
-                const fullPath = validateFilePath(tbmPhotoUrl);
-                console.log(`    📸 ${entry.label} TBM 사진 삽입: ${fullPath}`);
+                let imageBuffer: Buffer | null = null;
 
-                // 파일 읽기 (안전한 방식)
-                const imageBuffer = safeReadFile(tbmPhotoUrl);
+                if (tbmPhotoUrl.startsWith('http')) {
+                  // R2 등 외부 URL → HTTP로 다운로드
+                  console.log(`    📸 ${entry.label} TBM 사진 다운로드 (R2): ${tbmPhotoUrl}`);
+                  const imgResponse = await fetch(tbmPhotoUrl);
+                  if (imgResponse.ok) {
+                    imageBuffer = Buffer.from(await imgResponse.arrayBuffer());
+                  } else {
+                    console.error(`    ❌ R2 다운로드 실패: ${imgResponse.status}`);
+                  }
+                } else {
+                  // 로컬 파일
+                  const fullPath = validateFilePath(tbmPhotoUrl);
+                  console.log(`    📸 ${entry.label} TBM 사진 로컬: ${fullPath}`);
+                  imageBuffer = safeReadFile(tbmPhotoUrl);
+                }
+
                 if (!imageBuffer) {
-                  console.error(`    ❌ 파일 없음: ${fullPath}`);
                   photoCell.value = '사진 파일 없음';
                   photoCell.alignment = centerAlignment;
                   photoCell.font = { ...font, color: { argb: '808080' } };
                 } else {
-
-                  // 확장자 추출
-                  const ext = tbmPhotoUrl.split('.').pop()?.toLowerCase() || 'jpg';
+                  const ext = tbmPhotoUrl.split('.').pop()?.toLowerCase()?.split('?')[0] || 'jpg';
                   const validExt = ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpeg';
 
-                  // ExcelJS에 이미지 추가
                   const imageId = workbook.addImage({
                     buffer: imageBuffer,
                     extension: validExt as 'jpg' | 'jpeg' | 'png' | 'gif'
                   });
 
-                  // 이미지 삽입 (사진 셀의 위치와 크기)
                   photoSheet.addImage(imageId, {
                     tl: { col: colStart - 1, row: teamPhotoRow - 1 },
                     ext: { width: 280, height: 210 }
