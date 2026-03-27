@@ -82,6 +82,11 @@ const fetchAttendanceOverview = async (year: number, month: number, site: Site):
   return res.json();
 };
 
+const fetchApprovalSettings = async () => {
+  const res = await apiRequest('GET', '/api/settings/approval');
+  return res.json();
+};
+
 const fetchTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
   const res = await apiRequest('GET', `/api/teams/${teamId}/members`);
   return res.json();
@@ -332,12 +337,21 @@ export default function MonthlyReportPage() {
     enabled: !!site,
   });
 
-  // 사이트별 담당자 자동 설정
+  // 결재 설정 조회 (담당자/결재자)
+  const { data: approvalSettings } = useQuery<{ siteManagers: Record<string, string>; approver: string }>({
+    queryKey: ['approval-settings'],
+    queryFn: fetchApprovalSettings,
+  });
+
+  // 사이트별 담당자 자동 설정 (DB에서)
   const eduManagerAutoName = useMemo(() => {
-    if (site === '아산') return '김문현';
-    if (site === '화성') return '표경윤';
-    return '';
-  }, [site]);
+    return approvalSettings?.siteManagers?.[site || ''] || '';
+  }, [site, approvalSettings]);
+
+  // 결재자 이름 (DB에서)
+  const approverName = useMemo(() => {
+    return approvalSettings?.approver || '정상배';
+  }, [approvalSettings]);
 
   // ==================== Approval Mutation ====================
 
@@ -1056,7 +1070,7 @@ export default function MonthlyReportPage() {
       year: date.year,
       month: date.month,
       requesterSignature: signature,
-      approverName: '정상배',
+      approverName,
       downloadDay,
       teamDates: teamDatesParam,
     });
@@ -2543,7 +2557,7 @@ export default function MonthlyReportPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>결재자</Label>
-                  <Input value="정상배" disabled className="bg-muted" />
+                  <Input value={approverName} disabled className="bg-muted" />
                 </div>
               </div>
 

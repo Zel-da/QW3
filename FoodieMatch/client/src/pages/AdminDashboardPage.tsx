@@ -35,6 +35,7 @@ const menuItems: MenuItem[] = [
   { title: '팀 장비/점검 관리', description: '팀별 장비 및 점검 항목 관리', path: '/team-equipment-management', roles: ['ADMIN'], icon: Wrench, bgColor: 'bg-green-100', iconBg: 'bg-green-500', iconColor: 'text-white' },
   { title: '공휴일 관리', description: '공휴일 및 영업일 관리', path: '/holiday-management', roles: ['ADMIN'], icon: CalendarDays, bgColor: 'bg-purple-100', iconBg: 'bg-purple-500', iconColor: 'text-white' },
   // Row 3
+  { title: '결재 설정', description: '담당자/결재자 지정 관리', path: '/approval-settings', roles: ['ADMIN'], icon: Shield, bgColor: 'bg-rose-100', iconBg: 'bg-rose-500', iconColor: 'text-white' },
   { title: '이메일 설정', description: '알림 이메일 발송 설정', path: '/email-settings', roles: ['ADMIN'], icon: Mail, bgColor: 'bg-indigo-100', iconBg: 'bg-indigo-500', iconColor: 'text-white' },
   { title: '데이터베이스 관리', description: '시스템 데이터 백업/복원', path: '/db-management', roles: ['ADMIN'], icon: Database, bgColor: 'bg-slate-100', iconBg: 'bg-slate-500', iconColor: 'text-white' },
   { title: '관리자 업무 절차서', description: '관리자 매뉴얼 및 가이드', path: '/admin-help', roles: ['ADMIN'], icon: FileText, bgColor: 'bg-teal-100', iconBg: 'bg-teal-500', iconColor: 'text-white' },

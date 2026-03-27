@@ -675,3 +675,9 @@ model EducationApproval {
   @@index([status])
   @@map("EducationApprovals")
 }
+
+model AppSetting {
+  key   String @id
+  value String
+  @@map("AppSettings")
+}

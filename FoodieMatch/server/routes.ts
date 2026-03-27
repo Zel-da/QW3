@@ -2247,8 +2247,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "site, year, month are required" });
       }
 
-      // 결재자 조회: approverName으로 사용자 검색 (기본: 정상배)
-      const searchName = approverName || '정상배';
+      // 결재자 조회: approverName으로 사용자 검색 (DB 설정에서 기본값)
+      let searchName = approverName;
+      if (!searchName) {
+        const setting = await prisma.appSetting.findUnique({ where: { key: 'approval_approver' } });
+        searchName = setting?.value || '정상배';
+      }
       const approverUser = await prisma.user.findFirst({
         where: { name: searchName }
       });
@@ -9263,6 +9267,48 @@ ${JSON.stringify(toolResults, null, 2)}
     } catch (error) {
       console.error("Error during cleanup:", error);
       res.status(500).json({ message: "데이터 정리에 실패했습니다." });
+    }
+  });
+
+  // ==================== 앱 설정 API ====================
+
+  // 설정 조회 (담당자/결재자)
+  app.get("/api/settings/approval", requireAuth, async (_req, res) => {
+    try {
+      const settings = await prisma.appSetting.findMany({
+        where: { key: { in: ['site_manager_아산', 'site_manager_화성', 'approval_approver'] } }
+      });
+      const map: Record<string, string> = {};
+      settings.forEach(s => { map[s.key] = s.value; });
+      res.json({
+        siteManagers: { '아산': map['site_manager_아산'] || '', '화성': map['site_manager_화성'] || '' },
+        approver: map['approval_approver'] || '',
+      });
+    } catch (error) {
+      console.error("Failed to fetch approval settings:", error);
+      res.status(500).json({ message: "설정 조회 실패" });
+    }
+  });
+
+  // 설정 변경 (관리자 전용)
+  app.put("/api/settings/approval", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { siteManagers, approver } = req.body;
+
+      if (siteManagers?.['아산']) {
+        await prisma.appSetting.upsert({ where: { key: 'site_manager_아산' }, update: { value: siteManagers['아산'] }, create: { key: 'site_manager_아산', value: siteManagers['아산'] } });
+      }
+      if (siteManagers?.['화성']) {
+        await prisma.appSetting.upsert({ where: { key: 'site_manager_화성' }, update: { value: siteManagers['화성'] }, create: { key: 'site_manager_화성', value: siteManagers['화성'] } });
+      }
+      if (approver) {
+        await prisma.appSetting.upsert({ where: { key: 'approval_approver' }, update: { value: approver }, create: { key: 'approval_approver', value: approver } });
+      }
+
+      res.json({ message: "설정이 저장되었습니다." });
+    } catch (error) {
+      console.error("Failed to update approval settings:", error);
+      res.status(500).json({ message: "설정 변경 실패" });
     }
   });
 

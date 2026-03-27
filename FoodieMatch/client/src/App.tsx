@@ -60,6 +60,7 @@ const EducationManagementPage = lazy(() => import("./pages/EducationManagementPa
 const EducationMonitoringPage = lazy(() => import("./pages/EducationMonitoringPage"));
 const InspectionTemplateEditorPage = lazy(() => import("./pages/InspectionTemplateEditorPage"));
 const EmailSettingsPage = lazy(() => import("./pages/EmailSettingsPage"));
+const ApprovalSettingsPage = lazy(() => import("./pages/ApprovalSettingsPage"));
 const HolidayManagementPage = lazy(() => import("./pages/HolidayManagementPage"));
 const TeamEquipmentPage = lazy(() => import("./pages/TeamEquipmentPage"));
 const TeamEquipmentManagementPage = lazy(() => import("./pages/TeamEquipmentManagementPage"));
@@ -261,6 +262,11 @@ function App() {
               <Route path="/inspection-template-editor">
                 <ProtectedRoute roles={[Role.ADMIN]}>
                   <InspectionTemplateEditorPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/approval-settings">
+                <ProtectedRoute roles={[Role.ADMIN]}>
+                  <ApprovalSettingsPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/email-settings">
