@@ -55,7 +55,7 @@ interface AttendanceOverviewTeam {
   teamName: string;
   dailyStatuses: {
     [day: number]: {
-      status: 'not-submitted' | 'completed' | 'has-issues',
+      status: 'not-submitted' | 'completed' | 'has-issues' | 'off-duty',
       reportId: number | null
     }
   };
@@ -1541,6 +1541,10 @@ export default function MonthlyReportPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-red-50 border border-slate-300 flex items-center justify-center text-red-500">-</div>
                       <span>공휴일</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gray-100 border border-slate-300 flex items-center justify-center text-gray-400">-</div>
+                      <span>비근무 (열처리)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
