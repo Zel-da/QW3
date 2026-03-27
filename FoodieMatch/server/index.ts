@@ -86,63 +86,53 @@ app.get('/api/ping', (_req, res) => {
 
 // 메모리 상세 분석 endpoint
 app.get('/api/memory', (_req, res) => {
-  const v8 = require('v8');
-  const mem = process.memoryUsage();
-  const heapStats = v8.getHeapStatistics();
-  const heapSpaces = v8.getHeapSpaceStatistics();
-  const uptime = process.uptime();
-  const hours = Math.floor(uptime / 3600);
-  const minutes = Math.floor((uptime % 3600) / 60);
-
-  const MB = (bytes: number) => `${Math.round(bytes / 1024 / 1024)}MB`;
-
-  // 세션 수 카운트
-  let sessionCount = 0;
   try {
-    // memorystore의 내부 Map에서 크기 가져오기
-    const store = sessionStore as any;
-    if (store.sessions) sessionCount = Object.keys(store.sessions).length;
-    else if (store.store) sessionCount = store.store.size || Object.keys(store.store).length;
-  } catch { /* ignore */ }
+    const mem = process.memoryUsage();
+    const uptime = process.uptime();
+    const hours = Math.floor(uptime / 3600);
+    const minutes = Math.floor((uptime % 3600) / 60);
+    const MB = (bytes: number) => `${Math.round(bytes / 1024 / 1024)}MB`;
 
-  // chatHistories는 routes.ts에서 global로 노출
-  const chatHistorySize = (global as any).__chatHistoriesSize || 0;
+    // 세션 수 카운트
+    let sessionCount = 0;
+    try {
+      const store = sessionStore as any;
+      if (store.sessions) sessionCount = Object.keys(store.sessions).length;
+      else if (store.store) sessionCount = store.store.size || Object.keys(store.store).length;
+    } catch { /* ignore */ }
 
-  // 모듈 캐시 크기
-  const moduleCount = Object.keys(require.cache).length;
+    // V8 힙 분석 (동적 import)
+    let v8Info: any = null;
+    try {
+      const v8 = require('node:v8');
+      const heapStats = v8.getHeapStatistics();
+      v8Info = {
+        totalHeapSize: MB(heapStats.total_heap_size),
+        usedHeapSize: MB(heapStats.used_heap_size),
+        heapSizeLimit: MB(heapStats.heap_size_limit),
+        mallocedMemory: MB(heapStats.malloced_memory),
+      };
+    } catch { /* v8 not available */ }
 
-  // V8 힙 공간별 분석
-  const spaces = heapSpaces.map((s: any) => ({
-    name: s.space_name,
-    used: MB(s.space_used_size),
-    size: MB(s.space_size),
-    available: MB(s.space_available_size),
-  }));
-
-  res.json({
-    summary: {
-      rss: MB(mem.rss),
-      heapUsed: MB(mem.heapUsed),
-      heapTotal: MB(mem.heapTotal),
-      external: MB(mem.external),
-      arrayBuffers: MB(mem.arrayBuffers),
-      uptime: `${hours}h ${minutes}m`,
-    },
-    breakdown: {
-      sessions: sessionCount,
-      chatHistories: chatHistorySize,
-      modules: moduleCount,
-      activeExcelJobs: (global as any).__activeExcelJobs || 0,
-    },
-    v8: {
-      totalHeapSize: MB(heapStats.total_heap_size),
-      usedHeapSize: MB(heapStats.used_heap_size),
-      heapSizeLimit: MB(heapStats.heap_size_limit),
-      mallocedMemory: MB(heapStats.malloced_memory),
-      totalGlobalHandles: heapStats.number_of_native_contexts,
-    },
-    heapSpaces: spaces,
-  });
+    res.json({
+      summary: {
+        rss: MB(mem.rss),
+        heapUsed: MB(mem.heapUsed),
+        heapTotal: MB(mem.heapTotal),
+        external: MB(mem.external),
+        arrayBuffers: MB(mem.arrayBuffers),
+        uptime: `${hours}h ${minutes}m`,
+      },
+      breakdown: {
+        sessions: sessionCount,
+        chatHistories: (global as any).__chatHistoriesSize || 0,
+        activeExcelJobs: (global as any).__activeExcelJobs || 0,
+      },
+      v8: v8Info,
+    });
+  } catch (error: any) {
+    res.json({ error: error.message, rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB` });
+  }
 });
 
 // HTTP request logging middleware with Winston
