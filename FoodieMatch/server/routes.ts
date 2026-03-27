@@ -4635,11 +4635,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const results = photoEntries.map(entry => {
-        const report = reports.find(r => r.team?.name?.includes(entry.primaryTeamPattern))
-          || reports.find(r => {
-            const team = teams.find(t => t.id === r.teamId);
-            return team?.name?.includes(entry.primaryTeamPattern) || false;
-          });
+        const matchingReports = reports.filter(r => {
+          const tName = r.team?.name || teams.find(t => t.id === r.teamId)?.name || '';
+          return tName.includes(entry.primaryTeamPattern);
+        });
+        // 여러 팀 매칭 시 첫 번째 사용 (주간 시간은 별도 조회 필요하므로 여기선 간략화)
+        const report = matchingReports[0];
 
         let hasPhoto = false;
         if (report?.remarks) {
@@ -5284,11 +5285,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 3개 엔트리 처리 (또는 남은 수만큼)
         for (let j = 0; j < 3 && i + j < photoEntries.length; j++) {
           const entry = photoEntries[i + j];
-          const report = reports.find(r => r.team?.name?.includes(entry.primaryTeamPattern) || false)
-            || reports.find(r => {
-              const team = teams.find(t => t.id === r.teamId);
-              return team?.name?.includes(entry.primaryTeamPattern) || false;
-            });
+
+          // 열처리 그룹: 주간(6~18시) 작성 팀의 report를 우선 선택
+          let report;
+          const matchingReports = reports.filter(r => {
+            const tName = r.team?.name || teams.find(t => t.id === r.teamId)?.name || '';
+            return tName.includes(entry.primaryTeamPattern);
+          });
+          if (matchingReports.length > 1) {
+            // 여러 팀 매칭 시 주간 시간대(6~18시) 작성 보고서 우선
+            report = matchingReports.find(r => {
+              const hour = new Date(r.createdAt).getHours();
+              return hour >= 6 && hour < 18;
+            }) || matchingReports[0];
+          } else {
+            report = matchingReports[0];
+          }
           const colStart = j * 10 + 1; // 1, 11, 21
           const colEnd = colStart + 9;  // 10, 20, 30
 

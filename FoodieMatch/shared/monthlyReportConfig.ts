@@ -30,6 +30,11 @@ export const MONTHLY_REPORT_CONFIG: Record<string, SiteReportConfig> = {
         memberTeams: ['CR조립', 'CR출하', 'CR자재'],
         primaryTeam: 'CR조립',
       },
+      {
+        label: '열처리',
+        memberTeams: ['열처리'],
+        primaryTeam: '열처리',  // 특수: 주간 근무 팀 자동 선택
+      },
     ],
   },
 };
