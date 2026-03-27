@@ -55,14 +55,15 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
 
 // MemoryStore - 서버 재시작 시 세션 초기화됨
 const MemStore = MemoryStore(session);
+const sessionStore = new MemStore({
+  checkPeriod: 60000, // 1분마다 만료 세션 정리 (10분→1분)
+  max: 100,
+});
 
 app.set('trust proxy', 1);
 
 app.use(session({
-  store: new MemStore({
-    checkPeriod: 600000, // 10분마다 만료된 세션 정리 (메모리 절약)
-    max: 100, // 최대 세션 수 제한
-  }),
+  store: sessionStore,
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
@@ -72,7 +73,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production' && process.env.RENDER === 'true',
     httpOnly: true, // Prevent XSS attacks by not allowing JavaScript to access the cookie
     sameSite: 'lax', // Allow cookies in same-site requests
-    maxAge: 1000 * 60 * 60 * 24 * 1 // 1일 (메모리 절약 - 7일→1일)
+    maxAge: 1000 * 60 * 60 * 4 // 4시간 (메모리 절약 - 1일→4시간, rolling으로 활성 유저는 유지)
   },
   name: 'sessionId', // Custom name instead of default 'connect.sid' for security through obscurity
   rolling: true, // Reset maxAge on every response (keep active sessions alive)
@@ -83,19 +84,64 @@ app.get('/api/ping', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Memory usage endpoint (관리자용)
+// 메모리 상세 분석 endpoint
 app.get('/api/memory', (_req, res) => {
+  const v8 = require('v8');
   const mem = process.memoryUsage();
+  const heapStats = v8.getHeapStatistics();
+  const heapSpaces = v8.getHeapSpaceStatistics();
   const uptime = process.uptime();
   const hours = Math.floor(uptime / 3600);
   const minutes = Math.floor((uptime % 3600) / 60);
+
+  const MB = (bytes: number) => `${Math.round(bytes / 1024 / 1024)}MB`;
+
+  // 세션 수 카운트
+  let sessionCount = 0;
+  try {
+    // memorystore의 내부 Map에서 크기 가져오기
+    const store = sessionStore as any;
+    if (store.sessions) sessionCount = Object.keys(store.sessions).length;
+    else if (store.store) sessionCount = store.store.size || Object.keys(store.store).length;
+  } catch { /* ignore */ }
+
+  // chatHistories는 routes.ts에서 global로 노출
+  const chatHistorySize = (global as any).__chatHistoriesSize || 0;
+
+  // 모듈 캐시 크기
+  const moduleCount = Object.keys(require.cache).length;
+
+  // V8 힙 공간별 분석
+  const spaces = heapSpaces.map((s: any) => ({
+    name: s.space_name,
+    used: MB(s.space_used_size),
+    size: MB(s.space_size),
+    available: MB(s.space_available_size),
+  }));
+
   res.json({
-    rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
-    heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
-    heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
-    external: `${Math.round(mem.external / 1024 / 1024)}MB`,
-    arrayBuffers: `${Math.round(mem.arrayBuffers / 1024 / 1024)}MB`,
-    uptime: `${hours}h ${minutes}m`,
+    summary: {
+      rss: MB(mem.rss),
+      heapUsed: MB(mem.heapUsed),
+      heapTotal: MB(mem.heapTotal),
+      external: MB(mem.external),
+      arrayBuffers: MB(mem.arrayBuffers),
+      uptime: `${hours}h ${minutes}m`,
+    },
+    breakdown: {
+      sessions: sessionCount,
+      chatHistories: chatHistorySize,
+      modules: moduleCount,
+      activeExcelJobs: (global as any).__activeExcelJobs || 0,
+    },
+    v8: {
+      totalHeapSize: MB(heapStats.total_heap_size),
+      usedHeapSize: MB(heapStats.used_heap_size),
+      heapSizeLimit: MB(heapStats.heap_size_limit),
+      mallocedMemory: MB(heapStats.malloced_memory),
+      totalGlobalHandles: heapStats.number_of_native_contexts,
+    },
+    heapSpaces: spaces,
   });
 });
 

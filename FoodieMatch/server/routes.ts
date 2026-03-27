@@ -52,7 +52,10 @@ declare module "express-session" {
 
 // Excel 동시 생성 제한 (메모리 보호 - 512MB 인스턴스)
 let activeExcelJobs = 0;
-const MAX_CONCURRENT_EXCEL = 1; // 동시 Excel 생성 1개로 제한
+const MAX_CONCURRENT_EXCEL = 1;
+
+// 메모리 분석용 global 노출
+setInterval(() => { (global as any).__activeExcelJobs = activeExcelJobs; }, 5000);
 
 // GC 강제 실행 (--expose-gc 플래그 필요)
 function tryGC() {
@@ -8345,9 +8348,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     timestamp: Date;
   }
   const chatHistories = new Map<string, ChatMessage[]>();
-  const MAX_HISTORY = 10; // 세션당 최대 10개 대화 유지
-  const HISTORY_TTL = 5 * 60 * 1000; // 5분 후 자동 삭제 (10분→5분, 메모리 절약)
-  const MAX_CHAT_SESSIONS = 20; // 최대 동시 채팅 세션 수 (50→20, 메모리 절약)
+  const MAX_HISTORY = 10;
+  const HISTORY_TTL = 5 * 60 * 1000;
+  const MAX_CHAT_SESSIONS = 20;
+
+  // 메모리 분석용 global 노출
+  (global as any).__chatHistoriesSize = 0;
+  setInterval(() => { (global as any).__chatHistoriesSize = chatHistories.size; }, 10000);
 
   // 히스토리 정리 함수
   function cleanupHistory(sessionId: string) {
