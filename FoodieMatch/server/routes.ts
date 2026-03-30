@@ -2240,7 +2240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 교육 결재 요청 생성
   app.post("/api/education-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
-      const { site, year, month, requesterSignature, approverName, downloadDay, teamDates } = req.body;
+      const { site, year, month, requesterSignature, approverName, downloadDay, teamDates, maleCount, femaleCount, excludeCount, nonCompletionNote } = req.body;
       const requesterId = req.session.user!.id;
 
       if (!site || !year || !month) {
@@ -2295,6 +2295,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requesterSignature: requesterSignature || null,
           downloadDay: downloadDay ? parseInt(downloadDay) : null,
           teamDates: teamDates || null,
+          maleCount: maleCount ? parseInt(maleCount) : null,
+          femaleCount: femaleCount ? parseInt(femaleCount) : null,
+          excludeCount: excludeCount ? parseInt(excludeCount) : null,
+          nonCompletionNote: nonCompletionNote || null,
         },
         include: {
           requester: { select: { id: true, name: true, username: true, email: true } },
@@ -4673,7 +4677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
   app.get("/api/tbm/safety-education-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
-      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId } = req.query;
+      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId, maleCount: maleCountParam, femaleCount: femaleCountParam, excludeCount: excludeCountParam, nonCompletionNote: noteParam } = req.query;
 
       // 파라미터 검증
       if (!site || !year || !month || !date) {
@@ -4805,6 +4809,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📸 TBM 보고서: ${reports.length}개 (팀별 날짜: ${hasTeamDates ? '활성화' : '비활성화'})`);
 
+      // 교육 인원 파라미터 (클라이언트에서 전달 또는 EducationApproval에서 로드)
+      let eduMaleCount = maleCountParam ? parseInt(maleCountParam as string) : 0;
+      let eduFemaleCount = femaleCountParam ? parseInt(femaleCountParam as string) : 0;
+      let eduExcludeCount = excludeCountParam ? parseInt(excludeCountParam as string) : 0;
+      let eduNonCompletionNote = (noteParam as string) || '';
+
+      // EducationApproval에서 값 로드 (파라미터 없으면)
+      if (educationApprovalId && !maleCountParam) {
+        const approval = await prisma.educationApproval.findUnique({
+          where: { id: educationApprovalId as string }
+        });
+        if (approval) {
+          eduMaleCount = approval.maleCount || 0;
+          eduFemaleCount = approval.femaleCount || 0;
+          eduExcludeCount = approval.excludeCount || 0;
+          eduNonCompletionNote = approval.nonCompletionNote || '';
+        }
+      }
+
       // 전체 활성 팀원 수 집계 (교육 대상자수)
       const totalMembers = await prisma.teamMember.count({
         where: {
@@ -4816,7 +4839,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 선택 일자에 서명한 팀원 수 집계 (교육 실시자수)
       const signedMembers = reports.reduce((sum, r) => sum + r.reportSignatures.length, 0);
 
-      console.log(`👥 교육 대상자: ${totalMembers}명, 실시자: ${signedMembers}명, 미실시: ${totalMembers - signedMembers}명`);
+      // 남/여 수동 입력값이 있으면 사용, 없으면 자동 계산
+      const useMaleCount = (eduMaleCount || eduFemaleCount) ? eduMaleCount : totalMembers;
+      const useFemaleCount = (eduMaleCount || eduFemaleCount) ? eduFemaleCount : 0;
+      const useTotalMembers = (eduMaleCount || eduFemaleCount) ? (eduMaleCount + eduFemaleCount) : totalMembers;
+
+      console.log(`👥 교육 대상자: ${useTotalMembers}명(남${useMaleCount}/여${useFemaleCount}), 실시자: ${signedMembers}명, 제외: ${eduExcludeCount}명`);
 
       // ExcelJS 워크북 생성
       const workbook = new ExcelJS.Workbook();
@@ -5072,17 +5100,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      coverSheet.getCell(`D${currentRow}`).value = totalMembers;
+      // D: 계, E: 남, F: 여
+      coverSheet.getCell(`D${currentRow}`).value = useTotalMembers;
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.getCell(`E${currentRow}`).value = totalMembers; // 전원 남자로 가정
+      coverSheet.getCell(`E${currentRow}`).value = useMaleCount;
       coverSheet.getCell(`E${currentRow}`).font = font;
       coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`E${currentRow}`).border = border;
 
-      coverSheet.getCell(`F${currentRow}`).value = 0;
+      coverSheet.getCell(`F${currentRow}`).value = useFemaleCount;
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
@@ -5102,17 +5131,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      coverSheet.getCell(`D${currentRow}`).value = signedMembers;
+      const effectiveSigned = Math.max(0, signedMembers - eduExcludeCount);
+      // 실시자 남/여 비율 계산
+      const signedFemale = useFemaleCount > 0 ? Math.round(effectiveSigned * useFemaleCount / useTotalMembers) : 0;
+      const signedMale = effectiveSigned - signedFemale;
+
+      coverSheet.getCell(`D${currentRow}`).value = effectiveSigned;
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.getCell(`E${currentRow}`).value = signedMembers; // 전원 남자로 가정
+      coverSheet.getCell(`E${currentRow}`).value = signedMale;
       coverSheet.getCell(`E${currentRow}`).font = font;
       coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`E${currentRow}`).border = border;
 
-      coverSheet.getCell(`F${currentRow}`).value = 0;
+      coverSheet.getCell(`F${currentRow}`).value = signedFemale;
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
@@ -5132,7 +5166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      const notAttended = totalMembers - signedMembers;
+      const notAttended = useTotalMembers - effectiveSigned;
       coverSheet.getCell(`D${currentRow}`).value = notAttended > 0 ? notAttended : '-';
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
@@ -5149,7 +5183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`F${currentRow}`).border = border;
 
       coverSheet.mergeCells(`G${currentRow}:I${currentRow}`);
-      coverSheet.getCell(`G${currentRow}`).value = '';
+      coverSheet.getCell(`G${currentRow}`).value = eduNonCompletionNote || '';
+      coverSheet.getCell(`G${currentRow}`).font = font;
+      coverSheet.getCell(`G${currentRow}`).alignment = { ...centerAlignment, wrapText: true };
       coverSheet.getCell(`G${currentRow}`).border = border;
 
       currentRow++;
@@ -9267,6 +9303,55 @@ ${JSON.stringify(toolResults, null, 2)}
     } catch (error) {
       console.error("Error during cleanup:", error);
       res.status(500).json({ message: "데이터 정리에 실패했습니다." });
+    }
+  });
+
+  // ==================== 교육 인원 설정 API ====================
+
+  // 이전 입력값 조회 (사이트별)
+  app.get("/api/settings/education-params", requireAuth, async (req, res) => {
+    try {
+      const { site } = req.query;
+      if (!site) return res.status(400).json({ message: "site 필수" });
+      const keys = [
+        `edu_male_count_${site}`,
+        `edu_female_count_${site}`,
+        `edu_exclude_count_${site}`,
+        `edu_note_${site}`,
+      ];
+      const settings = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
+      const map: Record<string, string> = {};
+      settings.forEach(s => { map[s.key] = s.value; });
+      res.json({
+        maleCount: parseInt(map[`edu_male_count_${site}`] || '0') || 0,
+        femaleCount: parseInt(map[`edu_female_count_${site}`] || '0') || 0,
+        excludeCount: parseInt(map[`edu_exclude_count_${site}`] || '0') || 0,
+        nonCompletionNote: map[`edu_note_${site}`] || '',
+      });
+    } catch (error) {
+      console.error("Failed to fetch education params:", error);
+      res.status(500).json({ message: "조회 실패" });
+    }
+  });
+
+  // 입력값 저장 (다음 다운로드 시 기본값)
+  app.put("/api/settings/education-params", requireAuth, async (req, res) => {
+    try {
+      const { site, maleCount, femaleCount, excludeCount, nonCompletionNote } = req.body;
+      if (!site) return res.status(400).json({ message: "site 필수" });
+      const pairs: [string, string][] = [
+        [`edu_male_count_${site}`, String(maleCount || 0)],
+        [`edu_female_count_${site}`, String(femaleCount || 0)],
+        [`edu_exclude_count_${site}`, String(excludeCount || 0)],
+        [`edu_note_${site}`, nonCompletionNote || ''],
+      ];
+      for (const [key, value] of pairs) {
+        await prisma.appSetting.upsert({ where: { key }, update: { value }, create: { key, value } });
+      }
+      res.json({ message: "저장 완료" });
+    } catch (error) {
+      console.error("Failed to save education params:", error);
+      res.status(500).json({ message: "저장 실패" });
     }
   });
 

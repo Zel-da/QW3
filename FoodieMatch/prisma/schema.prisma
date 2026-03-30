@@ -663,6 +663,10 @@ model EducationApproval {
   executiveSignature String?  // base64 승인 서명
   downloadDay        Int?     // 다운로드 기준 일자
   teamDates          String?  // 팀별 날짜 JSON (예: {"35":15,"68":20})
+  maleCount          Int?     // 남직원 수
+  femaleCount        Int?     // 여직원 수
+  excludeCount       Int?     // 제외 인원수 (장기부재자)
+  nonCompletionNote  String?  // 미실시 사유
   requestedAt        DateTime @default(now())
   approvedAt         DateTime?
   rejectionReason    String?

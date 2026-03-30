@@ -87,6 +87,11 @@ const fetchApprovalSettings = async () => {
   return res.json();
 };
 
+const fetchEducationParams = async (site: string) => {
+  const res = await apiRequest('GET', `/api/settings/education-params?site=${encodeURIComponent(site)}`);
+  return res.json();
+};
+
 const fetchTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
   const res = await apiRequest('GET', `/api/teams/${teamId}/members`);
   return res.json();
@@ -240,6 +245,10 @@ export default function MonthlyReportPage() {
   const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
+  const [eduMaleCount, setEduMaleCount] = useState(0);
+  const [eduFemaleCount, setEduFemaleCount] = useState(0);
+  const [eduExcludeCount, setEduExcludeCount] = useState(0);
+  const [eduNonCompletionNote, setEduNonCompletionNote] = useState('');
   const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 월간 결재 서명
   const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 월간 결재 요청 다이얼로그
   const [showEduPendingDialog, setShowEduPendingDialog] = useState(false); // 월간 결재 진행중 다이얼로그
@@ -342,6 +351,23 @@ export default function MonthlyReportPage() {
     queryKey: ['approval-settings'],
     queryFn: fetchApprovalSettings,
   });
+
+  // 교육 인원 파라미터 (이전 값)
+  const { data: eduParams } = useQuery<{ maleCount: number; femaleCount: number; excludeCount: number; nonCompletionNote: string }>({
+    queryKey: ['education-params', site],
+    queryFn: () => fetchEducationParams(site!),
+    enabled: !!site,
+  });
+
+  // 다이얼로그 열릴 때 이전 값 로드
+  useEffect(() => {
+    if (showEducationDatePicker && eduParams) {
+      setEduMaleCount(eduParams.maleCount);
+      setEduFemaleCount(eduParams.femaleCount);
+      setEduExcludeCount(eduParams.excludeCount);
+      setEduNonCompletionNote(eduParams.nonCompletionNote);
+    }
+  }, [showEducationDatePicker, eduParams]);
 
   // 사이트별 담당자 자동 설정 (DB에서)
   const eduManagerAutoName = useMemo(() => {
@@ -883,6 +909,19 @@ export default function MonthlyReportPage() {
         }
         if (teamDatesParam) params.append('teamDates', teamDatesParam);
 
+        // 교육 인원 파라미터
+        if (eduMaleCount) params.append('maleCount', String(eduMaleCount));
+        if (eduFemaleCount) params.append('femaleCount', String(eduFemaleCount));
+        if (eduExcludeCount) params.append('excludeCount', String(eduExcludeCount));
+        if (eduNonCompletionNote) params.append('nonCompletionNote', eduNonCompletionNote);
+
+        // 이전 값으로 저장 (다음 다운로드 시 기본값)
+        fetch('/api/settings/education-params', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ site, maleCount: eduMaleCount, femaleCount: eduFemaleCount, excludeCount: eduExcludeCount, nonCompletionNote: eduNonCompletionNote }),
+        }).catch(() => {});
+
         const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
         if (!response.ok) throw new Error('Download failed');
         const blob = await response.blob();
@@ -905,7 +944,7 @@ export default function MonthlyReportPage() {
     };
 
     await checkPhotosAndProceed(doDownload);
-  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed]);
+  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed, eduMaleCount, eduFemaleCount, eduExcludeCount, eduNonCompletionNote]);
 
   // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
   const handleEducationSignatureSave = useCallback(async (managerSignature: string, approverSignature: string) => {
@@ -1073,6 +1112,10 @@ export default function MonthlyReportPage() {
       approverName,
       downloadDay,
       teamDates: teamDatesParam,
+      maleCount: eduMaleCount,
+      femaleCount: eduFemaleCount,
+      excludeCount: eduExcludeCount,
+      nonCompletionNote: eduNonCompletionNote,
     });
   }, [site, date.year, date.month, eduApprovalMutation]);
 
@@ -2460,12 +2503,36 @@ export default function MonthlyReportPage() {
                 )}
               </div>
             </div>
+            {/* 교육 인원 조정 */}
+            <div className="border-t pt-4 mt-2">
+              <p className="text-sm font-medium mb-3">교육 인원</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">남직원 수</Label>
+                  <Input type="number" min={0} value={eduMaleCount} onChange={(e) => setEduMaleCount(parseInt(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">여직원 수</Label>
+                  <Input type="number" min={0} value={eduFemaleCount} onChange={(e) => setEduFemaleCount(parseInt(e.target.value) || 0)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">교육 제외 인원</Label>
+                  <Input type="number" min={0} value={eduExcludeCount} onChange={(e) => setEduExcludeCount(parseInt(e.target.value) || 0)} />
+                </div>
+              </div>
+              <div className="mt-2 space-y-1">
+                <Label className="text-xs">미실시 사유</Label>
+                <Input value={eduNonCompletionNote} onChange={(e) => setEduNonCompletionNote(e.target.value)} placeholder="출산휴가 1명, 요양 1명" />
+              </div>
+            </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline">취소</Button>
               </DialogClose>
               <Button onClick={handleEducationExcelDownloadConfirm}>
-                다음 (서명)
+                다운로드
               </Button>
             </DialogFooter>
           </DialogContent>
