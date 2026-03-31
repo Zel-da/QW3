@@ -2240,7 +2240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 교육 결재 요청 생성
   app.post("/api/education-approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
-      const { site, year, month, requesterSignature, approverName, downloadDay, teamDates, maleCount, femaleCount, excludeCount, nonCompletionNote } = req.body;
+      const { site, year, month, requesterSignature, approverName, downloadDay, teamDates, maleCount, femaleCount, maleExclude, femaleExclude, nonCompletionNote } = req.body;
       const requesterId = req.session.user!.id;
 
       if (!site || !year || !month) {
@@ -2297,7 +2297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           teamDates: teamDates || null,
           maleCount: maleCount ? parseInt(maleCount) : null,
           femaleCount: femaleCount ? parseInt(femaleCount) : null,
-          excludeCount: excludeCount ? parseInt(excludeCount) : null,
+          maleExclude: maleExclude ? parseInt(maleExclude) : null,
+          femaleExclude: femaleExclude ? parseInt(femaleExclude) : null,
           nonCompletionNote: nonCompletionNote || null,
         },
         include: {
@@ -4677,7 +4678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 안전교육 엑셀 생성 API (갑지 + 팀별 사진 + 서명)
   app.get("/api/tbm/safety-education-excel", requireAuth, excelMemoryGuard, async (req, res) => {
     try {
-      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId, maleCount: maleCountParam, femaleCount: femaleCountParam, excludeCount: excludeCountParam, nonCompletionNote: noteParam } = req.query;
+      const { site, year, month, date, manager, approver, managerSignature, approverSignature, teamDates, educationApprovalId, maleCount: maleCountParam, femaleCount: femaleCountParam, maleExclude: maleExcludeParam, femaleExclude: femaleExcludeParam, nonCompletionNote: noteParam } = req.query;
 
       // 파라미터 검증
       if (!site || !year || !month || !date) {
@@ -4812,7 +4813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 교육 인원 파라미터 (클라이언트에서 전달 또는 EducationApproval에서 로드)
       let eduMaleCount = maleCountParam ? parseInt(maleCountParam as string) : 0;
       let eduFemaleCount = femaleCountParam ? parseInt(femaleCountParam as string) : 0;
-      let eduExcludeCount = excludeCountParam ? parseInt(excludeCountParam as string) : 0;
+      let eduMaleExclude = maleExcludeParam ? parseInt(maleExcludeParam as string) : 0;
+      let eduFemaleExclude = femaleExcludeParam ? parseInt(femaleExcludeParam as string) : 0;
       let eduNonCompletionNote = (noteParam as string) || '';
 
       // EducationApproval에서 값 로드 (파라미터 없으면)
@@ -4823,7 +4825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (approval) {
           eduMaleCount = approval.maleCount || 0;
           eduFemaleCount = approval.femaleCount || 0;
-          eduExcludeCount = approval.excludeCount || 0;
+          eduMaleExclude = approval.maleExclude || 0;
+          eduFemaleExclude = approval.femaleExclude || 0;
           eduNonCompletionNote = approval.nonCompletionNote || '';
         }
       }
@@ -4844,7 +4847,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const useFemaleCount = (eduMaleCount || eduFemaleCount) ? eduFemaleCount : 0;
       const useTotalMembers = (eduMaleCount || eduFemaleCount) ? (eduMaleCount + eduFemaleCount) : totalMembers;
 
-      console.log(`👥 교육 대상자: ${useTotalMembers}명(남${useMaleCount}/여${useFemaleCount}), 실시자: ${signedMembers}명, 제외: ${eduExcludeCount}명`);
+      // 실시자 = 대상자 - 제외자
+      const maleAttended = useMaleCount - eduMaleExclude;
+      const femaleAttended = useFemaleCount - eduFemaleExclude;
+      const totalExclude = eduMaleExclude + eduFemaleExclude;
+
+      console.log(`👥 교육 대상자: ${useTotalMembers}명(남${useMaleCount}/여${useFemaleCount}), 제외: 남${eduMaleExclude}/여${eduFemaleExclude}`);
 
       // ExcelJS 워크북 생성
       const workbook = new ExcelJS.Workbook();
@@ -5131,22 +5139,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      const effectiveSigned = Math.max(0, signedMembers - eduExcludeCount);
-      // 실시자 남/여 비율 계산
-      const signedFemale = useFemaleCount > 0 ? Math.round(effectiveSigned * useFemaleCount / useTotalMembers) : 0;
-      const signedMale = effectiveSigned - signedFemale;
-
-      coverSheet.getCell(`D${currentRow}`).value = effectiveSigned;
+      coverSheet.getCell(`D${currentRow}`).value = maleAttended + femaleAttended;
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.getCell(`E${currentRow}`).value = signedMale;
+      coverSheet.getCell(`E${currentRow}`).value = maleAttended;
       coverSheet.getCell(`E${currentRow}`).font = font;
       coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`E${currentRow}`).border = border;
 
-      coverSheet.getCell(`F${currentRow}`).value = signedFemale;
+      coverSheet.getCell(`F${currentRow}`).value = femaleAttended;
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
@@ -5166,18 +5169,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       coverSheet.getCell(`B${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`B${currentRow}`).border = border;
 
-      const notAttended = useTotalMembers - effectiveSigned;
-      coverSheet.getCell(`D${currentRow}`).value = notAttended > 0 ? notAttended : '-';
+      coverSheet.getCell(`D${currentRow}`).value = totalExclude > 0 ? totalExclude : '-';
       coverSheet.getCell(`D${currentRow}`).font = font;
       coverSheet.getCell(`D${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`D${currentRow}`).border = border;
 
-      coverSheet.getCell(`E${currentRow}`).value = '-';
+      coverSheet.getCell(`E${currentRow}`).value = eduMaleExclude > 0 ? eduMaleExclude : '-';
       coverSheet.getCell(`E${currentRow}`).font = font;
       coverSheet.getCell(`E${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`E${currentRow}`).border = border;
 
-      coverSheet.getCell(`F${currentRow}`).value = '-';
+      coverSheet.getCell(`F${currentRow}`).value = eduFemaleExclude > 0 ? eduFemaleExclude : '-';
       coverSheet.getCell(`F${currentRow}`).font = font;
       coverSheet.getCell(`F${currentRow}`).alignment = centerAlignment;
       coverSheet.getCell(`F${currentRow}`).border = border;
@@ -9316,7 +9318,8 @@ ${JSON.stringify(toolResults, null, 2)}
       const keys = [
         `edu_male_count_${site}`,
         `edu_female_count_${site}`,
-        `edu_exclude_count_${site}`,
+        `edu_male_exclude_${site}`,
+        `edu_female_exclude_${site}`,
         `edu_note_${site}`,
       ];
       const settings = await prisma.appSetting.findMany({ where: { key: { in: keys } } });
@@ -9325,7 +9328,8 @@ ${JSON.stringify(toolResults, null, 2)}
       res.json({
         maleCount: parseInt(map[`edu_male_count_${site}`] || '0') || 0,
         femaleCount: parseInt(map[`edu_female_count_${site}`] || '0') || 0,
-        excludeCount: parseInt(map[`edu_exclude_count_${site}`] || '0') || 0,
+        maleExclude: parseInt(map[`edu_male_exclude_${site}`] || '0') || 0,
+        femaleExclude: parseInt(map[`edu_female_exclude_${site}`] || '0') || 0,
         nonCompletionNote: map[`edu_note_${site}`] || '',
       });
     } catch (error) {
@@ -9337,12 +9341,13 @@ ${JSON.stringify(toolResults, null, 2)}
   // 입력값 저장 (다음 다운로드 시 기본값)
   app.put("/api/settings/education-params", requireAuth, async (req, res) => {
     try {
-      const { site, maleCount, femaleCount, excludeCount, nonCompletionNote } = req.body;
+      const { site, maleCount, femaleCount, maleExclude, femaleExclude, nonCompletionNote } = req.body;
       if (!site) return res.status(400).json({ message: "site 필수" });
       const pairs: [string, string][] = [
         [`edu_male_count_${site}`, String(maleCount || 0)],
         [`edu_female_count_${site}`, String(femaleCount || 0)],
-        [`edu_exclude_count_${site}`, String(excludeCount || 0)],
+        [`edu_male_exclude_${site}`, String(maleExclude || 0)],
+        [`edu_female_exclude_${site}`, String(femaleExclude || 0)],
         [`edu_note_${site}`, nonCompletionNote || ''],
       ];
       for (const [key, value] of pairs) {

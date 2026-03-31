@@ -247,7 +247,8 @@ export default function MonthlyReportPage() {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
   const [eduMaleCount, setEduMaleCount] = useState(0);
   const [eduFemaleCount, setEduFemaleCount] = useState(0);
-  const [eduExcludeCount, setEduExcludeCount] = useState(0);
+  const [eduMaleExclude, setEduMaleExclude] = useState(0);
+  const [eduFemaleExclude, setEduFemaleExclude] = useState(0);
   const [eduNonCompletionNote, setEduNonCompletionNote] = useState('');
   const [showEduApprovalSignature, setShowEduApprovalSignature] = useState(false); // 월간 결재 서명
   const [showEduApprovalRequestDialog, setShowEduApprovalRequestDialog] = useState(false); // 월간 결재 요청 다이얼로그
@@ -353,7 +354,7 @@ export default function MonthlyReportPage() {
   });
 
   // 교육 인원 파라미터 (이전 값)
-  const { data: eduParams } = useQuery<{ maleCount: number; femaleCount: number; excludeCount: number; nonCompletionNote: string }>({
+  const { data: eduParams } = useQuery<{ maleCount: number; femaleCount: number; maleExclude: number; femaleExclude: number; nonCompletionNote: string }>({
     queryKey: ['education-params', site],
     queryFn: () => fetchEducationParams(site!),
     enabled: !!site,
@@ -364,7 +365,8 @@ export default function MonthlyReportPage() {
     if (showEducationDatePicker && eduParams) {
       setEduMaleCount(eduParams.maleCount);
       setEduFemaleCount(eduParams.femaleCount);
-      setEduExcludeCount(eduParams.excludeCount);
+      setEduMaleExclude(eduParams.maleExclude);
+      setEduFemaleExclude(eduParams.femaleExclude);
       setEduNonCompletionNote(eduParams.nonCompletionNote);
     }
   }, [showEducationDatePicker, eduParams]);
@@ -912,14 +914,15 @@ export default function MonthlyReportPage() {
         // 교육 인원 파라미터
         if (eduMaleCount) params.append('maleCount', String(eduMaleCount));
         if (eduFemaleCount) params.append('femaleCount', String(eduFemaleCount));
-        if (eduExcludeCount) params.append('excludeCount', String(eduExcludeCount));
+        if (eduMaleExclude) params.append('maleExclude', String(eduMaleExclude));
+        if (eduFemaleExclude) params.append('femaleExclude', String(eduFemaleExclude));
         if (eduNonCompletionNote) params.append('nonCompletionNote', eduNonCompletionNote);
 
         // 이전 값으로 저장 (다음 다운로드 시 기본값)
         fetch('/api/settings/education-params', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ site, maleCount: eduMaleCount, femaleCount: eduFemaleCount, excludeCount: eduExcludeCount, nonCompletionNote: eduNonCompletionNote }),
+          body: JSON.stringify({ site, maleCount: eduMaleCount, femaleCount: eduFemaleCount, maleExclude: eduMaleExclude, femaleExclude: eduFemaleExclude, nonCompletionNote: eduNonCompletionNote }),
         }).catch(() => {});
 
         const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
@@ -944,7 +947,7 @@ export default function MonthlyReportPage() {
     };
 
     await checkPhotosAndProceed(doDownload);
-  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed, eduMaleCount, eduFemaleCount, eduExcludeCount, eduNonCompletionNote]);
+  }, [site, toast, eduApprovalStatus, downloadYear, downloadMonth, downloadDay, useTeamSpecificDates, teamDateMap, checkPhotosAndProceed, eduMaleCount, eduFemaleCount, eduMaleExclude, eduFemaleExclude, eduNonCompletionNote]);
 
   // 서명 완료 후 실제 다운로드 (담당 + 승인 서명 2개)
   const handleEducationSignatureSave = useCallback(async (managerSignature: string, approverSignature: string) => {
@@ -1114,7 +1117,8 @@ export default function MonthlyReportPage() {
       teamDates: teamDatesParam,
       maleCount: eduMaleCount,
       femaleCount: eduFemaleCount,
-      excludeCount: eduExcludeCount,
+      maleExclude: eduMaleExclude,
+      femaleExclude: eduFemaleExclude,
       nonCompletionNote: eduNonCompletionNote,
     });
   }, [site, date.year, date.month, eduApprovalMutation]);
@@ -2518,8 +2522,12 @@ export default function MonthlyReportPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 mt-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">교육 제외 인원</Label>
-                  <Input type="number" min={0} value={eduExcludeCount} onChange={(e) => setEduExcludeCount(parseInt(e.target.value) || 0)} />
+                  <Label className="text-xs">남 교육제외</Label>
+                  <Input type="number" min={0} value={eduMaleExclude} onChange={(e) => setEduMaleExclude(parseInt(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">여 교육제외</Label>
+                  <Input type="number" min={0} value={eduFemaleExclude} onChange={(e) => setEduFemaleExclude(parseInt(e.target.value) || 0)} />
                 </div>
               </div>
               <div className="mt-2 space-y-1">
