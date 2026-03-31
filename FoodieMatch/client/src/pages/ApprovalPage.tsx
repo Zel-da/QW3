@@ -77,6 +77,7 @@ interface DailyReport {
   remarks?: string;
   reportDetails: {
     id: number;
+    itemId: number;
     checkState?: string;
     actionDescription?: string;
     actionTaken?: string;
@@ -91,12 +92,19 @@ interface DailyReport {
   }[];
 }
 
+interface TemplateItem {
+  id: number;
+  category: string;
+  description: string;
+  displayOrder: number;
+}
+
 interface MonthlyData {
   dailyReports: DailyReport[];
   teamName?: string;
   year: string;
   month: string;
-  checklistTemplate?: any;
+  checklistTemplate?: { templateItems: TemplateItem[] };
   monthlyApproval?: any;
   approver?: any;
 }
@@ -144,6 +152,90 @@ function TBMSummarySkeleton() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// 점검항목 일별 그리드
+function ChecklistGrid({ monthlyData, year, month }: { monthlyData: MonthlyData; year: number; month: number }) {
+  const items = monthlyData.checklistTemplate?.templateItems || [];
+  const reports = monthlyData.dailyReports;
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  if (items.length === 0) return null;
+
+  // 날짜별 report 매핑
+  const reportByDay = new Map<number, DailyReport>();
+  reports.forEach(r => {
+    const d = new Date(r.reportDate).getDate();
+    reportByDay.set(d, r);
+  });
+
+  // 카테고리별 그룹핑
+  const categories = new Map<string, TemplateItem[]>();
+  items.forEach((item: TemplateItem) => {
+    const cat = item.category || '기타';
+    if (!categories.has(cat)) categories.set(cat, []);
+    categories.get(cat)!.push(item);
+  });
+
+  const getCheckSymbol = (day: number, itemId: number) => {
+    const report = reportByDay.get(day);
+    if (!report) return { symbol: '', bg: 'bg-gray-50' };
+    const detail = report.reportDetails.find(d => d.itemId === itemId);
+    if (!detail?.checkState) return { symbol: '', bg: 'bg-gray-50' };
+    const s = detail.checkState.toUpperCase();
+    if (s === 'X' || s === 'BAD' || s === 'NG' || s === '불량' || s === '×')
+      return { symbol: 'X', bg: 'bg-red-100 text-red-700' };
+    if (s === '△' || s === 'WARNING' || s === '주의')
+      return { symbol: '△', bg: 'bg-yellow-100 text-yellow-700' };
+    return { symbol: 'O', bg: 'bg-white text-green-700' };
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">월별 점검 항목</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="overflow-x-auto border rounded-md">
+          <table className="text-xs border-collapse min-w-max">
+            <thead>
+              <tr className="bg-muted/50">
+                <th className="border px-2 py-1.5 text-left sticky left-0 bg-muted/50 z-10 min-w-[60px]">구분</th>
+                <th className="border px-2 py-1.5 text-left sticky left-[60px] bg-muted/50 z-10 min-w-[200px]">점검내용</th>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                  <th key={d} className="border px-1 py-1.5 text-center min-w-[24px]">{d}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from(categories.entries()).map(([cat, catItems]) =>
+                catItems.map((item, idx) => (
+                  <tr key={item.id}>
+                    {idx === 0 && (
+                      <td rowSpan={catItems.length} className="border px-2 py-1 font-medium sticky left-0 bg-white z-10 align-top">
+                        {cat}
+                      </td>
+                    )}
+                    <td className="border px-2 py-1 sticky left-[60px] bg-white z-10 whitespace-nowrap overflow-hidden max-w-[200px] text-ellipsis">
+                      {item.description}
+                    </td>
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
+                      const { symbol, bg } = getCheckSymbol(d, item.id);
+                      return (
+                        <td key={d} className={`border px-0 py-0 text-center font-medium ${bg}`}>
+                          {symbol}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -706,6 +798,15 @@ export default function ApprovalPage() {
             </Card>
           </>
         ) : null}
+
+        {/* 점검항목 일별 그리드 */}
+        {monthlyData && approvalRequest && (
+          <ChecklistGrid
+            monthlyData={monthlyData}
+            year={approvalRequest.monthlyReport.year}
+            month={approvalRequest.monthlyReport.month}
+          />
+        )}
 
         {/* D. 상세 보고서 링크 */}
         <Card>
