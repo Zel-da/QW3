@@ -2749,7 +2749,7 @@ export default function MonthlyReportPage() {
 
         {/* 사진 없는 팀 경고 다이얼로그 */}
         <Dialog open={showMissingPhotoDialog} onOpenChange={setShowMissingPhotoDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>사진 없는 팀이 있습니다</DialogTitle>
               <DialogDescription>
@@ -2767,7 +2767,7 @@ export default function MonthlyReportPage() {
                     <SelectTrigger className="w-24 h-8">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[200px] overflow-y-auto scrollbar-visible">
                       {Array.from({ length: getDaysInMonth(downloadYear, downloadMonth) }, (_, i) => i + 1).map(d => (
                         <SelectItem key={d} value={String(d)}>{d}일</SelectItem>
                       ))}
