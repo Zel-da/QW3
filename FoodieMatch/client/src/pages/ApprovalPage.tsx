@@ -29,6 +29,7 @@ import {
   Calendar,
   User,
   Clock,
+  Download,
 } from 'lucide-react';
 import {
   Dialog,
@@ -158,6 +159,7 @@ export default function ApprovalPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalComplete, setApprovalComplete] = useState<'approved' | 'rejected' | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: approvalRequest, isLoading, error } = useQuery<ApprovalRequest>({
     queryKey: ['approvalRequest', approvalId],
@@ -180,7 +182,7 @@ export default function ApprovalPage() {
         approvalRequest!.monthlyReport.year,
         approvalRequest!.monthlyReport.month
       ),
-    enabled: !!approvalRequest && approvalRequest.status === 'PENDING',
+    enabled: !!approvalRequest && (approvalRequest.status === 'PENDING' || approvalRequest.status === 'APPROVED'),
   });
 
   // 요약 통계 계산
@@ -306,6 +308,32 @@ export default function ApprovalPage() {
     await approveMutation.mutateAsync(signatureImage);
   };
 
+  const handleDownloadExcel = async () => {
+    if (!approvalRequest) return;
+    setIsDownloading(true);
+    try {
+      const { teamId, year, month } = approvalRequest.monthlyReport;
+      const params = new URLSearchParams({ teamId: String(teamId), year: String(year), month: String(month) });
+      const response = await fetch(`/api/tbm/monthly-excel?${params}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const teamName = approvalRequest.monthlyReport.team?.name || 'Team';
+      link.setAttribute('download', `TBM_${teamName}_${year}_${String(month).padStart(2, '0')}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      if (link.parentNode) link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "성공", description: "종합보고서가 다운로드되었습니다." });
+    } catch (error) {
+      toast({ title: "오류", description: "다운로드 중 오류가 발생했습니다.", variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
       toast({
@@ -372,29 +400,17 @@ export default function ApprovalPage() {
     );
   }
 
-  // 방금 처리 완료된 경우
-  if (approvalComplete) {
+  // 방금 반려된 경우만 간단 메시지
+  if (approvalComplete === 'rejected') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
-              {approvalComplete === 'approved' ? (
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              ) : (
-                <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              )}
-              <h2 className="text-xl font-semibold mb-2">
-                {approvalComplete === 'approved' ? '결재가 완료되었습니다' : '결재가 반려되었습니다'}
-              </h2>
-              <p className="text-muted-foreground mb-4">
-                {approvalComplete === 'approved'
-                  ? '결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.'
-                  : '결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.'}
-              </p>
-              <Button onClick={() => navigate('/')}>
-                대시보드로 이동
-              </Button>
+              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">결재가 반려되었습니다</h2>
+              <p className="text-muted-foreground mb-4">요청자에게 알림이 발송되었습니다.</p>
+              <Button onClick={() => navigate('/')}>대시보드로 이동</Button>
             </div>
           </CardContent>
         </Card>
@@ -402,32 +418,8 @@ export default function ApprovalPage() {
     );
   }
 
-  if (approvalRequest.status === 'APPROVED') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">결재가 완료되었습니다</h2>
-              <p className="text-muted-foreground mb-2">
-                이 문서는 이미 승인되었습니다.
-              </p>
-              <div className="text-sm text-muted-foreground space-y-1 mb-4">
-                <p>결재자: {approvalRequest.approver?.name || approvalRequest.approver?.username || '-'}</p>
-                <p>결재 일시: {approvalRequest.approvedAt ? new Date(approvalRequest.approvedAt).toLocaleString('ko-KR') : '-'}</p>
-              </div>
-              <Button
-                onClick={() => navigate('/')}
-              >
-                대시보드로 이동
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // APPROVED 또는 방금 승인 완료: 보고서 뷰어와 함께 표시 (아래 본문에서 처리)
+  const isApproved = approvalRequest.status === 'APPROVED' || approvalComplete === 'approved';
 
   if (approvalRequest.status === 'REJECTED') {
     return (
@@ -473,7 +465,9 @@ export default function ApprovalPage() {
               </div>
               <div>
                 <CardTitle className="text-xl lg:text-2xl">TBM 월별 보고서 결재</CardTitle>
-                <Badge variant="outline" className="mt-1">결재 대기</Badge>
+                <Badge variant={isApproved ? "default" : "outline"} className={`mt-1 ${isApproved ? 'bg-green-500' : ''}`}>
+                  {isApproved ? '결재 완료' : '결재 대기'}
+                </Badge>
               </div>
             </div>
           </CardHeader>
@@ -502,8 +496,37 @@ export default function ApprovalPage() {
                 </span>
               </div>
             </div>
+            {isApproved && (
+              <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-700">결재 완료</p>
+                  <p className="text-xs text-green-600">
+                    {approvalRequest.approvedAt ? new Date(approvalRequest.approvedAt).toLocaleString('ko-KR') : ''} | 결재자: {approvalRequest.approver?.name || '-'}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadExcel} disabled={isDownloading}>
+                  <Download className="h-4 w-4" />
+                  {isDownloading ? '다운로드 중...' : '종합보고서 다운로드'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* 다운로드 버튼 (PENDING) */}
+        {!isApproved && (
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">결재 전 보고서를 확인하세요</p>
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadExcel} disabled={isDownloading}>
+                  <Download className="h-4 w-4" />
+                  {isDownloading ? '다운로드 중...' : '종합보고서 다운로드'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* B-C. TBM 요약 및 일별 현황 */}
         {isMonthlyLoading ? (
@@ -713,8 +736,8 @@ export default function ApprovalPage() {
           </CardContent>
         </Card>
 
-        {/* E. 서명 + 결재 버튼 */}
-        <Card>
+        {/* E. 서명 + 결재 버튼 (PENDING만) */}
+        {!isApproved && <Card>
           <CardContent className="pt-6 space-y-4">
             {/* 서명 영역 */}
             <div className="space-y-2">
@@ -778,7 +801,14 @@ export default function ApprovalPage() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
+
+        {/* 대시보드 이동 (APPROVED) */}
+        {isApproved && (
+          <div className="text-center">
+            <Button variant="outline" onClick={() => navigate('/')}>대시보드로 이동</Button>
+          </div>
+        )}
 
         {/* 반려 사유 입력 Dialog */}
         <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
