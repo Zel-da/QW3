@@ -30,9 +30,17 @@ export const useSite = create<SiteState>()(
           return;
         }
 
-        // sites 배열이 있으면 해당 사이트들만 접근 가능
-        if (userSites && userSites.length > 0) {
-          const validSites = userSites.filter(s => s === '아산' || s === '화성') as Site[];
+        // sites 문자열("아산,화성") 또는 배열을 파싱
+        let parsedSites: string[] = [];
+        if (typeof userSites === 'string') {
+          parsedSites = userSites.split(',').map(s => s.trim()).filter(Boolean);
+        } else if (Array.isArray(userSites)) {
+          parsedSites = userSites;
+        }
+
+        // sites가 있으면 해당 사이트들만 접근 가능
+        if (parsedSites.length > 0) {
+          const validSites = parsedSites.filter(s => s === '아산' || s === '화성') as Site[];
           if (validSites.length > 0) {
             // 복수 사이트 접근 가능하면 '전체' 옵션 추가
             const sitesWithAll: Site[] = validSites.length > 1
