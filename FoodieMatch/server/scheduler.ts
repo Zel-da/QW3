@@ -235,13 +235,29 @@ export function scheduleApprovalReminders() {
       console.log(`📧 결재 미제출 알림 체크 (${year}년 ${month}월, ${dayOfMonth}일)...`);
 
       try {
-        // 모든 팀과 이번 달 결재 상태 조회
+        // TBM 작성 실적이 있는 팀만 대상 (이번 달 DailyReport가 1건 이상)
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59);
+        const activeTeamIds = await prisma.dailyReport.findMany({
+          where: { reportDate: { gte: startDate, lte: endDate } },
+          select: { teamId: true },
+          distinct: ['teamId'],
+        });
+        const tbmTeamIdSet = new Set(activeTeamIds.map(r => r.teamId));
+
+        if (tbmTeamIdSet.size === 0) {
+          console.log('📧 TBM 작성 팀 없음 — 알림 스킵');
+          return;
+        }
+
         const teams = await prisma.team.findMany({
+          where: { id: { in: Array.from(tbmTeamIdSet) } },
           include: {
             leader: { select: { id: true, name: true, username: true, email: true } },
           },
         });
 
+        // 이미 결재 제출한 팀 제외
         const approvals = await prisma.monthlyApproval.findMany({
           where: { year, month },
           include: { approvalRequest: true },
@@ -249,15 +265,18 @@ export function scheduleApprovalReminders() {
 
         const submittedTeamIds = new Set(
           approvals
-            .filter(a => a.approvalRequest)
+            .filter(a => a.approvalRequest && (a.approvalRequest.status === 'PENDING' || a.approvalRequest.status === 'APPROVED'))
             .map(a => a.teamId)
         );
 
-        // 미제출 팀의 팀장에게 이메일 발송
+        // 미제출 팀의 팀장에게 이메일 발송 (중복 방지: 같은 이메일로 1번만)
+        const sentEmails = new Set<string>();
         let sentCount = 0;
         for (const team of teams) {
-          if (submittedTeamIds.has(team.id)) continue; // 이미 제출됨
-          if (!team.leader?.email) continue; // 팀장 이메일 없음
+          if (submittedTeamIds.has(team.id)) continue;
+          if (!team.leader?.email) continue;
+          if (sentEmails.has(team.leader.email)) continue; // 같은 팀장이 여러 팀이면 1번만
+          sentEmails.add(team.leader.email);
 
           await sendEmailByType(
             'APPROVAL_REMINDER',
