@@ -911,25 +911,29 @@ export default function TeamManagementPage() {
                             <TableCell>
                               {isHeatTreatTeam ? (
                                 <Select
-                                  value={member.position || ''}
+                                  value={member.position || '기타'}
                                   onValueChange={(val) => {
                                     if (selectedTeamId) {
                                       updateMemberMutation.mutate({
                                         teamId: selectedTeamId,
                                         memberId: member.id,
                                         name: member.name,
-                                        position: val || undefined,
+                                        position: val,
                                       });
                                     }
                                   }}
                                 >
-                                  <SelectTrigger className="w-24 h-8">
-                                    <SelectValue placeholder="조 선택" />
+                                  <SelectTrigger className={`w-28 h-8 ${
+                                    member.position === '출근' ? 'border-green-500 text-green-700 font-semibold' :
+                                    member.position === '주간 담당' ? 'border-blue-500 text-blue-700 font-semibold' :
+                                    'border-gray-300 text-gray-500'
+                                  }`}>
+                                    <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="1조">1조</SelectItem>
-                                    <SelectItem value="2조">2조</SelectItem>
-                                    <SelectItem value="3조">3조</SelectItem>
+                                    <SelectItem value="출근">출근</SelectItem>
+                                    <SelectItem value="기타">기타</SelectItem>
+                                    <SelectItem value="주간 담당">주간 담당</SelectItem>
                                   </SelectContent>
                                 </Select>
                               ) : (
