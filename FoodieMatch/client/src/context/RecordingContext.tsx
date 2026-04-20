@@ -351,7 +351,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      mediaRecorder.start(1000);
+      // 30초 간격으로 청크 수집 (긴 녹음 시 메모리 효율: 20분=40청크 vs 1200청크)
+      mediaRecorder.start(30000);
 
       setState({
         status: 'recording',
@@ -397,12 +398,24 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
       mediaRecorderRef.current.onstop = async () => {
         const mimeType = mimeTypeRef.current;
+        console.log(`[Recording] 녹음 종료 — 청크 ${audioChunksRef.current.length}개, 총 ${audioChunksRef.current.reduce((a, b) => a + b.size, 0)} bytes`);
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log(`[Recording] Blob 생성 완료 — ${(blob.size / 1024 / 1024).toFixed(1)} MB`);
 
         // 스트림 정리
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
+        }
+
+        // Blob이 비정상적으로 작으면 경고 (녹음 실패 가능성)
+        if (blob.size < 1000 && finalDuration > 10) {
+          console.error('[Recording] 비정상 Blob — 크기가 너무 작음:', blob.size);
+          toast({
+            title: '녹음 오류',
+            description: '녹음 데이터가 비정상입니다. 다시 녹음해주세요.',
+            variant: 'destructive',
+          });
         }
 
         // IndexedDB에 저장 시도
@@ -506,7 +519,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      mediaRecorder.start(1000);
+      // 30초 간격으로 청크 수집 (재개 시에도 동일)
+      mediaRecorder.start(30000);
 
       setState(prev => ({
         ...prev,

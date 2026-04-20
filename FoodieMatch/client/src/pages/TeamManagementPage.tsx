@@ -55,6 +55,11 @@ const deleteTeamMember = async ({ teamId, memberId }: { teamId: number; memberId
   await apiRequest('DELETE', `/api/teams/${teamId}/team-members/${memberId}`);
 };
 
+const updateTeamMember = async ({ teamId, memberId, name, position }: { teamId: number; memberId: number; name: string; position?: string }) => {
+  const res = await apiRequest('PUT', `/api/teams/${teamId}/team-members/${memberId}`, { name, position });
+  return res.json();
+};
+
 const createTeam = async ({ name, site }: { name: string; site: string }) => {
   const res = await apiRequest('POST', '/api/teams', { name, site });
   return res.json();
@@ -220,6 +225,17 @@ export default function TeamManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeamId] });
     }
   });
+
+  const updateMemberMutation = useMutation({ mutationFn: updateTeamMember,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀원 정보가 수정되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teamMembers', selectedTeamId] });
+    }
+  });
+
+  // 현재 선택된 팀이 열처리 팀인지 판단
+  const selectedTeamData = teams?.find(t => t.id === selectedTeamId);
+  const isHeatTreatTeam = selectedTeamData?.name?.includes('열처리') || false;
 
   // Team CRUD mutations
   const createTeamMutation = useMutation({ mutationFn: createTeam,
@@ -892,7 +908,34 @@ export default function TeamManagementPage() {
                         {teamMembers.filter(m => m.isActive).map((member) => (
                           <TableRow key={member.id}>
                             <TableCell>{member.name}</TableCell>
-                            <TableCell>{member.position || '-'}</TableCell>
+                            <TableCell>
+                              {isHeatTreatTeam ? (
+                                <Select
+                                  value={member.position || ''}
+                                  onValueChange={(val) => {
+                                    if (selectedTeamId) {
+                                      updateMemberMutation.mutate({
+                                        teamId: selectedTeamId,
+                                        memberId: member.id,
+                                        name: member.name,
+                                        position: val || undefined,
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-24 h-8">
+                                    <SelectValue placeholder="조 선택" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1조">1조</SelectItem>
+                                    <SelectItem value="2조">2조</SelectItem>
+                                    <SelectItem value="3조">3조</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                member.position || '-'
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">
                               <Button
                                 variant="destructive"

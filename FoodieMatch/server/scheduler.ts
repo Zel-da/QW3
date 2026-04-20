@@ -219,6 +219,73 @@ export function scheduleSafetyInspectionReminders() {
   console.log('⏰ 안전점검 알림 스케줄러 시작 (매월 4일 오전 9시)');
 }
 
+export function scheduleApprovalReminders() {
+  // 매일 오전 8시 (매월 4일~말일에만 실행)
+  cron.schedule('0 8 * * *', async () => {
+    await runWithDuplicateProtection('approval-reminder', async () => {
+      const now = new Date();
+      const dayOfMonth = now.getDate();
+
+      // 매월 4일부터 체크 (1일 기준 3일 경과)
+      if (dayOfMonth < 4) return;
+
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      console.log(`📧 결재 미제출 알림 체크 (${year}년 ${month}월, ${dayOfMonth}일)...`);
+
+      try {
+        // 모든 팀과 이번 달 결재 상태 조회
+        const teams = await prisma.team.findMany({
+          include: {
+            leader: { select: { id: true, name: true, username: true, email: true } },
+          },
+        });
+
+        const approvals = await prisma.monthlyApproval.findMany({
+          where: { year, month },
+          include: { approvalRequest: true },
+        });
+
+        const submittedTeamIds = new Set(
+          approvals
+            .filter(a => a.approvalRequest)
+            .map(a => a.teamId)
+        );
+
+        // 미제출 팀의 팀장에게 이메일 발송
+        let sentCount = 0;
+        for (const team of teams) {
+          if (submittedTeamIds.has(team.id)) continue; // 이미 제출됨
+          if (!team.leader?.email) continue; // 팀장 이메일 없음
+
+          await sendEmailByType(
+            'APPROVAL_REMINDER',
+            team.leader.email,
+            team.leader.id,
+            {
+              teamName: team.name,
+              leaderName: team.leader.name || team.leader.username,
+              year: String(year),
+              month: String(month),
+              daysSinceDeadline: String(dayOfMonth - 1),
+            }
+          );
+          sentCount++;
+        }
+
+        if (sentCount > 0) {
+          console.log(`✅ ${sentCount}팀 결재 미제출 알림 전송`);
+        }
+      } catch (error) {
+        console.error('❌ 결재 미제출 알림 전송 실패:', error);
+      }
+    });
+  });
+
+  console.log('⏰ 결재 미제출 알림 스케줄러 시작 (매일 오전 8시, 4일부터)');
+}
+
 /**
  * 데이터베이스에서 이메일 스케줄을 로드하고 cron 작업 생성
  * (SimpleEmailConfig 모델 사용)
@@ -545,6 +612,9 @@ export async function startAllSchedulers() {
   // scheduleEducationReminders();    // DB에서 비활성화됨
   // scheduleTBMReminders();
   // scheduleSafetyInspectionReminders();  // DB에서 비활성화됨
+
+  // 결재 미제출 알림 (매월 4일부터 매일 8시)
+  scheduleApprovalReminders();
 
   // 데이터베이스 기반 동적 스케줄러
   await loadEmailSchedulesFromDB();

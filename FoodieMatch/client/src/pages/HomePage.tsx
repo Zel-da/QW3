@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Notice } from "@shared/schema";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
-import { FileText, BookOpen, BarChart3, ClipboardCheck, Search, Plus, ChevronRight, ImageIcon, X, ChevronLeft as ChevronLeftIcon, AlertCircle } from "lucide-react";
+import { FileText, BookOpen, BarChart3, ClipboardCheck, Search, Plus, ChevronRight, ImageIcon, X, ChevronLeft as ChevronLeftIcon, AlertCircle, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +101,7 @@ export default function HomePage() {
           </div>
 
           {/* 4개 메뉴 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
             <Card
               className="hover:shadow-lg transition-shadow cursor-pointer h-full"
               onClick={() => window.location.href = '/notices'}
@@ -136,6 +136,15 @@ export default function HomePage() {
                   <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-purple-600" />
                   <CardTitle className="text-xl mb-2">안전점검</CardTitle>
                   <CardDescription>매월 4일 안전점검 기록</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/documents">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardContent className="p-6 text-center">
+                  <FolderOpen className="w-12 h-12 mx-auto mb-4 text-teal-600" />
+                  <CardTitle className="text-xl mb-2">자료실</CardTitle>
+                  <CardDescription>위험성평가 및 교육자료</CardDescription>
                 </CardContent>
               </Card>
             </Link>

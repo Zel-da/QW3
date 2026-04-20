@@ -1832,6 +1832,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 월별 결재 상태 조회 (전체 팀 현황)
+  app.get("/api/monthly-approvals/status", requireAuth, async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string) || new Date().getFullYear();
+      const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1);
+      const site = req.query.site as string || '';
+
+      // 모든 팀 조회
+      const teams = await prisma.team.findMany({
+        where: site ? { site } : {},
+        include: { leader: { select: { id: true, name: true, username: true } } },
+        orderBy: { name: 'asc' },
+      });
+
+      // 해당 월 MonthlyApproval + ApprovalRequest 조회
+      const approvals = await prisma.monthlyApproval.findMany({
+        where: { year, month },
+        include: {
+          approvalRequest: {
+            include: {
+              requester: { select: { id: true, name: true, username: true } },
+              approver: { select: { id: true, name: true, username: true } },
+            }
+          }
+        }
+      });
+
+      const approvalMap = new Map(approvals.map(a => [a.teamId, a]));
+
+      const result = teams.map(team => {
+        const approval = approvalMap.get(team.id);
+        const ar = approval?.approvalRequest;
+        let status = '미제출';
+        if (ar) {
+          status = ar.status === 'APPROVED' ? '승인완료' : ar.status === 'REJECTED' ? '반려' : '대기중';
+        }
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          site: team.site,
+          leaderName: team.leader?.name || team.leader?.username || '-',
+          status,
+          requesterName: ar?.requester?.name || ar?.requester?.username || null,
+          requestedAt: ar?.createdAt || null,
+          approvedAt: ar?.approvedAt || null,
+          approverName: ar?.approver?.name || ar?.approver?.username || null,
+          rejectionReason: ar?.rejectionReason || null,
+        };
+      });
+
+      const summary = {
+        total: result.length,
+        approved: result.filter(r => r.status === '승인완료').length,
+        pending: result.filter(r => r.status === '대기중').length,
+        rejected: result.filter(r => r.status === '반려').length,
+        notSubmitted: result.filter(r => r.status === '미제출').length,
+      };
+
+      res.json({ teams: result, summary });
+    } catch (error) {
+      console.error("[Monthly Approval Status] ERROR:", error);
+      res.status(500).json({ message: "결재 현황 조회 실패" });
+    }
+  });
+
   // 결재 요청 생성 (기존 엔드포인트 - ApprovalPage에서 사용)
   app.post("/api/approvals/request", requireAuth, requireRole('TEAM_LEADER', 'EXECUTIVE_LEADER', 'ADMIN'), async (req, res) => {
     try {
@@ -2961,7 +3027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { noticeId } = req.params;
       const userId = req.session.user!.id;
 
-      // Upsert: create if not exists, do nothing if exists
+      // Upsert: create if not exists, increment readCount if exists
       await prisma.noticeRead.upsert({
         where: {
           noticeId_userId: {
@@ -2969,10 +3035,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId
           }
         },
-        update: {}, // Already read, do nothing
+        update: {
+          lastReadAt: new Date(),
+          readCount: { increment: 1 },
+        },
         create: {
           noticeId,
-          userId
+          userId,
+          lastReadAt: new Date(),
+          readCount: 1,
         }
       });
 
@@ -2980,6 +3051,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to mark notice as read:', error);
       res.status(500).json({ message: "Failed to mark notice as read" });
+    }
+  });
+
+  // 공지 조회자 목록 (작성자 + ADMIN만 접근)
+  app.get("/api/notices/:noticeId/readers", requireAuth, async (req, res) => {
+    try {
+      const { noticeId } = req.params;
+      const userId = req.session.user!.id;
+      const userRole = req.session.user!.role;
+
+      // 공지 작성자 확인
+      const notice = await prisma.notice.findUnique({
+        where: { id: noticeId },
+        select: { authorId: true },
+      });
+      if (!notice) return res.status(404).json({ message: "공지를 찾을 수 없습니다" });
+
+      // 작성자 또는 ADMIN만 접근 가능
+      if (notice.authorId !== userId && userRole !== 'ADMIN') {
+        return res.status(403).json({ message: "조회 권한이 없습니다" });
+      }
+
+      const readers = await prisma.noticeRead.findMany({
+        where: { noticeId },
+        include: {
+          user: { select: { id: true, name: true, username: true, role: true, site: true } },
+        },
+        orderBy: { readAt: 'desc' },
+      });
+
+      const result = readers.map(r => ({
+        userId: r.userId,
+        userName: r.user.name || r.user.username,
+        role: r.user.role,
+        site: r.user.site,
+        firstReadAt: r.readAt,
+        lastReadAt: r.lastReadAt,
+        readCount: r.readCount,
+      }));
+
+      res.json({ readers: result, totalReaders: result.length });
+    } catch (error) {
+      console.error('Failed to get notice readers:', error);
+      res.status(500).json({ message: "조회자 목록을 불러올 수 없습니다" });
     }
   });
 
@@ -9844,6 +9959,107 @@ ${JSON.stringify(toolResults, null, 2)}
       } else {
         res.end();
       }
+    }
+  });
+
+  // ==================== 자료실 (Documents) ====================
+
+  // 자료 목록 조회
+  app.get("/api/documents", requireAuth, async (req, res) => {
+    try {
+      const { category, site, department } = req.query;
+      const where: any = {};
+      if (category) where.category = category;
+      if (site) where.site = site;
+      if (department) where.department = department;
+
+      const documents = await prisma.document.findMany({
+        where,
+        include: { author: { select: { id: true, name: true, username: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(documents);
+    } catch (error) {
+      console.error("Failed to list documents:", error);
+      res.status(500).json({ message: "자료 목록 조회 실패" });
+    }
+  });
+
+  // 자료 상세 조회
+  app.get("/api/documents/:id", requireAuth, async (req, res) => {
+    try {
+      const doc = await prisma.document.findUnique({
+        where: { id: parseInt(req.params.id) },
+        include: { author: { select: { id: true, name: true, username: true } } },
+      });
+      if (!doc) return res.status(404).json({ message: "자료를 찾을 수 없습니다" });
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ message: "자료 조회 실패" });
+    }
+  });
+
+  // 자료 등록 (ADMIN, SAFETY_TEAM만)
+  app.post("/api/documents", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { title, description, category, type, site, department, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
+
+      if (!title || !category) {
+        return res.status(400).json({ message: "제목과 카테고리는 필수입니다" });
+      }
+
+      const doc = await prisma.document.create({
+        data: {
+          title, description, category, type: type || 'OTHER',
+          site: site || null, department: department || null,
+          fileUrl: fileUrl || null, fileName: fileName || null,
+          fileSize: fileSize || null, mimeType: mimeType || null,
+          videoUrl: videoUrl || null, videoType: videoType || null,
+          authorId: req.session.user!.id,
+        },
+        include: { author: { select: { id: true, name: true, username: true } } },
+      });
+
+      res.status(201).json(doc);
+    } catch (error) {
+      console.error("Failed to create document:", error);
+      res.status(500).json({ message: "자료 등록 실패" });
+    }
+  });
+
+  // 자료 수정
+  app.put("/api/documents/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { title, description, category, type, site, department, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
+
+      const doc = await prisma.document.update({
+        where: { id: parseInt(req.params.id) },
+        data: {
+          title, description, category, type,
+          site: site || null, department: department || null,
+          fileUrl: fileUrl || null, fileName: fileName || null,
+          fileSize: fileSize || null, mimeType: mimeType || null,
+          videoUrl: videoUrl || null, videoType: videoType || null,
+        },
+        include: { author: { select: { id: true, name: true, username: true } } },
+      });
+
+      res.json(doc);
+    } catch (error) {
+      console.error("Failed to update document:", error);
+      res.status(500).json({ message: "자료 수정 실패" });
+    }
+  });
+
+  // 자료 삭제
+  app.delete("/api/documents/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      await prisma.document.delete({ where: { id: parseInt(req.params.id) } });
+      res.json({ message: "삭제되었습니다" });
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      res.status(500).json({ message: "자료 삭제 실패" });
     }
   });
 

@@ -213,7 +213,7 @@ export default function MonthlyReportPage() {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1
   });
-  const [activeTab, setActiveTab] = useState<'attendance' | 'statistics' | 'comprehensive'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'statistics' | 'comprehensive' | 'approval'>('attendance');
 
   const reportDetailRef = useRef<HTMLDivElement>(null);
 
@@ -338,6 +338,17 @@ export default function MonthlyReportPage() {
     queryKey: ['team-members', selectedTeam],
     queryFn: () => fetchTeamMembers(selectedTeam!),
     enabled: !!selectedTeam,
+  });
+
+  // 결재 현황 조회
+  const { data: approvalStatus } = useQuery<any>({
+    queryKey: ['monthly-approval-status', date.year, date.month, site],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-approvals/status?year=${date.year}&month=${date.month}&site=${encodeURIComponent(site)}`);
+      if (!res.ok) throw new Error('결재 현황 조회 실패');
+      return res.json();
+    },
+    enabled: !!site,
   });
 
   // Education approval status query (현재 보고 기간 기준)
@@ -2285,8 +2296,72 @@ export default function MonthlyReportPage() {
                 )}
               </div>
             )}
+
+            {/* 결재 현황 — TBM 작성 팀만 표시 */}
+            {approvalStatus && (
+              (() => {
+                // attendanceOverview에 있는 팀만 필터 (실제 TBM 작성 팀)
+                const tbmTeamIds = new Set(attendanceOverview?.teams?.map((t: any) => t.teamId) || []);
+                const tbmTeams = approvalStatus.teams?.filter((t: any) => tbmTeamIds.has(t.teamId)) || [];
+                const approved = tbmTeams.filter((t: any) => t.status === '승인완료').length;
+                const pending = tbmTeams.filter((t: any) => t.status === '대기중').length;
+                const rejected = tbmTeams.filter((t: any) => t.status === '반려').length;
+                const notSubmitted = tbmTeams.filter((t: any) => t.status === '미제출').length;
+
+                return (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">{date.year}년 {date.month}월 결재 현황</CardTitle>
+                      <div className="flex gap-4 text-sm mt-1">
+                        <span className="text-green-600 font-medium">승인 {approved}</span>
+                        <span className="text-yellow-600 font-medium">대기 {pending}</span>
+                        {rejected > 0 && <span className="text-red-600 font-medium">반려 {rejected}</span>}
+                        <span className="text-red-500 font-medium">미제출 {notSubmitted}</span>
+                        <span className="text-muted-foreground">전체 {tbmTeams.length}팀</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>팀명</TableHead>
+                            <TableHead>팀장</TableHead>
+                            <TableHead>상태</TableHead>
+                            <TableHead>요청자</TableHead>
+                            <TableHead>요청일</TableHead>
+                            <TableHead>결재자</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tbmTeams.map((t: any) => (
+                            <TableRow key={t.teamId}>
+                              <TableCell className="font-medium">{t.teamName}</TableCell>
+                              <TableCell>{t.leaderName}</TableCell>
+                              <TableCell>
+                                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                  t.status === '승인완료' ? 'bg-green-100 text-green-800' :
+                                  t.status === '대기중' ? 'bg-yellow-100 text-yellow-800' :
+                                  t.status === '반려' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {t.status}
+                                </span>
+                              </TableCell>
+                              <TableCell>{t.requesterName || '-'}</TableCell>
+                              <TableCell>{t.requestedAt ? new Date(t.requestedAt).toLocaleDateString('ko-KR') : '-'}</TableCell>
+                              <TableCell>{t.approverName || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                );
+              })()
+            )}
           </TabsContent>
           )}
+
         </Tabs>
 
         {/* Comprehensive Excel Download Date Picker Dialog */}

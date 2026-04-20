@@ -16,7 +16,8 @@ import {
   Calendar,
   ChevronRight,
   Clock,
-  X
+  X,
+  FolderOpen
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
@@ -304,6 +305,16 @@ export default function DashboardHomePage() {
         : '점검 시작하기',
       showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER',
     },
+    {
+      title: '자료실',
+      description: '위험성평가 및 교육자료',
+      icon: FolderOpen,
+      color: 'text-teal-500',
+      bgColor: 'bg-teal-50 hover:bg-teal-100',
+      path: '/documents',
+      stats: '자료 열람',
+      showToAll: true,
+    },
   ];
 
   const visibleCards = menuCards.filter(card => card.showToAll);
@@ -543,7 +554,7 @@ export default function DashboardHomePage() {
         </div>
 
         {/* 메뉴 카드 그리드 - 모바일에서 2열 */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6 max-w-6xl mx-auto">
           {visibleCards.map((card) => {
             const Icon = card.icon;
             return (

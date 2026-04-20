@@ -51,6 +51,7 @@ const InspectionGalleryPage = lazy(() => import("./pages/InspectionGalleryPage")
 const ApprovalPage = lazy(() => import("./pages/ApprovalPage"));
 const ApprovalHistoryPage = lazy(() => import("./pages/ApprovalHistoryPage"));
 const EducationApprovalPage = lazy(() => import("./pages/EducationApprovalPage"));
+const DocumentLibraryPage = lazy(() => import("./pages/DocumentLibraryPage"));
 
 // 관리 페이지
 const TeamManagementPage = lazy(() => import("./pages/TeamManagementPage"));
@@ -143,6 +144,11 @@ function App() {
               <Route path="/education">
                 <ProtectedRoute roles={ACTIVE_ROLES}>
                   <Dashboard />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/documents">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <DocumentLibraryPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/courses">

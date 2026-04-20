@@ -309,6 +309,9 @@ export function Header() {
           안전점검
         </Link>
       )}
+      <Link href="/documents" onClick={(e) => handleNavClick(e, '/documents')} className={getLinkClass('/documents')}>
+        자료실
+      </Link>
       {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER' || user?.role === 'APPROVER') && (
         <>
           <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={getLinkClass('/monthly-report')}>
@@ -417,6 +420,9 @@ export function Header() {
                           안전점검
                         </Link>
                     )}
+                    <Link href="/documents" onClick={(e) => handleNavClick(e, '/documents')} className={`${getLinkClass('/documents')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>
+                      자료실
+                    </Link>
                     {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER' || user?.role === 'APPROVER') && (
                       <>
                         <Link href="/monthly-report" onClick={(e) => handleNavClick(e, '/monthly-report')} className={`${getLinkClass('/monthly-report')} min-h-[44px] px-3 py-2 rounded-lg hover:bg-accent`}>

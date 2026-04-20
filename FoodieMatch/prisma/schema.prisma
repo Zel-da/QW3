@@ -39,6 +39,7 @@ model User {
   auditLogs              AuditLog[]        @relation("AuditLogUser") // 감사 로그
   educationApprovalRequests   EducationApproval[] @relation("EducationApprovalRequester")
   educationApprovalsToApprove EducationApproval[] @relation("EducationApprovalApprover")
+  documents              Document[]        @relation("DocumentAuthor")
 
   @@index([teamId])
   @@index([role])
@@ -88,12 +89,14 @@ model Notice {
 }
 
 model NoticeRead {
-  id        String   @id @default(uuid())
-  noticeId  String
-  userId    String
-  readAt    DateTime @default(now())
-  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  noticeId   String
+  userId     String
+  readAt     DateTime @default(now())
+  lastReadAt DateTime @default(now())
+  readCount  Int      @default(1)
+  notice     Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([noticeId, userId])
   @@index([userId])
@@ -685,4 +688,30 @@ model AppSetting {
   key   String @id
   value String
   @@map("AppSettings")
+}
+
+model Document {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  category    String    // RISK_ASSESSMENT, EDUCATION_MATERIAL
+  type        String    // PDF, PPT, VIDEO, OTHER
+  site        String?   // 아산, 화성, null=전체
+  department  String?   // 부서명
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  videoUrl    String?   // 영상 링크
+  videoType   String?   // youtube, file
+  authorId    String
+  author      User      @relation("DocumentAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([category])
+  @@index([site])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("Documents")
 }

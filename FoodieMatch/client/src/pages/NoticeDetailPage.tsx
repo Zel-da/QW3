@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, X, ChevronLeft, ChevronRight, ZoomIn, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, X, ChevronLeft, ChevronRight, ZoomIn, MoreVertical, Pencil, Trash2, Eye, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import type { Notice, Comment as CommentType } from "@shared/schema";
@@ -92,6 +92,18 @@ export default function NoticeDetailPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [showReaders, setShowReaders] = useState(false);
+
+  // 조회자 목록 (작성자/ADMIN용)
+  const { data: readersData } = useQuery({
+    queryKey: ['/api/notices', noticeId, 'readers'],
+    queryFn: async () => {
+      const resp = await fetch(`/api/notices/${noticeId}/readers`, { credentials: 'include' });
+      if (!resp.ok) return null;
+      return resp.json();
+    },
+    enabled: showReaders && !!noticeId,
+  });
 
   // 댓글 작성 자동 임시저장
   const autoSaveKey = `comment_draft_${noticeId}`;
@@ -384,7 +396,60 @@ export default function NoticeDetailPage() {
                 <span>작성자: {sanitizeText(notice.author?.name || notice.author?.username || '관리자')}</span>
                 <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
                 <span>조회수: {notice.viewCount}</span>
+                {(user?.role === 'ADMIN' || user?.id === notice.authorId) && (
+                  <button
+                    onClick={() => setShowReaders(!showReaders)}
+                    className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                  >
+                    <Users className="w-4 h-4" />
+                    조회자 보기
+                    {showReaders ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                )}
               </div>
+              {/* 조회자 목록 패널 */}
+              {showReaders && readersData && (
+                <div className="mt-4 border rounded-lg overflow-hidden">
+                  <div className="bg-muted px-4 py-2 flex items-center justify-between">
+                    <span className="text-sm font-medium">조회자 목록 ({readersData.totalReaders}명)</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium">이름</th>
+                          <th className="text-left px-4 py-2 font-medium">역할</th>
+                          <th className="text-left px-4 py-2 font-medium">사이트</th>
+                          <th className="text-left px-4 py-2 font-medium">최초 확인</th>
+                          <th className="text-left px-4 py-2 font-medium">최근 확인</th>
+                          <th className="text-right px-4 py-2 font-medium">조회수</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {readersData.readers?.map((r: any) => (
+                          <tr key={r.userId} className="border-t hover:bg-accent/50">
+                            <td className="px-4 py-2">{r.userName}</td>
+                            <td className="px-4 py-2">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                r.role === 'ADMIN' ? 'bg-red-100 text-red-700' :
+                                r.role === 'TEAM_LEADER' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>{r.role}</span>
+                            </td>
+                            <td className="px-4 py-2 text-muted-foreground">{r.site || '-'}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{new Date(r.firstReadAt).toLocaleString('ko-KR')}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{new Date(r.lastReadAt).toLocaleString('ko-KR')}</td>
+                            <td className="px-4 py-2 text-right font-mono">{r.readCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(!readersData.readers || readersData.readers.length === 0) && (
+                      <p className="text-center text-muted-foreground py-4 text-sm">아직 조회한 사람이 없습니다</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0">
               {/* 메인 이미지 섹션 */}

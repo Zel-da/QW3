@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { X, ChevronLeft, ChevronRight, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCw, ZoomIn, ZoomOut, GalleryHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ImageInfo {
@@ -30,6 +30,7 @@ export function ImageViewer({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [localRotation, setLocalRotation] = useState(0); // 뷰어 내 임시 회전 (저장 안됨)
   const [zoom, setZoom] = useState(1);
+  const [showThumbnails, setShowThumbnails] = useState(true);
 
   // 이미지 변경 시 초기화
   useEffect(() => {
@@ -201,6 +202,22 @@ export function ImageViewer({
             회전 저장
           </button>
         )}
+        {/* 썸네일 토글 (3개 이상) */}
+        {images.length >= 3 && (
+          <>
+            <div className="w-px h-6 bg-white/30 mx-1" />
+            <button
+              className={cn(
+                "text-white h-10 w-10 rounded-full flex items-center justify-center transition-colors",
+                showThumbnails ? "bg-white/30" : "hover:bg-white/20"
+              )}
+              onClick={() => setShowThumbnails(!showThumbnails)}
+              title="썸네일 보기/숨기기"
+            >
+              <GalleryHorizontal className="h-5 w-5" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* 이미지 */}
@@ -222,9 +239,9 @@ export function ImageViewer({
         />
       </div>
 
-      {/* 썸네일 네비게이션 (이미지 3개 이상일 때) */}
-      {images.length >= 3 && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[10000] flex gap-2 bg-black/60 rounded-lg p-2 max-w-[80vw] overflow-x-auto">
+      {/* 썸네일 네비게이션 (이미지 3개 이상 + 토글 ON) */}
+      {images.length >= 3 && showThumbnails && (
+        <div className="absolute bottom-16 md:bottom-16 lg:bottom-20 left-1/2 -translate-x-1/2 z-[10000] flex gap-1.5 md:gap-2 bg-black/60 rounded-lg p-1.5 md:p-2 max-w-[90vw] md:max-w-[80vw] overflow-x-auto">
           {images.map((img, idx) => (
             <button
               key={idx}
@@ -234,7 +251,7 @@ export function ImageViewer({
                 setZoom(1);
               }}
               className={cn(
-                "w-14 h-14 rounded overflow-hidden flex-shrink-0 border-2 transition-colors",
+                "w-10 h-10 md:w-14 md:h-14 rounded overflow-hidden flex-shrink-0 border-2 transition-colors",
                 idx === currentIndex
                   ? "border-white"
                   : "border-transparent hover:border-white/50"
