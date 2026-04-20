@@ -415,7 +415,7 @@ export default function NoticeDetailPage() {
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted/50 sticky top-0">
+                      <thead className="bg-muted sticky top-0 z-10">
                         <tr>
                           <th className="text-left px-4 py-2 font-medium">이름</th>
                           <th className="text-left px-4 py-2 font-medium">역할</th>
