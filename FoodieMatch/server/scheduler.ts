@@ -220,89 +220,73 @@ export function scheduleSafetyInspectionReminders() {
 }
 
 export function scheduleApprovalReminders() {
-  // 매일 오전 8시 (매월 4일~말일에만 실행)
+  // 매일 오전 8시 — 결재 요청 후 3일 이상 미승인 시 결재자(임원)에게 독촉
   cron.schedule('0 8 * * *', async () => {
     await runWithDuplicateProtection('approval-reminder', async () => {
       const now = new Date();
-      const dayOfMonth = now.getDate();
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-      // 매월 4일부터 체크 (1일 기준 3일 경과)
-      if (dayOfMonth < 4) return;
-
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-
-      console.log(`📧 결재 미제출 알림 체크 (${year}년 ${month}월, ${dayOfMonth}일)...`);
+      console.log(`📧 결재 독촉 체크 (3일 초과 미승인 건)...`);
 
       try {
-        // TBM 작성 실적이 있는 팀만 대상 (이번 달 DailyReport가 1건 이상)
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0, 23, 59, 59);
-        const activeTeamIds = await prisma.dailyReport.findMany({
-          where: { reportDate: { gte: startDate, lte: endDate } },
-          select: { teamId: true },
-          distinct: ['teamId'],
-        });
-        const tbmTeamIdSet = new Set(activeTeamIds.map(r => r.teamId));
-
-        if (tbmTeamIdSet.size === 0) {
-          console.log('📧 TBM 작성 팀 없음 — 알림 스킵');
-          return;
-        }
-
-        const teams = await prisma.team.findMany({
-          where: { id: { in: Array.from(tbmTeamIdSet) } },
+        // 3일 이상 PENDING 상태인 결재 요청 조회
+        const pendingRequests = await prisma.approvalRequest.findMany({
+          where: {
+            status: 'PENDING',
+            requestedAt: { lte: threeDaysAgo },
+          },
           include: {
-            leader: { select: { id: true, name: true, username: true, email: true } },
+            approver: { select: { id: true, name: true, username: true, email: true } },
+            requester: { select: { id: true, name: true, username: true } },
+            monthlyApproval: {
+              include: { team: { select: { name: true } } }
+            },
           },
         });
 
-        // 이미 결재 제출한 팀 제외
-        const approvals = await prisma.monthlyApproval.findMany({
-          where: { year, month },
-          include: { approvalRequest: true },
-        });
+        if (pendingRequests.length === 0) {
+          console.log('📧 3일 초과 미승인 건 없음 — 스킵');
+          return;
+        }
 
-        const submittedTeamIds = new Set(
-          approvals
-            .filter(a => a.approvalRequest && (a.approvalRequest.status === 'PENDING' || a.approvalRequest.status === 'APPROVED'))
-            .map(a => a.teamId)
-        );
-
-        // 미제출 팀의 팀장에게 이메일 발송 (중복 방지: 같은 이메일로 1번만)
+        // 같은 결재자에게 중복 발송 방지
         const sentEmails = new Set<string>();
         let sentCount = 0;
-        for (const team of teams) {
-          if (submittedTeamIds.has(team.id)) continue;
-          if (!team.leader?.email) continue;
-          if (sentEmails.has(team.leader.email)) continue; // 같은 팀장이 여러 팀이면 1번만
-          sentEmails.add(team.leader.email);
+
+        for (const req of pendingRequests) {
+          if (!req.approver?.email) continue;
+          if (sentEmails.has(req.approver.email)) continue;
+          sentEmails.add(req.approver.email);
+
+          const teamName = req.monthlyApproval?.team?.name || '알 수 없음';
+          const daysSince = Math.floor((now.getTime() - new Date(req.requestedAt).getTime()) / (24 * 60 * 60 * 1000));
 
           await sendEmailByType(
             'APPROVAL_REMINDER',
-            team.leader.email,
-            team.leader.id,
+            req.approver.email,
+            req.approver.id,
             {
-              teamName: team.name,
-              leaderName: team.leader.name || team.leader.username,
-              year: String(year),
-              month: String(month),
-              daysSinceDeadline: String(dayOfMonth - 1),
+              teamName,
+              leaderName: req.approver.name || req.approver.username,
+              requesterName: req.requester?.name || req.requester?.username || '',
+              year: String(req.monthlyApproval?.year || now.getFullYear()),
+              month: String(req.monthlyApproval?.month || now.getMonth() + 1),
+              daysSinceDeadline: String(daysSince),
             }
           );
           sentCount++;
         }
 
         if (sentCount > 0) {
-          console.log(`✅ ${sentCount}팀 결재 미제출 알림 전송`);
+          console.log(`✅ ${sentCount}명 결재자에게 독촉 알림 전송`);
         }
       } catch (error) {
-        console.error('❌ 결재 미제출 알림 전송 실패:', error);
+        console.error('❌ 결재 독촉 알림 전송 실패:', error);
       }
     });
   });
 
-  console.log('⏰ 결재 미제출 알림 스케줄러 시작 (매일 오전 8시, 4일부터)');
+  console.log('⏰ 결재 독촉 알림 스케줄러 시작 (매일 오전 8시, PENDING 3일 초과 시 결재자에게)');
 }
 
 /**
