@@ -6,9 +6,10 @@
  * - 캐시 우선 전략 (정적 파일)
  */
 
-const CACHE_NAME = 'safety-platform-v1';
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+// v2: /assets/ 우회 + Content-Type 검증으로 HTML 폴백이 JS/CSS 자리에 캐싱되는 오염 방지
+const CACHE_NAME = 'safety-platform-v2';
+const STATIC_CACHE = 'static-v2';
+const DYNAMIC_CACHE = 'dynamic-v2';
 
 // 정적 자산 (앱 셸) - 항상 캐싱
 const STATIC_ASSETS = [
@@ -22,8 +23,11 @@ const STATIC_ASSETS = [
 const API_PATTERNS = ['/api/'];
 
 // 캐시 제외 패턴
+// /assets/는 Vite content-hash 청크 — 파일명이 immutable이라 SW 캐싱 불필요.
+// 브라우저 HTTP 캐시가 처리하며, 배포 중 SPA 폴백이 .js 자리에 HTML로 캐싱되는 오염을 원천 차단.
 const NO_CACHE_PATTERNS = [
   '/api/',
+  '/assets/',
   'chrome-extension://',
   'sockjs-node',
   '__vite',
@@ -108,6 +112,19 @@ function isStaticAsset(url) {
 }
 
 /**
+ * 응답 Content-Type이 요청 URL의 확장자와 맞는지 검증.
+ * 배포 중 .js/.css가 SPA 폴백으로 HTML 응답을 받아 캐시에 박히는 사고를 방지.
+ */
+function isResponseValidForUrl(url, response) {
+  const ct = (response.headers.get('content-type') || '').toLowerCase();
+  if (url.endsWith('.js')) return ct.includes('javascript') || ct.includes('ecmascript');
+  if (url.endsWith('.css')) return ct.includes('css');
+  if (url.endsWith('.woff') || url.endsWith('.woff2')) return ct.includes('font') || ct.includes('woff');
+  // 이미지·기타는 검증 생략 (대부분 정상)
+  return true;
+}
+
+/**
  * 페치 이벤트 - 네트워크 요청 가로채기
  */
 self.addEventListener('fetch', (event) => {
@@ -151,10 +168,11 @@ self.addEventListener('fetch', (event) => {
       caches.match(request)
         .then((cachedResponse) => {
           if (cachedResponse) {
-            // 캐시 히트 - 백그라운드에서 업데이트
+            // 캐시 히트 - 백그라운드에서 업데이트 (Content-Type 검증 통과 시에만)
             fetch(request)
               .then((networkResponse) => {
-                if (networkResponse && networkResponse.status === 200) {
+                if (networkResponse && networkResponse.status === 200 &&
+                    isResponseValidForUrl(url, networkResponse)) {
                   caches.open(DYNAMIC_CACHE)
                     .then((cache) => cache.put(request, networkResponse.clone()));
                 }
@@ -163,10 +181,11 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse;
           }
 
-          // 캐시 미스 - 네트워크에서 가져오기
+          // 캐시 미스 - 네트워크에서 가져오기 (Content-Type 검증 통과 시에만 캐싱)
           return fetch(request)
             .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
+              if (networkResponse && networkResponse.status === 200 &&
+                  isResponseValidForUrl(url, networkResponse)) {
                 const responseClone = networkResponse.clone();
                 caches.open(DYNAMIC_CACHE)
                   .then((cache) => cache.put(request, responseClone));
