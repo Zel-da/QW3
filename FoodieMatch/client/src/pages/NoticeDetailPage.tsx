@@ -418,7 +418,7 @@ export default function NoticeDetailPage() {
                       <thead className="bg-muted sticky top-0 z-10">
                         <tr>
                           <th className="text-left px-4 py-2 font-medium">이름</th>
-                          <th className="text-left px-4 py-2 font-medium">역할</th>
+                          <th className="text-left px-4 py-2 font-medium">부서명</th>
                           <th className="text-left px-4 py-2 font-medium">사이트</th>
                           <th className="text-left px-4 py-2 font-medium">최초 확인</th>
                           <th className="text-left px-4 py-2 font-medium">최근 확인</th>
@@ -429,13 +429,7 @@ export default function NoticeDetailPage() {
                         {readersData.readers?.map((r: any) => (
                           <tr key={r.userId} className="border-t hover:bg-accent/50">
                             <td className="px-4 py-2">{r.userName}</td>
-                            <td className="px-4 py-2">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                r.role === 'ADMIN' ? 'bg-red-100 text-red-700' :
-                                r.role === 'TEAM_LEADER' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>{r.role}</span>
-                            </td>
+                            <td className="px-4 py-2 text-muted-foreground">{r.teamName || '-'}</td>
                             <td className="px-4 py-2 text-muted-foreground">{r.site || '-'}</td>
                             <td className="px-4 py-2 text-muted-foreground">{new Date(r.firstReadAt).toLocaleString('ko-KR')}</td>
                             <td className="px-4 py-2 text-muted-foreground">{new Date(r.lastReadAt).toLocaleString('ko-KR')}</td>

@@ -332,6 +332,45 @@ export default function ApprovalPage() {
     };
   }, [monthlyData, approvalRequest]);
 
+  // 이상 항목(△/X) 평탄화 — 날짜 오름차순
+  const issueRows = useMemo(() => {
+    if (!monthlyData?.dailyReports) return [];
+    const itemMap = new Map<number, string>();
+    (monthlyData.checklistTemplate?.templateItems || []).forEach((item) => {
+      itemMap.set(item.id, item.description);
+    });
+    const rows: {
+      key: string;
+      sortKey: number;
+      dateStr: string;
+      itemDescription: string;
+      checkState: string;
+      actionDescription?: string;
+      actionTaken?: string;
+    }[] = [];
+    for (const report of monthlyData.dailyReports) {
+      const date = new Date(report.reportDate);
+      const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+      for (const d of report.reportDetails) {
+        const s = d.checkState?.toUpperCase();
+        const isIssue =
+          s === 'X' || s === 'BAD' || s === 'NG' || s === '불량' || s === '×' ||
+          s === '△' || s === 'WARNING' || s === '주의';
+        if (!isIssue) continue;
+        rows.push({
+          key: `${report.id}-${d.id}`,
+          sortKey: date.getTime(),
+          dateStr,
+          itemDescription: itemMap.get(d.itemId) ?? '-',
+          checkState: d.checkState ?? '',
+          actionDescription: d.actionDescription,
+          actionTaken: d.actionTaken,
+        });
+      }
+    }
+    return rows.sort((a, b) => a.sortKey - b.sortKey);
+  }, [monthlyData]);
+
   const approveMutation = useMutation({
     mutationFn: async (signature: string) => {
       const res = await axios.post(`/api/approvals/${approvalId}/approve`, {
@@ -720,10 +759,10 @@ export default function ApprovalPage() {
               </Card>
             </div>
 
-            {/* C. 일별 작성 현황 테이블 */}
+            {/* C. 이상 항목 내역 (△/X) */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">일별 작성 현황</CardTitle>
+                <CardTitle className="text-base">이상 항목 내역</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="max-h-[400px] overflow-auto rounded-md border">
@@ -731,55 +770,39 @@ export default function ApprovalPage() {
                     <TableHeader>
                       <TableRow className="bg-muted/50">
                         <TableHead className="w-[100px]">날짜</TableHead>
-                        <TableHead>작성자</TableHead>
-                        <TableHead className="text-center">서명</TableHead>
-                        <TableHead className="text-center">점검상태</TableHead>
-                        <TableHead>비고</TableHead>
+                        <TableHead>점검항목</TableHead>
+                        <TableHead className="w-[80px] text-center">상태</TableHead>
+                        <TableHead>위험예측</TableHead>
+                        <TableHead>조치사항</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {monthlyData.dailyReports.length > 0 ? (
-                        monthlyData.dailyReports.map((report) => {
-                          const badCount = report.reportDetails.filter((d) => {
-                            const s = d.checkState?.toUpperCase();
-                            return s === 'X' || s === 'BAD' || s === 'NG' || s === '불량' || s === '×'
-                              || s === '△' || s === 'WARNING' || s === '주의';
-                          }).length;
-                          const date = new Date(report.reportDate);
-                          const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
-                          const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                          const dayStr = dayNames[date.getDay()];
-
+                      {issueRows.length > 0 ? (
+                        issueRows.map((row) => {
+                          const isBad = row.checkState === 'X' || row.checkState === '×' ||
+                            row.checkState.toUpperCase() === 'BAD' ||
+                            row.checkState.toUpperCase() === 'NG' ||
+                            row.checkState === '불량';
                           return (
-                            <TableRow key={report.id}>
+                            <TableRow key={row.key}>
                               <TableCell className="font-medium whitespace-nowrap">
-                                {dateStr} ({dayStr})
+                                {row.dateStr}
                               </TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                {report.managerName || '-'}
-                              </TableCell>
+                              <TableCell className="text-sm">{row.itemDescription}</TableCell>
                               <TableCell className="text-center">
-                                {report.reportSignatures.length > 0 ? (
-                                  <Badge variant="outline" className="text-green-600 border-green-300">
-                                    {report.reportSignatures.length}명
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">-</span>
-                                )}
+                                <Badge className={
+                                  isBad
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 hover:bg-red-100'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 hover:bg-amber-100'
+                                }>
+                                  {row.checkState}
+                                </Badge>
                               </TableCell>
-                              <TableCell className="text-center">
-                                {badCount > 0 ? (
-                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 hover:bg-amber-100">
-                                    주의 {badCount}건
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0 hover:bg-green-100">
-                                    정상
-                                  </Badge>
-                                )}
+                              <TableCell className="text-sm">
+                                {row.actionDescription || '-'}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                                {report.remarks || '-'}
+                              <TableCell className="text-sm">
+                                {row.actionTaken || '-'}
                               </TableCell>
                             </TableRow>
                           );
@@ -787,7 +810,7 @@ export default function ApprovalPage() {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            작성된 보고서가 없습니다.
+                            이상 항목이 없습니다.
                           </TableCell>
                         </TableRow>
                       )}

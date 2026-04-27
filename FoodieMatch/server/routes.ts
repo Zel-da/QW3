@@ -3076,7 +3076,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const readers = await prisma.noticeRead.findMany({
         where: { noticeId },
         include: {
-          user: { select: { id: true, name: true, username: true, role: true, site: true } },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              site: true,
+              team: { select: { name: true } },
+            },
+          },
         },
         orderBy: { readAt: 'desc' },
       });
@@ -3084,7 +3092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = readers.map(r => ({
         userId: r.userId,
         userName: r.user.name || r.user.username,
-        role: r.user.role,
+        teamName: r.user.team?.name ?? null,
         site: r.user.site,
         firstReadAt: r.readAt,
         lastReadAt: r.lastReadAt,

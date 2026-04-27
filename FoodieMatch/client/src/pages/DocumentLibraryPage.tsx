@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { FileText, Video, Upload, Plus, Trash2, Download, Search, Filter, ExternalLink } from 'lucide-react';
+import { FileText, Video, Upload, Plus, Trash2, Download, Search, Filter, ExternalLink, Eye } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface Document {
@@ -51,6 +51,17 @@ function formatFileSize(bytes?: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getPreviewUrl(doc: Document): string | null {
+  if (!doc.fileUrl) return null;
+  const source = doc.fileName ?? doc.fileUrl;
+  const ext = source.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'pdf') return doc.fileUrl;
+  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+    return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(doc.fileUrl)}`;
+  }
+  return null;
 }
 
 export default function DocumentLibraryPage() {
@@ -294,6 +305,16 @@ export default function DocumentLibraryPage() {
                       <TableCell>{doc.author?.name || doc.author?.username}</TableCell>
                       <TableCell>{new Date(doc.createdAt).toLocaleDateString('ko-KR')}</TableCell>
                       <TableCell className="text-right space-x-1">
+                        {(() => {
+                          const previewUrl = getPreviewUrl(doc);
+                          return previewUrl ? (
+                            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="미리보기">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </a>
+                          ) : null;
+                        })()}
                         {doc.fileUrl && (
                           <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="다운로드">
