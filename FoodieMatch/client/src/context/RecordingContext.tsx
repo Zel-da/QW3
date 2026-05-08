@@ -382,7 +382,69 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   // 일시정지 (저장하지 않고 멈춤)
   const pauseRecording = useCallback(async (): Promise<void> => {
     return new Promise((resolve) => {
-      if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+      const mr = mediaRecorderRef.current;
+      const reactState = state.status;
+      const mrState = mr?.state ?? 'null';
+      const wasAuto = autoPausedRef.current;
+
+      // 진단 로그 (개발자가 콘솔에서 확인)
+      console.log('[Recording] pauseRecording 시도:', {
+        reactState, mrState, hasMR: !!mr, autoPaused: wasAuto,
+      });
+
+      // [CODE: NO_RECORDER] MediaRecorder 인스턴스 자체가 없음
+      // → 페이지 재마운트, Strict Mode 더블 마운트, 또는 비정상 종료
+      if (!mr) {
+        toast({
+          title: '녹음기를 찾을 수 없음',
+          description: '녹음을 다시 시작해주세요. (CODE: NO_RECORDER)',
+          variant: 'destructive',
+        });
+        console.error('[Recording] NO_RECORDER — mediaRecorderRef.current is null');
+        resolve();
+        return;
+      }
+
+      // [CODE: INACTIVE] 이미 stop된 상태
+      // → iOS/Android 백그라운드 자동 종료, OS 마이크 권한 회수, 메모리 압박
+      if (mr.state === 'inactive') {
+        toast({
+          title: '녹음이 이미 종료됨',
+          description: '백그라운드에서 자동 종료되었을 수 있습니다. 다시 시작해주세요. (CODE: INACTIVE)',
+          variant: 'destructive',
+        });
+        console.error('[Recording] INACTIVE — MediaRecorder가 이미 종료된 상태에서 일시정지 시도');
+        resolve();
+        return;
+      }
+
+      // [CODE: ALREADY_PAUSED] 이미 일시정지 상태
+      // → visibilitychange auto-pause 직후 사용자 클릭 (race condition)
+      if (mr.state === 'paused' || reactState === 'paused') {
+        if (wasAuto) {
+          toast({
+            title: '화면 이탈로 자동 일시정지됨',
+            description: '화면을 다시 켜면 자동 재개됩니다. (CODE: AUTO_PAUSED)',
+          });
+        } else {
+          toast({
+            title: '이미 일시정지 상태',
+            description: '저장 또는 재개 버튼을 눌러주세요. (CODE: ALREADY_PAUSED)',
+          });
+        }
+        console.warn('[Recording] ALREADY_PAUSED — 이미 paused 상태 (auto:', wasAuto, ')');
+        resolve();
+        return;
+      }
+
+      // [CODE: STATE_*] 예상 못한 상태 (recording이 아님)
+      if (mr.state !== 'recording') {
+        toast({
+          title: '일시정지할 수 없는 상태',
+          description: `현재 상태: ${mr.state}. 잠시 후 다시 시도해주세요. (CODE: STATE_${mr.state.toUpperCase()})`,
+          variant: 'destructive',
+        });
+        console.error('[Recording] 예상 못한 MediaRecorder state:', mr.state);
         resolve();
         return;
       }
@@ -396,7 +458,20 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         timerRef.current = null;
       }
 
-      mediaRecorderRef.current.onstop = async () => {
+      // [CODE: STOP_TIMEOUT] stop() 호출 후 onstop이 5초 내 안 옴
+      // → 매우 드문 브라우저 버그 / OS 권한 회수 중
+      const stopTimeoutId = setTimeout(() => {
+        toast({
+          title: '녹음 정지 응답 지연',
+          description: '5초 내 응답이 없습니다. 페이지를 새로고침 후 저장해주세요. (CODE: STOP_TIMEOUT)',
+          variant: 'destructive',
+        });
+        console.error('[Recording] STOP_TIMEOUT — stop() 호출 후 onstop 5초 내 미발생');
+        resolve();
+      }, 5000);
+
+      mr.onstop = async () => {
+        clearTimeout(stopTimeoutId);
         const mimeType = mimeTypeRef.current;
         console.log(`[Recording] 녹음 종료 — 청크 ${audioChunksRef.current.length}개, 총 ${audioChunksRef.current.reduce((a, b) => a + b.size, 0)} bytes`);
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
@@ -481,9 +556,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         resolve();
       };
 
-      mediaRecorderRef.current.stop();
+      mr.stop();
     });
-  }, [state.startedFrom]);
+  }, [state.startedFrom, state.status, toast]);
 
   // 재개 (새 녹음 세션 시작 후 기존 녹음과 병합)
   const resumeRecording = useCallback(async (): Promise<boolean> => {
