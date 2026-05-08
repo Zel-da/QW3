@@ -70,9 +70,9 @@ export function scheduleEducationReminders() {
           completedProgress.map(p => `${p.userId}-${p.courseId}`)
         );
 
-        // [최적화] 이메일이 있는 모든 사용자를 한 번에 조회
+        // [최적화] 이메일이 있는 모든 활성 사용자를 한 번에 조회 (SUSPENDED 제외)
         const usersWithEmail = await prisma.user.findMany({
-          where: { email: { not: null } },
+          where: { email: { not: null }, status: { not: 'SUSPENDED' } } as any,
           select: { id: true, username: true, email: true }
         });
 
@@ -184,15 +184,16 @@ export function scheduleSafetyInspectionReminders() {
       const now = new Date();
       const month = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
 
-      // 모든 팀 리더 및 관리자에게 전송
+      // 모든 팀 리더 및 관리자에게 전송 (SUSPENDED 제외)
       const managers = await prisma.user.findMany({
         where: {
           OR: [
             { role: 'TEAM_LEADER' },
             { role: 'ADMIN' }
           ],
-          email: { not: null }
-        }
+          email: { not: null },
+          status: { not: 'SUSPENDED' },
+        } as any
       });
 
       for (const manager of managers) {
@@ -416,13 +417,14 @@ async function sendEducationReminders() {
     const incompleteUsers = await prisma.user.findMany({
       where: {
         email: { not: null },
+        status: { not: 'SUSPENDED' },
         userProgress: {
           none: {
             courseId: course.id,
             currentStep: 3
           }
         }
-      }
+      } as any
     });
 
     for (const user of incompleteUsers) {
@@ -539,8 +541,9 @@ async function sendSafetyInspectionReminders() {
         { role: 'TEAM_LEADER' },
         { role: 'ADMIN' }
       ],
-      email: { not: null }
-    }
+      email: { not: null },
+      status: { not: 'SUSPENDED' },
+    } as any
   });
 
   for (const manager of managers) {

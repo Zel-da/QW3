@@ -16,8 +16,10 @@ export interface User {
   name?: string | null;
   email?: string | null;
   role: Role;
+  status?: string | null;  // 'ACTIVE' | 'SUSPENDED' (가입대기는 role='PENDING'으로 표현)
   teamId?: number | null;
   site?: string | null;
+  sites?: string | null;
   createdAt?: Date | string | null;
 }
 

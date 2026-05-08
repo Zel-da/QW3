@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
 import { SITES, ROLE_LABELS } from '@/lib/constants';
-import { Search, Users, UserCheck, UserX, Key, Copy, Clock, AlertCircle } from 'lucide-react';
+import { Search, Users, UserCheck, UserX, Key, Copy, Clock, AlertCircle, UserMinus, RotateCcw } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -62,6 +62,26 @@ const rejectUser = async (userId: string) => {
   return res.json();
 };
 
+// 사용자 비활성화 (force=false면 가드 정보를 받음, 409 응답)
+const suspendUser = async ({ userId, force }: { userId: string; force?: boolean }) => {
+  const res = await fetch(`/api/users/${userId}/suspend`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ force: !!force }),
+  });
+  const body = await res.json();
+  if (!res.ok && res.status !== 409) {
+    throw new Error(body?.message || '비활성화 실패');
+  }
+  return { status: res.status, body };
+};
+
+const activateUser = async (userId: string) => {
+  const res = await apiRequest('PUT', `/api/users/${userId}/activate`, {});
+  return res.json();
+};
+
 const resetPassword = async (userId: string) => {
   const res = await apiRequest('PUT', `/api/users/${userId}/reset-password`, {});
   return res.json();
@@ -95,6 +115,15 @@ export default function AdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // 비활성화 가드 다이얼로그
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendWarning, setSuspendWarning] = useState<{
+    approverTeamCount: number;
+    pendingApprovalCount: number;
+    pendingEduApprovalCount: number;
+  } | null>(null);
 
   const { data: users = [], isLoading: usersLoading, isError: usersError, refetch: refetchUsers } = useQuery<User[]> ({
     queryKey: ['users'],
@@ -172,6 +201,37 @@ export default function AdminPage() {
     }
   });
 
+  const suspendMutation = useMutation({
+    mutationFn: suspendUser,
+    onSuccess: (result, variables) => {
+      // 가드 트리거 (409): 다이얼로그에 경고 표시
+      if (result.status === 409 && result.body?.requiresConfirmation) {
+        setSuspendWarning(result.body.warning);
+        return;
+      }
+      // 정상 처리됨
+      toast({ title: '비활성화 완료', description: '사용자가 비활성화되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setSuspendDialogOpen(false);
+      setSuspendTarget(null);
+      setSuspendWarning(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: activateUser,
+    onSuccess: () => {
+      toast({ title: '재활성화 완료', description: '사용자가 다시 활성화되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const passwordResetMutation = useMutation({
     mutationFn: resetPassword,
     onSuccess: (data) => {
@@ -245,6 +305,29 @@ export default function AdminPage() {
     setRejectTarget(null);
   };
 
+  // 비활성화 시작 (가드 검사 1차)
+  const handleSuspend = (userId: string, name: string) => {
+    if (currentUser?.id === userId) {
+      toast({ title: '오류', description: '본인 계정은 비활성화할 수 없습니다.', variant: 'destructive' });
+      return;
+    }
+    setSuspendTarget({ id: userId, name });
+    setSuspendWarning(null);
+    setSuspendDialogOpen(true);
+    suspendMutation.mutate({ userId, force: false });
+  };
+
+  // 비활성화 강제 진행 (가드 우회)
+  const confirmSuspendForce = () => {
+    if (suspendTarget) {
+      suspendMutation.mutate({ userId: suspendTarget.id, force: true });
+    }
+  };
+
+  const handleActivate = (userId: string) => {
+    activateMutation.mutate(userId);
+  };
+
   const openPasswordDialog = (user: User) => {
     setSelectedUserForPassword(user);
     setTempPassword('');
@@ -261,17 +344,21 @@ export default function AdminPage() {
     toast({ title: '복사됨', description: '클립보드에 복사되었습니다.' });
   };
 
+  // 활성 사용자만 (PENDING·SUSPENDED 제외) — 전체 사용자 탭
   const filteredUsers = users.filter(user => {
-    // 팀 필터
-    const teamMatch = selectedTeamId === 'all' || (user.teamId ? user.teamId === parseInt(selectedTeamId) : false);
+    if (user.role === 'PENDING') return false;
+    if ((user as any).status === 'SUSPENDED') return false;
 
-    // 검색 필터 (이름 또는 사용자명)
+    const teamMatch = selectedTeamId === 'all' || (user.teamId ? user.teamId === parseInt(selectedTeamId) : false);
     const searchMatch = searchTerm === '' ||
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase());
 
     return teamMatch && searchMatch;
   });
+
+  // 비활성 사용자 — 비활성 탭
+  const suspendedUsers = users.filter(user => (user as any).status === 'SUSPENDED');
 
   // Sort filtered users
   const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -366,13 +453,20 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="all" className="gap-2">
             <Users className="h-4 w-4" />
-            전체 사용자
+            활성 사용자
           </TabsTrigger>
           <TabsTrigger value="pending" className="gap-2">
             <Clock className="h-4 w-4" />
             승인 대기
             {pendingUsers.length > 0 && (
               <Badge variant="destructive" className="ml-1">{pendingUsers.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="suspended" className="gap-2">
+            <UserMinus className="h-4 w-4" />
+            비활성 사용자
+            {suspendedUsers.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{suspendedUsers.length}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -531,9 +625,11 @@ export default function AdminPage() {
                                 <SelectValue placeholder="역할 선택" />
                               </SelectTrigger>
                               <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                                {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                                  <SelectItem key={role} value={role}>{label}</SelectItem>
-                                ))}
+                                {Object.entries(ROLE_LABELS)
+                                  .filter(([role]) => role !== 'PENDING')
+                                  .map(([role, label]) => (
+                                    <SelectItem key={role} value={role}>{label}</SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -546,6 +642,17 @@ export default function AdminPage() {
                                 title="비밀번호 초기화"
                               >
                                 <Key className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSuspend(user.id, user.name || user.username)}
+                                disabled={currentUser?.id === user.id || suspendMutation.isPending}
+                                title="비활성화 (데이터 보존)"
+                                className="gap-1"
+                              >
+                                <UserMinus className="h-4 w-4" />
+                                비활성화
                               </Button>
                               <Button
                                 variant="destructive"
@@ -599,7 +706,144 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* 비활성 사용자 탭 */}
+        <TabsContent value="suspended">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <UserMinus className="h-5 w-5" />
+                비활성 사용자
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {suspendedUsers.length === 0 ? (
+                <EmptyState
+                  icon={UserMinus}
+                  title="비활성 사용자가 없습니다"
+                  description="모든 사용자가 활성 상태입니다."
+                />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>사용자명</TableHead>
+                      <TableHead>이름</TableHead>
+                      <TableHead>현장</TableHead>
+                      <TableHead>권한</TableHead>
+                      <TableHead className="text-right">작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {suspendedUsers.map((user) => (
+                      <TableRow key={user.id} className="opacity-60">
+                        <TableCell className="font-medium">{user.username}</TableCell>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {user.sites ? '전체' : (user.site || '-')}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleActivate(user.id)}
+                              disabled={activateMutation.isPending}
+                              className="gap-1"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              재활성화
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id, user.username)}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* 비활성화 가드 다이얼로그 */}
+      <AlertDialog
+        open={suspendDialogOpen}
+        onOpenChange={(open) => {
+          setSuspendDialogOpen(open);
+          if (!open) {
+            setSuspendTarget(null);
+            setSuspendWarning(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {suspendWarning ? '비활성화 전 확인 필요' : '사용자 비활성화'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {!suspendWarning && suspendMutation.isPending && (
+                  <p>{suspendTarget?.name}님의 비활성화 가능 여부를 확인 중입니다...</p>
+                )}
+                {suspendWarning && (
+                  <>
+                    <p className="font-medium text-foreground">
+                      {suspendTarget?.name}님은 다음 항목에 영향을 줍니다:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      {suspendWarning.approverTeamCount > 0 && (
+                        <li>
+                          <span className="font-semibold">{suspendWarning.approverTeamCount}개 팀</span>의 결재자로 지정되어 있음
+                        </li>
+                      )}
+                      {suspendWarning.pendingApprovalCount > 0 && (
+                        <li>
+                          처리 대기 중인 <span className="font-semibold">월별 결재 {suspendWarning.pendingApprovalCount}건</span>
+                        </li>
+                      )}
+                      {suspendWarning.pendingEduApprovalCount > 0 && (
+                        <li>
+                          처리 대기 중인 <span className="font-semibold">교육 결재 {suspendWarning.pendingEduApprovalCount}건</span>
+                        </li>
+                      )}
+                    </ul>
+                    <p className="text-sm text-muted-foreground pt-2">
+                      비활성화하면 해당 결재 흐름이 막힐 수 있습니다.
+                      먼저 다른 결재자로 변경하거나 결재를 처리한 후 진행하는 것을 권장합니다.
+                    </p>
+                    <p className="text-sm font-medium text-destructive">
+                      그래도 강제로 비활성화하시겠습니까?
+                    </p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            {suspendWarning && (
+              <AlertDialogAction
+                onClick={confirmSuspendForce}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                강제 비활성화
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 승인 다이얼로그 */}
       <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>

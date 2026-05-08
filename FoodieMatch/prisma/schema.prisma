@@ -14,6 +14,7 @@ model User {
   email                  String?           @unique
   password               String?
   role                   String            @default("PENDING")
+  status                 String            @default("ACTIVE")  // ACTIVE | SUSPENDED — 가입 승인은 role='PENDING'으로 별도 표현
   site                   String?
   sites                  String?           // 다중 사이트 접근 ("화성,아산")
   teamId                 Int?
@@ -46,6 +47,7 @@ model User {
   @@index([role])
   @@index([site])
   @@index([role, site])
+  @@index([status])
   @@map("User")
 }
 

@@ -292,6 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
 
+      // 비활성화된 계정 차단
+      if ((user as any).status === 'SUSPENDED') {
+        return res.status(403).json({ message: "관리자에 의해 비활성화된 계정입니다. 관리자에게 문의하세요." });
+      }
+
       // Set session user data
       const sitesArray = user.sites ? user.sites.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
       req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray };
@@ -608,12 +613,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only: List all users with pagination
   app.get("/api/users", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const { page, limit, role, site } = req.query;
+      const { page, limit, role, site, status } = req.query;
 
       // Build where clause
       const where: any = {};
       if (role) where.role = role as string;
       if (site) where.site = site as string;
+      if (status) where.status = status as string;
 
       // Check if pagination is requested
       const usePagination = page !== undefined || limit !== undefined;
@@ -713,9 +719,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:userId/role", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { role } = req.body;
+      // 활성 사용자를 PENDING(가입대기)로 직접 되돌리는 경로 차단
+      // 비활성화는 /suspend 엔드포인트 사용
+      if (role === 'PENDING') {
+        return res.status(400).json({
+          message: "활성 사용자를 가입대기 상태로 되돌릴 수 없습니다. 비활성화하려면 '비활성화' 버튼을 사용하세요.",
+        });
+      }
       const updatedUser = await prisma.user.update({ where: { id: req.params.userId }, data: { role } });
       res.json(updatedUser);
     } catch (error) { res.status(500).json({ message: "Failed to update role" }); }
+  });
+
+  // 사용자 비활성화 (활성 → SUSPENDED)
+  // 승인자/PENDING 결재 보유 시 가드 정보 반환, force=true로 우회
+  app.put("/api/users/:userId/suspend", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { force } = req.body || {};
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+      if (user.role === 'PENDING') {
+        return res.status(400).json({ message: "가입대기 사용자는 비활성화할 수 없습니다. 승인 또는 거절하세요." });
+      }
+      if ((user as any).status === 'SUSPENDED') {
+        return res.status(400).json({ message: "이미 비활성화된 사용자입니다" });
+      }
+
+      // 가드: 승인자 지정 팀 + PENDING 결재 확인
+      const approverTeamCount = await prisma.team.count({ where: { approverId: userId } });
+      const pendingApprovalCount = await prisma.approvalRequest.count({
+        where: { approverId: userId, status: 'PENDING' },
+      });
+      const pendingEduApprovalCount = await prisma.educationApproval.count({
+        where: { approverId: userId, status: 'PENDING' },
+      });
+
+      const totalPending = pendingApprovalCount + pendingEduApprovalCount;
+
+      if (!force && (approverTeamCount > 0 || totalPending > 0)) {
+        return res.status(409).json({
+          message: "비활성화 전 확인 필요",
+          requiresConfirmation: true,
+          warning: {
+            approverTeamCount,
+            pendingApprovalCount,
+            pendingEduApprovalCount,
+          },
+        });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { status: 'SUSPENDED' } as any,
+      });
+
+      res.json({ message: "사용자가 비활성화되었습니다", user: updated });
+    } catch (error) {
+      console.error('Failed to suspend user:', error);
+      res.status(500).json({ message: "비활성화 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 사용자 재활성화 (SUSPENDED → ACTIVE)
+  app.put("/api/users/:userId/activate", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
+      }
+      if ((user as any).status !== 'SUSPENDED') {
+        return res.status(400).json({ message: "비활성 상태의 사용자만 재활성화할 수 있습니다" });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { status: 'ACTIVE' } as any,
+      });
+
+      res.json({ message: "사용자가 재활성화되었습니다", user: updated });
+    } catch (error) {
+      console.error('Failed to activate user:', error);
+      res.status(500).json({ message: "재활성화 중 오류가 발생했습니다" });
+    }
   });
 
   // Admin-only: Update user site
