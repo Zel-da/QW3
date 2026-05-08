@@ -9975,15 +9975,21 @@ ${JSON.stringify(toolResults, null, 2)}
   // 자료 목록 조회
   app.get("/api/documents", requireAuth, async (req, res) => {
     try {
-      const { category, site, department } = req.query;
+      const { category, site, department, folderId } = req.query;
       const where: any = {};
       if (category) where.category = category;
       if (site) where.site = site;
       if (department) where.department = department;
+      // folderId='null' → 폴더 미지정(루트), 숫자 → 해당 폴더, 미지정 → 전체
+      if (folderId === 'null') where.folderId = null;
+      else if (folderId !== undefined && folderId !== '') where.folderId = parseInt(folderId as string);
 
       const documents = await prisma.document.findMany({
         where,
-        include: { author: { select: { id: true, name: true, username: true } } },
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          folder: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -10011,7 +10017,7 @@ ${JSON.stringify(toolResults, null, 2)}
   // 자료 등록 (ADMIN, SAFETY_TEAM만)
   app.post("/api/documents", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { title, description, category, type, site, department, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
+      const { title, description, category, type, site, department, folderId, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
 
       if (!title || !category) {
         return res.status(400).json({ message: "제목과 카테고리는 필수입니다" });
@@ -10021,12 +10027,16 @@ ${JSON.stringify(toolResults, null, 2)}
         data: {
           title, description, category, type: type || 'OTHER',
           site: site || null, department: department || null,
+          folderId: folderId ? parseInt(folderId) : null,
           fileUrl: fileUrl || null, fileName: fileName || null,
           fileSize: fileSize || null, mimeType: mimeType || null,
           videoUrl: videoUrl || null, videoType: videoType || null,
           authorId: req.session.user!.id,
         },
-        include: { author: { select: { id: true, name: true, username: true } } },
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          folder: { select: { id: true, name: true } },
+        },
       });
 
       res.status(201).json(doc);
@@ -10039,18 +10049,22 @@ ${JSON.stringify(toolResults, null, 2)}
   // 자료 수정
   app.put("/api/documents/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { title, description, category, type, site, department, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
+      const { title, description, category, type, site, department, folderId, fileUrl, fileName, fileSize, mimeType, videoUrl, videoType } = req.body;
 
       const doc = await prisma.document.update({
         where: { id: parseInt(req.params.id) },
         data: {
           title, description, category, type,
           site: site || null, department: department || null,
+          folderId: folderId ? parseInt(folderId) : null,
           fileUrl: fileUrl || null, fileName: fileName || null,
           fileSize: fileSize || null, mimeType: mimeType || null,
           videoUrl: videoUrl || null, videoType: videoType || null,
         },
-        include: { author: { select: { id: true, name: true, username: true } } },
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          folder: { select: { id: true, name: true } },
+        },
       });
 
       res.json(doc);
@@ -10068,6 +10082,106 @@ ${JSON.stringify(toolResults, null, 2)}
     } catch (error) {
       console.error("Failed to delete document:", error);
       res.status(500).json({ message: "자료 삭제 실패" });
+    }
+  });
+
+  // ==================== 자료실 폴더 (DocumentFolders) ====================
+
+  // 폴더 목록 (자료 개수 포함)
+  app.get("/api/document-folders", requireAuth, async (req, res) => {
+    try {
+      const { site } = req.query;
+      const where: any = {};
+      if (site) where.site = site;
+
+      const folders = await prisma.documentFolder.findMany({
+        where,
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          _count: { select: { documents: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(folders);
+    } catch (error) {
+      console.error("Failed to list folders:", error);
+      res.status(500).json({ message: "폴더 목록 조회 실패" });
+    }
+  });
+
+  // 폴더 생성 (ADMIN, SAFETY_TEAM만)
+  app.post("/api/document-folders", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { name, description, site } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: "폴더명은 필수입니다" });
+      }
+
+      const folder = await prisma.documentFolder.create({
+        data: {
+          name: name.trim(),
+          description: description?.trim() || null,
+          site: site || null,
+          authorId: req.session.user!.id,
+        },
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          _count: { select: { documents: true } },
+        },
+      });
+
+      res.status(201).json(folder);
+    } catch (error) {
+      console.error("Failed to create folder:", error);
+      res.status(500).json({ message: "폴더 생성 실패" });
+    }
+  });
+
+  // 폴더 수정 (이름·설명·사이트)
+  app.put("/api/document-folders/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { name, description, site } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: "폴더명은 필수입니다" });
+      }
+
+      const folder = await prisma.documentFolder.update({
+        where: { id: parseInt(req.params.id) },
+        data: {
+          name: name.trim(),
+          description: description?.trim() || null,
+          site: site || null,
+        },
+        include: {
+          author: { select: { id: true, name: true, username: true } },
+          _count: { select: { documents: true } },
+        },
+      });
+
+      res.json(folder);
+    } catch (error) {
+      console.error("Failed to update folder:", error);
+      res.status(500).json({ message: "폴더 수정 실패" });
+    }
+  });
+
+  // 폴더 삭제 (안에 자료가 없을 때만)
+  app.delete("/api/document-folders/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      const docCount = await prisma.document.count({ where: { folderId } });
+      if (docCount > 0) {
+        return res.status(400).json({
+          message: `폴더 안에 ${docCount}개의 자료가 있습니다. 먼저 자료를 다른 폴더로 옮기거나 삭제하세요.`,
+        });
+      }
+
+      await prisma.documentFolder.delete({ where: { id: folderId } });
+      res.json({ message: "폴더가 삭제되었습니다" });
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
+      res.status(500).json({ message: "폴더 삭제 실패" });
     }
   });
 

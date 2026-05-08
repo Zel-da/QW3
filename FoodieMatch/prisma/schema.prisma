@@ -40,6 +40,7 @@ model User {
   educationApprovalRequests   EducationApproval[] @relation("EducationApprovalRequester")
   educationApprovalsToApprove EducationApproval[] @relation("EducationApprovalApprover")
   documents              Document[]        @relation("DocumentAuthor")
+  documentFolders        DocumentFolder[]  @relation("DocumentFolderAuthor")
 
   @@index([teamId])
   @@index([role])
@@ -698,6 +699,7 @@ model Document {
   type        String    // PDF, PPT, VIDEO, OTHER
   site        String?   // 아산, 화성, null=전체
   department  String?   // 부서명
+  folderId    Int?      // 신규: 자료실 폴더
   fileUrl     String?
   fileName    String?
   fileSize    Int?
@@ -706,6 +708,7 @@ model Document {
   videoType   String?   // youtube, file
   authorId    String
   author      User      @relation("DocumentAuthor", fields: [authorId], references: [id])
+  folder      DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -713,5 +716,24 @@ model Document {
   @@index([site])
   @@index([authorId])
   @@index([createdAt])
+  @@index([folderId])
   @@map("Documents")
+}
+
+// 자료실 폴더 (1단 평면 구조)
+model DocumentFolder {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  site        String?    // null=전체, "아산", "화성"
+  authorId    String
+  author      User       @relation("DocumentFolderAuthor", fields: [authorId], references: [id])
+  documents   Document[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([site])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("DocumentFolders")
 }

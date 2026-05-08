@@ -12,8 +12,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { FileText, Video, Upload, Plus, Trash2, Download, Search, Filter, ExternalLink, Eye } from 'lucide-react';
+import {
+  FileText, Video, Plus, Trash2, Download, Search, ExternalLink, Eye,
+  Folder, FolderPlus, FolderOpen, ChevronRight, Pencil, ArrowLeft,
+} from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+
+interface DocumentFolder {
+  id: number;
+  name: string;
+  description?: string;
+  site?: string;
+  authorId: string;
+  author?: { id: string; name?: string; username: string };
+  createdAt: string;
+  _count?: { documents: number };
+}
 
 interface Document {
   id: number;
@@ -23,6 +37,8 @@ interface Document {
   type: string;
   site?: string;
   department?: string;
+  folderId?: number | null;
+  folder?: { id: number; name: string } | null;
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
@@ -44,6 +60,12 @@ const FILE_TYPES = [
   { value: 'PPT', label: 'PPT' },
   { value: 'VIDEO', label: '영상' },
   { value: 'OTHER', label: '기타' },
+];
+
+const SITES = [
+  { value: 'all', label: '전체' },
+  { value: '아산', label: '아산' },
+  { value: '화성', label: '화성' },
 ];
 
 function formatFileSize(bytes?: number) {
@@ -70,34 +92,53 @@ export default function DocumentLibraryPage() {
   const { toast } = useToast();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
-  // Filters
+  // 현재 보고 있는 폴더 (null = 루트, 폴더 그리드 + 폴더 미지정 자료)
+  const [currentFolder, setCurrentFolder] = useState<DocumentFolder | null>(null);
+
+  // 필터
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Create dialog
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
+  // 자료 등록 다이얼로그
+  const [docDialogOpen, setDocDialogOpen] = useState(false);
+  const [docForm, setDocForm] = useState({
     title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF',
-    department: '', videoUrl: '', videoType: '',
+    department: '', folderId: '', videoUrl: '', videoType: '',
   });
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
+  // 폴더 다이얼로그 (생성/수정 공용)
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [folderEditTarget, setFolderEditTarget] = useState<DocumentFolder | null>(null);
+  const [folderForm, setFolderForm] = useState({ name: '', description: '', site: '' });
+
+  // 폴더 목록
+  const { data: folders } = useQuery<DocumentFolder[]>({
+    queryKey: ['document-folders'],
+    queryFn: async () => {
+      const res = await fetch('/api/document-folders', { credentials: 'include' });
+      if (!res.ok) throw new Error('폴더 조회 실패');
+      return res.json();
+    },
+  });
+
+  // 자료 목록 (현재 폴더 기준 — 루트면 folderId=null)
   const { data: documents, isLoading } = useQuery<Document[]>({
-    queryKey: ['documents', filterCategory],
+    queryKey: ['documents', filterCategory, currentFolder?.id ?? 'root'],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filterCategory) params.set('category', filterCategory);
+      params.set('folderId', currentFolder ? String(currentFolder.id) : 'null');
       const res = await fetch(`/api/documents?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('조회 실패');
       return res.json();
     },
   });
 
-  const createMutation = useMutation({
+  const createDocMutation = useMutation({
     mutationFn: async () => {
       let fileUrl = '', fileName = '', fileSize = 0, mimeType = '';
 
-      // 파일 업로드
       if (uploadFile) {
         const formData = new FormData();
         formData.append('file', uploadFile);
@@ -111,14 +152,15 @@ export default function DocumentLibraryPage() {
       }
 
       const body = {
-        ...form,
-        department: form.department || null,
+        ...docForm,
+        department: docForm.department || null,
+        folderId: docForm.folderId || null,
         fileUrl: fileUrl || null,
         fileName: fileName || null,
         fileSize: fileSize || null,
         mimeType: mimeType || null,
-        videoUrl: form.videoUrl || null,
-        videoType: form.videoType || null,
+        videoUrl: docForm.videoUrl || null,
+        videoType: docForm.videoType || null,
       };
 
       const res = await apiRequest('POST', '/api/documents', body);
@@ -127,8 +169,9 @@ export default function DocumentLibraryPage() {
     onSuccess: () => {
       toast({ title: '등록 완료', description: '자료가 등록되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
-      setDialogOpen(false);
-      setForm({ title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF', department: '', videoUrl: '', videoType: '' });
+      queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+      setDocDialogOpen(false);
+      setDocForm({ title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF', department: '', folderId: '', videoUrl: '', videoType: '' });
       setUploadFile(null);
     },
     onError: (err: any) => {
@@ -136,17 +179,64 @@ export default function DocumentLibraryPage() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteDocMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest('DELETE', `/api/documents/${id}`);
     },
     onSuccess: () => {
       toast({ title: '삭제 완료' });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document-folders'] });
     },
   });
 
-  const filtered = (documents || []).filter(doc => {
+  // 폴더 생성/수정
+  const folderMutation = useMutation({
+    mutationFn: async () => {
+      const body = {
+        name: folderForm.name.trim(),
+        description: folderForm.description.trim() || null,
+        site: folderForm.site || null,
+      };
+      if (folderEditTarget) {
+        const res = await apiRequest('PUT', `/api/document-folders/${folderEditTarget.id}`, body);
+        return res.json();
+      } else {
+        const res = await apiRequest('POST', '/api/document-folders', body);
+        return res.json();
+      }
+    },
+    onSuccess: () => {
+      toast({ title: folderEditTarget ? '폴더 수정 완료' : '폴더 생성 완료' });
+      queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+      setFolderDialogOpen(false);
+      setFolderEditTarget(null);
+      setFolderForm({ name: '', description: '', site: '' });
+    },
+    onError: (err: any) => {
+      toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest('DELETE', `/api/document-folders/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '폴더 삭제 완료' });
+      queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+      // 현재 폴더가 삭제되었으면 루트로 이동
+      if (currentFolder) setCurrentFolder(null);
+    },
+    onError: async (err: any) => {
+      // API에서 응답 message 추출
+      const msg = err?.message || '폴더 삭제 실패';
+      toast({ title: '삭제 불가', description: msg, variant: 'destructive' });
+    },
+  });
+
+  const filteredDocs = (documents || []).filter(doc => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return doc.title.toLowerCase().includes(q) || doc.description?.toLowerCase().includes(q) || doc.department?.toLowerCase().includes(q);
@@ -154,82 +244,203 @@ export default function DocumentLibraryPage() {
     return true;
   });
 
+  const filteredFolders = (folders || []).filter(f => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return f.name.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const openCreateFolder = () => {
+    setFolderEditTarget(null);
+    setFolderForm({ name: '', description: '', site: '' });
+    setFolderDialogOpen(true);
+  };
+
+  const openEditFolder = (f: DocumentFolder) => {
+    setFolderEditTarget(f);
+    setFolderForm({ name: f.name, description: f.description ?? '', site: f.site ?? '' });
+    setFolderDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto p-4 md:p-6 max-w-6xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">자료실</h1>
-            <p className="text-muted-foreground mt-1">위험성평가 및 교육자료</p>
+        {/* 헤더 + 액션 */}
+        <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
+          <div className="min-w-0">
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+              <button
+                onClick={() => setCurrentFolder(null)}
+                className={`hover:text-foreground transition-colors ${currentFolder ? '' : 'font-medium text-foreground'}`}
+              >
+                자료실
+              </button>
+              {currentFolder && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                  <span className="font-medium text-foreground truncate max-w-[200px]">{currentFolder.name}</span>
+                </>
+              )}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              {currentFolder ? <FolderOpen className="w-6 h-6 text-primary" /> : null}
+              {currentFolder ? currentFolder.name : '자료실'}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {currentFolder
+                ? (currentFolder.description || `${currentFolder.site || '전체'} 사이트 폴더`)
+                : '위험성평가 및 교육자료'}
+            </p>
           </div>
-          {canManage && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="w-4 h-4 mr-2" />자료 등록</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>자료 등록</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>제목 *</Label>
-                    <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="자료 제목" />
-                  </div>
-                  <div>
-                    <Label>설명</Label>
-                    <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="자료 설명" rows={3} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-2 flex-wrap">
+            {currentFolder && (
+              <Button variant="outline" size="sm" onClick={() => setCurrentFolder(null)}>
+                <ArrowLeft className="w-4 h-4 mr-1.5" />전체
+              </Button>
+            )}
+            {canManage && !currentFolder && (
+              <Button variant="outline" onClick={openCreateFolder}>
+                <FolderPlus className="w-4 h-4 mr-2" />폴더 만들기
+              </Button>
+            )}
+            {canManage && (
+              <Dialog open={docDialogOpen} onOpenChange={(open) => {
+                setDocDialogOpen(open);
+                if (open && currentFolder) {
+                  // 폴더 안에서 등록할 땐 해당 폴더로 기본 선택
+                  setDocForm(f => ({ ...f, folderId: String(currentFolder.id) }));
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="w-4 h-4 mr-2" />자료 등록</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>자료 등록</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
                     <div>
-                      <Label>카테고리 *</Label>
-                      <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Label>제목 *</Label>
+                      <Input value={docForm.title} onChange={e => setDocForm({ ...docForm, title: e.target.value })} placeholder="자료 제목" />
+                    </div>
+                    <div>
+                      <Label>설명</Label>
+                      <Textarea value={docForm.description} onChange={e => setDocForm({ ...docForm, description: e.target.value })} placeholder="자료 설명" rows={3} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>카테고리 *</Label>
+                        <Select value={docForm.category} onValueChange={v => setDocForm({ ...docForm, category: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>파일 유형</Label>
+                        <Select value={docForm.type} onValueChange={v => setDocForm({ ...docForm, type: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {FILE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>폴더</Label>
+                      <Select value={docForm.folderId || 'none'} onValueChange={v => setDocForm({ ...docForm, folderId: v === 'none' ? '' : v })}>
+                        <SelectTrigger><SelectValue placeholder="폴더 미지정" /></SelectTrigger>
                         <SelectContent>
-                          {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                          <SelectItem value="none">폴더 미지정</SelectItem>
+                          {(folders || []).map(f => (
+                            <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label>파일 유형</Label>
-                      <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {FILE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Label>부서</Label>
+                      <Input value={docForm.department} onChange={e => setDocForm({ ...docForm, department: e.target.value })} placeholder="부서명" />
                     </div>
-                  </div>
-                  <div>
-                    <Label>부서</Label>
-                    <Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="부서명" />
-                  </div>
-                  <div>
-                    <Label>파일 업로드</Label>
-                    <Input
-                      type="file"
-                      accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.avi,.mov"
-                      onChange={e => setUploadFile(e.target.files?.[0] || null)}
-                    />
-                    {uploadFile && <p className="text-xs text-muted-foreground mt-1">{uploadFile.name} ({formatFileSize(uploadFile.size)})</p>}
-                  </div>
-                  {(form.type === 'VIDEO') && (
                     <div>
-                      <Label>영상 URL (YouTube 등)</Label>
-                      <Input value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value, videoType: 'youtube' })} placeholder="https://youtube.com/..." />
+                      <Label>파일 업로드</Label>
+                      <Input
+                        type="file"
+                        accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.avi,.mov"
+                        onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                      />
+                      {uploadFile && <p className="text-xs text-muted-foreground mt-1">{uploadFile.name} ({formatFileSize(uploadFile.size)})</p>}
                     </div>
-                  )}
-                  <Button onClick={() => createMutation.mutate()} disabled={!form.title || createMutation.isPending} className="w-full">
-                    {createMutation.isPending ? '등록 중...' : '등록'}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
+                    {(docForm.type === 'VIDEO') && (
+                      <div>
+                        <Label>영상 URL (YouTube 등)</Label>
+                        <Input value={docForm.videoUrl} onChange={e => setDocForm({ ...docForm, videoUrl: e.target.value, videoType: 'youtube' })} placeholder="https://youtube.com/..." />
+                      </div>
+                    )}
+                    <Button onClick={() => createDocMutation.mutate()} disabled={!docForm.title || createDocMutation.isPending} className="w-full">
+                      {createDocMutation.isPending ? '등록 중...' : '등록'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
-        {/* Filters */}
+        {/* 폴더 생성/수정 다이얼로그 */}
+        <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{folderEditTarget ? '폴더 수정' : '새 폴더 만들기'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>폴더명 *</Label>
+                <Input
+                  value={folderForm.name}
+                  onChange={e => setFolderForm({ ...folderForm, name: e.target.value })}
+                  placeholder="예: 2026년 정기 점검 자료"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label>설명</Label>
+                <Textarea
+                  value={folderForm.description}
+                  onChange={e => setFolderForm({ ...folderForm, description: e.target.value })}
+                  placeholder="폴더 용도 (선택)"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label>적용 사이트</Label>
+                <Select
+                  value={folderForm.site || 'all'}
+                  onValueChange={v => setFolderForm({ ...folderForm, site: v === 'all' ? '' : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SITES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={() => folderMutation.mutate()}
+                disabled={!folderForm.name.trim() || folderMutation.isPending}
+                className="w-full"
+              >
+                {folderMutation.isPending ? '저장 중...' : (folderEditTarget ? '수정' : '생성')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 검색·카테고리 필터 */}
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-3 items-end">
@@ -237,13 +448,13 @@ export default function DocumentLibraryPage() {
                 <Label className="text-xs">검색</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="제목, 설명, 부서 검색..." className="pl-9" />
+                  <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={currentFolder ? '폴더 안에서 검색...' : '폴더·자료 검색...'} className="pl-9" />
                 </div>
               </div>
               <div className="w-40">
                 <Label className="text-xs">카테고리</Label>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger><SelectValue placeholder="전체" /></SelectTrigger>
+                <Select value={filterCategory || 'all'} onValueChange={v => setFilterCategory(v === 'all' ? '' : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">전체</SelectItem>
                     {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -254,97 +465,218 @@ export default function DocumentLibraryPage() {
           </CardContent>
         </Card>
 
-        {/* Document List */}
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>등록된 자료가 없습니다</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>제목</TableHead>
-                    <TableHead className="w-28">카테고리</TableHead>
-                    <TableHead className="w-20">유형</TableHead>
-                    <TableHead className="w-24">부서</TableHead>
-                    <TableHead className="w-24">등록자</TableHead>
-                    <TableHead className="w-28">등록일</TableHead>
-                    <TableHead className="w-20 text-right">작업</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((doc, i) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell>
-                        <div>
-                          <span className="font-medium">{doc.title}</span>
-                          {doc.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{doc.description}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                          doc.category === 'RISK_ASSESSMENT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {CATEGORIES.find(c => c.value === doc.category)?.label || doc.category}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {doc.type === 'VIDEO' ? <Video className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-gray-500" />}
-                        <span className="ml-1 text-xs">{doc.type}</span>
-                      </TableCell>
-                      <TableCell>{doc.department || '-'}</TableCell>
-                      <TableCell>{doc.author?.name || doc.author?.username}</TableCell>
-                      <TableCell>{new Date(doc.createdAt).toLocaleDateString('ko-KR')}</TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {(() => {
-                          const previewUrl = getPreviewUrl(doc);
-                          return previewUrl ? (
-                            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="미리보기">
-                                <Eye className="w-4 h-4" />
+        {/* 폴더 그리드 (루트 뷰에서만) */}
+        {!currentFolder && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">
+                폴더 ({filteredFolders.length})
+              </h2>
+            </div>
+            {filteredFolders.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  <Folder className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">아직 폴더가 없습니다</p>
+                  {canManage && (
+                    <Button variant="link" size="sm" onClick={openCreateFolder} className="mt-2">
+                      첫 폴더 만들기
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {filteredFolders.map(f => (
+                  <FolderCard
+                    key={f.id}
+                    folder={f}
+                    onOpen={() => setCurrentFolder(f)}
+                    onEdit={canManage ? () => openEditFolder(f) : undefined}
+                    onDelete={canManage ? () => {
+                      if (confirm(`"${f.name}" 폴더를 삭제하시겠습니까?`)) {
+                        deleteFolderMutation.mutate(f.id);
+                      }
+                    } : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 자료 목록 */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              {currentFolder ? `폴더 안 자료 (${filteredDocs.length})` : `폴더 미지정 자료 (${filteredDocs.length})`}
+            </h2>
+          </div>
+
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : filteredDocs.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">
+                  {currentFolder ? '이 폴더에 등록된 자료가 없습니다' : '폴더 미지정 자료가 없습니다'}
+                </p>
+                {canManage && (
+                  <Button variant="link" size="sm" onClick={() => setDocDialogOpen(true)} className="mt-2">
+                    자료 등록
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>제목</TableHead>
+                      <TableHead className="w-28">카테고리</TableHead>
+                      <TableHead className="w-20">유형</TableHead>
+                      <TableHead className="w-24">부서</TableHead>
+                      <TableHead className="w-24">등록자</TableHead>
+                      <TableHead className="w-28">등록일</TableHead>
+                      <TableHead className="w-24 text-right">작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDocs.map((doc, i) => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell>
+                          <div>
+                            <span className="font-medium">{doc.title}</span>
+                            {doc.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{doc.description}</p>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            doc.category === 'RISK_ASSESSMENT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {CATEGORIES.find(c => c.value === doc.category)?.label || doc.category}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {doc.type === 'VIDEO' ? <Video className="w-4 h-4 text-purple-500 inline" /> : <FileText className="w-4 h-4 text-gray-500 inline" />}
+                          <span className="ml-1 text-xs">{doc.type}</span>
+                        </TableCell>
+                        <TableCell>{doc.department || '-'}</TableCell>
+                        <TableCell>{doc.author?.name || doc.author?.username}</TableCell>
+                        <TableCell>{new Date(doc.createdAt).toLocaleDateString('ko-KR')}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {(() => {
+                            const previewUrl = getPreviewUrl(doc);
+                            return previewUrl ? (
+                              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="미리보기">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </a>
+                            ) : null;
+                          })()}
+                          {doc.fileUrl && (
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="다운로드">
+                                <Download className="w-4 h-4" />
                               </Button>
                             </a>
-                          ) : null;
-                        })()}
-                        {doc.fileUrl && (
-                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="다운로드">
-                              <Download className="w-4 h-4" />
+                          )}
+                          {doc.videoUrl && (
+                            <a href={doc.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="영상 보기">
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            </a>
+                          )}
+                          {canManage && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => {
+                              if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
+                            }}>
+                              <Trash2 className="w-4 h-4" />
                             </Button>
-                          </a>
-                        )}
-                        {doc.videoUrl && (
-                          <a href={doc.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="영상 보기">
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          </a>
-                        )}
-                        {canManage && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => {
-                            if (confirm('이 자료를 삭제하시겠습니까?')) deleteMutation.mutate(doc.id);
-                          }}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </main>
+    </div>
+  );
+}
+
+// 폴더 카드 컴포넌트
+function FolderCard({
+  folder,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  folder: DocumentFolder;
+  onOpen: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
+  const count = folder._count?.documents ?? 0;
+  return (
+    <div
+      onClick={onOpen}
+      className="group relative cursor-pointer rounded-lg border bg-card p-4 hover:border-primary/60 hover:shadow-sm transition-all"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+          <Folder className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm truncate">{folder.name}</h3>
+          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+            <span>{count}개 자료</span>
+            {folder.site && (
+              <>
+                <span>·</span>
+                <span>{folder.site}</span>
+              </>
+            )}
+          </div>
+          {folder.description && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{folder.description}</p>
+          )}
+        </div>
+      </div>
+
+      {/* 관리자용 액션 버튼 */}
+      {(onEdit || onDelete) && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          {onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="w-7 h-7 rounded-md bg-background/90 hover:bg-accent flex items-center justify-center"
+              title="수정"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="w-7 h-7 rounded-md bg-background/90 hover:bg-destructive/10 text-destructive flex items-center justify-center"
+              title="삭제"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
