@@ -307,7 +307,7 @@ export default function DocumentLibraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto p-4 md:p-6 max-w-6xl">
+      <main className="container mx-auto p-4 md:p-6 max-w-7xl">
         {/* 헤더 + 액션 */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
           <div className="min-w-0">
@@ -579,45 +579,47 @@ export default function DocumentLibraryPage() {
             </Card>
           ) : (
             <Card>
-              <CardContent className="p-0">
-                <Table>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table className="min-w-[960px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>제목</TableHead>
-                      <TableHead className="w-28">카테고리</TableHead>
-                      <TableHead className="w-20">유형</TableHead>
-                      <TableHead className="w-24">부서</TableHead>
-                      <TableHead className="w-24">등록자</TableHead>
-                      <TableHead className="w-28">등록일</TableHead>
-                      <TableHead className="w-24 text-right">작업</TableHead>
+                      <TableHead className="w-12 whitespace-nowrap">#</TableHead>
+                      <TableHead className="min-w-[240px]">제목</TableHead>
+                      <TableHead className="w-32 whitespace-nowrap">카테고리</TableHead>
+                      <TableHead className="w-24 whitespace-nowrap">유형</TableHead>
+                      <TableHead className="w-28 whitespace-nowrap">부서</TableHead>
+                      <TableHead className="w-28 whitespace-nowrap">등록자</TableHead>
+                      <TableHead className="w-32 whitespace-nowrap">등록일</TableHead>
+                      <TableHead className="w-40 whitespace-nowrap text-right">작업</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredDocs.map((doc, i) => (
                       <TableRow key={doc.id}>
-                        <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">{i + 1}</TableCell>
                         <TableCell>
-                          <div>
-                            <span className="font-medium">{doc.title}</span>
+                          <div className="min-w-0">
+                            <span className="font-medium block truncate">{doc.title}</span>
                             {doc.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{doc.description}</p>}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                        <TableCell className="whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
                             doc.category === 'RISK_ASSESSMENT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
                           }`}>
                             {CATEGORIES.find(c => c.value === doc.category)?.label || doc.category}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          {doc.type === 'VIDEO' ? <Video className="w-4 h-4 text-purple-500 inline" /> : <FileText className="w-4 h-4 text-gray-500 inline" />}
-                          <span className="ml-1 text-xs">{doc.type}</span>
+                        <TableCell className="whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1">
+                            {doc.type === 'VIDEO' ? <Video className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-gray-500" />}
+                            <span className="text-xs">{doc.type}</span>
+                          </span>
                         </TableCell>
-                        <TableCell>{doc.department || '-'}</TableCell>
-                        <TableCell>{doc.author?.name || doc.author?.username}</TableCell>
-                        <TableCell>{new Date(doc.createdAt).toLocaleDateString('ko-KR')}</TableCell>
-                        <TableCell className="text-right space-x-1">
+                        <TableCell className="whitespace-nowrap">{doc.department || '-'}</TableCell>
+                        <TableCell className="whitespace-nowrap">{doc.author?.name || doc.author?.username}</TableCell>
+                        <TableCell className="whitespace-nowrap">{new Date(doc.createdAt).toLocaleDateString('ko-KR')}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap space-x-1">
                           {(() => {
                             const previewUrl = getPreviewUrl(doc);
                             return previewUrl ? (
