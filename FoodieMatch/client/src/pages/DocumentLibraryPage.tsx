@@ -15,6 +15,7 @@ import { apiRequest } from '@/lib/queryClient';
 import {
   FileText, Video, Plus, Trash2, Download, Search, ExternalLink, Eye,
   Folder, FolderPlus, FolderOpen, ChevronRight, Pencil, ArrowLeft,
+  Upload, X, Paperclip,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
@@ -413,18 +414,62 @@ export default function DocumentLibraryPage() {
                   <Label>부서</Label>
                   <Input value={docForm.department} onChange={e => setDocForm({ ...docForm, department: e.target.value })} placeholder="부서명" />
                 </div>
-                <div>
-                  <Label>파일 업로드{docEditTarget ? ' (선택 — 기존 파일 유지하려면 비워두세요)' : ''}</Label>
+                <div className="space-y-2">
+                  <Label>파일</Label>
+
+                  {/* 현재 등록된 파일 (수정 모드 + 새 파일 미선택 시) */}
+                  {!uploadFile && docEditTarget?.fileName && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/40">
+                      <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Paperclip className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{docEditTarget.fileName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          현재 등록 · {docEditTarget.fileSize ? formatFileSize(docEditTarget.fileSize) : '크기 정보 없음'}
+                        </p>
+                      </div>
+                      {docEditTarget.fileUrl && (
+                        <a href={docEditTarget.fileUrl} target="_blank" rel="noopener noreferrer">
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="다운로드">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 새로 선택한 파일 카드 */}
+                  {uploadFile && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-primary/40 bg-primary/5">
+                      <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Upload className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{uploadFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          새 파일 · {formatFileSize(uploadFile.size)}
+                          {docEditTarget?.fileName && <span className="ml-1 text-amber-600">(기존 파일 교체됨)</span>}
+                        </p>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUploadFile(null)} title="취소">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* 파일 선택기 */}
                   <Input
                     type="file"
                     accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.avi,.mov"
                     onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                    className="cursor-pointer"
                   />
-                  {uploadFile ? (
-                    <p className="text-xs text-muted-foreground mt-1">새 파일: {uploadFile.name} ({formatFileSize(uploadFile.size)})</p>
-                  ) : docEditTarget?.fileName ? (
-                    <p className="text-xs text-muted-foreground mt-1">현재 파일: {docEditTarget.fileName}{docEditTarget.fileSize ? ` (${formatFileSize(docEditTarget.fileSize)})` : ''}</p>
-                  ) : null}
+                  {docEditTarget && !uploadFile && (
+                    <p className="text-xs text-muted-foreground">
+                      파일을 그대로 두려면 비워두세요. 새 파일을 선택하면 기존 파일이 교체됩니다.
+                    </p>
+                  )}
                 </div>
                 {(docForm.type === 'VIDEO') && (
                   <div>
