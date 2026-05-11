@@ -99,8 +99,9 @@ export default function DocumentLibraryPage() {
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 자료 등록 다이얼로그
+  // 자료 등록/수정 다이얼로그 (공용)
   const [docDialogOpen, setDocDialogOpen] = useState(false);
+  const [docEditTarget, setDocEditTarget] = useState<Document | null>(null);
   const [docForm, setDocForm] = useState({
     title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF',
     department: '', folderId: '', videoUrl: '', videoType: '',
@@ -135,9 +136,14 @@ export default function DocumentLibraryPage() {
     },
   });
 
-  const createDocMutation = useMutation({
+  // 자료 등록/수정 통합 mutation
+  const docMutation = useMutation({
     mutationFn: async () => {
-      let fileUrl = '', fileName = '', fileSize = 0, mimeType = '';
+      // 새 파일이 선택된 경우만 업로드, 아니면 기존 파일 정보 유지 (수정 모드)
+      let fileUrl: string | null = docEditTarget?.fileUrl ?? null;
+      let fileName: string | null = docEditTarget?.fileName ?? null;
+      let fileSize: number | null = docEditTarget?.fileSize ?? null;
+      let mimeType: string | null = docEditTarget?.mimeType ?? null;
 
       if (uploadFile) {
         const formData = new FormData();
@@ -163,19 +169,25 @@ export default function DocumentLibraryPage() {
         videoType: docForm.videoType || null,
       };
 
-      const res = await apiRequest('POST', '/api/documents', body);
-      return res.json();
+      if (docEditTarget) {
+        const res = await apiRequest('PUT', `/api/documents/${docEditTarget.id}`, body);
+        return res.json();
+      } else {
+        const res = await apiRequest('POST', '/api/documents', body);
+        return res.json();
+      }
     },
     onSuccess: () => {
-      toast({ title: '등록 완료', description: '자료가 등록되었습니다.' });
+      toast({ title: docEditTarget ? '수정 완료' : '등록 완료', description: docEditTarget ? '자료가 수정되었습니다.' : '자료가 등록되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['document-folders'] });
       setDocDialogOpen(false);
+      setDocEditTarget(null);
       setDocForm({ title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF', department: '', folderId: '', videoUrl: '', videoType: '' });
       setUploadFile(null);
     },
     onError: (err: any) => {
-      toast({ title: '등록 실패', description: err.message, variant: 'destructive' });
+      toast({ title: docEditTarget ? '수정 실패' : '등록 실패', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -264,6 +276,34 @@ export default function DocumentLibraryPage() {
     setFolderDialogOpen(true);
   };
 
+  const openEditDoc = (doc: Document) => {
+    setDocEditTarget(doc);
+    setDocForm({
+      title: doc.title,
+      description: doc.description ?? '',
+      category: doc.category,
+      type: doc.type,
+      department: doc.department ?? '',
+      folderId: doc.folderId ? String(doc.folderId) : '',
+      videoUrl: doc.videoUrl ?? '',
+      videoType: doc.videoType ?? '',
+    });
+    setUploadFile(null);
+    setDocDialogOpen(true);
+  };
+
+  const openCreateDoc = () => {
+    setDocEditTarget(null);
+    setDocForm({
+      title: '', description: '', category: 'RISK_ASSESSMENT', type: 'PDF',
+      department: '',
+      folderId: currentFolder ? String(currentFolder.id) : '',
+      videoUrl: '', videoType: '',
+    });
+    setUploadFile(null);
+    setDocDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -308,89 +348,97 @@ export default function DocumentLibraryPage() {
               </Button>
             )}
             {canManage && (
-              <Dialog open={docDialogOpen} onOpenChange={(open) => {
-                setDocDialogOpen(open);
-                if (open && currentFolder) {
-                  // 폴더 안에서 등록할 땐 해당 폴더로 기본 선택
-                  setDocForm(f => ({ ...f, folderId: String(currentFolder.id) }));
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button><Plus className="w-4 h-4 mr-2" />자료 등록</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>자료 등록</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>제목 *</Label>
-                      <Input value={docForm.title} onChange={e => setDocForm({ ...docForm, title: e.target.value })} placeholder="자료 제목" />
-                    </div>
-                    <div>
-                      <Label>설명</Label>
-                      <Textarea value={docForm.description} onChange={e => setDocForm({ ...docForm, description: e.target.value })} placeholder="자료 설명" rows={3} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>카테고리 *</Label>
-                        <Select value={docForm.category} onValueChange={v => setDocForm({ ...docForm, category: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>파일 유형</Label>
-                        <Select value={docForm.type} onValueChange={v => setDocForm({ ...docForm, type: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {FILE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <Label>폴더</Label>
-                      <Select value={docForm.folderId || 'none'} onValueChange={v => setDocForm({ ...docForm, folderId: v === 'none' ? '' : v })}>
-                        <SelectTrigger><SelectValue placeholder="폴더 미지정" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">폴더 미지정</SelectItem>
-                          {(folders || []).map(f => (
-                            <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>부서</Label>
-                      <Input value={docForm.department} onChange={e => setDocForm({ ...docForm, department: e.target.value })} placeholder="부서명" />
-                    </div>
-                    <div>
-                      <Label>파일 업로드</Label>
-                      <Input
-                        type="file"
-                        accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.avi,.mov"
-                        onChange={e => setUploadFile(e.target.files?.[0] || null)}
-                      />
-                      {uploadFile && <p className="text-xs text-muted-foreground mt-1">{uploadFile.name} ({formatFileSize(uploadFile.size)})</p>}
-                    </div>
-                    {(docForm.type === 'VIDEO') && (
-                      <div>
-                        <Label>영상 URL (YouTube 등)</Label>
-                        <Input value={docForm.videoUrl} onChange={e => setDocForm({ ...docForm, videoUrl: e.target.value, videoType: 'youtube' })} placeholder="https://youtube.com/..." />
-                      </div>
-                    )}
-                    <Button onClick={() => createDocMutation.mutate()} disabled={!docForm.title || createDocMutation.isPending} className="w-full">
-                      {createDocMutation.isPending ? '등록 중...' : '등록'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={openCreateDoc}>
+                <Plus className="w-4 h-4 mr-2" />자료 등록
+              </Button>
             )}
           </div>
         </div>
+
+        {/* 자료 등록/수정 다이얼로그 */}
+        {canManage && (
+          <Dialog open={docDialogOpen} onOpenChange={(open) => {
+            setDocDialogOpen(open);
+            if (!open) {
+              setDocEditTarget(null);
+              setUploadFile(null);
+            }
+          }}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{docEditTarget ? '자료 수정' : '자료 등록'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>제목 *</Label>
+                  <Input value={docForm.title} onChange={e => setDocForm({ ...docForm, title: e.target.value })} placeholder="자료 제목" />
+                </div>
+                <div>
+                  <Label>설명</Label>
+                  <Textarea value={docForm.description} onChange={e => setDocForm({ ...docForm, description: e.target.value })} placeholder="자료 설명" rows={3} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>카테고리 *</Label>
+                    <Select value={docForm.category} onValueChange={v => setDocForm({ ...docForm, category: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>파일 유형</Label>
+                    <Select value={docForm.type} onValueChange={v => setDocForm({ ...docForm, type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FILE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>폴더</Label>
+                  <Select value={docForm.folderId || 'none'} onValueChange={v => setDocForm({ ...docForm, folderId: v === 'none' ? '' : v })}>
+                    <SelectTrigger><SelectValue placeholder="폴더 미지정" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">폴더 미지정</SelectItem>
+                      {(folders || []).map(f => (
+                        <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>부서</Label>
+                  <Input value={docForm.department} onChange={e => setDocForm({ ...docForm, department: e.target.value })} placeholder="부서명" />
+                </div>
+                <div>
+                  <Label>파일 업로드{docEditTarget ? ' (선택 — 기존 파일 유지하려면 비워두세요)' : ''}</Label>
+                  <Input
+                    type="file"
+                    accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.avi,.mov"
+                    onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                  />
+                  {uploadFile ? (
+                    <p className="text-xs text-muted-foreground mt-1">새 파일: {uploadFile.name} ({formatFileSize(uploadFile.size)})</p>
+                  ) : docEditTarget?.fileName ? (
+                    <p className="text-xs text-muted-foreground mt-1">현재 파일: {docEditTarget.fileName}{docEditTarget.fileSize ? ` (${formatFileSize(docEditTarget.fileSize)})` : ''}</p>
+                  ) : null}
+                </div>
+                {(docForm.type === 'VIDEO') && (
+                  <div>
+                    <Label>영상 URL (YouTube 등)</Label>
+                    <Input value={docForm.videoUrl} onChange={e => setDocForm({ ...docForm, videoUrl: e.target.value, videoType: 'youtube' })} placeholder="https://youtube.com/..." />
+                  </div>
+                )}
+                <Button onClick={() => docMutation.mutate()} disabled={!docForm.title || docMutation.isPending} className="w-full">
+                  {docMutation.isPending ? (docEditTarget ? '수정 중...' : '등록 중...') : (docEditTarget ? '수정' : '등록')}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* 폴더 생성/수정 다이얼로그 */}
         <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
@@ -595,11 +643,16 @@ export default function DocumentLibraryPage() {
                             </a>
                           )}
                           {canManage && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => {
-                              if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
-                            }}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="수정" onClick={() => openEditDoc(doc)}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="삭제" onClick={() => {
+                                if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
+                              }}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </TableCell>
                       </TableRow>
