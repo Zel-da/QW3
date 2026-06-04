@@ -202,7 +202,7 @@ function getStatusText(status: DayStatus): string {
 
 export default function MonthlyReportPage() {
   const { user } = useAuth();
-  const { site, setSite, initSiteFromUser } = useSite();
+  const { site, setSite, availableSites, initSiteFromUser } = useSite();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -267,6 +267,15 @@ export default function MonthlyReportPage() {
     }
   }, [user, initSiteFromUser]);
 
+  // 월별 결재 흐름에서 '전체' site는 의미 없음 — 첫 실제 사이트로 전환
+  // (다른 페이지에서 '전체' 선택 후 진입한 경우 처리)
+  useEffect(() => {
+    if (site === '전체' && availableSites.length > 0) {
+      const firstReal = availableSites.find(s => s !== '전체');
+      if (firstReal) setSite(firstReal);
+    }
+  }, [site, availableSites, setSite]);
+
   // 사이트별 담당자/승인자 기본값 불러오기
   useEffect(() => {
     if (site) {
@@ -307,11 +316,16 @@ export default function MonthlyReportPage() {
   }, [showEducationDatePicker, teams, downloadDay]);
 
   // 팀장 또는 임원팀장의 경우 해당 팀 자동 선택
+  // - 1차: user.teamId로 매칭 (현재 사이트의 팀과 일치하는 경우)
+  // - 2차 fallback: leaderId === user.id로 매칭 (다중 사이트 팀장 케이스 — 한 사용자가 양쪽 사이트의 같은 팀명 팀장인 경우)
   useEffect(() => {
-    if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && user.teamId && teams && teams.length > 0) {
-      const userTeam = teams.find(t => t.id === user.teamId);
+    if ((user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER') && teams && teams.length > 0) {
+      let userTeam = user.teamId ? teams.find(t => t.id === user.teamId) : undefined;
+      if (!userTeam && user.id) {
+        userTeam = teams.find(t => t.leaderId === user.id);
+      }
       if (userTeam) {
-        setSelectedTeam(user.teamId);
+        setSelectedTeam(userTeam.id);
       }
     }
   }, [user, teams]);
@@ -1165,15 +1179,16 @@ export default function MonthlyReportPage() {
             <div className="space-y-4">
               {/* Site, Team, Month Selection Row */}
               <div className="flex flex-wrap items-center gap-4">
-                {user?.role === 'ADMIN' && (
+                {(user?.role === 'ADMIN' || availableSites.filter(s => s !== '전체').length > 1) && (
                   <div className="space-y-2">
                     <Label>현장 선택</Label>
-                    <Select onValueChange={(value: Site) => setSite(value)} value={site}>
+                    <Select onValueChange={(value: Site) => setSite(value)} value={site === '전체' ? undefined : site}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="현장 선택" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
-                        {SITES.map(s => (
+                        {/* '전체'는 월별 결재 흐름에서 의미 없어 제외 */}
+                        {(user?.role === 'ADMIN' ? SITES : availableSites.filter(s => s !== '전체')).map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
                       </SelectContent>
