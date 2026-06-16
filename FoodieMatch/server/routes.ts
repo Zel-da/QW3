@@ -10085,20 +10085,21 @@ ${JSON.stringify(toolResults, null, 2)}
 
       let patched = 0;
       let failed = 0;
-      const failures: string[] = [];
+      const failures: { key: string; error?: string }[] = [];
 
       for (const att of targets) {
         const match = att.url.match(/\/uploads\/(.+)$/);
         if (!match) {
           failed++;
+          failures.push({ key: att.url, error: 'URL pattern mismatch' });
           continue;
         }
         const key = `uploads/${match[1]}`;
-        const ok = await updateR2ContentType(key, att.mimeType);
-        if (ok) patched++;
+        const result = await updateR2ContentType(key, att.mimeType);
+        if (result.ok) patched++;
         else {
           failed++;
-          if (failures.length < 10) failures.push(key);
+          if (failures.length < 5) failures.push({ key, error: result.error });
         }
       }
 

@@ -128,21 +128,26 @@ export async function uploadToStorage(
  * 본문 재업로드 없이 mime만 보정할 때 사용 (CopyObject + REPLACE).
  * @param key uploads/xxx.mp4 형식
  * @param newContentType 예: 'video/mp4'
+ * @returns { ok: boolean, error?: string } — 실패 시 에러 메시지 포함
  */
-export async function updateR2ContentType(key: string, newContentType: string): Promise<boolean> {
-  if (!isR2Enabled || !s3Client) return false;
+export async function updateR2ContentType(key: string, newContentType: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isR2Enabled || !s3Client) return { ok: false, error: 'R2 not configured' };
   try {
+    // S3/R2 CopyObject는 비ASCII(한글 등) 문자가 key에 있으면 직접 URL 인코딩 필요.
+    // 슬래시는 보존, 각 경로 segment만 인코딩.
+    const encodedKey = key.split('/').map(part => encodeURIComponent(part)).join('/');
     await s3Client.send(new CopyObjectCommand({
       Bucket: R2_BUCKET_NAME!,
       Key: key,
-      CopySource: `${R2_BUCKET_NAME}/${key}`,
+      CopySource: `/${R2_BUCKET_NAME}/${encodedKey}`,
       ContentType: newContentType,
       MetadataDirective: 'REPLACE',
     }));
-    return true;
-  } catch (error) {
-    console.error(`Failed to update Content-Type for ${key}:`, error);
-    return false;
+    return { ok: true };
+  } catch (error: any) {
+    const msg = `${error?.name ?? 'Error'}: ${error?.message ?? String(error)}`;
+    console.error(`Failed to update Content-Type for ${key}: ${msg}`);
+    return { ok: false, error: msg };
   }
 }
 
