@@ -17,7 +17,7 @@ import rateLimit from "express-rate-limit";
 // Email services are now dynamically imported where needed
 // 결재 이메일 템플릿은 DB 템플릿으로 전환됨 (APPROVAL_REQUEST, APPROVAL_APPROVED, APPROVAL_REJECTED)
 // R2 Storage for cloud deployment
-import { uploadToStorage, isR2Enabled, getStorageMode } from "./r2Storage";
+import { uploadToStorage, isR2Enabled, getStorageMode, updateR2ContentType, resolveMimeType } from "./r2Storage";
 // Google Gemini AI
 import { GoogleGenAI, Type } from "@google/genai";
 import { chatbotTools, executeTool } from "./chatbotFunctions";
@@ -7074,8 +7074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .substring(0, 100);  // Limit length
       const safeFileName = `${timestamp}_${sanitizedName}${ext}`;
 
-      // R2 또는 로컬 스토리지에 업로드
-      const { url } = await uploadToStorage(
+      // R2 또는 로컬 스토리지에 업로드 (mime 보정 포함)
+      const { url, mimeType: resolvedMime } = await uploadToStorage(
         finalPath,
         safeFileName,
         req.file.mimetype,
@@ -7086,7 +7086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         url,
         name: originalName,
         size: finalSize,
-        mimeType: req.file.mimetype
+        mimeType: resolvedMime  // 확장자 기반으로 보정된 mime
       });
     } catch (error) {
       console.error('File upload error:', error);
@@ -7173,8 +7173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const safeFileName = `${timestamp}_${random}_${sanitizedName}${ext}`;
 
           if (fs.existsSync(finalPath)) {
-            // R2 또는 로컬 스토리지에 업로드
-            const { url } = await uploadToStorage(
+            // R2 또는 로컬 스토리지에 업로드 (mime 보정 포함)
+            const { url, mimeType: resolvedMime } = await uploadToStorage(
               finalPath,
               safeFileName,
               file.mimetype,
@@ -7185,8 +7185,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               url,
               name: originalName,
               size: finalSize,
-              mimeType: file.mimetype,
-              type: file.mimetype.startsWith('image/') ? 'image' : 'file'
+              mimeType: resolvedMime,
+              type: resolvedMime.startsWith('image/') ? 'image'
+                  : resolvedMime.startsWith('video/') ? 'video'
+                  : resolvedMime.startsWith('audio/') ? 'audio'
+                  : 'file'
             });
           } else {
             console.error(`File path does not exist: ${finalPath}`);
@@ -10057,6 +10060,58 @@ ${JSON.stringify(toolResults, null, 2)}
       } else {
         res.end();
       }
+    }
+  });
+
+  // ==================== [일회용] R2 Content-Type 보정 패치 ====================
+  // 기존에 application/octet-stream으로 저장된 video/audio 객체들의 R2 metadata를
+  // DB의 정확한 mimeType으로 sync. 호출 후 다음 PR에서 제거 예정.
+  app.post("/api/admin/patch-r2-mime", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      if (!isR2Enabled) {
+        return res.status(400).json({ message: "R2가 비활성화되어 있습니다" });
+      }
+
+      // DB의 mimeType이 video/* 또는 audio/*인 R2 객체만 대상
+      const targets = await prisma.attachment.findMany({
+        where: {
+          AND: [
+            { OR: [{ url: { contains: 'r2.dev' } }, { url: { contains: 'r2.cloudflarestorage.com' } }] },
+            { OR: [{ mimeType: { startsWith: 'video/' } }, { mimeType: { startsWith: 'audio/' } }] },
+          ],
+        },
+        select: { id: true, url: true, name: true, mimeType: true },
+      });
+
+      let patched = 0;
+      let failed = 0;
+      const failures: string[] = [];
+
+      for (const att of targets) {
+        const match = att.url.match(/\/uploads\/(.+)$/);
+        if (!match) {
+          failed++;
+          continue;
+        }
+        const key = `uploads/${match[1]}`;
+        const ok = await updateR2ContentType(key, att.mimeType);
+        if (ok) patched++;
+        else {
+          failed++;
+          if (failures.length < 10) failures.push(key);
+        }
+      }
+
+      res.json({
+        message: "R2 Content-Type 패치 완료",
+        total: targets.length,
+        patched,
+        failed,
+        failures: failures.length > 0 ? failures : undefined,
+      });
+    } catch (error) {
+      console.error("Failed to patch R2 mime:", error);
+      res.status(500).json({ message: "R2 패치 실패" });
     }
   });
 

@@ -5,9 +5,53 @@
  * 환경변수가 설정되어 있으면 R2를 사용하고, 없으면 로컬 스토리지를 사용합니다.
  */
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs';
 import path from 'path';
+
+/**
+ * 확장자 → MIME 타입 매핑.
+ * 브라우저가 mime을 application/octet-stream으로 보내는 경우(특히 모바일/태블릿)에 사용.
+ * R2 객체의 Content-Type이 video/audio가 아니면 모바일 Safari/Chrome이 <video>/<audio> 재생을 거부함.
+ */
+const EXT_MIME_MAP: Record<string, string> = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.avi': 'video/x-msvideo',
+  '.webm': 'video/webm',
+  '.mkv': 'video/x-matroska',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.ogg': 'audio/ogg',
+  '.aac': 'audio/aac',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+};
+
+/**
+ * 브라우저가 보낸 mime이 octet-stream이거나 비어있을 때 확장자로 보정.
+ * 정확한 mime을 못 찾으면 들어온 값(또는 octet-stream)을 반환.
+ */
+export function resolveMimeType(fileName: string, providedMime?: string | null): string {
+  const safeMime = providedMime || '';
+  // 의미 있는 mime이 들어오면 그대로 사용
+  if (safeMime && safeMime !== 'application/octet-stream') return safeMime;
+  const ext = path.extname(fileName).toLowerCase();
+  return EXT_MIME_MAP[ext] || safeMime || 'application/octet-stream';
+}
 
 // R2 환경변수 확인
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -45,7 +89,10 @@ export async function uploadToStorage(
   fileName: string,
   mimeType: string,
   uploadDir: string
-): Promise<{ url: string; isR2: boolean }> {
+): Promise<{ url: string; isR2: boolean; mimeType: string }> {
+  // 브라우저가 보낸 mime이 octet-stream이면 확장자로 보정 (특히 mp4 등 비디오)
+  const resolvedMime = resolveMimeType(fileName, mimeType);
+
   if (isR2Enabled && s3Client) {
     // R2에 업로드
     const fileContent = fs.readFileSync(filePath);
@@ -55,7 +102,7 @@ export async function uploadToStorage(
       Bucket: R2_BUCKET_NAME!,
       Key: key,
       Body: fileContent,
-      ContentType: mimeType,
+      ContentType: resolvedMime,
     }));
 
     // 로컬 임시 파일 삭제
@@ -66,13 +113,36 @@ export async function uploadToStorage(
       ? `${R2_PUBLIC_URL}/${key}`
       : `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
 
-    return { url, isR2: true };
+    return { url, isR2: true, mimeType: resolvedMime };
   } else {
     // 로컬 스토리지 사용
     const newPath = path.join(uploadDir, fileName);
     fs.renameSync(filePath, newPath);
 
-    return { url: `/uploads/${encodeURIComponent(fileName)}`, isR2: false };
+    return { url: `/uploads/${encodeURIComponent(fileName)}`, isR2: false, mimeType: resolvedMime };
+  }
+}
+
+/**
+ * R2 객체의 metadata(Content-Type)만 교체합니다.
+ * 본문 재업로드 없이 mime만 보정할 때 사용 (CopyObject + REPLACE).
+ * @param key uploads/xxx.mp4 형식
+ * @param newContentType 예: 'video/mp4'
+ */
+export async function updateR2ContentType(key: string, newContentType: string): Promise<boolean> {
+  if (!isR2Enabled || !s3Client) return false;
+  try {
+    await s3Client.send(new CopyObjectCommand({
+      Bucket: R2_BUCKET_NAME!,
+      Key: key,
+      CopySource: `${R2_BUCKET_NAME}/${key}`,
+      ContentType: newContentType,
+      MetadataDirective: 'REPLACE',
+    }));
+    return true;
+  } catch (error) {
+    console.error(`Failed to update Content-Type for ${key}:`, error);
+    return false;
   }
 }
 
