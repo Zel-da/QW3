@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { saveHeavyDraft, loadHeavyDraft, deleteHeavyDraft } from '@/lib/draftStorage';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -655,14 +656,12 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     wasAutoRestored,
   } = useAutoSave({
     key: autoSaveKey,
+    // localStorage에는 가벼운 데이터만. signatures/remarksImages/audioRecording/transcription은
+    // 용량 큰 base64라 IndexedDB(별도 effect)에 분리 저장 — localStorage QuotaExceededError 회피.
     data: {
       formState,
-      signatures,
       remarks,
-      remarksImages,
       absentUsers,
-      audioRecording,
-      transcription,
       // 작성자 정보
       selectedAuthorId,
       isManualAuthor,
@@ -676,21 +675,65 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     readyToRestore: mode === 'new' && !existingReport,
     onRestore: (restored) => {
       if (restored.formState) setFormState(restored.formState);
-      if (restored.signatures) setSignatures(restored.signatures);
       if (restored.remarks) setRemarks(restored.remarks);
-      if (restored.remarksImages) setRemarksImages(restored.remarksImages);
       if (restored.absentUsers) setAbsentUsers(restored.absentUsers);
-      // 이미 새 녹음이 있으면 draft 녹음 무시 (race condition 방지)
-      if (restored.audioRecording && !audioRecording) setAudioRecording(restored.audioRecording);
-      if (restored.transcription && !transcription) setTranscription(restored.transcription);
       // 작성자 정보 복원
       if (restored.selectedAuthorId) setSelectedAuthorId(restored.selectedAuthorId);
       if (restored.isManualAuthor !== undefined) setIsManualAuthor(restored.isManualAuthor);
       if (restored.manualAuthorName) setManualAuthorName(restored.manualAuthorName);
+
+      // 무거운 데이터는 IndexedDB에서 비동기 로드 (fire-and-forget)
+      loadHeavyDraft(autoSaveKey).then(heavy => {
+        if (!heavy) return;
+        if (heavy.signatures) setSignatures(heavy.signatures);
+        if (heavy.remarksImages) setRemarksImages(heavy.remarksImages);
+        if (heavy.audioRecording && !audioRecording) setAudioRecording(heavy.audioRecording);
+        if (heavy.transcription && !transcription) setTranscription(heavy.transcription);
+        console.log(`[Auto-Save] IndexedDB heavy data restored for: ${autoSaveKey}`);
+      }).catch(err => {
+        console.error('Failed to load heavy draft from IndexedDB:', err);
+      });
       // 임시저장 데이터 복원 시 draft 조회 모드로 전환
       setMode('draft');
     },
   });
+
+  // 무거운 데이터(signatures/remarksImages/audioRecording/transcription)는 IndexedDB에 별도 저장
+  // 3초 debounce, useAutoSave와 동일한 enabled 조건 사용.
+  const heavyDraftEnabled = !!selectedTeam && !reportForEdit && (mode === 'new' || mode === 'edit') && hasActualData;
+  const lastHeavySaveRef = useRef('');
+  useEffect(() => {
+    if (!heavyDraftEnabled) return;
+    const heavyHas = Object.keys(signatures).length > 0
+      || remarksImages.length > 0
+      || !!audioRecording
+      || !!transcription;
+    if (!heavyHas) return;
+
+    // 변경 없으면 skip (서명 base64 비교는 무거우므로 키 개수와 길이 합으로 가벼운 해시)
+    const sigHash = Object.entries(signatures).map(([k, v]) => `${k}:${(v || '').length}`).join('|');
+    const imgHash = `${remarksImages.length}:${remarksImages.map(i => (i?.url || '').length).join(',')}`;
+    const audHash = `${!!audioRecording}:${audioRecording?.url?.length || 0}`;
+    const txHash = `${transcription?.length || 0}`;
+    const signature = `${sigHash}#${imgHash}#${audHash}#${txHash}`;
+    if (signature === lastHeavySaveRef.current) return;
+
+    const timer = setTimeout(() => {
+      saveHeavyDraft(autoSaveKey, {
+        signatures,
+        remarksImages,
+        audioRecording,
+        transcription,
+      })
+        .then(() => {
+          lastHeavySaveRef.current = signature;
+          console.log(`[Auto-Save] IndexedDB heavy data saved: ${autoSaveKey}`);
+        })
+        .catch(err => console.error('Failed to save heavy draft to IndexedDB:', err));
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [signatures, remarksImages, audioRecording, transcription, autoSaveKey, heavyDraftEnabled]);
 
   // 페이지 이탈 시 자동 임시저장 ref (중복 실행 방지)
   const autoSaveInProgressRef = useRef(false);
@@ -996,8 +1039,9 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       } else {
         const response = await apiClient.post('/api/reports', reportData);
         toast({ title: "TBM 일지가 성공적으로 제출되었습니다." });
-        // 제출 성공 시 임시저장 데이터 삭제
+        // 제출 성공 시 임시저장 데이터 삭제 (localStorage + IndexedDB)
         clearSaved();
+        deleteHeavyDraft(autoSaveKey).catch(() => {});
         newReportId = response.data?.id;
       }
       setLastSubmittedReportId(newReportId);
@@ -1359,6 +1403,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               onClick={() => {
                 if (confirm('임시저장 데이터를 삭제하시겠습니까?')) {
                   discardSaved();
+                  deleteHeavyDraft(autoSaveKey).catch(() => {});
                   setMode('new');
                   clearFormState();
                 }
