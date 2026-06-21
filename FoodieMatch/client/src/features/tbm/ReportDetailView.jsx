@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,6 +25,7 @@ const formatFileSize = (bytes) => {
 };
 
 const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, currentUser }) => {
+    const queryClient = useQueryClient();
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -58,6 +60,14 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
             setIsDeleting(true);
             try {
                 await apiClient.delete(`/api/tbm/${reportId}`);
+                // 삭제 후 관련 React Query 캐시 무효화 — stale 데이터로 인해
+                // 출석 현황, 월별 보고서, 결재 화면 등에서 삭제된 항목이 잔존하는 문제 방지
+                queryClient.invalidateQueries({ queryKey: ['attendance-overview'] });
+                queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
+                queryClient.invalidateQueries({ queryKey: ['tbmMonthly'] });
+                queryClient.invalidateQueries({ queryKey: ['daily-stats'] });
+                queryClient.invalidateQueries({ queryKey: ['reports'] });
+                queryClient.invalidateQueries({ queryKey: ['tbm-daily-stats'] });
                 alert('삭제되었습니다.');
                 onBackToList();
             } catch (err) {
