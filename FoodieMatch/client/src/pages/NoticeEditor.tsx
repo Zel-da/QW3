@@ -15,7 +15,7 @@ import {
 import { Notice } from "@shared/schema";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { Plus, X, Video, Music, Youtube, Trash2, CheckSquare, Square, ZoomIn, RotateCw, Clock } from "lucide-react";
 import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export default function NoticeEditor() {
   const isEditing = !!noticeId;
 
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: noticeToEdit } = useQuery<Notice>({
     queryKey: [`/api/notices/${noticeId}`],
@@ -343,18 +344,20 @@ export default function NoticeEditor() {
       const response = await apiRequest(method, url, submitData);
       const data = await response.json();
 
-      queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
+      // 캐시를 무효화하고 refetch 완료까지 기다린 뒤 이동 — race 방지
+      await queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
       if (isEditing) {
-        queryClient.invalidateQueries({ queryKey: [`/api/notices/${noticeId}`] });
+        await queryClient.invalidateQueries({ queryKey: [`/api/notices/${noticeId}`] });
       }
 
       // 저장 성공 시 임시저장 데이터 삭제
       clearSaved();
 
       setSuccess('성공적으로 저장되었습니다!');
+      // SPA 라우팅으로 전환 (window.location.href는 전체 페이지 리로드라 무겁고 캐시도 날아감)
       setTimeout(() => {
-        window.location.href = isEditing ? `/notices/${noticeId}` : '/notices';
-      }, 1500);
+        setLocation(isEditing ? `/notices/${noticeId}` : '/notices');
+      }, 800);
 
     } catch (err) {
       setError((err as Error).message);

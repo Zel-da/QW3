@@ -10220,10 +10220,29 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
-  // 자료 삭제
-  app.delete("/api/documents/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+  // 자료 삭제 (작성자 본인 또는 ADMIN/SAFETY_TEAM)
+  // Notice 삭제 정책과 동일하게 통일 — 본인 글은 본인이 삭제 가능
+  app.delete("/api/documents/:id", requireAuth, async (req, res) => {
     try {
-      await prisma.document.delete({ where: { id: parseInt(req.params.id) } });
+      const id = parseInt(req.params.id);
+      const userId = req.session.user!.id;
+      const userRole = req.session.user!.role;
+
+      const doc = await prisma.document.findUnique({
+        where: { id },
+        select: { authorId: true },
+      });
+      if (!doc) {
+        return res.status(404).json({ message: "자료를 찾을 수 없습니다" });
+      }
+
+      const isAuthor = doc.authorId === userId;
+      const isManager = userRole === 'ADMIN' || userRole === 'SAFETY_TEAM';
+      if (!isAuthor && !isManager) {
+        return res.status(403).json({ message: "본인이 등록한 자료만 삭제할 수 있습니다." });
+      }
+
+      await prisma.document.delete({ where: { id } });
       res.json({ message: "삭제되었습니다" });
     } catch (error) {
       console.error("Failed to delete document:", error);

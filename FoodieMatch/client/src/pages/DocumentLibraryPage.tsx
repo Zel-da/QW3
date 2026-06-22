@@ -696,16 +696,17 @@ export default function DocumentLibraryPage() {
                             </a>
                           )}
                           {canManage && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="수정" onClick={() => openEditDoc(doc)}>
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="삭제" onClick={() => {
-                                if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
-                              }}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="수정" onClick={() => openEditDoc(doc)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {/* 삭제는 ADMIN/SAFETY_TEAM 또는 작성자 본인에게 노출 (서버 권한과 동일) */}
+                          {(canManage || doc.author?.id === user?.id) && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="삭제" onClick={() => {
+                              if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
+                            }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

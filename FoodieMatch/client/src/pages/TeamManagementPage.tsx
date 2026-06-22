@@ -286,7 +286,11 @@ export default function TeamManagementPage() {
   });
 
   const deleteTeamMutation = useMutation({ mutationFn: deleteTeam,
-    onSuccess: () => {
+    onSuccess: async () => {
+      // 진행 중인 teamData refetch를 즉시 취소 — 삭제된 팀 데이터가 일시적으로 깜박이는 race 방지
+      await queryClient.cancelQueries({ queryKey: ['teamData'] });
+      // 삭제된 팀의 캐시 자체를 제거 (다음 select 시 빈 상태로 시작)
+      queryClient.removeQueries({ queryKey: ['teamData', selectedTeamId] });
       toast({ title: '성공', description: '팀이 삭제되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       setSelectedTeamId(null);
