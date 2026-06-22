@@ -139,10 +139,16 @@ export default function EducationManagementPage() {
       setSuccessMessage('교육 과정이 삭제되었습니다.');
       toast({ title: '교육 과정이 삭제되었습니다.' });
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      // 코스 삭제 시 cascade로 UserProgress/UserAssessment/Certificate도 삭제됨
+      // 사용자 진도·수료증 화면이 stale 표시되지 않도록 함께 무효화
+      queryClient.invalidateQueries({ queryKey: ['userProgress'] });
+      queryClient.invalidateQueries({ queryKey: ['userAssessments'] });
+      queryClient.invalidateQueries({ queryKey: ['userCertificates'] });
+      queryClient.invalidateQueries({ queryKey: ['certificates'] });
       setShowSuccessDialog(true);
     },
-    onError: () => {
-        toast({ title: '삭제 중 오류가 발생했습니다.', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: '오류', description: error?.message || '교육 과정 삭제에 실패했습니다.', variant: 'destructive' });
     }
   });
 

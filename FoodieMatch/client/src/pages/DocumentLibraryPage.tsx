@@ -239,6 +239,8 @@ export default function DocumentLibraryPage() {
     onSuccess: () => {
       toast({ title: '폴더 삭제 완료' });
       queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+      // documents도 무효화 — schema의 folderId가 SetNull이라 폴더 안 자료의 folderId가 null로 바뀜
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
       // 현재 폴더가 삭제되었으면 루트로 이동
       if (currentFolder) setCurrentFolder(null);
     },
