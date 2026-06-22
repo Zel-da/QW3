@@ -249,17 +249,27 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     checkPausedRecording();
   }, []);
 
-  // 페이지 이동/새로고침 시 경고 (녹음 중 또는 일시정지 상태)
+  // 페이지 이동/새로고침 시 경고
+  // recording: 새로고침 시 메모리상의 녹음 데이터가 즉시 소실됨 (MediaRecorder는 브라우저 컨텍스트와 함께 사라짐)
+  // saving: 서버 업로드 진행 중이라 끊으면 저장 실패
+  // paused: IndexedDB에 백업은 있지만 사용자가 저장 안 한 상태
+  // 참고: 현대 브라우저는 returnValue 메시지를 무시하고 자체 다이얼로그를 띄우지만,
+  //       핸들러가 등록되어 있어야 다이얼로그 자체가 뜸. 메시지는 호환성 위해 유지.
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (state.status === 'recording') {
         e.preventDefault();
-        e.returnValue = '녹음이 진행 중입니다. 페이지를 나가면 현재 세션이 일시정지됩니다.';
+        e.returnValue = '⚠️ 녹음이 진행 중입니다. 페이지를 나가면 지금까지 녹음한 내용이 손실됩니다. 먼저 일시정지 후 저장하세요.';
+        return e.returnValue;
+      }
+      if (state.status === 'saving') {
+        e.preventDefault();
+        e.returnValue = '⚠️ 녹음을 서버에 저장 중입니다. 지금 나가면 업로드가 실패합니다.';
         return e.returnValue;
       }
       if (state.status === 'paused') {
         e.preventDefault();
-        e.returnValue = '저장되지 않은 녹음이 있습니다. 저장 버튼을 눌러 서버에 저장하세요.';
+        e.returnValue = '저장되지 않은 녹음(일시정지)이 있습니다. 저장 버튼을 눌러 서버에 저장하세요.';
         return e.returnValue;
       }
     };
