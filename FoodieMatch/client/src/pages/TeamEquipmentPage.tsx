@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { Pencil, Trash2, Plus, Save, X, ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -60,6 +61,7 @@ const deleteTeamEquipment = async ({ teamId, equipmentId }: { teamId: number; eq
 export default function TeamEquipmentPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
   const [editedEquipments, setEditedEquipments] = useState<TeamEquipment[]>([]);
@@ -197,9 +199,15 @@ export default function TeamEquipmentPage() {
   };
 
   // 장비 삭제
-  const handleDeleteEquipment = (equipmentId: number) => {
+  const handleDeleteEquipment = async (equipmentId: number) => {
     if (!selectedTeam) return;
-    if (confirm('정말 이 장비를 삭제하시겠습니까?')) {
+    const ok = await confirm({
+      title: '장비 삭제',
+      description: '이 장비를 삭제하시겠습니까?',
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (ok) {
       deleteEquipmentMutation.mutate({ teamId: selectedTeam, equipmentId });
     }
   };

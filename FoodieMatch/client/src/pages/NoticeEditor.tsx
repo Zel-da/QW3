@@ -24,6 +24,7 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { apiRequest } from "@/lib/queryClient";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export default function NoticeEditor() {
   const [match, params] = useRoute("/notices/edit/:id");
@@ -61,6 +62,7 @@ export default function NoticeEditor() {
   const [viewerImages, setViewerImages] = useState<ImageInfo[]>([]);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (isEditing && noticeToEdit) {
@@ -198,8 +200,15 @@ export default function NoticeEditor() {
   };
 
   // 전체 삭제 (특정 타입)
-  const removeAllByType = (type: string) => {
-    if (!window.confirm(`모든 ${type === 'image' ? '이미지' : '파일'}을 삭제하시겠습니까?`)) return;
+  const removeAllByType = async (type: string) => {
+    const label = type === 'image' ? '이미지' : '파일';
+    const ok = await confirm({
+      title: `모든 ${label} 삭제`,
+      description: `모든 ${label}을(를) 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     setAttachments(prev => prev.filter(item => item.type !== type));
     setSelectedItems([]);
     setSelectMode(null);

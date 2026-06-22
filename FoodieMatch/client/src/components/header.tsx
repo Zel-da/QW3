@@ -7,6 +7,7 @@ import { useTbmNavigation } from "@/context/TbmNavigationContext";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -24,6 +25,7 @@ export function Header() {
     canStartRecording
   } = useRecording();
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const handleStartRecording = async () => {
     if (!currentTbmInfo) {
@@ -84,7 +86,13 @@ export function Header() {
   };
 
   const handleDiscardRecording = async () => {
-    if (confirm("녹음을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+    const ok = await confirm({
+      title: '녹음 삭제',
+      description: '녹음을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (ok) {
       await discardRecording();
       toast({
         title: "녹음 삭제됨",

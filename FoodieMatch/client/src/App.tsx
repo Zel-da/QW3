@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
 import { RecordingProvider } from "./context/RecordingContext";
 import { TbmNavigationProvider } from "./context/TbmNavigationContext";
+import { ConfirmProvider } from "./hooks/useConfirm";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Role } from "@shared/schema";
@@ -89,6 +90,7 @@ function App() {
         <RecordingProvider>
           <TbmNavigationProvider>
             <QueryClientProvider client={queryClient}>
+              <ConfirmProvider>
               <Suspense fallback={<PageLoader />}>
               <Switch>
               {/* 공개 페이지 */}
@@ -306,6 +308,7 @@ function App() {
             </Suspense>
             {/* 챗봇 - 모든 페이지에서 표시 */}
             <ChatBot />
+            </ConfirmProvider>
             </QueryClientProvider>
           </TbmNavigationProvider>
         </RecordingProvider>

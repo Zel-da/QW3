@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useRecording, formatTime as formatRecordingTime } from '@/context/RecordingContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface AudioRecordingData {
   url: string;
@@ -73,6 +74,7 @@ export function InlineAudioPanel({
   disabled = false,
   playbackOnly = false,
 }: InlineAudioPanelProps) {
+  const { toast } = useToast();
   const [state, setState] = useState<RecordingState>(existingAudio ? 'recorded' : 'idle');
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -184,7 +186,7 @@ export function InlineAudioPanel({
       }, 1000);
     } catch (error) {
       console.error('녹음 시작 실패:', error);
-      alert('마이크 접근 권한이 필요합니다.');
+      toast({ title: '마이크 권한 필요', description: '브라우저 설정에서 마이크 접근을 허용해주세요.', variant: 'destructive' });
     }
   }, [maxDurationSeconds, audioUrl, existingAudio, recordingTime]);
 
@@ -212,11 +214,11 @@ export function InlineAudioPanel({
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith('audio/')) {
-      alert('오디오 파일만 업로드 가능합니다.');
+      toast({ title: '업로드 불가', description: '오디오 파일만 업로드할 수 있습니다.', variant: 'destructive' });
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
-      alert('파일 크기는 50MB 이하여야 합니다.');
+      toast({ title: '파일 크기 초과', description: '파일 크기는 50MB 이하여야 합니다.', variant: 'destructive' });
       return;
     }
 
@@ -248,7 +250,7 @@ export function InlineAudioPanel({
       onRecordingComplete(recordingData);
     } catch (error) {
       console.error('파일 업로드 실패:', error);
-      alert('파일 업로드에 실패했습니다.');
+      toast({ title: '업로드 실패', description: '파일 업로드에 실패했습니다.', variant: 'destructive' });
       setState('idle');
     }
   }, [onRecordingComplete]);
@@ -276,7 +278,7 @@ export function InlineAudioPanel({
       setState('recorded');
     } catch (error) {
       console.error('녹음 업로드 실패:', error);
-      alert('녹음 업로드에 실패했습니다.');
+      toast({ title: '업로드 실패', description: '녹음 업로드에 실패했습니다.', variant: 'destructive' });
       setState('recorded');
     }
   }, [audioBlob, duration, onRecordingComplete]);

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { saveHeavyDraft, loadHeavyDraft, deleteHeavyDraft } from '@/lib/draftStorage';
+import { useConfirm } from '@/hooks/useConfirm';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -36,6 +37,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const { setCurrentTbmInfo, lastSavedRecording, clearLastSavedRecording, state: recordingState } = useRecording();
   const { registerSafeNavigate, unregisterSafeNavigate } = useTbmNavigation();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [, navigate] = useLocation();
   const [teams, setTeams] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -1407,8 +1409,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               size="sm"
               variant="outline"
               className="text-red-600 border-red-300 hover:bg-red-50"
-              onClick={() => {
-                if (confirm('임시저장 데이터를 삭제하시겠습니까?')) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: '임시저장 삭제',
+                  description: '임시저장 데이터를 삭제하시겠습니까?',
+                  confirmText: '삭제',
+                  destructive: true,
+                });
+                if (ok) {
                   discardSaved();
                   deleteHeavyDraft(autoSaveKey).catch(() => {});
                   setMode('new');

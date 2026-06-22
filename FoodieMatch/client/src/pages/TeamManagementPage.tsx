@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { Search, Users as UsersIcon, Building2 } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import type { User, Team } from '@shared/schema';
@@ -102,6 +103,7 @@ export default function TeamManagementPage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -440,12 +442,15 @@ export default function TeamManagementPage() {
     setEditTeamSite('');
   };
 
-  const handleDeleteTeam = () => {
-    if (selectedTeamId && teamData) {
-      if (confirm(`정말 "${teamData.name}" 팀을 삭제하시겠습니까?\n팀에 사용자가 없어야 삭제 가능합니다.`)) {
-        deleteTeamMutation.mutate(selectedTeamId);
-      }
-    }
+  const handleDeleteTeam = async () => {
+    if (!selectedTeamId || !teamData) return;
+    const ok = await confirm({
+      title: '팀 삭제',
+      description: `"${teamData.name}" 팀을 삭제하시겠습니까? (팀에 사용자가 없어야 삭제 가능)`,
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (ok) deleteTeamMutation.mutate(selectedTeamId);
   };
 
   // Render Logic

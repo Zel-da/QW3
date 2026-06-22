@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Play, Pause, RotateCcw, Trash2, Upload, FileAudio, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export interface AudioRecordingData {
@@ -48,6 +49,7 @@ export function AudioRecorder({
   maxDurationSeconds = 1800, // 30분
   disabled = false,
 }: AudioRecorderProps) {
+  const { toast } = useToast();
   const [state, setState] = useState<RecordingState>(existingAudio ? 'recorded' : 'idle');
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -138,7 +140,7 @@ export function AudioRecorder({
       }, 1000);
     } catch (error) {
       console.error('녹음 시작 실패:', error);
-      alert('마이크 접근 권한이 필요합니다. 브라우저 설정을 확인해주세요.');
+      toast({ title: '마이크 권한 필요', description: '브라우저 설정에서 마이크 접근을 허용해주세요.', variant: 'destructive' });
     }
   }, [maxDurationSeconds, audioUrl, existingAudio, recordingTime]);
 
@@ -175,13 +177,13 @@ export function AudioRecorder({
   const handleFileUpload = useCallback(
     async (file: File) => {
       if (!file.type.startsWith('audio/')) {
-        alert('오디오 파일만 업로드 가능합니다.');
+        toast({ title: '업로드 불가', description: '오디오 파일만 업로드할 수 있습니다.', variant: 'destructive' });
         return;
       }
 
       // 100MB 제한 (서버 제한)
       if (file.size > 100 * 1024 * 1024) {
-        alert('파일 크기는 100MB 이하여야 합니다.');
+        toast({ title: '파일 크기 초과', description: '파일 크기는 100MB 이하여야 합니다.', variant: 'destructive' });
         return;
       }
 
@@ -223,7 +225,7 @@ export function AudioRecorder({
         onRecordingComplete(recordingData);
       } catch (error) {
         console.error('파일 업로드 실패:', error);
-        alert('파일 업로드에 실패했습니다.');
+        toast({ title: '업로드 실패', description: '파일 업로드에 실패했습니다.', variant: 'destructive' });
         setState('idle');
       }
     },
@@ -263,7 +265,7 @@ export function AudioRecorder({
       onRecordingComplete(recordingData);
     } catch (error) {
       console.error('녹음 업로드 실패:', error);
-      alert('녹음 업로드에 실패했습니다.');
+      toast({ title: '업로드 실패', description: '녹음 업로드에 실패했습니다.', variant: 'destructive' });
       setState('recorded');
     }
   }, [audioBlob, duration, onRecordingComplete]);

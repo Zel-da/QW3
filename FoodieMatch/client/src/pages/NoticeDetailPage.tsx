@@ -13,6 +13,7 @@ import { ImageViewer, ImageInfo } from "@/components/ImageViewer";
 import type { Notice, Comment as CommentType } from "@shared/schema";
 import { sanitizeText } from "@/lib/sanitize";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -77,6 +78,7 @@ export default function NoticeDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [, params] = useRoute("/notices/:id");
   const noticeId = params?.id;
 
@@ -244,9 +246,15 @@ export default function NoticeDetailPage() {
   };
 
   // 댓글 삭제
-  const handleDeleteComment = (commentId: string) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!noticeId) return;
-    if (!window.confirm('정말 이 댓글을 삭제하시겠습니까?')) return;
+    const ok = await confirm({
+      title: '댓글 삭제',
+      description: '이 댓글을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     deleteCommentMutation.mutate({ noticeId, commentId });
   };
 
@@ -343,7 +351,13 @@ export default function NoticeDetailPage() {
   const handleDelete = async () => {
     if (!noticeId) return;
 
-    if (!window.confirm('정말 삭제하시겠습니까?')) return;
+    const ok = await confirm({
+      title: '공지사항 삭제',
+      description: '이 공지사항을 삭제하시겠습니까?',
+      confirmText: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/notices/${noticeId}`, {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import apiClient from './apiConfig';
+import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -26,6 +28,8 @@ const formatFileSize = (bytes) => {
 
 const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, currentUser }) => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const confirm = useConfirm();
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -56,25 +60,31 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
     }, [reportId]);
 
     const handleDelete = async () => {
-        if (window.confirm('정말로 이 점검표를 삭제하시겠습니까?')) {
-            setIsDeleting(true);
-            try {
-                await apiClient.delete(`/api/tbm/${reportId}`);
-                // 삭제 후 관련 React Query 캐시 무효화 — stale 데이터로 인해
-                // 출석 현황, 월별 보고서, 결재 화면 등에서 삭제된 항목이 잔존하는 문제 방지
-                queryClient.invalidateQueries({ queryKey: ['attendance-overview'] });
-                queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
-                queryClient.invalidateQueries({ queryKey: ['tbmMonthly'] });
-                queryClient.invalidateQueries({ queryKey: ['daily-stats'] });
-                queryClient.invalidateQueries({ queryKey: ['reports'] });
-                queryClient.invalidateQueries({ queryKey: ['tbm-daily-stats'] });
-                alert('삭제되었습니다.');
-                onBackToList();
-            } catch (err) {
-                setError('삭제 중 오류가 발생했습니다.');
-            } finally {
-                setIsDeleting(false);
-            }
+        const ok = await confirm({
+            title: 'TBM 점검표 삭제',
+            description: '이 점검표를 삭제하시겠습니까? 삭제 후 되돌릴 수 없습니다.',
+            confirmText: '삭제',
+            destructive: true,
+        });
+        if (!ok) return;
+        setIsDeleting(true);
+        try {
+            await apiClient.delete(`/api/tbm/${reportId}`);
+            // 삭제 후 관련 React Query 캐시 무효화 — stale 데이터로 인해
+            // 출석 현황, 월별 보고서, 결재 화면 등에서 삭제된 항목이 잔존하는 문제 방지
+            queryClient.invalidateQueries({ queryKey: ['attendance-overview'] });
+            queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
+            queryClient.invalidateQueries({ queryKey: ['tbmMonthly'] });
+            queryClient.invalidateQueries({ queryKey: ['daily-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
+            queryClient.invalidateQueries({ queryKey: ['tbm-daily-stats'] });
+            toast({ title: '삭제 완료', description: 'TBM 점검표가 삭제되었습니다.' });
+            onBackToList();
+        } catch (err) {
+            setError('삭제 중 오류가 발생했습니다.');
+            toast({ title: '오류', description: '삭제 중 오류가 발생했습니다.', variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -88,7 +98,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
 
     const handleModifyWithCheck = () => {
         if (!canEdit) {
-            alert('권한이 없습니다. 본인이 작성한 TBM만 수정할 수 있습니다.');
+            toast({ title: '권한 없음', description: '본인이 작성한 TBM만 수정할 수 있습니다.', variant: 'destructive' });
             return;
         }
         onModify(report.id);
@@ -96,7 +106,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
 
     const handleDeleteWithCheck = () => {
         if (!canEdit) {
-            alert('권한이 없습니다. 본인이 작성한 TBM만 삭제할 수 있습니다.');
+            toast({ title: '권한 없음', description: '본인이 작성한 TBM만 삭제할 수 있습니다.', variant: 'destructive' });
             return;
         }
         handleDelete();
@@ -285,7 +295,7 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
                                         className="gap-1"
                                         onClick={() => {
                                             navigator.clipboard.writeText(parsedRemarks.transcription.text);
-                                            alert('텍스트가 클립보드에 복사되었습니다.');
+                                            toast({ title: '복사됨', description: '텍스트가 클립보드에 복사되었습니다.' });
                                         }}
                                     >
                                         <Copy className="h-3 w-3" />

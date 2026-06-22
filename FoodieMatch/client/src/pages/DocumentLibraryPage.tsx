@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import {
   FileText, Video, Plus, Trash2, Download, Search, ExternalLink, Eye,
@@ -91,6 +92,7 @@ export default function DocumentLibraryPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
   // 현재 보고 있는 폴더 (null = 루트, 폴더 그리드 + 폴더 미지정 자료)
@@ -592,10 +594,14 @@ export default function DocumentLibraryPage() {
                     folder={f}
                     onOpen={() => setCurrentFolder(f)}
                     onEdit={canManage ? () => openEditFolder(f) : undefined}
-                    onDelete={canManage ? () => {
-                      if (confirm(`"${f.name}" 폴더를 삭제하시겠습니까?`)) {
-                        deleteFolderMutation.mutate(f.id);
-                      }
+                    onDelete={canManage ? async () => {
+                      const ok = await confirm({
+                        title: '폴더 삭제',
+                        description: `"${f.name}" 폴더를 삭제하시겠습니까?`,
+                        confirmText: '삭제',
+                        destructive: true,
+                      });
+                      if (ok) deleteFolderMutation.mutate(f.id);
                     } : undefined}
                   />
                 ))}
@@ -702,8 +708,14 @@ export default function DocumentLibraryPage() {
                           )}
                           {/* 삭제는 ADMIN/SAFETY_TEAM 또는 작성자 본인에게 노출 (서버 권한과 동일) */}
                           {(canManage || doc.author?.id === user?.id) && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="삭제" onClick={() => {
-                              if (confirm('이 자료를 삭제하시겠습니까?')) deleteDocMutation.mutate(doc.id);
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="삭제" onClick={async () => {
+                              const ok = await confirm({
+                                title: '자료 삭제',
+                                description: `"${doc.title}"을(를) 삭제하시겠습니까?`,
+                                confirmText: '삭제',
+                                destructive: true,
+                              });
+                              if (ok) deleteDocMutation.mutate(doc.id);
                             }}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
