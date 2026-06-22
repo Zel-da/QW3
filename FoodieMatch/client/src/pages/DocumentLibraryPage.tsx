@@ -199,7 +199,11 @@ export default function DocumentLibraryPage() {
     onSuccess: () => {
       toast({ title: '삭제 완료' });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      // 폴더 카드의 _count.documents가 stale 표시되지 않도록 함께 무효화
       queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+    },
+    onError: (err: any) => {
+      toast({ title: '오류', description: err?.message || '삭제 실패', variant: 'destructive' });
     },
   });
 

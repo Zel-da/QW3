@@ -381,6 +381,8 @@ export default function ApprovalPage() {
     onSuccess: () => {
       // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
+      queryClient.invalidateQueries({ queryKey: ['sentApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedApprovals'] });
       toast({
         title: "결재 완료",
         description: "결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.",
@@ -408,6 +410,8 @@ export default function ApprovalPage() {
     onSuccess: () => {
       // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
+      queryClient.invalidateQueries({ queryKey: ['sentApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedApprovals'] });
       toast({
         title: "반려 완료",
         description: "결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.",

@@ -1074,7 +1074,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           return newDrafts;
         });
       }
+      // TBM 저장/수정 시 관련 캐시 일괄 무효화 (ReportDetailView 삭제와 동일 셋)
       queryClient.invalidateQueries({ queryKey: ['monthlyReport'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['tbmMonthly'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['tbm-daily-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tbm/daily-stats'] });
       setShowSuccessDialog(true);
       resetChanges(); // 저장 후 변경사항 리셋 (페이지 이탈 경고 비활성화)
     } catch (err) {

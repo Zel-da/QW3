@@ -140,12 +140,20 @@ export default function AdminPage() {
     queryFn: fetchTeams,
   });
 
+  // 모든 user mutation 후 invalidate해야 할 캐시 키 집합 — 누락 시 다른 화면에서 stale 표시
+  // (TeamManagementPage가 ['teamData', selectedTeamId]·['allUsers'], 다른 곳이 ['users']·['pendingUsers'] 사용)
+  const invalidateUserCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['pendingUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['teamData'] });
+  };
+
   const roleMutation = useMutation({
     mutationFn: updateUserRole,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자 역할이 변경되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+      invalidateUserCaches();
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message || '역할 변경에 실패했습니다.', variant: 'destructive' });
@@ -156,8 +164,7 @@ export default function AdminPage() {
     mutationFn: updateUserSite,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자의 소속 현장이 변경되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+      invalidateUserCaches();
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message || '현장 변경에 실패했습니다.', variant: 'destructive' });
@@ -168,7 +175,7 @@ export default function AdminPage() {
     mutationFn: deleteUser,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자가 삭제되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches();
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message || '사용자 삭제에 실패했습니다.', variant: 'destructive' });
@@ -179,8 +186,7 @@ export default function AdminPage() {
     mutationFn: approveUser,
     onSuccess: () => {
       toast({ title: '성공', description: '사용자가 승인되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingUsers'] });
+      invalidateUserCaches();
       setApproveDialogOpen(false);
       setSelectedUserForApproval(null);
     },
@@ -193,8 +199,7 @@ export default function AdminPage() {
     mutationFn: rejectUser,
     onSuccess: () => {
       toast({ title: '성공', description: '가입 요청이 거절되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingUsers'] });
+      invalidateUserCaches();
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message, variant: 'destructive' });
@@ -211,7 +216,7 @@ export default function AdminPage() {
       }
       // 정상 처리됨
       toast({ title: '비활성화 완료', description: '사용자가 비활성화되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches();
       setSuspendDialogOpen(false);
       setSuspendTarget(null);
       setSuspendWarning(null);
@@ -225,7 +230,7 @@ export default function AdminPage() {
     mutationFn: activateUser,
     onSuccess: () => {
       toast({ title: '재활성화 완료', description: '사용자가 다시 활성화되었습니다.' });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches();
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message, variant: 'destructive' });

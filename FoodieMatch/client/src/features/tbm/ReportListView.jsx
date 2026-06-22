@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from './apiConfig';
 import { Button } from '../../components/ui/button';
@@ -19,9 +19,6 @@ function isWeekend(year, month, day) {
 }
 
 const ReportListView = ({ onSelectReport, onBack, site }) => {
-    const [reports, setReports] = useState([]);
-    const [teams, setTeams] = useState([]);
-
     // sessionStorage에서 저장된 필터 불러오기
     const getInitialFilters = () => {
         const savedFilters = sessionStorage.getItem('tbm_list_filters');
@@ -47,7 +44,6 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
     };
 
     const [filters, setFilters] = useState(getInitialFilters);
-    const [loading, setLoading] = useState(false);
     const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, team-asc, team-desc
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -83,27 +79,25 @@ const ReportListView = ({ onSelectReport, onBack, site }) => {
         setFilters(prev => ({ ...prev, site: site }));
     }, [site]);
 
-    useEffect(() => {
-        apiClient.get('/api/teams')
-            .then(response => setTeams(response.data))
-            .catch(error => console.error("Error fetching teams:", error));
-    }, []);
+    // useQuery로 마이그레이션 — 다른 화면의 mutation(예: ReportDetailView 삭제)에서
+    // ['teams']/['reports'] invalidateQueries 호출 시 자동으로 재조회되어 stale 데이터 잔존 방지
+    const { data: teams = [] } = useQuery({
+        queryKey: ['teams'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/teams');
+            return response.data;
+        },
+    });
 
-    const fetchReports = useCallback(() => {
-        setLoading(true);
-        apiClient.get('/api/reports', { params: filters })
-            .then(response => setReports(response.data))
-            .catch(error => console.error("Error fetching reports:", error))
-            .finally(() => setLoading(false));
-    }, [filters]);
-
-    useEffect(() => {
-        if (filters.startDate && filters.endDate) {
-            fetchReports();
-        } else {
-            setReports([]);
-        }
-    }, [filters, fetchReports]);
+    const reportsEnabled = !!(filters.startDate && filters.endDate);
+    const { data: reports = [], isLoading: loading } = useQuery({
+        queryKey: ['reports', filters],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/reports', { params: filters });
+            return response.data;
+        },
+        enabled: reportsEnabled,
+    });
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
