@@ -5246,7 +5246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             extension: 'png'
           });
           coverSheet.addImage(managerSigImageId, {
-            tl: { col: 7, row: 2 }, // H3 위치
+            tl: { col: 7, row: 1.5 }, // H3 위치 (0.5칸 위로 조정)
             ext: { width: 60, height: 40 }
           });
           console.log('  📝 담당 서명 삽입 완료');
@@ -5268,7 +5268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             extension: 'png'
           });
           coverSheet.addImage(approverSigImageId, {
-            tl: { col: 8, row: 2 }, // I3 위치
+            tl: { col: 8, row: 1.5 }, // I3 위치 (0.5칸 위로 조정)
             ext: { width: 60, height: 40 }
           });
           console.log('  📝 승인 서명 삽입 완료');
@@ -5613,10 +5613,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           teamNameCell.border = border;
           photoSheet.getRow(teamNameRow).height = 30;
 
-          // 사진 삽입
+          // 사진 삽입 — 4:3 비율로 셀 영역 설정 (10열 × 14행 추가)
           const photoCell = photoSheet.getCell(teamPhotoRow, colStart);
           photoCell.border = border;
-          photoSheet.mergeCells(teamPhotoRow, colStart, teamPhotoRow + 20, colEnd); // 사진 공간 (높이 20행)
+          photoSheet.mergeCells(teamPhotoRow, colStart, teamPhotoRow + 14, colEnd); // 사진 공간 (높이 15행)
 
           if (report) {
             // TBM 특이사항 사진에서 첫 번째 사진 찾기 (remarks JSON에서 images 배열)
@@ -5668,9 +5668,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     extension: validExt as 'jpg' | 'jpeg' | 'png' | 'gif'
                   });
 
+                  // br(bottom-right)로 셀 영역 우하단을 명시 → 사진이 셀 크기 안에 강제 fit
+                  // ext 대신 br를 쓰면 이미지가 셀 영역 밖으로 안 넘어감 (왜곡되더라도 4:3 비율 셀에 맞춤)
                   photoSheet.addImage(imageId, {
                     tl: { col: colStart - 1, row: teamPhotoRow - 1 },
-                    ext: { width: 280, height: 210 }
+                    br: { col: colEnd, row: teamPhotoRow + 14 },
                   });
                   console.log(`    ✅ TBM 사진 삽입 성공`);
                 }
@@ -5694,8 +5696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // 다음 그룹으로 (라벨 1행 + 사진 21행 + 여백 1행 = 23행)
-        photoRow += 23;
+        // 다음 그룹으로 (라벨 1행 + 사진 15행 + 여백 1행 = 17행)
+        photoRow += 17;
       }
 
       console.log(`  ✅ 팀별 사진 생성 완료 (${photoEntries.length}개 엔트리)`);
