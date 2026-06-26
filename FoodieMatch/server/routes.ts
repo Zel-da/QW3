@@ -3964,15 +3964,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateColMap[day] = col;
       }
 
+      // 날짜를 한국식 YYYY-MM-DD로 포맷 — 서버 default locale에 의존하지 않음
+      const formatKoreanDate = (date: Date | string) => {
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+
       const detailsMap = new Map<string, string>();
-      const remarksMap = new Map<string, string>();
+      // 위험예측(actionDescription)과 조치사항(actionTaken)을 함께 저장
+      const remarksMap = new Map<string, { prediction: string; action: string }>();
       dailyReports.forEach(report => {
         const day = new Date(report.reportDate).getDate();
         report.reportDetails.forEach(detail => {
           const key = `${detail.itemId}-${day}`;
           detailsMap.set(key, detail.checkState || '');
           if (detail.checkState === 'X' || detail.checkState === '△') {
-            remarksMap.set(key, detail.actionDescription || '');
+            remarksMap.set(key, {
+              prediction: detail.actionDescription || '',
+              action: detail.actionTaken || '',
+            });
           }
         });
       });
@@ -3995,7 +4005,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sheet1.getCell(currentRow1, col).value = status;
                 if (status === 'X' || status === '△') {
                   const reportForDay = dailyReports.find(r => new Date(r.reportDate).getDate() === parseInt(day));
-                  remarksData.push({ date: new Date(reportForDay!.reportDate).toLocaleDateString(), problem: item.description, prediction: remarksMap.get(key) || '' });
+                  const note = remarksMap.get(key);
+                  remarksData.push({
+                    date: formatKoreanDate(reportForDay!.reportDate),
+                    problem: item.description,
+                    prediction: note?.prediction || '',
+                    action: note?.action || '',
+                  });
                 }
               }
             }
@@ -4067,6 +4083,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // 조치사항 열 (W-AC)
         sheet1.mergeCells(`W${footerCurrentRow}:AC${footerCurrentRow}`);
+        if (i < remarksData.length) {
+          sheet1.getCell(footerCurrentRow, 23).value = remarksData[i].action;
+          sheet1.getCell(footerCurrentRow, 23).alignment = { vertical: 'middle', horizontal: 'left' };
+        }
 
         // 확인 열 (AD-AG)
         sheet1.mergeCells(`AD${footerCurrentRow}:AG${footerCurrentRow}`);
@@ -4617,7 +4637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // 체크리스트 항목별 데이터 매핑
           const detailsMap = new Map<string, string>();
-          const remarksMap = new Map<string, string>();
+          const remarksMap = new Map<string, { prediction: string; action: string }>();
 
           dailyReports.forEach(report => {
             const day = new Date(report.reportDate).getDate();
@@ -4625,12 +4645,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (detail.itemId) {
                 const key = `${detail.itemId}-${day}`;
                 detailsMap.set(key, detail.checkState || '');
-                if (detail.actionDescription) {
-                  remarksMap.set(key, detail.actionDescription);
+                if (detail.actionDescription || detail.actionTaken) {
+                  remarksMap.set(key, {
+                    prediction: detail.actionDescription || '',
+                    action: detail.actionTaken || '',
+                  });
                 }
               }
             });
           });
+
+          // 날짜를 한국식 YYYY-MM-DD로 포맷
+          const formatKoreanDate = (date: Date | string) => {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          };
 
           // 체크리스트 항목 출력
           let currentRow1 = 8;
@@ -4672,10 +4701,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                           r => new Date(r.reportDate).getDate() === day
                         );
                         if (reportForDay) {
+                          const note = remarksMap.get(key);
                           remarksData.push({
-                            date: new Date(reportForDay.reportDate).toLocaleDateString(),
+                            date: formatKoreanDate(reportForDay.reportDate),
                             problem: item.description,
-                            prediction: remarksMap.get(key) || ''
+                            prediction: note?.prediction || '',
+                            action: note?.action || '',
                           });
                         }
                       }
@@ -4778,6 +4809,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // 조치사항 열 (W-AC)
             sheet1.mergeCells(`W${footerCurrentRow}:AC${footerCurrentRow}`);
+            if (i < remarksData.length) {
+              sheet1.getCell(footerCurrentRow, 23).value = remarksData[i].action;
+              sheet1.getCell(footerCurrentRow, 23).font = font;
+              sheet1.getCell(footerCurrentRow, 23).alignment = { vertical: 'middle' as const, horizontal: 'left' as const };
+            }
 
             // 확인 열 (AD-AG)
             sheet1.mergeCells(`AD${footerCurrentRow}:AG${footerCurrentRow}`);
