@@ -5059,23 +5059,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📸 TBM 보고서: ${reports.length}개 (팀별 날짜: ${hasTeamDates ? '활성화' : '비활성화'})`);
 
-      // 교육 인원 파라미터 (클라이언트에서 전달 또는 EducationApproval에서 로드)
-      let eduMaleCount = maleCountParam ? parseInt(maleCountParam as string) : 0;
-      let eduFemaleCount = femaleCountParam ? parseInt(femaleCountParam as string) : 0;
-      let eduMaleExclude = maleExcludeParam ? parseInt(maleExcludeParam as string) : 0;
-      let eduFemaleExclude = femaleExcludeParam ? parseInt(femaleExcludeParam as string) : 0;
+      // 교육 인원 파라미터 — null vs value 명시적 구분 (사용자가 0을 입력한 경우도 인정)
+      const parseNullableInt = (v: any): number | null => {
+        if (v === undefined || v === null || v === '') return null;
+        const n = parseInt(v as string);
+        return isNaN(n) ? null : n;
+      };
+
+      let eduMaleCount: number | null = parseNullableInt(maleCountParam);
+      let eduFemaleCount: number | null = parseNullableInt(femaleCountParam);
+      let eduMaleExclude = parseNullableInt(maleExcludeParam) ?? 0;
+      let eduFemaleExclude = parseNullableInt(femaleExcludeParam) ?? 0;
       let eduNonCompletionNote = (noteParam as string) || '';
 
-      // EducationApproval에서 값 로드 (파라미터 없으면)
-      if (educationApprovalId && !maleCountParam) {
+      // EducationApproval에서 값 로드 (URL 파라미터가 명시되지 않은 경우만)
+      if (educationApprovalId && eduMaleCount === null && eduFemaleCount === null) {
         const approval = await prisma.educationApproval.findUnique({
           where: { id: educationApprovalId as string }
         });
         if (approval) {
-          eduMaleCount = approval.maleCount || 0;
-          eduFemaleCount = approval.femaleCount || 0;
-          eduMaleExclude = approval.maleExclude || 0;
-          eduFemaleExclude = approval.femaleExclude || 0;
+          // DB 값도 null 그대로 보존 → 자동/수동 모드 정확히 복원
+          eduMaleCount = approval.maleCount;
+          eduFemaleCount = approval.femaleCount;
+          eduMaleExclude = approval.maleExclude ?? 0;
+          eduFemaleExclude = approval.femaleExclude ?? 0;
           eduNonCompletionNote = approval.nonCompletionNote || '';
         }
       }
@@ -5091,10 +5098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 선택 일자에 서명한 팀원 수 집계 (교육 실시자수)
       const signedMembers = reports.reduce((sum, r) => sum + r.reportSignatures.length, 0);
 
-      // 남/여 수동 입력값이 있으면 사용, 없으면 자동 계산
-      const useMaleCount = (eduMaleCount || eduFemaleCount) ? eduMaleCount : totalMembers;
-      const useFemaleCount = (eduMaleCount || eduFemaleCount) ? eduFemaleCount : 0;
-      const useTotalMembers = (eduMaleCount || eduFemaleCount) ? (eduMaleCount + eduFemaleCount) : totalMembers;
+      // 수동 모드: maleCount/femaleCount 중 하나라도 명시적 입력(0 포함)이 있으면 수동
+      // 자동 모드: 둘 다 null이면 totalMembers를 useMaleCount로, useFemaleCount=0
+      const isManualMode = eduMaleCount !== null || eduFemaleCount !== null;
+      const useMaleCount = isManualMode ? (eduMaleCount ?? 0) : totalMembers;
+      const useFemaleCount = isManualMode ? (eduFemaleCount ?? 0) : 0;
+      const useTotalMembers = isManualMode ? (useMaleCount + useFemaleCount) : totalMembers;
 
       // 실시자 = 대상자 - 제외자
       const maleAttended = useMaleCount - eduMaleExclude;

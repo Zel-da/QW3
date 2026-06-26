@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/context/AuthContext';
@@ -245,6 +246,8 @@ export default function MonthlyReportPage() {
   const [teamDateMap, setTeamDateMap] = useState<Record<number, number>>({}); // 팀별 날짜 선택
   const [useTeamSpecificDates, setUseTeamSpecificDates] = useState(false); // 팀별 날짜 사용 여부
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null); // 이미지 확대 보기
+  // 교육 인원 수동/자동 모드 — false면 자동 집계(전체 팀원), true면 사용자 입력값(0 포함) 사용
+  const [useManualEduCount, setUseManualEduCount] = useState(false);
   const [eduMaleCount, setEduMaleCount] = useState(0);
   const [eduFemaleCount, setEduFemaleCount] = useState(0);
   const [eduMaleExclude, setEduMaleExclude] = useState(0);
@@ -388,8 +391,12 @@ export default function MonthlyReportPage() {
   // 다이얼로그 열릴 때 이전 값 로드
   useEffect(() => {
     if (showEducationDatePicker && eduParams) {
-      setEduMaleCount(eduParams.maleCount);
-      setEduFemaleCount(eduParams.femaleCount);
+      const m = (eduParams as any).maleCount;
+      const f = (eduParams as any).femaleCount;
+      // 이전에 입력된 값(0 포함)이 있으면 수동 모드로 복원
+      setUseManualEduCount(m !== null && m !== undefined || f !== null && f !== undefined);
+      setEduMaleCount(m ?? 0);
+      setEduFemaleCount(f ?? 0);
       setEduMaleExclude(eduParams.maleExclude);
       setEduFemaleExclude(eduParams.femaleExclude);
       setEduNonCompletionNote(eduParams.nonCompletionNote);
@@ -936,9 +943,11 @@ export default function MonthlyReportPage() {
         }
         if (teamDatesParam) params.append('teamDates', teamDatesParam);
 
-        // 교육 인원 파라미터
-        if (eduMaleCount) params.append('maleCount', String(eduMaleCount));
-        if (eduFemaleCount) params.append('femaleCount', String(eduFemaleCount));
+        // 교육 인원 파라미터 — 수동 모드일 때만 명시 (0도 보냄)
+        if (useManualEduCount) {
+          params.append('maleCount', String(eduMaleCount));
+          params.append('femaleCount', String(eduFemaleCount));
+        }
         if (eduMaleExclude) params.append('maleExclude', String(eduMaleExclude));
         if (eduFemaleExclude) params.append('femaleExclude', String(eduFemaleExclude));
         if (eduNonCompletionNote) params.append('nonCompletionNote', eduNonCompletionNote);
@@ -947,7 +956,14 @@ export default function MonthlyReportPage() {
         fetch('/api/settings/education-params', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ site, maleCount: eduMaleCount, femaleCount: eduFemaleCount, maleExclude: eduMaleExclude, femaleExclude: eduFemaleExclude, nonCompletionNote: eduNonCompletionNote }),
+          body: JSON.stringify({
+            site,
+            maleCount: useManualEduCount ? eduMaleCount : null,
+            femaleCount: useManualEduCount ? eduFemaleCount : null,
+            maleExclude: eduMaleExclude,
+            femaleExclude: eduFemaleExclude,
+            nonCompletionNote: eduNonCompletionNote,
+          }),
         }).catch(() => {});
 
         const response = await fetch(`/api/tbm/safety-education-excel?${params}`, { credentials: 'include' });
@@ -1140,8 +1156,9 @@ export default function MonthlyReportPage() {
       approverName,
       downloadDay,
       teamDates: teamDatesParam,
-      maleCount: eduMaleCount,
-      femaleCount: eduFemaleCount,
+      // 수동 모드일 때만 명시값 저장 (자동 모드면 null → 추후 매번 totalMembers로 재계산)
+      maleCount: useManualEduCount ? eduMaleCount : null,
+      femaleCount: useManualEduCount ? eduFemaleCount : null,
       maleExclude: eduMaleExclude,
       femaleExclude: eduFemaleExclude,
       nonCompletionNote: eduNonCompletionNote,
@@ -2599,15 +2616,41 @@ export default function MonthlyReportPage() {
             </div>
             {/* 교육 인원 조정 */}
             <div className="border-t pt-4 mt-2">
-              <p className="text-sm font-medium mb-3">교육 인원</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium">교육 인원</p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="manual-edu-count" className="text-xs text-muted-foreground cursor-pointer">
+                    {useManualEduCount ? '수동 입력' : '자동 집계 (전체 활성 팀원)'}
+                  </Label>
+                  <Switch
+                    id="manual-edu-count"
+                    checked={useManualEduCount}
+                    onCheckedChange={setUseManualEduCount}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">남직원 수</Label>
-                  <Input type="number" min={0} value={eduMaleCount} onChange={(e) => setEduMaleCount(parseInt(e.target.value) || 0)} />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={eduMaleCount}
+                    onChange={(e) => setEduMaleCount(parseInt(e.target.value) || 0)}
+                    disabled={!useManualEduCount}
+                    placeholder={useManualEduCount ? '' : '자동 집계'}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">여직원 수</Label>
-                  <Input type="number" min={0} value={eduFemaleCount} onChange={(e) => setEduFemaleCount(parseInt(e.target.value) || 0)} />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={eduFemaleCount}
+                    onChange={(e) => setEduFemaleCount(parseInt(e.target.value) || 0)}
+                    disabled={!useManualEduCount}
+                    placeholder={useManualEduCount ? '' : '자동 집계'}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-2">

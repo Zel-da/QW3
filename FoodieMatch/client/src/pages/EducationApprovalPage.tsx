@@ -261,6 +261,32 @@ export default function EducationApprovalPage() {
     );
   }
 
+  // 결재 후에도 보고서 다운로드 가능하도록 — 결재자가 결재 이후에도 자료 재확인 가능
+  const DownloadButtons = () => (
+    <div className="flex flex-wrap justify-center gap-2 mt-3 mb-4">
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={handleDownloadComprehensive}
+        disabled={isDownloadingComprehensive}
+      >
+        <Download className="h-4 w-4" />
+        {isDownloadingComprehensive ? '다운로드 중...' : 'TBM 종합보고서'}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={handleDownloadExcel}
+        disabled={isDownloading}
+      >
+        <Download className="h-4 w-4" />
+        {isDownloading ? '다운로드 중...' : '안전교육 현황'}
+      </Button>
+    </div>
+  );
+
   // 방금 처리 완료
   if (approvalComplete) {
     return (
@@ -281,6 +307,7 @@ export default function EducationApprovalPage() {
                   ? '월간 결재가 성공적으로 완료되었습니다. 요청자에게 알림이 발송되었습니다.'
                   : '월간 결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.'}
               </p>
+              <DownloadButtons />
               <Button onClick={() => navigate('/')}>대시보드로 이동</Button>
             </div>
           </CardContent>
@@ -303,6 +330,7 @@ export default function EducationApprovalPage() {
                 <p>결재자: {approval.approver?.name || '-'}</p>
                 <p>결재 일시: {approval.approvedAt ? new Date(approval.approvedAt).toLocaleString('ko-KR') : '-'}</p>
               </div>
+              <DownloadButtons />
               <Button onClick={() => navigate('/')}>대시보드로 이동</Button>
             </div>
           </CardContent>
@@ -324,6 +352,7 @@ export default function EducationApprovalPage() {
                 <p>결재자: {approval.approver?.name || '-'}</p>
                 <p>처리 일시: {approval.approvedAt ? new Date(approval.approvedAt).toLocaleString('ko-KR') : '-'}</p>
               </div>
+              <DownloadButtons />
               <Button onClick={() => navigate('/')}>대시보드로 이동</Button>
             </div>
           </CardContent>
