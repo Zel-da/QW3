@@ -808,6 +808,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 사용자 이력 이관 (교육 진도·평가·수료증)
+  // 담당자 교체 시 이전 계정의 교육 이수 기록을 새 계정으로 옮김
+  // Certificate는 unique(userId, courseId) 제약이라 대상에 이미 있으면 skip
+  // UserProgress는 대상에 이미 있으면 진도 큰 쪽 유지
+  app.post("/api/users/:oldId/transfer-history-to/:newId", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { oldId, newId } = req.params;
+      const { suspendOriginal } = (req.body || {}) as { suspendOriginal?: boolean };
+
+      if (oldId === newId) {
+        return res.status(400).json({ message: "같은 사용자로 이관할 수 없습니다" });
+      }
+
+      const [oldUser, newUser] = await Promise.all([
+        prisma.user.findUnique({ where: { id: oldId } }),
+        prisma.user.findUnique({ where: { id: newId } }),
+      ]);
+      if (!oldUser) return res.status(404).json({ message: "원본 사용자를 찾을 수 없습니다" });
+      if (!newUser) return res.status(404).json({ message: "이관 대상 사용자를 찾을 수 없습니다" });
+      if ((newUser as any).status === 'SUSPENDED') {
+        return res.status(400).json({ message: "이관 대상이 비활성 계정입니다. 먼저 재활성화하세요." });
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        // 1) UserProgress 이관 — 대상에 같은 코스 있으면 진도 큰 쪽 유지
+        const oldProgress = await tx.userProgress.findMany({ where: { userId: oldId } });
+        const targetProgress = await tx.userProgress.findMany({ where: { userId: newId } });
+        const targetProgressByCourse = new Map(targetProgress.map(p => [p.courseId, p]));
+
+        let progressMoved = 0;
+        let progressMerged = 0;
+        for (const p of oldProgress) {
+          const existing = targetProgressByCourse.get(p.courseId);
+          if (existing) {
+            // 대상이 이미 있음 → 더 큰 진도값 유지
+            if (p.progress > existing.progress || (p.completed && !existing.completed)) {
+              await tx.userProgress.update({
+                where: { id: existing.id },
+                data: {
+                  progress: Math.max(p.progress, existing.progress),
+                  completed: existing.completed || p.completed,
+                  currentStep: Math.max(p.currentStep, existing.currentStep),
+                  timeSpent: Math.max(p.timeSpent, existing.timeSpent),
+                  lastAccessed: p.lastAccessed > existing.lastAccessed ? p.lastAccessed : existing.lastAccessed,
+                },
+              });
+              progressMerged++;
+            }
+            // 원본 삭제 (이관됨)
+            await tx.userProgress.delete({ where: { id: p.id } });
+          } else {
+            // 그대로 userId만 변경
+            await tx.userProgress.update({ where: { id: p.id }, data: { userId: newId } });
+            progressMoved++;
+          }
+        }
+
+        // 2) UserAssessment 이관 — 중복 방지 없음, 그대로 이관 (평가 시도 이력)
+        const assessments = await tx.userAssessment.updateMany({
+          where: { userId: oldId },
+          data: { userId: newId },
+        });
+
+        // 3) Certificate 이관 — unique(userId, courseId) 제약이라 대상에 있으면 skip
+        const oldCerts = await tx.certificate.findMany({ where: { userId: oldId } });
+        const targetCerts = await tx.certificate.findMany({
+          where: { userId: newId },
+          select: { courseId: true },
+        });
+        const targetCourseSet = new Set(targetCerts.map(c => c.courseId));
+
+        let certsMoved = 0;
+        let certsSkipped = 0;
+        for (const c of oldCerts) {
+          if (targetCourseSet.has(c.courseId)) {
+            // 대상에 이미 수료증 있음 → 원본 삭제 (skip)
+            await tx.certificate.delete({ where: { id: c.id } });
+            certsSkipped++;
+          } else {
+            await tx.certificate.update({ where: { id: c.id }, data: { userId: newId } });
+            certsMoved++;
+          }
+        }
+
+        // 4) 원본 계정 비활성화 (옵션)
+        let suspended = false;
+        if (suspendOriginal && (oldUser as any).status !== 'SUSPENDED') {
+          await tx.user.update({
+            where: { id: oldId },
+            data: { status: 'SUSPENDED' } as any,
+          });
+          suspended = true;
+        }
+
+        return {
+          progressMoved,
+          progressMerged,
+          assessments: assessments.count,
+          certsMoved,
+          certsSkipped,
+          suspended,
+        };
+      });
+
+      res.json({
+        message: "이력 이관이 완료되었습니다",
+        from: { id: oldUser.id, name: oldUser.name || oldUser.username },
+        to: { id: newUser.id, name: newUser.name || newUser.username },
+        transferred: result,
+      });
+    } catch (error) {
+      console.error('Failed to transfer user history:', error);
+      res.status(500).json({ message: "이력 이관 중 오류가 발생했습니다" });
+    }
+  });
+
   // Admin-only: Update user site
   app.put("/api/users/:userId/site", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {

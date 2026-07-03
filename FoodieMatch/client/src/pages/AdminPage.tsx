@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
 import { SITES, ROLE_LABELS } from '@/lib/constants';
-import { Search, Users, UserCheck, UserX, Key, Copy, Clock, AlertCircle, UserMinus, RotateCcw } from 'lucide-react';
+import { Search, Users, UserCheck, UserX, Key, Copy, Clock, AlertCircle, UserMinus, RotateCcw, ArrowLeftRight } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -87,6 +87,11 @@ const resetPassword = async (userId: string) => {
   return res.json();
 };
 
+const transferHistory = async ({ oldId, newId, suspendOriginal }: { oldId: string; newId: string; suspendOriginal: boolean }) => {
+  const res = await apiRequest('POST', `/api/users/${oldId}/transfer-history-to/${newId}`, { suspendOriginal });
+  return res.json();
+};
+
 export default function AdminPage() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -124,6 +129,13 @@ export default function AdminPage() {
     pendingApprovalCount: number;
     pendingEduApprovalCount: number;
   } | null>(null);
+
+  // 이력 이관 다이얼로그
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferSource, setTransferSource] = useState<User | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
+  const [transferSuspendOriginal, setTransferSuspendOriginal] = useState(true);
+  const [transferResult, setTransferResult] = useState<any>(null);
 
   const { data: users = [], isLoading: usersLoading, isError: usersError, refetch: refetchUsers } = useQuery<User[]> ({
     queryKey: ['users'],
@@ -237,6 +249,18 @@ export default function AdminPage() {
     },
   });
 
+  const transferMutation = useMutation({
+    mutationFn: transferHistory,
+    onSuccess: (data) => {
+      setTransferResult(data);
+      toast({ title: '이력 이관 완료', description: `${data.from?.name} → ${data.to?.name}` });
+      invalidateUserCaches();
+    },
+    onError: (error: Error) => {
+      toast({ title: '이관 실패', description: error.message || '이력 이관 중 오류가 발생했습니다.', variant: 'destructive' });
+    },
+  });
+
   const passwordResetMutation = useMutation({
     mutationFn: resetPassword,
     onSuccess: (data) => {
@@ -331,6 +355,23 @@ export default function AdminPage() {
 
   const handleActivate = (userId: string) => {
     activateMutation.mutate(userId);
+  };
+
+  const openTransferDialog = (user: User) => {
+    setTransferSource(user);
+    setTransferTargetId('');
+    setTransferSuspendOriginal(true);
+    setTransferResult(null);
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransferSubmit = () => {
+    if (!transferSource || !transferTargetId) return;
+    transferMutation.mutate({
+      oldId: transferSource.id,
+      newId: transferTargetId,
+      suspendOriginal: transferSuspendOriginal,
+    });
   };
 
   const openPasswordDialog = (user: User) => {
@@ -651,6 +692,17 @@ export default function AdminPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => openTransferDialog(user)}
+                                disabled={currentUser?.id === user.id}
+                                title="이력 이관 (교육 진도·평가·수료증을 다른 계정으로 이관)"
+                                className="gap-1"
+                              >
+                                <ArrowLeftRight className="h-4 w-4" />
+                                이관
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleSuspend(user.id, user.name || user.username)}
                                 disabled={currentUser?.id === user.id || suspendMutation.isPending}
                                 title="비활성화 (데이터 보존)"
@@ -780,6 +832,106 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* 이력 이관 다이얼로그 */}
+      <Dialog
+        open={transferDialogOpen}
+        onOpenChange={(open) => {
+          setTransferDialogOpen(open);
+          if (!open) {
+            setTransferSource(null);
+            setTransferTargetId('');
+            setTransferResult(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>이력 이관</DialogTitle>
+            <DialogDescription>
+              {transferSource?.name || transferSource?.username}님의 교육 진도·평가·수료증을 다른 계정으로 이관합니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          {transferResult ? (
+            /* 이관 결과 표시 */
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg border bg-muted/40 p-3 text-sm space-y-1">
+                <div className="font-medium mb-2">
+                  {transferResult.from?.name} → {transferResult.to?.name}
+                </div>
+                <div className="text-muted-foreground space-y-0.5">
+                  <div>• 교육 진도 이관: {transferResult.transferred?.progressMoved}건 (병합 {transferResult.transferred?.progressMerged}건)</div>
+                  <div>• 평가 기록: {transferResult.transferred?.assessments}건</div>
+                  <div>• 수료증 이관: {transferResult.transferred?.certsMoved}건 (기존 수료증 유지: {transferResult.transferred?.certsSkipped}건)</div>
+                  {transferResult.transferred?.suspended && (
+                    <div className="text-amber-600">• 원본 계정 비활성화 처리됨</div>
+                  )}
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => setTransferDialogOpen(false)}>확인</Button>
+            </div>
+          ) : (
+            /* 입력 폼 */
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm">이관 대상 계정</Label>
+                <Select value={transferTargetId} onValueChange={setTransferTargetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="대상 계정을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {users
+                      .filter(u => u.id !== transferSource?.id && u.role !== 'PENDING' && (u as any).status !== 'SUSPENDED')
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko-KR'))
+                      .map(u => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name || u.username} ({u.username}) — {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  가입대기·비활성 계정은 대상에서 제외됩니다.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-lg border p-3">
+                <input
+                  type="checkbox"
+                  id="suspend-original"
+                  checked={transferSuspendOriginal}
+                  onChange={(e) => setTransferSuspendOriginal(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="suspend-original" className="text-sm cursor-pointer">
+                  이관 후 원본 계정({transferSource?.name || transferSource?.username})을 비활성화
+                  <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                    데이터는 유지되고 로그인만 차단됩니다. 필요 시 재활성화 가능.
+                  </p>
+                </Label>
+              </div>
+
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900 space-y-1">
+                <div className="font-medium">이관 규칙</div>
+                <div>• 교육 진도: 대상에 같은 코스가 있으면 진도가 큰 쪽 유지</div>
+                <div>• 수료증: 대상에 같은 코스 수료증이 있으면 기존 것 유지 (중복 방지)</div>
+                <div>• TBM 서명·문서 작성 이력은 이관하지 않습니다 (감사 추적용)</div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>취소</Button>
+                <Button
+                  onClick={handleTransferSubmit}
+                  disabled={!transferTargetId || transferMutation.isPending}
+                >
+                  {transferMutation.isPending ? '이관 중...' : '이관 실행'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 비활성화 가드 다이얼로그 */}
       <AlertDialog
