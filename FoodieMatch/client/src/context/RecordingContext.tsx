@@ -361,6 +361,30 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
+      // ⚠️ 예기치 않은 stream/recorder 종료 감지
+      // 갤럭시 탭/Chrome Android에서 다른 앱이 마이크 잡거나 OS가 리소스 회수하면
+      // MediaStreamTrack이 'ended'로 자동 전환. 앱이 이를 감지 못 하면 timer만 계속 흘러
+      // 사용자가 "5분 59초에 멈추고 재시도 안 됨"으로 겪게 됨. 즉시 알림 + timer 정지.
+      const handleUnexpectedStop = (reason: string) => {
+        console.error(`[Recording] 예기치 않은 종료: ${reason}`);
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        toast({
+          title: '⚠️ 녹음이 예기치 않게 중단되었습니다',
+          description: '마이크가 다른 앱·탭에 사용되었거나 시스템에 의해 종료되었습니다. 화면의 정지 버튼을 눌러 지금까지 녹음된 내용을 저장하세요.',
+          variant: 'destructive',
+          duration: 15000,
+        });
+      };
+      stream.getAudioTracks().forEach(track => {
+        track.addEventListener('ended', () => handleUnexpectedStop('MediaStreamTrack.ended'));
+      });
+      mediaRecorder.onerror = (event: Event) => {
+        handleUnexpectedStop(`MediaRecorder.onerror: ${(event as any).error?.name || 'unknown'}`);
+      };
+
       // 30초 간격으로 청크 수집 (긴 녹음 시 메모리 효율: 20분=40청크 vs 1200청크)
       mediaRecorder.start(30000);
 
@@ -602,6 +626,27 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
+      };
+
+      // 재개 시에도 stream/recorder 예기치 않은 종료 감지 (startRecording과 동일 패턴)
+      const handleUnexpectedStopResume = (reason: string) => {
+        console.error(`[Recording] 재개 후 예기치 않은 종료: ${reason}`);
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        toast({
+          title: '⚠️ 녹음이 예기치 않게 중단되었습니다',
+          description: '마이크가 다른 앱·탭에 사용되었거나 시스템에 의해 종료되었습니다. 정지 버튼을 눌러 저장하세요.',
+          variant: 'destructive',
+          duration: 15000,
+        });
+      };
+      stream.getAudioTracks().forEach(track => {
+        track.addEventListener('ended', () => handleUnexpectedStopResume('MediaStreamTrack.ended'));
+      });
+      mediaRecorder.onerror = (event: Event) => {
+        handleUnexpectedStopResume(`MediaRecorder.onerror: ${(event as any).error?.name || 'unknown'}`);
       };
 
       // 30초 간격으로 청크 수집 (재개 시에도 동일)

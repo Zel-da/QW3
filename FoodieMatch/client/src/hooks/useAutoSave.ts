@@ -4,7 +4,27 @@ import { useToast } from '@/hooks/use-toast';
 interface SavedData<T> {
   data: T;
   timestamp: string;
+  /** 이 저장을 만든 탭/앱의 세션 식별자. 다른 탭이 덮어쓴 것을 감지하는 용도. */
+  tabId?: string;
 }
+
+// 현재 탭의 고유 식별자 — 같은 계정으로 여러 탭·PWA 접속 시 서로 구분
+// sessionStorage 사용으로 탭별 독립 (같은 탭 새로고침 시 유지, 새 탭은 새 ID)
+function getTabId(): string {
+  const KEY = '__tbm_tab_id';
+  try {
+    let id = sessionStorage.getItem(KEY);
+    if (!id) {
+      id = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      sessionStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return `tab_${Date.now()}`;
+  }
+}
+
+const CURRENT_TAB_ID = typeof window !== 'undefined' ? getTabId() : 'ssr';
 
 interface UseAutoSaveOptions<T> {
   key: string;
@@ -186,6 +206,7 @@ export function useAutoSave<T>({
             JSON.stringify({
               data,
               timestamp: new Date().toISOString(),
+              tabId: CURRENT_TAB_ID,
             })
           );
           lastSavedRef.current = dataString;
@@ -228,6 +249,30 @@ export function useAutoSave<T>({
       }
     };
   }, [data, key, interval, enabled, toast]);
+
+  // 다른 탭·PWA가 같은 key를 덮어쓰는지 감지 — storage 이벤트는 다른 문서에서만 발생
+  // 같은 계정으로 여러 곳 접속 시 자동저장이 서로 덮어써서 체크리스트가 사라지는 문제 감지용
+  useEffect(() => {
+    if (!enabled) return;
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== key || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue) as SavedData<T>;
+        // 다른 탭의 tabId면 덮어쓰기 발생
+        if (parsed.tabId && parsed.tabId !== CURRENT_TAB_ID) {
+          console.warn(`[Auto-Save] 다른 탭이 덮어썼습니다: ${key} (from ${parsed.tabId})`);
+          toast({
+            title: '동시 접속 감지',
+            description: '같은 계정으로 다른 곳(브라우저 탭·앱)에서 접속하여 저장한 내역이 덮어씌워졌습니다. 한 곳에서만 작성해주세요.',
+            variant: 'destructive',
+            duration: 8000,
+          });
+        }
+      } catch { /* JSON 아니면 무시 */ }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [key, enabled, toast]);
 
   /**
    * 저장된 임시 데이터 삭제
@@ -285,6 +330,7 @@ export function useAutoSave<T>({
           JSON.stringify({
             data: currentData,
             timestamp: new Date().toISOString(),
+            tabId: CURRENT_TAB_ID,
           })
         );
         lastSavedRef.current = dataString;
