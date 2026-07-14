@@ -168,6 +168,10 @@ interface RecordingContextValue {
   // Legacy compatibility
   stopRecording: () => Promise<AudioRecordingData | null>;
   cancelRecording: () => void;
+  // 예기치 않은 종료 다이얼로그
+  unexpectedStopDialog: { open: boolean; savedDuration: number; reason: string };
+  dismissUnexpectedStopDialog: () => void;
+  resumeAfterUnexpectedStop: () => Promise<boolean>;
 }
 
 const RecordingContext = createContext<RecordingContextValue | null>(null);
@@ -190,6 +194,13 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   // TBM 페이지에서 현재 선택된 팀 정보
   const [currentTbmInfo, setCurrentTbmInfo] = useState<{ teamId: number; teamName: string; date: string } | null>(null);
+
+  // 예기치 않은 녹음 종료 다이얼로그 (다른 앱이 마이크 잡음·OS 리소스 회수 등)
+  const [unexpectedStopDialog, setUnexpectedStopDialog] = useState<{
+    open: boolean;
+    savedDuration: number;
+    reason: string;
+  }>({ open: false, savedDuration: 0, reason: '' });
 
   // 마지막으로 저장된 녹음 정보 (TBMChecklist에서 감지용)
   const [lastSavedRecording, setLastSavedRecording] = useState<LastSavedRecording | null>(null);
@@ -365,24 +376,88 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       };
 
       // ⚠️ 예기치 않은 stream/recorder 종료 감지
-      // 갤럭시 탭/Chrome Android에서 다른 앱이 마이크 잡거나 OS가 리소스 회수하면
-      // MediaStreamTrack이 'ended'로 자동 전환. 앱이 이를 감지 못 하면 timer만 계속 흘러
-      // 사용자가 "5분 59초에 멈추고 재시도 안 됨"으로 겪게 됨. 즉시 알림 + timer 정지.
-      // intentionalStopRef=true면 사용자 액션(정지·저장·삭제)이라 알림 skip.
+      // 다른 앱이 마이크 잡거나 OS 리소스 회수·백그라운드 정지 등으로 stream 종료됨
+      // → 이때까지의 chunks를 즉시 IndexedDB 저장, state='paused' 전환, 다이얼로그 open
+      // → 사용자는 "이어서 녹음" 버튼으로 재개하거나 나중에 저장 가능
+      // intentionalStopRef=true면 사용자 액션(정지·저장·삭제)이라 skip
       intentionalStopRef.current = false;
-      const handleUnexpectedStop = (reason: string) => {
-        if (intentionalStopRef.current) return; // 사용자 액션이면 무시
+      const unexpectedStopHandledRef = { current: false }; // 중복 실행 방지
+      const handleUnexpectedStop = async (reason: string) => {
+        if (intentionalStopRef.current) return;
+        if (unexpectedStopHandledRef.current) return; // 이미 처리됨
+        unexpectedStopHandledRef.current = true;
+
         console.error(`[Recording] 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        toast({
-          title: '⚠️ 녹음이 예기치 않게 중단되었습니다',
-          description: '마이크가 다른 앱·탭에 사용되었거나 시스템에 의해 종료되었습니다. 화면의 정지 버튼을 눌러 지금까지 녹음된 내용을 저장하세요.',
-          variant: 'destructive',
-          duration: 15000,
-        });
+
+        const finalDuration = durationRef.current;
+        const mimeType = mimeTypeRef.current;
+        const startInfo = state.startedFrom || currentTbmInfo;
+
+        // 지금까지 chunks로 blob 생성 → IndexedDB에 안전 저장
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          console.log(`[Recording] 예기치 않은 종료 — chunks ${audioChunksRef.current.length}개, ${blob.size} bytes, ${finalDuration}초 저장 시도`);
+
+          if (startInfo && blob.size > 0) {
+            const pausedId = `paused_${Date.now()}`;
+            await savePausedRecordingToDB({
+              id: pausedId,
+              blob,
+              duration: finalDuration,
+              teamId: startInfo.teamId,
+              teamName: startInfo.teamName,
+              date: startInfo.date,
+              pausedAt: new Date().toISOString(),
+              mimeType,
+            });
+
+            // stream 정리
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} });
+              streamRef.current = null;
+            }
+
+            setState({
+              status: 'paused',
+              startedFrom: startInfo,
+              duration: finalDuration,
+              saveError: null,
+              pausedInfo: {
+                id: pausedId,
+                duration: finalDuration,
+                teamId: startInfo.teamId,
+                teamName: startInfo.teamName,
+                date: startInfo.date,
+                pausedAt: new Date().toISOString(),
+              },
+            });
+
+            // 다이얼로그 open — 사용자에게 재개/저장 선택 유도
+            setUnexpectedStopDialog({ open: true, savedDuration: finalDuration, reason });
+            console.log(`[Recording] 자동 저장 완료 (${finalDuration}초) — 다이얼로그 표시`);
+          } else {
+            // chunks 없음 or startInfo 없음 → 저장 불가
+            toast({
+              title: '⚠️ 녹음이 중단되었습니다',
+              description: '녹음된 데이터가 없어 저장할 수 없습니다. 다시 시작해주세요.',
+              variant: 'destructive',
+              duration: 10000,
+            });
+            setState(prev => ({ ...prev, status: 'idle' }));
+          }
+        } catch (e) {
+          console.error('[Recording] 예기치 않은 종료 후 자동 저장 실패:', e);
+          toast({
+            title: '⚠️ 녹음이 중단되었습니다',
+            description: '자동 저장 중 오류. 지금까지 녹음된 내용이 유실될 수 있습니다.',
+            variant: 'destructive',
+            duration: 15000,
+          });
+        }
       };
       stream.getAudioTracks().forEach(track => {
         track.addEventListener('ended', () => handleUnexpectedStop('MediaStreamTrack.ended'));
@@ -391,8 +466,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         handleUnexpectedStop(`MediaRecorder.onerror: ${(event as any).error?.name || 'unknown'}`);
       };
 
-      // 30초 간격으로 청크 수집 (긴 녹음 시 메모리 효율: 20분=40청크 vs 1200청크)
-      mediaRecorder.start(30000);
+      // 5초 간격으로 청크 수집 — 강제 종료 시에도 최대 5초 이내 오디오는 chunks에 보존됨
+      // (이전 30초 → 5초 축소로 갤럭시 탭·iOS의 예기치 않은 종료 시 손실 최소화)
+      mediaRecorder.start(5000);
 
       setState({
         status: 'recording',
@@ -450,13 +526,74 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
       // [CODE: INACTIVE] 이미 stop된 상태
       // → iOS/Android 백그라운드 자동 종료, OS 마이크 권한 회수, 메모리 압박
+      // chunks에 데이터 있으면 IndexedDB에 저장 시도 → paused 상태로 전환 (재개·저장 가능)
       if (mr.state === 'inactive') {
+        console.warn('[Recording] INACTIVE 상태에서 pause 시도 — chunks 확인');
+        if (audioChunksRef.current.length > 0 && state.startedFrom) {
+          console.log(`[Recording] INACTIVE 복구 — chunks ${audioChunksRef.current.length}개, ${durationRef.current}초 저장`);
+
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+
+          try {
+            const mimeType = mimeTypeRef.current;
+            const blob = new Blob(audioChunksRef.current, { type: mimeType });
+            const pausedId = `paused_${Date.now()}`;
+            const startInfo = state.startedFrom;
+            const finalDuration = durationRef.current;
+
+            savePausedRecordingToDB({
+              id: pausedId,
+              blob,
+              duration: finalDuration,
+              teamId: startInfo.teamId,
+              teamName: startInfo.teamName,
+              date: startInfo.date,
+              pausedAt: new Date().toISOString(),
+              mimeType,
+            }).then(() => {
+              if (streamRef.current) {
+                streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} });
+                streamRef.current = null;
+              }
+              setState({
+                status: 'paused',
+                startedFrom: startInfo,
+                duration: finalDuration,
+                saveError: null,
+                pausedInfo: {
+                  id: pausedId,
+                  duration: finalDuration,
+                  teamId: startInfo.teamId,
+                  teamName: startInfo.teamName,
+                  date: startInfo.date,
+                  pausedAt: new Date().toISOString(),
+                },
+              });
+              console.log('[Recording] INACTIVE 상태 chunks 안전 저장 완료');
+              resolve();
+            }).catch(err => {
+              console.error('[Recording] INACTIVE chunks 저장 실패:', err);
+              toast({
+                title: '녹음 저장 실패',
+                description: '녹음 데이터를 저장할 수 없습니다. (CODE: INACTIVE_SAVE_FAILED)',
+                variant: 'destructive',
+              });
+              resolve();
+            });
+            return;
+          } catch (e) {
+            console.error('[Recording] INACTIVE chunks 처리 실패:', e);
+          }
+        }
         toast({
           title: '녹음이 이미 종료됨',
           description: '백그라운드에서 자동 종료되었을 수 있습니다. 다시 시작해주세요. (CODE: INACTIVE)',
           variant: 'destructive',
         });
-        console.error('[Recording] INACTIVE — MediaRecorder가 이미 종료된 상태에서 일시정지 시도');
+        console.error('[Recording] INACTIVE — chunks 없음, 복구 불가');
         resolve();
         return;
       }
@@ -638,21 +775,79 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       };
 
       // 재개 시에도 stream/recorder 예기치 않은 종료 감지 (startRecording과 동일 패턴)
-      // intentionalStopRef 플래그로 사용자 정지 시 오탐 방지
+      // chunks 자동 저장 → state=paused → 다이얼로그 open
       intentionalStopRef.current = false;
-      const handleUnexpectedStopResume = (reason: string) => {
+      const unexpectedStopResumeHandledRef = { current: false };
+      const handleUnexpectedStopResume = async (reason: string) => {
         if (intentionalStopRef.current) return;
+        if (unexpectedStopResumeHandledRef.current) return;
+        unexpectedStopResumeHandledRef.current = true;
+
         console.error(`[Recording] 재개 후 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        toast({
-          title: '⚠️ 녹음이 예기치 않게 중단되었습니다',
-          description: '마이크가 다른 앱·탭에 사용되었거나 시스템에 의해 종료되었습니다. 정지 버튼을 눌러 저장하세요.',
-          variant: 'destructive',
-          duration: 15000,
-        });
+
+        const finalDuration = durationRef.current;
+        const mimeType = mimeTypeRef.current;
+        const startInfo = state.startedFrom || currentTbmInfo;
+
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          console.log(`[Recording] 재개 후 예기치 않은 종료 — chunks ${audioChunksRef.current.length}개, ${blob.size} bytes 저장 시도`);
+
+          if (startInfo && blob.size > 0) {
+            const pausedId = `paused_${Date.now()}`;
+            await savePausedRecordingToDB({
+              id: pausedId,
+              blob,
+              duration: finalDuration,
+              teamId: startInfo.teamId,
+              teamName: startInfo.teamName,
+              date: startInfo.date,
+              pausedAt: new Date().toISOString(),
+              mimeType,
+            });
+
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} });
+              streamRef.current = null;
+            }
+
+            setState({
+              status: 'paused',
+              startedFrom: startInfo,
+              duration: finalDuration,
+              saveError: null,
+              pausedInfo: {
+                id: pausedId,
+                duration: finalDuration,
+                teamId: startInfo.teamId,
+                teamName: startInfo.teamName,
+                date: startInfo.date,
+                pausedAt: new Date().toISOString(),
+              },
+            });
+            setUnexpectedStopDialog({ open: true, savedDuration: finalDuration, reason });
+          } else {
+            toast({
+              title: '⚠️ 녹음이 중단되었습니다',
+              description: '녹음된 데이터가 없어 저장할 수 없습니다.',
+              variant: 'destructive',
+              duration: 10000,
+            });
+            setState(prev => ({ ...prev, status: 'idle' }));
+          }
+        } catch (e) {
+          console.error('[Recording] 재개 후 예기치 않은 종료 자동 저장 실패:', e);
+          toast({
+            title: '⚠️ 녹음이 중단되었습니다',
+            description: '자동 저장 실패. 데이터 유실 가능.',
+            variant: 'destructive',
+            duration: 15000,
+          });
+        }
       };
       stream.getAudioTracks().forEach(track => {
         track.addEventListener('ended', () => handleUnexpectedStopResume('MediaStreamTrack.ended'));
@@ -661,8 +856,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         handleUnexpectedStopResume(`MediaRecorder.onerror: ${(event as any).error?.name || 'unknown'}`);
       };
 
-      // 30초 간격으로 청크 수집 (재개 시에도 동일)
-      mediaRecorder.start(30000);
+      // 5초 간격으로 청크 수집 (재개 시에도 동일)
+      mediaRecorder.start(5000);
 
       setState(prev => ({
         ...prev,
@@ -982,6 +1177,27 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     discardRecording();
   }, [discardRecording]);
 
+  // 예기치 않은 종료 다이얼로그 — 닫기
+  const dismissUnexpectedStopDialog = useCallback(() => {
+    setUnexpectedStopDialog({ open: false, savedDuration: 0, reason: '' });
+  }, []);
+
+  // 예기치 않은 종료 후 사용자가 "이어서 녹음" 선택 → 기존 resumeRecording 재사용
+  const resumeAfterUnexpectedStop = useCallback(async (): Promise<boolean> => {
+    const success = await resumeRecording();
+    if (success) {
+      setUnexpectedStopDialog({ open: false, savedDuration: 0, reason: '' });
+      toast({ title: '녹음 재개', description: '이어서 녹음합니다.' });
+    } else {
+      toast({
+        title: '재개 실패',
+        description: '녹음을 다시 시작해주세요. 지금까지 녹음된 내용은 정지 버튼으로 저장할 수 있습니다.',
+        variant: 'destructive',
+      });
+    }
+    return success;
+  }, [resumeRecording, toast]);
+
   return (
     <RecordingContext.Provider
       value={{
@@ -999,6 +1215,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         // Legacy
         stopRecording,
         cancelRecording,
+        // 예기치 않은 종료 다이얼로그
+        unexpectedStopDialog,
+        dismissUnexpectedStopDialog,
+        resumeAfterUnexpectedStop,
       }}
     >
       {children}

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/useConfirm";
 import { isIOSStandalone, hasMediaDevicesSupport } from "@/lib/deviceDetect";
 import { X } from "lucide-react";
+import { UnexpectedStopDialog } from "@/components/UnexpectedStopDialog";
 
 // iOS 홈 화면 앱 감지 배너 (sessionStorage로 dismiss 상태 유지)
 const IOS_PWA_DISMISS_KEY = '__ios_pwa_banner_dismissed';
@@ -390,6 +391,7 @@ export function Header() {
 
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+      <UnexpectedStopDialog />
       <IOSStandaloneBanner />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
