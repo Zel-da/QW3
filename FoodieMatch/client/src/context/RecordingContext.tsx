@@ -207,6 +207,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const saveStatusTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoPausedRef = useRef<boolean>(false);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  // 의도적 정지(사용자 액션) 시 true로 설정 → track.onended 오탐 방지
+  // 일부 Android 브라우저는 track.stop() 호출 시에도 'ended' 이벤트를 fire함
+  const intentionalStopRef = useRef<boolean>(false);
 
   // 녹음 시작 가능 여부 체크
   const canStartRecording = state.status === 'idle' && currentTbmInfo !== null;
@@ -365,7 +368,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       // 갤럭시 탭/Chrome Android에서 다른 앱이 마이크 잡거나 OS가 리소스 회수하면
       // MediaStreamTrack이 'ended'로 자동 전환. 앱이 이를 감지 못 하면 timer만 계속 흘러
       // 사용자가 "5분 59초에 멈추고 재시도 안 됨"으로 겪게 됨. 즉시 알림 + timer 정지.
+      // intentionalStopRef=true면 사용자 액션(정지·저장·삭제)이라 알림 skip.
+      intentionalStopRef.current = false;
       const handleUnexpectedStop = (reason: string) => {
+        if (intentionalStopRef.current) return; // 사용자 액션이면 무시
         console.error(`[Recording] 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -420,6 +426,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       const reactState = state.status;
       const mrState = mr?.state ?? 'null';
       const wasAuto = autoPausedRef.current;
+
+      // 의도적 정지 플래그 — track.stop()이 'ended' 이벤트 fire해도 오탐 안 뜨도록
+      intentionalStopRef.current = true;
 
       // 진단 로그 (개발자가 콘솔에서 확인)
       console.log('[Recording] pauseRecording 시도:', {
@@ -629,7 +638,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       };
 
       // 재개 시에도 stream/recorder 예기치 않은 종료 감지 (startRecording과 동일 패턴)
+      // intentionalStopRef 플래그로 사용자 정지 시 오탐 방지
+      intentionalStopRef.current = false;
       const handleUnexpectedStopResume = (reason: string) => {
+        if (intentionalStopRef.current) return;
         console.error(`[Recording] 재개 후 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -839,6 +851,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
   // 삭제 (일시정지된 녹음 버리기)
   const discardRecording = useCallback(async (): Promise<void> => {
+    // 의도적 정지 플래그 (오탐 방지)
+    intentionalStopRef.current = true;
+
     // 타이머 정지
     if (timerRef.current) {
       clearInterval(timerRef.current);
