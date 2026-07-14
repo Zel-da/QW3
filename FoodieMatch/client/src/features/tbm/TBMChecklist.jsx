@@ -1269,6 +1269,19 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         </Alert>
       )}
 
+      {/* 팀 미선택 시 안내 — 녹음·저장이 안 되는 원인을 사용자가 명확히 알 수 있게 */}
+      {!selectedTeam && !isRecordingActive && (
+        <Alert className="bg-blue-50 border-blue-200 text-blue-900">
+          <AlertTitle className="flex items-center gap-2">
+            <Terminal className="h-4 w-4" />
+            팀·날짜를 먼저 선택해주세요
+          </AlertTitle>
+          <AlertDescription className="text-sm">
+            아래에서 부서와 팀을 선택하면 체크리스트가 나타나고 상단 녹음 버튼이 활성화됩니다.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* 부서/팀 선택 - 모든 사용자에게 표시 */}
       <div className="flex gap-3 items-center flex-wrap">
         {/* 부서 선택 */}

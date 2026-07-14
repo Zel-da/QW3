@@ -8,6 +8,47 @@ import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/useConfirm";
+import { isIOSStandalone, hasMediaDevicesSupport } from "@/lib/deviceDetect";
+import { X } from "lucide-react";
+
+// iOS 홈 화면 앱 감지 배너 (sessionStorage로 dismiss 상태 유지)
+const IOS_PWA_DISMISS_KEY = '__ios_pwa_banner_dismissed';
+
+function IOSStandaloneBanner() {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(IOS_PWA_DISMISS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+  if (!isIOSStandalone()) return null;
+  const supported = hasMediaDevicesSupport();
+
+  return (
+    <div className="w-full bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-3 text-xs text-amber-900">
+      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+      <div className="flex-1">
+        <strong>iOS 홈 화면 앱으로 실행 중입니다.</strong>
+        {supported
+          ? ' 녹음·업로드에 제약이 있을 수 있어요. 문제 시 Safari에서 직접 접속해주세요.'
+          : ' 이 iOS 버전에서는 마이크가 지원되지 않습니다. Safari에서 직접 접속해주세요.'}
+      </div>
+      <button
+        onClick={() => {
+          try { sessionStorage.setItem(IOS_PWA_DISMISS_KEY, '1'); } catch {}
+          setDismissed(true);
+        }}
+        className="p-1 hover:bg-amber-100 rounded"
+        aria-label="닫기"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -28,10 +69,23 @@ export function Header() {
   const confirm = useConfirm();
 
   const handleStartRecording = async () => {
+    // 진단 1: 마이크 API 자체 미지원 (iOS 16.3 이하 홈 화면 앱 등)
+    if (!hasMediaDevicesSupport()) {
+      toast({
+        title: '마이크 기능 미지원',
+        description: isIOSStandalone()
+          ? 'iOS 홈 화면 앱에서는 녹음이 제한적입니다. Safari 브라우저에서 직접 접속해주세요.'
+          : '이 환경에서는 마이크 접근이 지원되지 않습니다. 최신 브라우저에서 열어주세요.',
+        variant: 'destructive',
+        duration: 10000,
+      });
+      return;
+    }
+    // 진단 2: TBM 팀·날짜 미선택
     if (!currentTbmInfo) {
       toast({
         title: "녹음 시작 불가",
-        description: "TBM 체크리스트에서 팀을 먼저 선택해주세요.",
+        description: "TBM 작성 화면에서 팀·날짜를 먼저 선택해주세요.",
         variant: "destructive",
       });
       return;
@@ -265,7 +319,7 @@ export function Header() {
           onClick={handleStartRecording}
           variant="destructive"
           size={buttonSize}
-          disabled={!canStartRecording}
+          aria-disabled={!canStartRecording}
           className={`flex items-center gap-2 ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
         >
           <AlertCircle className="h-4 w-4" />
@@ -274,15 +328,16 @@ export function Header() {
       );
     }
 
-    // 기본 상태 (idle)
+    // 기본 상태 (idle) — disabled 대신 클릭 가능하게 두고 handleStartRecording에서
+    // 원인별 진단 토스트 노출 (iOS PWA 미지원 / TBM 미선택 등 사용자가 원인 파악 가능)
     return (
       <Button
         onClick={handleStartRecording}
         variant={canStartRecording ? "destructive" : "outline"}
         size={buttonSize}
-        disabled={!canStartRecording}
+        aria-disabled={!canStartRecording}
         className={`flex items-center gap-2 ${canStartRecording ? 'shadow-md' : 'opacity-60'} ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
-        title={!canStartRecording ? "TBM 체크리스트에서 팀을 먼저 선택해주세요" : "녹음 시작"}
+        title={!canStartRecording ? "클릭하여 안내 확인 (TBM 팀 선택 필요)" : "녹음 시작"}
       >
         <Mic className="h-4 w-4" />
         {isMobile ? (
@@ -335,6 +390,7 @@ export function Header() {
 
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+      <IOSStandaloneBanner />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3" data-testid="logo">
