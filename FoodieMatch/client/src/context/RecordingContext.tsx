@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import type { AudioRecordingData } from '@/components/InlineAudioPanel';
 import { toast } from '@/hooks/use-toast';
 
@@ -204,6 +205,25 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     reason: string;
   }>({ open: false, savedDuration: 0, reason: '' });
 
+  // 라우트 변경 시 chunks flush (녹음 유지되지만 안전 위해 즉시 저장 확보)
+  const [location] = useLocation();
+  const prevLocationRef = useRef(location);
+  useEffect(() => {
+    if (prevLocationRef.current !== location) {
+      prevLocationRef.current = location;
+      // 녹음 중이면 chunks flush → 이후 어떤 상황(예: 실수 새로고침·페이지 재렌더)에도 최신 데이터 확보
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state === 'recording') {
+        try {
+          mr.requestData();
+          console.log(`[Recording] 라우트 변경 chunks flush: ${location}`);
+        } catch (e) {
+          console.warn('[Recording] requestData 실패:', e);
+        }
+      }
+    }
+  }, [location]);
+
   // 서버 업로드 진행 상태 (0-100). saving 상태에서 사용자에게 프로그레스 표시용
   // null: 업로드 안 함, 0-99: 진행 중, 100: 서버 응답 대기 중
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -277,9 +297,36 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   //       핸들러가 등록되어 있어야 다이얼로그 자체가 뜸. 메시지는 호환성 위해 유지.
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // 녹음 중이면 chunks를 즉시 flush + IndexedDB에 best-effort 저장
+      // (동기 API가 아니라 완료 보장 안 되지만 대부분 브라우저에서 수 백ms 여유 있음)
       if (state.status === 'recording') {
+        try {
+          const mr = mediaRecorderRef.current;
+          if (mr && mr.state === 'recording') {
+            // 아직 flush 안 된 chunks를 ondataavailable로 즉시 push
+            mr.requestData();
+          }
+          // audioChunksRef의 지금까지 chunks를 blob으로 만들어 IndexedDB 저장 시도
+          // (Promise가 완료 못할 수도 있지만 IndexedDB는 트랜잭션 시작만 하면 브라우저가 대부분 완료 보장)
+          const startInfo = state.startedFrom;
+          if (startInfo && audioChunksRef.current.length > 0) {
+            const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
+            const pausedId = `paused_emergency_${Date.now()}`;
+            savePausedRecordingToDB({
+              id: pausedId,
+              blob,
+              duration: durationRef.current,
+              teamId: startInfo.teamId,
+              teamName: startInfo.teamName,
+              date: startInfo.date,
+              pausedAt: new Date().toISOString(),
+              mimeType: mimeTypeRef.current,
+            }).catch(() => {}); // 실패해도 무시 (unload 진행)
+            console.log(`[Recording] beforeunload emergency save: ${audioChunksRef.current.length} chunks, ${durationRef.current}s`);
+          }
+        } catch { /* unload 흐름 방해 안 함 */ }
         e.preventDefault();
-        e.returnValue = '⚠️ 녹음이 진행 중입니다. 페이지를 나가면 지금까지 녹음한 내용이 손실됩니다. 먼저 일시정지 후 저장하세요.';
+        e.returnValue = '⚠️ 녹음이 진행 중입니다. 지금까지 녹음된 내용을 자동 저장 시도하지만, 손실 위험이 있습니다.';
         return e.returnValue;
       }
       if (state.status === 'saving') {
