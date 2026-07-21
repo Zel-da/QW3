@@ -172,6 +172,8 @@ interface RecordingContextValue {
   unexpectedStopDialog: { open: boolean; savedDuration: number; reason: string };
   dismissUnexpectedStopDialog: () => void;
   resumeAfterUnexpectedStop: () => Promise<boolean>;
+  // 업로드 진행률 (null=업로드 안 함, 0-100)
+  uploadProgress: number | null;
 }
 
 const RecordingContext = createContext<RecordingContextValue | null>(null);
@@ -201,6 +203,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     savedDuration: number;
     reason: string;
   }>({ open: false, savedDuration: 0, reason: '' });
+
+  // 서버 업로드 진행 상태 (0-100). saving 상태에서 사용자에게 프로그레스 표시용
+  // null: 업로드 안 함, 0-99: 진행 중, 100: 서버 응답 대기 중
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // 마지막으로 저장된 녹음 정보 (TBMChecklist에서 감지용)
   const [lastSavedRecording, setLastSavedRecording] = useState<LastSavedRecording | null>(null);
@@ -952,34 +958,55 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         throw new Error('녹음 데이터를 찾을 수 없습니다.');
       }
 
-      // 파일 업로드 (재시도 로직 포함)
+      // 파일 업로드 (XMLHttpRequest로 진행률 이벤트 사용 + 재시도 로직 포함)
       const fileName = `${pausedData.teamName}_녹음_${pausedData.date}.webm`;
       let uploadResult: { url: string } | null = null;
       let lastError: Error | null = null;
 
+      setUploadProgress(0); // 업로드 시작
+
+      // Promise 기반 XHR 업로드 (progress 이벤트 지원)
+      const uploadWithProgress = (blob: Blob, name: string): Promise<{ url: string }> => {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('file', blob, name);
+
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              setUploadProgress(Math.min(percent, 99)); // 100은 서버 응답 완료 시점
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setUploadProgress(100);
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch (e) {
+                reject(new Error('응답 파싱 실패'));
+              }
+            } else {
+              reject(new Error(`업로드 실패 (HTTP ${xhr.status})`));
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('네트워크 오류')));
+          xhr.addEventListener('timeout', () => reject(new Error('업로드 타임아웃')));
+
+          xhr.timeout = 300000; // 5분 타임아웃 (1시간 녹음 28MB 여유)
+          xhr.open('POST', '/api/upload');
+          xhr.withCredentials = true;
+          xhr.send(formData);
+        });
+      };
+
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const formData = new FormData();
-          formData.append('file', pausedData.blob, fileName);
-
-          // 대용량 오디오 업로드를 위한 2분 타임아웃
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include',
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            uploadResult = await response.json();
-            break;
-          } else {
-            lastError = new Error(`업로드 실패 (HTTP ${response.status})`);
-          }
+          setUploadProgress(0);
+          uploadResult = await uploadWithProgress(pausedData.blob, fileName);
+          break;
         } catch (fetchError) {
           lastError = fetchError instanceof Error ? fetchError : new Error('네트워크 오류');
           console.error(`[Recording] 업로드 시도 ${attempt + 1}/3 실패:`, fetchError);
@@ -992,6 +1019,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!uploadResult) {
+        setUploadProgress(null);
         throw lastError || new Error('업로드 실패');
       }
 
@@ -1012,6 +1040,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       await deletePausedRecordingFromDB(state.pausedInfo.id);
 
       // 성공 상태
+      setUploadProgress(null); // 업로드 진행 표시 초기화
       setState({
         status: 'success',
         startedFrom: null,
@@ -1034,6 +1063,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       console.error('녹음 저장 실패:', error);
       const errorMessage = error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.';
 
+      setUploadProgress(null); // 업로드 진행 표시 초기화
       setState(prev => ({
         ...prev,
         status: 'error',
@@ -1219,6 +1249,8 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         unexpectedStopDialog,
         dismissUnexpectedStopDialog,
         resumeAfterUnexpectedStop,
+        // 업로드 진행률
+        uploadProgress,
       }}
     >
       {children}

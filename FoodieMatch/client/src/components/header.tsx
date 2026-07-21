@@ -64,7 +64,8 @@ export function Header() {
     saveRecording,
     discardRecording,
     currentTbmInfo,
-    canStartRecording
+    canStartRecording,
+    uploadProgress,
   } = useRecording();
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -284,18 +285,34 @@ export function Header() {
       }
     }
 
-    // 저장 중
+    // 저장 중 — 업로드 진행률 표시 (사용자가 명확히 인지할 수 있게)
     if (status === 'saving') {
+      const progress = uploadProgress;
+      const showPercent = progress !== null;
+      const label = showPercent
+        ? (progress! < 100 ? `업로드 ${progress}%` : '서버 처리 중...')
+        : '저장 준비 중...';
       return (
-        <Button
-          variant="outline"
-          size={buttonSize}
-          disabled
-          className={`flex items-center gap-2 ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
-        >
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {isMobile ? '' : '저장 중...'}
-        </Button>
+        <div className="flex flex-col items-stretch gap-1 min-w-[120px]">
+          <Button
+            variant="outline"
+            size={buttonSize}
+            disabled
+            className={`flex items-center gap-2 ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
+          >
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-xs font-medium">{isMobile ? (showPercent ? `${progress}%` : '저장') : label}</span>
+          </Button>
+          {/* 진행률 바 (표시할 때만) */}
+          {showPercent && (
+            <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+        </div>
       );
     }
 

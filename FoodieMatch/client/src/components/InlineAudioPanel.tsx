@@ -70,7 +70,7 @@ export function InlineAudioPanel({
   onDelete,
   existingAudio,
   existingTranscription,
-  maxDurationSeconds = 1800,
+  maxDurationSeconds = 3600, // 60분 (64kbps ≈ 28MB, 서버 50MB 리밋 내)
   disabled = false,
   playbackOnly = false,
 }: InlineAudioPanelProps) {

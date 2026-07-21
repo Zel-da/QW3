@@ -1790,7 +1790,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                 onDelete={handleAudioDelete}
                 existingAudio={audioRecording}
                 existingTranscription={transcription}
-                maxDurationSeconds={1800}
+                maxDurationSeconds={3600}
                 disabled={false}
                 playbackOnly={isViewMode || isDraftViewMode || isOtherTeamView || !apiCheckComplete}
               />

@@ -46,7 +46,7 @@ export function AudioRecorder({
   onRecordingComplete,
   onDelete,
   existingAudio,
-  maxDurationSeconds = 1800, // 30분
+  maxDurationSeconds = 3600, // 60분 (64kbps ≈ 28MB, 서버 50MB 리밋 내)
   disabled = false,
 }: AudioRecorderProps) {
   const { toast } = useToast();
