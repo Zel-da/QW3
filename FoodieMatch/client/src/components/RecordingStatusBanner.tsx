@@ -10,9 +10,11 @@
  */
 import { useRecording, formatTime } from '@/context/RecordingContext';
 import { Mic, Pause, Loader2, AlertCircle } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function RecordingStatusBanner() {
   const { state, uploadProgress } = useRecording();
+  const isMobile = useIsMobile();
   const status = state.status;
 
   if (status !== 'recording' && status !== 'paused' && status !== 'saving') {
@@ -47,7 +49,7 @@ export function RecordingStatusBanner() {
 
   return (
     <div className={`w-full border-b px-4 py-2 ${bgColor}`}>
-      <div className="max-w-7xl mx-auto flex items-center gap-3 flex-wrap text-xs sm:text-sm">
+      <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-3 flex-wrap text-xs sm:text-sm">
         <Icon className={`w-4 h-4 flex-shrink-0 ${iconColor} ${status === 'recording' ? 'animate-pulse' : ''} ${status === 'saving' ? 'animate-spin' : ''}`} />
         <span className="font-semibold whitespace-nowrap">{statusLabel}</span>
         {(teamName || date) && (
@@ -56,7 +58,10 @@ export function RecordingStatusBanner() {
           </span>
         )}
         <span className="font-mono whitespace-nowrap">· {formatTime(state.duration)}</span>
-        <span className="opacity-80 flex-1 min-w-[200px]">{warning}</span>
+        {/* 모바일에선 warning 숨김 (배너가 세로로 늘어나는 문제 방지) — 알림·다이얼로그로 대체 안내 */}
+        {!isMobile && (
+          <span className="opacity-80 flex-1 min-w-[200px]">{warning}</span>
+        )}
       </div>
       {/* saving 상태에서 프로그레스 바 */}
       {status === 'saving' && uploadProgress !== null && (
