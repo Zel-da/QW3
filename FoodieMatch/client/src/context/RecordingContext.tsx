@@ -341,9 +341,41 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // pagehide/freeze — 태블릿 앱 백그라운드·프로세스 종료 등 beforeunload가 안 뜨는 케이스 커버
+    // (특히 모바일 Safari/Chrome은 beforeunload를 신뢰할 수 없음, pagehide가 더 확실함)
+    const handlePageHide = () => {
+      if (state.status !== 'recording') return;
+      try {
+        const mr = mediaRecorderRef.current;
+        if (mr && mr.state === 'recording') mr.requestData();
+        const startInfo = state.startedFrom;
+        if (startInfo && audioChunksRef.current.length > 0) {
+          const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
+          const pausedId = `paused_emergency_${Date.now()}`;
+          savePausedRecordingToDB({
+            id: pausedId,
+            blob,
+            duration: durationRef.current,
+            teamId: startInfo.teamId,
+            teamName: startInfo.teamName,
+            date: startInfo.date,
+            pausedAt: new Date().toISOString(),
+            mimeType: mimeTypeRef.current,
+          }).catch(() => {});
+          console.log(`[Recording] pagehide/freeze emergency save: ${audioChunksRef.current.length} chunks, ${durationRef.current}s`);
+        }
+      } catch { /* 종료 흐름 방해 안 함 */ }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [state.status]);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('freeze', handlePageHide as any); // Chrome Freeze API
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('freeze', handlePageHide as any);
+    };
+  }, [state.status, state.startedFrom]);
 
   // 녹음 중 화면 꺼짐 방지 (Wake Lock API)
   useEffect(() => {

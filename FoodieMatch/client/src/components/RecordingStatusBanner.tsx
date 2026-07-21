@@ -23,33 +23,38 @@ export function RecordingStatusBanner() {
   let bgColor = 'bg-red-50 border-red-300 text-red-900';
   let iconColor = 'text-red-600';
   let Icon = Mic;
-  let statusLabel = '녹음 진행 중';
-  let warning = '⚠️ 새로고침·다른 앱 실행·마이크 사용 앱을 조심하세요.';
+  let statusLabel = '녹음 중';
+  let warning = '⚠️ 새로고침·다른 앱은 조심하세요. 어느 화면에서든 상단 버튼으로 일시정지·저장 가능합니다.';
 
   if (status === 'paused') {
     bgColor = 'bg-amber-50 border-amber-300 text-amber-900';
     iconColor = 'text-amber-600';
     Icon = Pause;
-    statusLabel = '녹음 일시정지됨';
-    warning = '저장 버튼을 눌러 서버에 저장하거나 재개하세요.';
+    statusLabel = '일시정지';
+    warning = '이어서 녹음하거나 TBM에 저장하세요. 어느 화면에서든 가능합니다.';
   } else if (status === 'saving') {
     bgColor = 'bg-blue-50 border-blue-300 text-blue-900';
     iconColor = 'text-blue-600';
     Icon = Loader2;
     statusLabel = uploadProgress !== null
-      ? (uploadProgress < 100 ? `저장 중 (${uploadProgress}%)` : '서버 처리 중...')
+      ? (uploadProgress < 100 ? `업로드 중 (${uploadProgress}%)` : '서버 저장 중...')
       : '저장 준비 중...';
-    warning = '⚠️ 지금 페이지를 나가지 마세요.';
+    warning = '⚠️ 저장이 완료될 때까지 페이지를 나가지 마세요.';
   }
 
   const teamName = state.startedFrom?.teamName || '';
+  const date = state.startedFrom?.date || '';
 
   return (
     <div className={`w-full border-b px-4 py-2 ${bgColor}`}>
       <div className="max-w-7xl mx-auto flex items-center gap-3 flex-wrap text-xs sm:text-sm">
         <Icon className={`w-4 h-4 flex-shrink-0 ${iconColor} ${status === 'recording' ? 'animate-pulse' : ''} ${status === 'saving' ? 'animate-spin' : ''}`} />
         <span className="font-semibold whitespace-nowrap">{statusLabel}</span>
-        {teamName && <span className="opacity-80 whitespace-nowrap">· {teamName}</span>}
+        {(teamName || date) && (
+          <span className="opacity-90 whitespace-nowrap font-medium">
+            · {teamName}{date ? ` (${date})` : ''}
+          </span>
+        )}
         <span className="font-mono whitespace-nowrap">· {formatTime(state.duration)}</span>
         <span className="opacity-80 flex-1 min-w-[200px]">{warning}</span>
       </div>

@@ -44,7 +44,7 @@ export function UnexpectedStopDialog() {
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel onClick={dismissUnexpectedStopDialog}>
-            나중에 저장 (일시정지 유지)
+            일시정지 유지 (나중에 저장)
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => resumeAfterUnexpectedStop()}

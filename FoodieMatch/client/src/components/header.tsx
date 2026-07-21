@@ -105,8 +105,8 @@ export function Header() {
   const handlePauseRecording = async () => {
     await pauseRecording();
     toast({
-      title: "녹음 일시정지",
-      description: "녹음이 일시정지되었습니다. 저장 또는 재개할 수 있습니다.",
+      title: "일시정지됨",
+      description: "이어서 녹음하거나 TBM에 저장할 수 있습니다.",
     });
   };
 
@@ -115,11 +115,11 @@ export function Header() {
     if (success) {
       toast({
         title: "녹음 재개",
-        description: "녹음을 계속합니다.",
+        description: "이어서 녹음합니다.",
       });
     } else {
       toast({
-        title: "녹음 재개 실패",
+        title: "재개 실패",
         description: "마이크 접근 권한을 확인해주세요.",
         variant: "destructive",
       });
@@ -127,16 +127,19 @@ export function Header() {
   };
 
   const handleSaveRecording = async () => {
+    // 저장 시작 시점의 팀·날짜를 미리 캡처 (saveRecording 성공 후엔 startedFrom이 null 됨)
+    const teamAtStart = recordingState.startedFrom?.teamName || recordingState.pausedInfo?.teamName || '';
+    const dateAtStart = recordingState.startedFrom?.date || recordingState.pausedInfo?.date || '';
     const result = await saveRecording();
     if (result) {
       toast({
         title: "녹음 저장 완료",
-        description: `녹음이 ${recordingState.startedFrom?.teamName || ''} 팀의 TBM에 저장되었습니다.`,
+        description: `${teamAtStart} 팀의 ${dateAtStart} TBM 일지에 저장되었습니다.`,
       });
     } else {
       toast({
         title: "녹음 저장 실패",
-        description: recordingState.saveError || "녹음 저장 중 오류가 발생했습니다.",
+        description: recordingState.saveError || "다시 시도해주세요. 녹음 데이터는 유지됩니다.",
         variant: "destructive",
       });
     }
@@ -144,16 +147,16 @@ export function Header() {
 
   const handleDiscardRecording = async () => {
     const ok = await confirm({
-      title: '녹음 삭제',
-      description: '녹음을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
-      confirmText: '삭제',
+      title: '녹음 버리기',
+      description: '지금까지 녹음된 내용을 모두 버립니다. TBM에 저장되지 않으며 되돌릴 수 없습니다.',
+      confirmText: '버리기',
       destructive: true,
     });
     if (ok) {
       await discardRecording();
       toast({
-        title: "녹음 삭제됨",
-        description: "녹음이 삭제되었습니다.",
+        title: "녹음 버려짐",
+        description: "지금까지 녹음된 내용이 삭제되었습니다.",
       });
     }
   };
@@ -217,7 +220,7 @@ export function Header() {
               variant="outline"
               size="icon"
               className="rounded-lg w-9 h-9 border-blue-500 text-blue-600"
-              title="재개"
+              title="이어서 녹음"
             >
               <Play className="h-4 w-4" />
             </Button>
@@ -226,7 +229,7 @@ export function Header() {
               variant="outline"
               size="icon"
               className="rounded-lg w-9 h-9 border-green-500 text-green-600"
-              title="저장"
+              title="TBM 일지에 저장"
             >
               <Save className="h-4 w-4" />
             </Button>
@@ -239,7 +242,7 @@ export function Header() {
               variant="outline"
               size="icon"
               className="rounded-lg w-9 h-9 border-red-500 text-red-600"
-              title="삭제"
+              title="녹음 버리기"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -254,18 +257,20 @@ export function Header() {
               variant="outline"
               size="sm"
               className="flex items-center gap-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+              title="이어서 녹음"
             >
               <Play className="h-4 w-4" />
-              재개
+              이어서 녹음
             </Button>
             <Button
               onClick={handleSaveRecording}
               variant="outline"
               size="sm"
               className="flex items-center gap-1 border-green-500 text-green-600 hover:bg-green-50"
+              title="TBM 일지에 저장"
             >
               <Save className="h-4 w-4" />
-              저장
+              TBM에 저장
             </Button>
             <div className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-md">
               <Pause className="h-4 w-4" />
@@ -331,19 +336,30 @@ export function Header() {
       );
     }
 
-    // 저장 실패
+    // 저장 실패 — chunks는 IndexedDB에 유지됨. saveRecording 재호출로 서버 재업로드 시도
     if (status === 'error') {
       return (
-        <Button
-          onClick={handleStartRecording}
-          variant="destructive"
-          size={buttonSize}
-          aria-disabled={!canStartRecording}
-          className={`flex items-center gap-2 ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
-        >
-          <AlertCircle className="h-4 w-4" />
-          {isMobile ? <span className="text-xs">재시도</span> : '재시도'}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={handleSaveRecording}
+            variant="destructive"
+            size={buttonSize}
+            className={`flex items-center gap-2 ${isMobile ? 'rounded-lg px-3 h-10 shadow-lg' : ''}`}
+            title="저장 재시도"
+          >
+            <AlertCircle className="h-4 w-4" />
+            {isMobile ? <span className="text-xs">재시도</span> : '저장 재시도'}
+          </Button>
+          <Button
+            onClick={handleDiscardRecording}
+            variant="ghost"
+            size={buttonSize}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+            title="녹음 버리기"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       );
     }
 
