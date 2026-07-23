@@ -228,6 +228,10 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   // null: 업로드 안 함, 0-99: 진행 중, 100: 서버 응답 대기 중
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
+  // duration을 별도 useState로 분리 — Timer 매초 리렌더가 sessionState(status/pausedInfo 등)와
+  // 독립적으로 발생하도록. 모바일에서 큰 컴포넌트 트리 리렌더 defer로 timer가 멈춰 보이는 문제 방지.
+  const [tickDuration, setTickDuration] = useState<number>(0);
+
   // 마지막으로 저장된 녹음 정보 (TBMChecklist에서 감지용)
   const [lastSavedRecording, setLastSavedRecording] = useState<LastSavedRecording | null>(null);
 
@@ -412,7 +416,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     return () => {
       if (timerRef.current) {
-        clearInterval(timerRef.current);
+        clearTimeout(timerRef.current);
       }
       if (saveStatusTimerRef.current) {
         clearTimeout(saveStatusTimerRef.current);
@@ -453,6 +457,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       durationRef.current = 0;
+      setTickDuration(0); // 새 녹음 시작 시 tick 리셋
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -474,7 +479,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
         console.error(`[Recording] 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
-          clearInterval(timerRef.current);
+          clearTimeout(timerRef.current);
           timerRef.current = null;
         }
 
@@ -563,14 +568,15 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         pausedInfo: null,
       });
 
-      // 타이머 시작
-      timerRef.current = setInterval(() => {
+      // 타이머 시작 — setTimeout 재귀로 setInterval의 defer 이슈 회피
+      // setTickDuration만 호출하여 sessionState(status/pausedInfo)와 독립적으로 리렌더
+      const tick = () => {
         durationRef.current += 1;
-        setState(prev => ({
-          ...prev,
-          duration: durationRef.current,
-        }));
-      }, 1000);
+        setTickDuration(durationRef.current);
+        console.log(`[Recording Timer] tick: ${durationRef.current}s`);
+        timerRef.current = setTimeout(tick, 1000);
+      };
+      timerRef.current = setTimeout(tick, 1000);
 
       return true;
     } catch (error) {
@@ -618,7 +624,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
           console.log(`[Recording] INACTIVE 복구 — chunks ${audioChunksRef.current.length}개, ${durationRef.current}초 저장`);
 
           if (timerRef.current) {
-            clearInterval(timerRef.current);
+            clearTimeout(timerRef.current);
             timerRef.current = null;
           }
 
@@ -719,21 +725,66 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
       // 타이머 정지
       if (timerRef.current) {
-        clearInterval(timerRef.current);
+        clearTimeout(timerRef.current);
         timerRef.current = null;
       }
 
-      // [CODE: STOP_TIMEOUT] stop() 호출 후 onstop이 5초 내 안 옴
-      // → 매우 드문 브라우저 버그 / OS 권한 회수 중
+      // [CODE: STOP_TIMEOUT] stop() 호출 후 onstop이 안 옴 — 모바일 브라우저에서 종종 발생
+      // 3초 timeout 후 chunks가 있으면 강제로 저장 → 사용자 경험 유지 (기존 5초 → 3초 단축)
       const stopTimeoutId = setTimeout(() => {
-        toast({
-          title: '녹음 정지 응답 지연',
-          description: '5초 내 응답이 없습니다. 페이지를 새로고침 후 저장해주세요. (CODE: STOP_TIMEOUT)',
-          variant: 'destructive',
-        });
-        console.error('[Recording] STOP_TIMEOUT — stop() 호출 후 onstop 5초 내 미발생');
+        console.error('[Recording] STOP_TIMEOUT — stop() 호출 후 onstop 3초 내 미발생. 강제 저장 시도');
+        if (audioChunksRef.current.length > 0 && startInfo) {
+          const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
+          const pausedId = `paused_${Date.now()}`;
+          savePausedRecordingToDB({
+            id: pausedId,
+            blob,
+            duration: finalDuration,
+            teamId: startInfo.teamId,
+            teamName: startInfo.teamName,
+            date: startInfo.date,
+            pausedAt: new Date().toISOString(),
+            mimeType: mimeTypeRef.current,
+          }).then(() => {
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} });
+              streamRef.current = null;
+            }
+            setState({
+              status: 'paused',
+              startedFrom: startInfo,
+              duration: finalDuration,
+              saveError: null,
+              pausedInfo: {
+                id: pausedId,
+                duration: finalDuration,
+                teamId: startInfo.teamId,
+                teamName: startInfo.teamName,
+                date: startInfo.date,
+                pausedAt: new Date().toISOString(),
+              },
+            });
+            toast({
+              title: '녹음이 일시정지되었습니다',
+              description: '이어서 녹음하거나 TBM에 저장하세요.',
+            });
+          }).catch(err => {
+            console.error('[Recording] STOP_TIMEOUT 강제 저장 실패:', err);
+            toast({
+              title: '녹음 정지 응답 지연',
+              description: '녹음이 저장되지 않았을 수 있습니다. 페이지를 새로고침 하지 마세요.',
+              variant: 'destructive',
+            });
+          });
+        } else {
+          toast({
+            title: '녹음 정지 응답 없음',
+            description: '녹음된 데이터가 없거나 마이크 접근에 문제가 있습니다. 다시 시작해주세요. (CODE: STOP_TIMEOUT)',
+            variant: 'destructive',
+          });
+        }
         resolve();
-      }, 5000);
+      }, 3000);
 
       mr.onstop = async () => {
         clearTimeout(stopTimeoutId);
@@ -870,7 +921,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
         console.error(`[Recording] 재개 후 예기치 않은 종료: ${reason}`);
         if (timerRef.current) {
-          clearInterval(timerRef.current);
+          clearTimeout(timerRef.current);
           timerRef.current = null;
         }
 
@@ -949,15 +1000,16 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         status: 'recording',
         duration: pausedData.duration,
       }));
+      setTickDuration(pausedData.duration); // tick도 초기값 반영
 
-      // 타이머 재시작 (이전 duration에서 계속)
-      timerRef.current = setInterval(() => {
+      // 타이머 재시작 (이전 duration에서 계속) — setTimeout 재귀로 defer 회피
+      const tick = () => {
         durationRef.current += 1;
-        setState(prev => ({
-          ...prev,
-          duration: durationRef.current,
-        }));
-      }, 1000);
+        setTickDuration(durationRef.current);
+        console.log(`[Recording Timer] resume tick: ${durationRef.current}s`);
+        timerRef.current = setTimeout(tick, 1000);
+      };
+      timerRef.current = setTimeout(tick, 1000);
 
       // IndexedDB에서 삭제 (이제 메모리에 있음)
       await deletePausedRecordingFromDB(state.pausedInfo.id);
@@ -1160,7 +1212,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
 
     // 타이머 정지
     if (timerRef.current) {
-      clearInterval(timerRef.current);
+      clearTimeout(timerRef.current);
       timerRef.current = null;
     }
 
@@ -1183,6 +1235,7 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
     // 청크 초기화
     audioChunksRef.current = [];
     durationRef.current = 0;
+    setTickDuration(0); // tick 리셋
 
     // 상태 초기화
     setState({
@@ -1310,7 +1363,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   return (
     <RecordingContext.Provider
       value={{
-        state,
+        // state.duration을 tickDuration으로 덮어 노출 — recording 중에도 매초 정확히 갱신
+        // (기존 setState({...prev, duration})는 큰 트리 리렌더 defer로 모바일에서 멈춤 발생)
+        state: { ...state, duration: state.status === 'recording' ? tickDuration : state.duration },
         startRecording,
         pauseRecording,
         resumeRecording,
