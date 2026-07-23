@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from '@/components/ui/skeleton';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { resetAppCache, reloadWithNoCache } from '@/lib/cacheReset';
+import { useConfirm } from '@/hooks/useConfirm';
 import type { User, Team } from '@shared/schema';
 import { SITES } from '@/lib/constants';
 import { apiRequest } from '@/lib/queryClient';
@@ -79,6 +81,39 @@ export default function UserProfilePage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const [isResettingCache, setIsResettingCache] = useState(false);
+
+  const handleResetCache = async () => {
+    const ok = await confirm({
+      title: '앱 캐시 삭제',
+      description: '앱의 저장된 코드 캐시를 삭제하고 새로 로드합니다.\n\n' +
+        '· 로그인 세션·작성 중인 TBM·녹음 데이터는 유지됩니다.\n' +
+        '· 실행 후 페이지가 자동으로 새로고침됩니다.\n' +
+        '· 진행 시 잠깐 화면이 흰색으로 바뀔 수 있습니다.',
+      confirmText: '실행',
+    });
+    if (!ok) return;
+    setIsResettingCache(true);
+    try {
+      const result = await resetAppCache();
+      console.log('[Profile] 캐시 삭제 결과:', result);
+      toast({
+        title: '캐시 삭제 완료',
+        description: `삭제된 캐시 ${result.cachesDeleted}개. 잠시 후 새로 로드합니다.`,
+      });
+      // 짧게 대기 후 새로고침
+      setTimeout(() => reloadWithNoCache(), 800);
+    } catch (e: any) {
+      console.error('[Profile] 캐시 삭제 실패:', e);
+      toast({
+        title: '캐시 삭제 실패',
+        description: e?.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+      setIsResettingCache(false);
+    }
+  };
   const [, setLocation] = useLocation();
 
   const { data: userProfile, isLoading: profileLoading } = useQuery<User>({
@@ -256,6 +291,40 @@ export default function UserProfilePage() {
             </CardContent>
             </Card>
         </form>
+
+        {/* 앱 문제 해결 — 캐시 삭제 */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg">앱 문제 해결</CardTitle>
+            <CardDescription>
+              앱이 이상하게 동작하거나 화면이 최신 버전으로 보이지 않으면 아래 버튼을 눌러 앱을 새로 로드하세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResetCache}
+              disabled={isResettingCache}
+              className="flex items-center gap-2"
+            >
+              {isResettingCache ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  삭제 중...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  앱 캐시 삭제 후 새로 로드
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-3">
+              작성 중인 TBM·녹음·로그인 세션은 그대로 유지됩니다.
+            </p>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
