@@ -292,7 +292,7 @@ export default function UserProfilePage() {
             </Card>
         </form>
 
-        {/* 앱 문제 해결 — 캐시 삭제 */}
+        {/* 앱 문제 해결 — 캐시 삭제 + 가이드 링크 */}
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-lg">앱 문제 해결</CardTitle>
@@ -300,27 +300,38 @@ export default function UserProfilePage() {
               앱이 이상하게 동작하거나 화면이 최신 버전으로 보이지 않으면 아래 버튼을 눌러 앱을 새로 로드하세요.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleResetCache}
-              disabled={isResettingCache}
-              className="flex items-center gap-2"
-            >
-              {isResettingCache ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  삭제 중...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  앱 캐시 삭제 후 새로 로드
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-3">
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetCache}
+                disabled={isResettingCache}
+                className="flex items-center gap-2"
+              >
+                {isResettingCache ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    삭제 중...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    앱 캐시 삭제 후 새로 로드
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setLocation('/troubleshooting')}
+                className="flex items-center gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                자세한 문제 해결 가이드
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
               작성 중인 TBM·녹음·로그인 세션은 그대로 유지됩니다.
             </p>
           </CardContent>

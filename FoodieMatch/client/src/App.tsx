@@ -75,6 +75,7 @@ const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
+const TroubleshootingPage = lazy(() => import("./pages/TroubleshootingPage"));
 const AdminHelpPage = lazy(() => import("./pages/AdminHelpPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -134,6 +135,11 @@ function App() {
               <Route path="/help">
                 <ProtectedRoute roles={ALL_ROLES}>
                   <HelpPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/troubleshooting">
+                <ProtectedRoute roles={ALL_ROLES}>
+                  <TroubleshootingPage />
                 </ProtectedRoute>
               </Route>
 

@@ -35,10 +35,10 @@ export function AppErrorBanner() {
         <span className="ml-1 opacity-80">— 최신 버전이 안 보이거나 오류가 발생했습니다.</span>
       </div>
       <button
-        onClick={() => setLocation('/profile')}
+        onClick={() => setLocation('/troubleshooting')}
         className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 whitespace-nowrap"
       >
-        캐시 삭제
+        해결 방법 보기
       </button>
       <button
         onClick={() => {
