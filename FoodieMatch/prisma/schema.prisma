@@ -262,11 +262,29 @@ model TeamMember {
   user             User?             @relation("TeamMemberUser", fields: [userId], references: [id], onDelete: SetNull)
   reportSignatures ReportSignature[]
   absenceRecords   AbsenceRecord[]
+  history          TeamMemberHistory[]
 
   @@index([teamId])
   @@index([teamId, isActive])
   @@index([userId])
   @@map("TeamMembers")
+}
+
+/// 팀원 활성/비활성 이력 (참석자 소급 표시용)
+/// 월별 보고서·안전교육 현황·종합 보고서에서 "그 날짜에 활성이었던 팀원만" 표시하기 위해 사용.
+/// 여러 번 재활성화되는 케이스(잠시 나갔다 돌아옴 등)도 지원.
+model TeamMemberHistory {
+  id        Int         @id @default(autoincrement())
+  memberId  Int
+  action    String      // 'ADD' | 'REMOVE'
+  at        DateTime    @default(now())
+  actorId   String?     // 이 작업을 수행한 사용자 (audit용, User 삭제되어도 이력은 유지)
+  member    TeamMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([memberId, at])
+  @@index([at])
+  @@map("TeamMemberHistories")
 }
 
 // 신규 모델: 라인별 보유 장비

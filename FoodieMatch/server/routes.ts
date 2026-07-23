@@ -28,6 +28,7 @@ import { promisify } from "util";
 const execPromise = promisify(exec);
 // Holiday utilities
 import { isHoliday, getMonthlyHolidayDays, getBusinessDays } from "./utils/holidayUtils";
+import { filterActiveMemberIdsAt, filterMembersForMonth, getSignedMemberIdsInPeriod } from "./utils/teamMemberHistory";
 // Audit logging
 import { logAudit, logLoginSuccess, logLoginFailed, logLogout, logPasswordChange, logExport } from "./auditLogger";
 // File utilities - Path traversal prevention
@@ -1514,13 +1515,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const teamMember = await prisma.teamMember.create({
-        data: {
-          teamId: parseInt(teamId),
-          name: name.trim(),
-          position: position?.trim() || null,
-          isActive: true
-        }
+      // 트랜잭션: TeamMember 생성 + 히스토리 ADD + AuditLog
+      const teamMember = await prisma.$transaction(async (tx) => {
+        const created = await tx.teamMember.create({
+          data: {
+            teamId: parseInt(teamId),
+            name: name.trim(),
+            position: position?.trim() || null,
+            isActive: true,
+          },
+        });
+        await tx.teamMemberHistory.create({
+          data: {
+            memberId: created.id,
+            action: 'ADD',
+            actorId: req.session.user!.id,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: 'CREATE',
+            entityType: 'TEAM_MEMBER',
+            entityId: String(created.id),
+            userId: req.session.user!.id,
+            newValue: { teamId: created.teamId, name: created.name, position: created.position } as any,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          },
+        });
+        return created;
       });
 
       res.status(201).json(teamMember);
@@ -1551,13 +1574,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const teamMember = await prisma.teamMember.update({
-        where: { id: parseInt(memberId) },
-        data: {
-          name: name.trim(),
-          position: position?.trim() || null,
-          isActive: isActive !== undefined ? isActive : undefined
+      // 트랜잭션: 수정 + isActive 토글 시 히스토리 기록 + AuditLog
+      const teamMember = await prisma.$transaction(async (tx) => {
+        const before = await tx.teamMember.findUnique({ where: { id: parseInt(memberId) } });
+        if (!before) throw new Error('팀원을 찾을 수 없습니다');
+
+        const updated = await tx.teamMember.update({
+          where: { id: parseInt(memberId) },
+          data: {
+            name: name.trim(),
+            position: position?.trim() || null,
+            isActive: isActive !== undefined ? isActive : undefined,
+          },
+        });
+
+        // isActive 상태가 실제로 바뀐 경우만 히스토리 기록
+        if (isActive !== undefined && before.isActive !== updated.isActive) {
+          await tx.teamMemberHistory.create({
+            data: {
+              memberId: updated.id,
+              action: updated.isActive ? 'ADD' : 'REMOVE',
+              actorId: req.session.user!.id,
+            },
+          });
         }
+
+        await tx.auditLog.create({
+          data: {
+            action: 'UPDATE',
+            entityType: 'TEAM_MEMBER',
+            entityId: String(updated.id),
+            userId: req.session.user!.id,
+            oldValue: { name: before.name, position: before.position, isActive: before.isActive } as any,
+            newValue: { name: updated.name, position: updated.position, isActive: updated.isActive } as any,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          },
+        });
+        return updated;
       });
 
       res.json(teamMember);
@@ -1583,9 +1637,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      await prisma.teamMember.update({
-        where: { id: parseInt(memberId) },
-        data: { isActive: false }
+      // 트랜잭션: soft delete + 히스토리 REMOVE + AuditLog
+      await prisma.$transaction(async (tx) => {
+        const before = await tx.teamMember.findUnique({ where: { id: parseInt(memberId) } });
+        if (!before) throw new Error('팀원을 찾을 수 없습니다');
+
+        // 이미 비활성이면 히스토리 중복 방지
+        if (!before.isActive) {
+          return;
+        }
+
+        await tx.teamMember.update({
+          where: { id: parseInt(memberId) },
+          data: { isActive: false },
+        });
+        await tx.teamMemberHistory.create({
+          data: {
+            memberId: parseInt(memberId),
+            action: 'REMOVE',
+            actorId: req.session.user!.id,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: 'DELETE',
+            entityType: 'TEAM_MEMBER',
+            entityId: String(memberId),
+            userId: req.session.user!.id,
+            oldValue: { name: before.name, position: before.position, teamId: before.teamId } as any,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          },
+        });
       });
 
       res.status(204).send();
@@ -3975,7 +4058,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           include: { templateItems: { orderBy: { displayOrder: 'asc' } } }
         }),
         prisma.user.findMany({ where: { teamId: teamIdNum } }),
-        prisma.teamMember.findMany({ where: { teamId: teamIdNum, isActive: true } }),
+        // 시점별 필터를 위해 팀 전체 팀원 조회 (isActive 상관 없이) — 아래서 filterMembersForMonth로 필터
+        prisma.teamMember.findMany({ where: { teamId: teamIdNum } }),
         prisma.monthlyApproval.findUnique({
           where: {
             teamId_year_month: {
@@ -4241,8 +4325,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 열처리팀 여부 확인 (1조/2조/3조 통합 서명)
       const isHeatTreatmentTeam = team.name.includes('열처리');
+      // 시점별 팀원 필터: 월말 활성 ∪ 이달 서명 이력 있는 팀원
+      const monthEndForFilter = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+      const activeAtMonthEnd = await filterActiveMemberIdsAt(teamMembers.map(m => m.id), monthEndForFilter);
+      const signedInMonth = await getSignedMemberIdsInPeriod([teamIdNum], startDate, endDate);
+      const filteredTeamMembers = filterMembersForMonth(teamMembers, activeAtMonthEnd, signedInMonth);
       let allTeamUsers = teamUsers;
-      let allTeamMembers = teamMembers;
+      let allTeamMembers = filteredTeamMembers;
       let allDailyReports = dailyReports;
 
       if (isHeatTreatmentTeam) {
@@ -4256,10 +4345,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const htTeamIds = heatTreatmentTeams.map(t => t.id);
 
-        // 3개 조의 모든 사용자와 팀원 조회
+        // 3개 조의 모든 사용자와 팀원 조회 (isActive 무관 — 아래에서 시점 필터)
         const [htUsers, htMembers, htReports] = await Promise.all([
           prisma.user.findMany({ where: { teamId: { in: htTeamIds } } }),
-          prisma.teamMember.findMany({ where: { teamId: { in: htTeamIds }, isActive: true } }),
+          prisma.teamMember.findMany({ where: { teamId: { in: htTeamIds } } }),
           prisma.dailyReport.findMany({
             where: {
               teamId: { in: htTeamIds },
@@ -4273,6 +4362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         ]);
 
+        // 열처리 3개 조 팀원 시점별 필터
+        const htActive = await filterActiveMemberIdsAt(htMembers.map(m => m.id), monthEndForFilter);
+        const htSigned = await getSignedMemberIdsInPeriod(htTeamIds, startDate, endDate);
+        const htMembersFiltered = filterMembersForMonth(htMembers, htActive, htSigned);
+
         // 중복 제거 (같은 이름이 여러 조에 있을 수 있음 - 예: 최영삼)
         const uniqueUserMap = new Map<string, typeof htUsers[0]>();
         htUsers.forEach(u => {
@@ -4283,8 +4377,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allTeamUsers = Array.from(uniqueUserMap.values());
 
         // 팀원도 이름 기준으로 중복 제거
+        // 시점 필터 적용된 htMembersFiltered 기준으로 이름 중복 제거
         const uniqueMemberMap = new Map<string, typeof htMembers[0]>();
-        htMembers.forEach(m => {
+        htMembersFiltered.forEach(m => {
           if (!uniqueMemberMap.has(m.name)) {
             uniqueMemberMap.set(m.name, m);
           }
@@ -4604,8 +4699,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }),
             prisma.user.findMany({ where: { teamId: team.id } }),
+            // 시점 필터를 위해 전체 조회 (isActive 무관)
             prisma.teamMember.findMany({
-              where: { teamId: team.id, isActive: true }
+              where: { teamId: team.id }
             }),
             prisma.monthlyApproval.findFirst({
               where: {
@@ -4626,6 +4722,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           console.log(`  - 일일 보고서: ${dailyReports.length}개`);
           console.log(`  - 체크리스트 항목: ${checklistTemplate.templateItems.length}개`);
+
+          // 시점별 팀원 필터: 월말 활성 ∪ 이달 서명 이력 있는 팀원
+          const monthEndCE = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+          const activeAtMonthEndCE = await filterActiveMemberIdsAt(teamMembers.map(m => m.id), monthEndCE);
+          const signedInMonthCE = await getSignedMemberIdsInPeriod([team.id], startDate, endDate);
+          const teamMembersFiltered = filterMembersForMonth(teamMembers, activeAtMonthEndCE, signedInMonthCE);
 
           // ===== SHEET 1: TBM 활동일지 =====
           // Excel 시트 이름에서 금지 문자 제거: * ? : \ / [ ]
@@ -5203,13 +5305,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 전체 활성 팀원 수 집계 (교육 대상자수)
-      const totalMembers = await prisma.teamMember.count({
-        where: {
-          teamId: { in: teams.map(t => t.id) },
-          isActive: true
-        }
+      // 전체 활성 팀원 수 집계 (교육 대상자수) — 선택한 date 시점 기준으로 필터
+      // date가 없으면 월말 사용
+      const eduDayNum = date ? parseInt(date as string) : new Date(yearNum, monthNum, 0).getDate();
+      const eduReferenceDate = new Date(yearNum, monthNum - 1, eduDayNum, 23, 59, 59, 999);
+      const allTeamMembersForCount = await prisma.teamMember.findMany({
+        where: { teamId: { in: teams.map(t => t.id) } },
+        select: { id: true },
       });
+      const activeMemberIdsForCount = await filterActiveMemberIdsAt(
+        allTeamMembersForCount.map(m => m.id),
+        eduReferenceDate,
+      );
+      const totalMembers = activeMemberIdsForCount.size;
 
       // 선택 일자에 서명한 팀원 수 집계 (교육 실시자수)
       const signedMembers = reports.reduce((sum, r) => sum + r.reportSignatures.length, 0);
@@ -5851,10 +5959,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`  🔄 ${entry.sheetLabel} 서명 시트 생성 중...`);
 
-          // 해당 팀(들)의 User와 TeamMember 조회
-          const [teamUsers, teamMembers, monthlyReports] = await Promise.all([
+          // 해당 팀(들)의 User와 TeamMember 조회 (isActive 무관 — 아래서 시점 필터)
+          const [teamUsers, teamMembersAll, monthlyReports] = await Promise.all([
             prisma.user.findMany({ where: { teamId: { in: entry.teamIds } } }),
-            prisma.teamMember.findMany({ where: { teamId: { in: entry.teamIds }, isActive: true } }),
+            prisma.teamMember.findMany({ where: { teamId: { in: entry.teamIds } } }),
             prisma.dailyReport.findMany({
               where: {
                 teamId: { in: entry.teamIds },
@@ -5868,6 +5976,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               orderBy: { reportDate: 'asc' }
             })
           ]);
+
+          // 시점별 팀원 필터: 월말 활성 ∪ 이달 서명 이력 있는 팀원
+          const activeAtMonthEndSig = await filterActiveMemberIdsAt(teamMembersAll.map(m => m.id), monthEnd);
+          const signedInMonthSig = await getSignedMemberIdsInPeriod(entry.teamIds, monthStart, monthEnd);
+          const teamMembers = filterMembersForMonth(teamMembersAll, activeAtMonthEndSig, signedInMonthSig);
 
           // 열처리 통합 시 중복 제거 + 정렬 (최영삼 → 1조 → 2조 → 3조)
           let uniqueUsers = teamUsers;
