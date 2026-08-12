@@ -10756,7 +10756,8 @@ ${JSON.stringify(toolResults, null, 2)}
     try {
       const id = parseInt(req.params.id);
       const { name, description, site, parentId } = req.body;
-      if (!name || !name.trim()) {
+      // name 필드가 명시적으로 왔을 때만 검증 — 드래그 이동처럼 { parentId }만 오는 케이스 허용
+      if (name !== undefined && (!name || !String(name).trim())) {
         return res.status(400).json({ message: "폴더명은 필수입니다" });
       }
 
@@ -10782,9 +10783,9 @@ ${JSON.stringify(toolResults, null, 2)}
       const folder = await prisma.documentFolder.update({
         where: { id },
         data: {
-          name: name.trim(),
-          description: description?.trim() || null,
-          site: site || null,
+          name: name !== undefined ? String(name).trim() : undefined,
+          description: description !== undefined ? (description?.trim() || null) : undefined,
+          site: site !== undefined ? (site || null) : undefined,
           parentId: parentId === undefined ? undefined : (parentId ? parseInt(parentId) : null),
         },
         include: {

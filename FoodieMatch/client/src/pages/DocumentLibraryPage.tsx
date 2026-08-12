@@ -725,7 +725,7 @@ export default function DocumentLibraryPage() {
                 onDrop={canManage ? (e) => {
                   e.preventDefault();
                   setDropTargetId(null);
-                  const raw = e.dataTransfer.getData('text/folder-id');
+                  const raw = e.dataTransfer.getData('text/plain');
                   const draggedId = Number(raw);
                   if (draggedId) handleFolderDrop(null, draggedId);
                 } : undefined}
@@ -960,7 +960,8 @@ function FolderTreeNode({
       <div
         draggable={canManage}
         onDragStart={(e) => {
-          e.dataTransfer.setData('text/folder-id', String(folder.id));
+          e.stopPropagation();
+          e.dataTransfer.setData('text/plain', String(folder.id));
           e.dataTransfer.effectAllowed = 'move';
           setDraggingId(folder.id);
         }}
@@ -975,7 +976,7 @@ function FolderTreeNode({
           e.preventDefault();
           e.stopPropagation();
           setDropTargetId(null);
-          const raw = e.dataTransfer.getData('text/folder-id');
+          const raw = e.dataTransfer.getData('text/plain');
           const draggedId = Number(raw);
           if (draggedId) onDropOntoFolder(folder.id, draggedId);
         } : undefined}
