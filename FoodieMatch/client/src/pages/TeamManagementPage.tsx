@@ -17,15 +17,22 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { EmptyState } from '@/components/EmptyState';
 import { apiRequest } from '@/lib/queryClient';
 
-const fetchAllTeams = async (): Promise<Team[]> => {
-  const res = await fetch('/api/teams');
+const fetchAllTeams = async (includeInactive = false): Promise<Team[]> => {
+  const res = await fetch(`/api/teams${includeInactive ? '?includeInactive=1' : ''}`);
   if (!res.ok) throw new Error('Failed to fetch teams');
   return res.json();
 };
 
-const fetchTeams = async (site: string): Promise<Team[]> => {
-  const res = await fetch(`/api/teams?site=${site}`);
+const fetchTeams = async (site: string, includeInactive = false): Promise<Team[]> => {
+  const params = new URLSearchParams({ site });
+  if (includeInactive) params.set('includeInactive', '1');
+  const res = await fetch(`/api/teams?${params}`);
   if (!res.ok) throw new Error('Failed to fetch teams');
+  return res.json();
+};
+
+const reactivateTeam = async (teamId: number) => {
+  const res = await apiRequest('PUT', `/api/teams/${teamId}/reactivate`);
   return res.json();
 };
 
@@ -123,6 +130,7 @@ export default function TeamManagementPage() {
 
   // Team selection filter
   const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('아산');
+  const [showInactive, setShowInactive] = useState(false);
 
   const ITEMS_PER_PAGE = 10;
 
@@ -135,8 +143,10 @@ export default function TeamManagementPage() {
 
   // Queries
   const { data: teams = [], isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ['teams', currentUser?.role === 'ADMIN' ? 'all' : currentUser?.site],
-    queryFn: () => currentUser?.role === 'ADMIN' ? fetchAllTeams() : fetchTeams(currentUser!.site!),
+    queryKey: ['teams', currentUser?.role === 'ADMIN' ? 'all' : currentUser?.site, showInactive],
+    queryFn: () => currentUser?.role === 'ADMIN'
+      ? fetchAllTeams(showInactive)
+      : fetchTeams(currentUser!.site!, showInactive),
     enabled: !!currentUser,
   });
 
@@ -289,18 +299,30 @@ export default function TeamManagementPage() {
 
   const deleteTeamMutation = useMutation({ mutationFn: deleteTeam,
     onSuccess: async () => {
-      // 진행 중인 teamData refetch를 즉시 취소 — 삭제된 팀 데이터가 일시적으로 깜박이는 race 방지
       await queryClient.cancelQueries({ queryKey: ['teamData'] });
-      // 삭제된 팀의 캐시 자체를 제거 (다음 select 시 빈 상태로 시작)
       queryClient.removeQueries({ queryKey: ['teamData', selectedTeamId] });
-      toast({ title: '성공', description: '팀이 삭제되었습니다.' });
+      toast({ title: '성공', description: '팀이 비활성화되었습니다. 데이터는 유지됩니다.' });
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       setSelectedTeamId(null);
     },
     onError: (error: any) => {
       toast({
         title: '오류',
-        description: error.message || '팀 삭제에 실패했습니다.',
+        description: error.message || '팀 비활성화에 실패했습니다.',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  const reactivateTeamMutation = useMutation({ mutationFn: reactivateTeam,
+    onSuccess: () => {
+      toast({ title: '성공', description: '팀이 재활성화되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: '오류',
+        description: error.message || '팀 재활성화에 실패했습니다.',
         variant: 'destructive'
       });
     }
@@ -445,9 +467,9 @@ export default function TeamManagementPage() {
   const handleDeleteTeam = async () => {
     if (!selectedTeamId || !teamData) return;
     const ok = await confirm({
-      title: '팀 삭제',
-      description: `"${teamData.name}" 팀을 삭제하시겠습니까? (팀에 사용자가 없어야 삭제 가능)`,
-      confirmText: '삭제',
+      title: '팀 비활성화',
+      description: `"${teamData.name}" 팀을 비활성화하시겠습니까?\n\n- 지금까지의 TBM/서명/사진 데이터는 그대로 유지됩니다.\n- 팀 목록에서만 숨겨지며, 나중에 재활성화할 수 있습니다.`,
+      confirmText: '비활성화',
       destructive: true,
     });
     if (ok) deleteTeamMutation.mutate(selectedTeamId);
@@ -594,7 +616,18 @@ export default function TeamManagementPage() {
 
                 {/* 팀 선택 */}
                 <div>
-                  <Label>팀 선택</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label>팀 선택</Label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showInactive}
+                        onChange={(e) => setShowInactive(e.target.checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      비활성 팀 포함
+                    </label>
+                  </div>
                   <Select onValueChange={(val) => setSelectedTeamId(Number(val))} value={selectedTeamId ? String(selectedTeamId) : undefined}>
                     <SelectTrigger>
                       <SelectValue placeholder="팀을 선택하세요..." />
@@ -605,6 +638,9 @@ export default function TeamManagementPage() {
                         .map(team => (
                           <SelectItem key={team.id} value={String(team.id)}>
                             {team.name.replace(/^(아산|화성)\s*/, '')}
+                            {(team as any).isActive === false && (
+                              <span className="ml-2 text-xs text-muted-foreground">(비활성)</span>
+                            )}
                           </SelectItem>
                         ))}
                       {teams.filter(team => team.site === selectedSiteFilter).length === 0 && (
@@ -662,14 +698,25 @@ export default function TeamManagementPage() {
                         >
                           수정
                         </Button>
-                        <Button
-                          onClick={handleDeleteTeam}
-                          variant="destructive"
-                          size="sm"
-                          disabled={deleteTeamMutation.isPending}
-                        >
-                          삭제
-                        </Button>
+                        {(teamData as any).isActive === false ? (
+                          <Button
+                            onClick={() => reactivateTeamMutation.mutate(selectedTeamId)}
+                            variant="default"
+                            size="sm"
+                            disabled={reactivateTeamMutation.isPending}
+                          >
+                            재활성화
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleDeleteTeam}
+                            variant="destructive"
+                            size="sm"
+                            disabled={deleteTeamMutation.isPending}
+                          >
+                            비활성화
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>

@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Terminal, Camera, X, Mic, FileText, Loader2, Edit3, ImageIcon, CalendarOff, Save } from "lucide-react";
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { stripSiteSuffix, sortTeams } from '@/lib/utils';
-import { getDepartments, getDepartmentForTeam } from '@/lib/teamDepartments';
+import { getDepartments, getDepartmentForTeam, buildDepartmentsFromTeams } from '@/lib/teamDepartments';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocation } from 'wouter';
 import { CheckCircle2 } from 'lucide-react';
@@ -267,7 +267,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (reportForEdit) {
         const editTeam = res.data.find(t => t.id === reportForEdit.teamId);
         if (editTeam) {
-          const dept = getDepartmentForTeam(site, stripSiteSuffix(editTeam.name));
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(editTeam.name), teams);
           if (dept) setSelectedDepartment(dept);
         }
         setSelectedTeam(reportForEdit.teamId);
@@ -280,7 +280,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (user?.teamId) {
         const userTeam = res.data.find(t => t.id === user.teamId);
         if (userTeam) {
-          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name), teams);
           if (dept) {
             setSelectedDepartment(dept);
             setSelectedTeam(user.teamId);
@@ -295,7 +295,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (!autoSelected && user?.id) {
         const leaderTeam = res.data.find(t => t.leaderId === user.id);
         if (leaderTeam) {
-          const dept = getDepartmentForTeam(site, stripSiteSuffix(leaderTeam.name));
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(leaderTeam.name), teams);
           if (dept) {
             setSelectedDepartment(dept);
             setSelectedTeam(leaderTeam.id);
@@ -1101,7 +1101,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       if (responseUserTeamId) {
         const userTeam = teams.find(t => t.id === responseUserTeamId);
         if (userTeam) {
-          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name));
+          const dept = getDepartmentForTeam(site, stripSiteSuffix(userTeam.name), teams);
           if (dept) setSelectedDepartment(dept);
           setSelectedTeam(responseUserTeamId);
         }
@@ -1166,7 +1166,7 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   // 부서별 팀 필터링 (모든 팀 표시, 자기 팀 상단에)
   const filteredTeams = useMemo(() => {
     if (!selectedDepartment || !teams.length) return [];
-    const deptConfig = getDepartments(site).find(d => d.name === selectedDepartment);
+    const deptConfig = buildDepartmentsFromTeams(site, teams).find(d => d.name === selectedDepartment);
     if (!deptConfig) return [];
 
     const deptTeams = teams.filter(team => {
@@ -1242,8 +1242,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
     }
   }, [mode, selectedTeam, teamDrafts, date]);
 
-  // 사이트별 부서 목록
-  const departments = getDepartments(site);
+  // 사이트별 부서 목록 — DB의 Team.department가 있으면 그 기반으로 재구성, 없으면 하드코딩 fallback
+  const departments = buildDepartmentsFromTeams(site, teams || []);
 
   return (
     <div className="space-y-6">

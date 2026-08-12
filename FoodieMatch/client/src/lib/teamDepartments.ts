@@ -31,7 +31,8 @@ export const HWASEONG_DEPARTMENTS: DepartmentConfig[] = [
 ];
 
 /**
- * 사이트별 부서 목록 반환
+ * 사이트별 부서 목록 반환 (레거시 하드코딩 fallback).
+ * DB 부서(Team.department)가 있으면 buildDepartmentsFromTeams()로 재구성 우선.
  */
 export function getDepartments(site: string | null | undefined): DepartmentConfig[] {
   if (!site) return [];
@@ -41,22 +42,59 @@ export function getDepartments(site: string | null | undefined): DepartmentConfi
 }
 
 /**
- * 팀 이름으로 해당 부서 찾기
- * @param site 사이트 (아산/화성)
- * @param teamName 팀 이름 (사이트 접미사 제거된 이름)
- * @returns 부서 이름 또는 null
+ * 팀 목록의 department 관계에서 부서 구성 자동 재구성.
+ * Team.department가 없는 팀은 fallback(하드코딩)으로 처리.
  */
-export function getDepartmentForTeam(site: string | null | undefined, teamName: string): string | null {
-  const departments = getDepartments(site);
+export function buildDepartmentsFromTeams(
+  site: string | null | undefined,
+  teams: Array<{ name: string; site?: string | null; department?: { id: number; name: string; displayOrder: number } | null }>,
+): DepartmentConfig[] {
+  if (!site) return [];
+  const teamsInSite = teams.filter(t => t.site === site);
+  if (teamsInSite.length === 0) return getDepartments(site);
 
+  // department 정보가 있는 팀들로 재구성
+  const withDept = teamsInSite.filter(t => t.department);
+  if (withDept.length === 0) return getDepartments(site);
+
+  // displayOrder 기준 정렬
+  const deptMap = new Map<string, { name: string; displayOrder: number; teams: string[] }>();
+  for (const t of withDept) {
+    const d = t.department!;
+    if (!deptMap.has(d.name)) {
+      deptMap.set(d.name, { name: d.name, displayOrder: d.displayOrder, teams: [] });
+    }
+    deptMap.get(d.name)!.teams.push(t.name);
+  }
+
+  return Array.from(deptMap.values())
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map(d => ({ name: d.name, teams: d.teams }));
+}
+
+/**
+ * 팀 이름으로 해당 부서 찾기.
+ * teams가 전달되면 Team.department 관계 우선 (DB), 없으면 하드코딩 매핑 fallback.
+ */
+export function getDepartmentForTeam(
+  site: string | null | undefined,
+  teamName: string,
+  teams?: Array<{ name: string; site?: string | null; department?: { name: string } | null }>,
+): string | null {
+  // teams가 있고 department 정보가 있으면 우선 사용
+  if (teams && teams.length > 0) {
+    const match = teams.find(t => t.site === site && (t.name === teamName || t.name.includes(teamName)));
+    if (match?.department) return match.department.name;
+  }
+
+  // fallback: 하드코딩 매핑
+  const departments = getDepartments(site);
   for (const dept of departments) {
-    // 팀 이름이 부서의 팀 목록 중 하나와 일치하는지 확인
     const found = dept.teams.some(t => teamName.includes(t));
     if (found) {
       return dept.name;
     }
   }
-
   return null;
 }
 

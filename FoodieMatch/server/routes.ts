@@ -1201,18 +1201,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TEAM MANAGEMENT
   app.get("/api/teams", async (req, res) => {
     try {
-      const { site } = req.query;
-      const whereClause = site ? { site: site as string } : {};
+      const { site, includeInactive } = req.query;
+      const whereClause: any = {};
+      if (site) whereClause.site = site as string;
+      // 기본은 활성 팀만. ?includeInactive=1로 비활성 포함 (팀 관리 페이지용)
+      if (includeInactive !== '1' && includeInactive !== 'true') {
+        whereClause.isActive = true;
+      }
       const teams = await prisma.team.findMany({
         where: whereClause,
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         include: {
           leader: true,
-          approver: true
+          approver: true,
+          department: true,
         }
       });
       res.json(teams);
     } catch (error) { res.status(500).json({ message: "Failed to fetch teams" }); }
+  });
+
+  // ==================== 부서 (Departments) ====================
+  app.get("/api/departments", requireAuth, async (req, res) => {
+    try {
+      const { site } = req.query;
+      const where: any = {};
+      if (site) where.site = site as string;
+      const depts = await prisma.department.findMany({
+        where,
+        orderBy: [{ site: 'asc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        include: {
+          teams: {
+            where: { isActive: true },
+            select: { id: true, name: true, site: true },
+            orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+          },
+        },
+      });
+      res.json(depts);
+    } catch (error) {
+      console.error("Failed to list departments:", error);
+      res.status(500).json({ message: "부서 목록 조회 실패" });
+    }
+  });
+
+  app.post("/api/departments", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { name, site, displayOrder } = req.body;
+      if (!name || !site) return res.status(400).json({ message: "이름과 사이트는 필수입니다" });
+      const created = await prisma.department.create({
+        data: { name: name.trim(), site, displayOrder: displayOrder ?? 0 },
+      });
+      await prisma.auditLog.create({
+        data: {
+          action: 'CREATE', entityType: 'DEPARTMENT', entityId: String(created.id),
+          userId: req.session.user!.id,
+          newValue: { name: created.name, site: created.site } as any,
+          ipAddress: req.ip, userAgent: req.get('user-agent'),
+        },
+      });
+      res.status(201).json(created);
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        return res.status(400).json({ message: "같은 사이트에 동일 이름의 부서가 이미 있습니다" });
+      }
+      console.error("Failed to create department:", error);
+      res.status(500).json({ message: "부서 생성 실패" });
+    }
+  });
+
+  app.put("/api/departments/:id", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, site, displayOrder } = req.body;
+      const before = await prisma.department.findUnique({ where: { id } });
+      if (!before) return res.status(404).json({ message: "부서를 찾을 수 없습니다" });
+      const updated = await prisma.department.update({
+        where: { id },
+        data: {
+          name: name?.trim() ?? undefined,
+          site: site ?? undefined,
+          displayOrder: displayOrder ?? undefined,
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          action: 'UPDATE', entityType: 'DEPARTMENT', entityId: String(id),
+          userId: req.session.user!.id,
+          oldValue: { name: before.name, site: before.site } as any,
+          newValue: { name: updated.name, site: updated.site } as any,
+          ipAddress: req.ip, userAgent: req.get('user-agent'),
+        },
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update department:", error);
+      res.status(500).json({ message: "부서 수정 실패" });
+    }
+  });
+
+  app.delete("/api/departments/:id", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const dept = await prisma.department.findUnique({ where: { id }, include: { _count: { select: { teams: true } } } });
+      if (!dept) return res.status(404).json({ message: "부서를 찾을 수 없습니다" });
+      // Team은 SetNull이라 삭제해도 팀 자체는 유지됨 (departmentId만 null로)
+      await prisma.department.delete({ where: { id } });
+      await prisma.auditLog.create({
+        data: {
+          action: 'DELETE', entityType: 'DEPARTMENT', entityId: String(id),
+          userId: req.session.user!.id,
+          oldValue: { name: dept.name, site: dept.site, teamCount: dept._count.teams } as any,
+          ipAddress: req.ip, userAgent: req.get('user-agent'),
+        },
+      });
+      res.json({ message: `부서가 삭제되었습니다. (소속 팀 ${dept._count.teams}개는 유지되며 소속만 해제됨)` });
+    } catch (error) {
+      console.error("Failed to delete department:", error);
+      res.status(500).json({ message: "부서 삭제 실패" });
+    }
   });
 
   app.get("/api/teams/:teamId", requireAuth, async (req, res) => {
@@ -1341,20 +1448,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 관련 데이터 정리 (비활성 팀원, 템플릿 등)
-      await prisma.teamMember.deleteMany({ where: { teamId: teamIdNum, isActive: false } });
-      await prisma.checklistTemplate.deleteMany({ where: { teamId: teamIdNum } });
-      await prisma.teamEquipment.deleteMany({ where: { teamId: teamIdNum } });
-
-      await prisma.team.delete({
-        where: { id: teamIdNum }
+      // Soft delete — 데이터(DailyReport·서명 등) 보존, 목록에서만 숨김
+      await prisma.$transaction(async (tx) => {
+        await tx.team.update({
+          where: { id: teamIdNum },
+          data: { isActive: false },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: 'DELETE',
+            entityType: 'TEAM',
+            entityId: String(teamIdNum),
+            userId: req.session.user!.id,
+            oldValue: { name: team.name, site: team.site } as any,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          },
+        });
       });
 
-      console.log(`팀 삭제: ${team.name}`);
-      res.json({ message: "팀이 삭제되었습니다." });
+      console.log(`팀 비활성화 (soft delete): ${team.name}`);
+      res.json({ message: "팀이 비활성화되었습니다. 데이터는 유지됩니다." });
     } catch (error) {
       console.error('Failed to delete team:', error);
       res.status(500).json({ message: "팀 삭제에 실패했습니다." });
+    }
+  });
+
+  // 팀 재활성화
+  app.put("/api/teams/:teamId/reactivate", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const teamIdNum = parseInt(req.params.teamId);
+      const team = await prisma.team.findUnique({ where: { id: teamIdNum } });
+      if (!team) return res.status(404).json({ message: "팀을 찾을 수 없습니다." });
+      if (team.isActive) return res.status(400).json({ message: "이미 활성 상태입니다." });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.team.update({ where: { id: teamIdNum }, data: { isActive: true } });
+        await tx.auditLog.create({
+          data: {
+            action: 'UPDATE',
+            entityType: 'TEAM',
+            entityId: String(teamIdNum),
+            userId: req.session.user!.id,
+            newValue: { reactivated: true } as any,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          },
+        });
+      });
+      res.json({ message: "팀이 재활성화되었습니다." });
+    } catch (error) {
+      console.error('Failed to reactivate team:', error);
+      res.status(500).json({ message: "팀 재활성화에 실패했습니다." });
     }
   });
 
@@ -10531,17 +10677,20 @@ ${JSON.stringify(toolResults, null, 2)}
   // 폴더 목록 (자료 개수 포함)
   app.get("/api/document-folders", requireAuth, async (req, res) => {
     try {
-      const { site } = req.query;
+      const { site, parentId } = req.query;
       const where: any = {};
       if (site) where.site = site;
+      // parentId 지원: 'null' → 루트, 숫자 → 해당 폴더의 자식, 미지정 → 전체
+      if (parentId === 'null') where.parentId = null;
+      else if (parentId !== undefined && parentId !== '') where.parentId = parseInt(parentId as string);
 
       const folders = await prisma.documentFolder.findMany({
         where,
         include: {
           author: { select: { id: true, name: true, username: true } },
-          _count: { select: { documents: true } },
+          _count: { select: { documents: true, children: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { name: 'asc' },
       });
 
       res.json(folders);
@@ -10551,10 +10700,32 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
+  // 폴더 breadcrumb 조회 (지정 폴더의 조상 경로)
+  app.get("/api/document-folders/:id/path", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const path: Array<{ id: number; name: string }> = [];
+      let current: { id: number; name: string; parentId: number | null } | null =
+        await prisma.documentFolder.findUnique({ where: { id }, select: { id: true, name: true, parentId: true } });
+      const guard = new Set<number>();
+      while (current && !guard.has(current.id)) {
+        guard.add(current.id);
+        path.unshift({ id: current.id, name: current.name });
+        current = current.parentId
+          ? await prisma.documentFolder.findUnique({ where: { id: current.parentId }, select: { id: true, name: true, parentId: true } })
+          : null;
+      }
+      res.json(path);
+    } catch (error) {
+      console.error("Failed to get folder path:", error);
+      res.status(500).json({ message: "폴더 경로 조회 실패" });
+    }
+  });
+
   // 폴더 생성 (ADMIN, SAFETY_TEAM만)
   app.post("/api/document-folders", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { name, description, site } = req.body;
+      const { name, description, site, parentId } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ message: "폴더명은 필수입니다" });
       }
@@ -10564,11 +10735,12 @@ ${JSON.stringify(toolResults, null, 2)}
           name: name.trim(),
           description: description?.trim() || null,
           site: site || null,
+          parentId: parentId ? parseInt(parentId) : null,
           authorId: req.session.user!.id,
         },
         include: {
           author: { select: { id: true, name: true, username: true } },
-          _count: { select: { documents: true } },
+          _count: { select: { documents: true, children: true } },
         },
       });
 
@@ -10579,24 +10751,45 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
-  // 폴더 수정 (이름·설명·사이트)
+  // 폴더 수정 (이름·설명·사이트·상위폴더 이동)
   app.put("/api/document-folders/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      const { name, description, site } = req.body;
+      const id = parseInt(req.params.id);
+      const { name, description, site, parentId } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ message: "폴더명은 필수입니다" });
       }
 
+      // 순환 참조 방지: 자기 자신 또는 자기 자손을 부모로 지정 불가
+      if (parentId !== undefined && parentId !== null && parentId !== '') {
+        const newParentId = parseInt(parentId);
+        if (newParentId === id) {
+          return res.status(400).json({ message: "자기 자신을 상위 폴더로 지정할 수 없습니다" });
+        }
+        // 새 부모의 조상 중 자신이 있는지 확인
+        let cur: { parentId: number | null } | null =
+          await prisma.documentFolder.findUnique({ where: { id: newParentId }, select: { parentId: true } });
+        const guard = new Set<number>();
+        while (cur && cur.parentId && !guard.has(cur.parentId)) {
+          if (cur.parentId === id) {
+            return res.status(400).json({ message: "하위 폴더를 상위 폴더로 지정할 수 없습니다" });
+          }
+          guard.add(cur.parentId);
+          cur = await prisma.documentFolder.findUnique({ where: { id: cur.parentId }, select: { parentId: true } });
+        }
+      }
+
       const folder = await prisma.documentFolder.update({
-        where: { id: parseInt(req.params.id) },
+        where: { id },
         data: {
           name: name.trim(),
           description: description?.trim() || null,
           site: site || null,
+          parentId: parentId === undefined ? undefined : (parentId ? parseInt(parentId) : null),
         },
         include: {
           author: { select: { id: true, name: true, username: true } },
-          _count: { select: { documents: true } },
+          _count: { select: { documents: true, children: true } },
         },
       });
 
@@ -10607,14 +10800,20 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
-  // 폴더 삭제 (안에 자료가 없을 때만)
+  // 폴더 삭제 (안에 자료·하위 폴더가 없을 때만)
   app.delete("/api/document-folders/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
       const folderId = parseInt(req.params.id);
-      const docCount = await prisma.document.count({ where: { folderId } });
-      if (docCount > 0) {
+      const [docCount, childCount] = await Promise.all([
+        prisma.document.count({ where: { folderId } }),
+        prisma.documentFolder.count({ where: { parentId: folderId } }),
+      ]);
+      if (docCount > 0 || childCount > 0) {
+        const parts: string[] = [];
+        if (childCount > 0) parts.push(`하위 폴더 ${childCount}개`);
+        if (docCount > 0) parts.push(`자료 ${docCount}개`);
         return res.status(400).json({
-          message: `폴더 안에 ${docCount}개의 자료가 있습니다. 먼저 자료를 다른 폴더로 옮기거나 삭제하세요.`,
+          message: `폴더 안에 ${parts.join(', ')}가 있습니다. 먼저 이동하거나 삭제하세요.`,
         });
       }
 

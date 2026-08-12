@@ -225,10 +225,13 @@ model Team {
   name                String
   site                String?
   factoryId           Int?                  // 신규: 공장 ID
+  departmentId        Int?                  // 신규: 부서 ID (큰 분류)
+  isActive            Boolean               @default(true) // 신규: soft delete용
   leaderId            String?
   approverId          String?               // 신규: 월별보고서 결재자
   displayOrder        Int?                  // 팀 표시 순서
   factory             Factory?              @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  department          Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   approver            User?                 @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   members             User[]                @relation("TeamMembers")
@@ -241,7 +244,25 @@ model Team {
   teamEquipments      TeamEquipment[]       // 신규: 라인별 보유 장비
 
   @@index([factoryId])
+  @@index([departmentId])
+  @@index([isActive])
   @@map("Teams")
+}
+
+/// 부서 (큰 분류) — TBM 팀 선택 UI의 상위 분류
+/// 기존 하드코딩(teamDepartments.ts)에서 DB 관리로 전환.
+model Department {
+  id           Int      @id @default(autoincrement())
+  name         String
+  site         String   // "아산" | "화성" | 기타
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  teams        Team[]
+
+  @@unique([site, name])
+  @@index([site, displayOrder])
+  @@map("Departments")
 }
 
 /// 팀원 명단 (TeamMember)
@@ -745,15 +766,19 @@ model DocumentFolder {
   id          Int        @id @default(autoincrement())
   name        String
   description String?
-  site        String?    // null=전체, "아산", "화성"
+  site        String?    // null=전체, "아산", "화성" (계층 구조에선 대부분 미사용)
+  parentId    Int?       // 신규: 상위 폴더 ID (null=루트)
   authorId    String
   author      User       @relation("DocumentFolderAuthor", fields: [authorId], references: [id])
+  parent      DocumentFolder?  @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    DocumentFolder[] @relation("FolderChildren")
   documents   Document[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([site])
   @@index([authorId])
+  @@index([parentId])
   @@index([createdAt])
   @@map("DocumentFolders")
 }

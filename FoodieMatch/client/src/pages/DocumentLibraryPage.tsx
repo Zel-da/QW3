@@ -20,15 +20,20 @@ import {
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
+interface DocumentFolderCount {
+  documents: number;
+  children: number;
+}
 interface DocumentFolder {
   id: number;
   name: string;
   description?: string;
   site?: string;
+  parentId?: number | null;
   authorId: string;
   author?: { id: string; name?: string; username: string };
   createdAt: string;
-  _count?: { documents: number };
+  _count?: DocumentFolderCount;
 }
 
 interface Document {
@@ -96,7 +101,18 @@ export default function DocumentLibraryPage() {
   const canManage = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
   // 현재 보고 있는 폴더 (null = 루트, 폴더 그리드 + 폴더 미지정 자료)
-  const [currentFolder, setCurrentFolder] = useState<DocumentFolder | null>(null);
+  // 계층 탐색: folderPath[마지막]이 현재 폴더. 빈 배열이면 루트.
+  const [folderPath, setFolderPath] = useState<DocumentFolder[]>([]);
+  const currentFolder: DocumentFolder | null = folderPath[folderPath.length - 1] ?? null;
+  const setCurrentFolder = (f: DocumentFolder | null) => {
+    if (f === null) setFolderPath([]);
+    else setFolderPath(prev => [...prev, f]);
+  };
+  // breadcrumb에서 특정 조상으로 점프
+  const navigateToPath = (index: number) => {
+    if (index < 0) setFolderPath([]);
+    else setFolderPath(prev => prev.slice(0, index + 1));
+  };
 
   // 필터
   const [filterCategory, setFilterCategory] = useState<string>('');
@@ -116,9 +132,21 @@ export default function DocumentLibraryPage() {
   const [folderEditTarget, setFolderEditTarget] = useState<DocumentFolder | null>(null);
   const [folderForm, setFolderForm] = useState({ name: '', description: '', site: '' });
 
-  // 폴더 목록
+  // 현재 폴더의 하위 폴더 목록
   const { data: folders } = useQuery<DocumentFolder[]>({
-    queryKey: ['document-folders'],
+    queryKey: ['document-folders', currentFolder?.id ?? 'root'],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('parentId', currentFolder ? String(currentFolder.id) : 'null');
+      const res = await fetch(`/api/document-folders?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('폴더 조회 실패');
+      return res.json();
+    },
+  });
+
+  // 자료 등록/이동 다이얼로그의 폴더 선택 셀렉트용 — 전체 폴더 목록 (평면)
+  const { data: allFolders } = useQuery<DocumentFolder[]>({
+    queryKey: ['document-folders', 'all'],
     queryFn: async () => {
       const res = await fetch('/api/document-folders', { credentials: 'include' });
       if (!res.ok) throw new Error('폴더 조회 실패');
@@ -212,7 +240,7 @@ export default function DocumentLibraryPage() {
   // 폴더 생성/수정
   const folderMutation = useMutation({
     mutationFn: async () => {
-      const body = {
+      const body: any = {
         name: folderForm.name.trim(),
         description: folderForm.description.trim() || null,
         site: folderForm.site || null,
@@ -221,6 +249,8 @@ export default function DocumentLibraryPage() {
         const res = await apiRequest('PUT', `/api/document-folders/${folderEditTarget.id}`, body);
         return res.json();
       } else {
+        // 새 폴더는 현재 폴더 안에 생성 (parentId = 현재 폴더 id, 루트면 null)
+        body.parentId = currentFolder?.id ?? null;
         const res = await apiRequest('POST', '/api/document-folders', body);
         return res.json();
       }
@@ -320,20 +350,25 @@ export default function DocumentLibraryPage() {
         {/* 헤더 + 액션 */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
           <div className="min-w-0">
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            {/* Breadcrumb — 계층 경로 전체 표시 */}
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1 flex-wrap">
               <button
-                onClick={() => setCurrentFolder(null)}
-                className={`hover:text-foreground transition-colors ${currentFolder ? '' : 'font-medium text-foreground'}`}
+                onClick={() => navigateToPath(-1)}
+                className={`hover:text-foreground transition-colors ${folderPath.length === 0 ? 'font-medium text-foreground' : ''}`}
               >
                 자료실
               </button>
-              {currentFolder && (
-                <>
+              {folderPath.map((f, i) => (
+                <span key={f.id} className="flex items-center gap-1.5">
                   <ChevronRight className="w-3.5 h-3.5" />
-                  <span className="font-medium text-foreground truncate max-w-[200px]">{currentFolder.name}</span>
-                </>
-              )}
+                  <button
+                    onClick={() => navigateToPath(i)}
+                    className={`hover:text-foreground transition-colors truncate max-w-[160px] ${i === folderPath.length - 1 ? 'font-medium text-foreground' : ''}`}
+                  >
+                    {f.name}
+                  </button>
+                </span>
+              ))}
             </div>
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
               {currentFolder ? <FolderOpen className="w-6 h-6 text-primary" /> : null}
@@ -351,9 +386,10 @@ export default function DocumentLibraryPage() {
                 <ArrowLeft className="w-4 h-4 mr-1.5" />전체
               </Button>
             )}
-            {canManage && !currentFolder && (
+            {canManage && (
               <Button variant="outline" onClick={openCreateFolder}>
-                <FolderPlus className="w-4 h-4 mr-2" />폴더 만들기
+                <FolderPlus className="w-4 h-4 mr-2" />
+                {currentFolder ? '하위 폴더 만들기' : '폴더 만들기'}
               </Button>
             )}
             {canManage && (
@@ -411,8 +447,8 @@ export default function DocumentLibraryPage() {
                   <Select value={docForm.folderId || 'none'} onValueChange={v => setDocForm({ ...docForm, folderId: v === 'none' ? '' : v })}>
                     <SelectTrigger><SelectValue placeholder="폴더 미지정" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">폴더 미지정</SelectItem>
-                      {(folders || []).map(f => (
+                      <SelectItem value="none">폴더 미지정 (루트)</SelectItem>
+                      {(allFolders || []).map(f => (
                         <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -566,27 +602,26 @@ export default function DocumentLibraryPage() {
           </CardContent>
         </Card>
 
-        {/* 폴더 그리드 (루트 뷰에서만) */}
-        {!currentFolder && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">
-                폴더 ({filteredFolders.length})
-              </h2>
-            </div>
-            {filteredFolders.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <Folder className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">아직 폴더가 없습니다</p>
-                  {canManage && (
-                    <Button variant="link" size="sm" onClick={openCreateFolder} className="mt-2">
-                      첫 폴더 만들기
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
+        {/* 폴더 그리드 (모든 계층에서 표시 — 현재 폴더의 하위 폴더) */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              {currentFolder ? '하위 폴더' : '폴더'} ({filteredFolders.length})
+            </h2>
+          </div>
+          {filteredFolders.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center text-muted-foreground">
+                <Folder className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">{currentFolder ? '하위 폴더가 없습니다' : '아직 폴더가 없습니다'}</p>
+                {canManage && (
+                  <Button variant="link" size="sm" onClick={openCreateFolder} className="mt-2">
+                    {currentFolder ? '하위 폴더 만들기' : '첫 폴더 만들기'}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {filteredFolders.map(f => (
                   <FolderCard
@@ -607,8 +642,7 @@ export default function DocumentLibraryPage() {
                 ))}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* 자료 목록 */}
         <div>

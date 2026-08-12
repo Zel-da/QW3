@@ -56,6 +56,7 @@ const DocumentLibraryPage = lazy(() => import("./pages/DocumentLibraryPage"));
 
 // 관리 페이지
 const TeamManagementPage = lazy(() => import("./pages/TeamManagementPage"));
+const DepartmentManagementPage = lazy(() => import("./pages/DepartmentManagementPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ChecklistEditorPage = lazy(() => import("./pages/ChecklistEditorPage"));
 const EducationManagementPage = lazy(() => import("./pages/EducationManagementPage"));
@@ -224,6 +225,11 @@ function App() {
               <Route path="/team-management">
                 <ProtectedRoute roles={WORKER_ROLES}>
                   <TeamManagementPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/department-management">
+                <ProtectedRoute roles={[Role.ADMIN]}>
+                  <DepartmentManagementPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/safety-inspection">
