@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { useAuth } from '@/context/AuthContext';
@@ -15,8 +15,8 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import {
   FileText, Video, Plus, Trash2, Download, Search, ExternalLink, Eye,
-  Folder, FolderPlus, FolderOpen, ChevronRight, Pencil, ArrowLeft,
-  Upload, X, Paperclip,
+  Folder, FolderPlus, FolderOpen, ChevronRight, ChevronDown, Pencil, ArrowLeft,
+  Upload, X, Paperclip, Home,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
@@ -100,19 +100,20 @@ export default function DocumentLibraryPage() {
   const confirm = useConfirm();
   const canManage = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
-  // 현재 보고 있는 폴더 (null = 루트, 폴더 그리드 + 폴더 미지정 자료)
-  // 계층 탐색: folderPath[마지막]이 현재 폴더. 빈 배열이면 루트.
-  const [folderPath, setFolderPath] = useState<DocumentFolder[]>([]);
-  const currentFolder: DocumentFolder | null = folderPath[folderPath.length - 1] ?? null;
-  const setCurrentFolder = (f: DocumentFolder | null) => {
-    if (f === null) setFolderPath([]);
-    else setFolderPath(prev => [...prev, f]);
+  // 현재 선택된 폴더 (null = 루트). 파일 목록은 이 폴더 기준.
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  // 트리에서 펼쳐진 폴더 ID 집합
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const toggleExpanded = (id: number) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
-  // breadcrumb에서 특정 조상으로 점프
-  const navigateToPath = (index: number) => {
-    if (index < 0) setFolderPath([]);
-    else setFolderPath(prev => prev.slice(0, index + 1));
-  };
+  // 드래그 상태 (호버 하이라이트 용)
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | 'root' | null>(null);
 
   // 필터
   const [filterCategory, setFilterCategory] = useState<string>('');
@@ -132,20 +133,8 @@ export default function DocumentLibraryPage() {
   const [folderEditTarget, setFolderEditTarget] = useState<DocumentFolder | null>(null);
   const [folderForm, setFolderForm] = useState({ name: '', description: '', site: '' });
 
-  // 현재 폴더의 하위 폴더 목록
-  const { data: folders } = useQuery<DocumentFolder[]>({
-    queryKey: ['document-folders', currentFolder?.id ?? 'root'],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set('parentId', currentFolder ? String(currentFolder.id) : 'null');
-      const res = await fetch(`/api/document-folders?${params}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('폴더 조회 실패');
-      return res.json();
-    },
-  });
-
-  // 자료 등록/이동 다이얼로그의 폴더 선택 셀렉트용 — 전체 폴더 목록 (평면)
-  const { data: allFolders } = useQuery<DocumentFolder[]>({
+  // 전체 폴더 목록 (트리 뷰용, 자료 등록 dialog의 폴더 선택용 공용)
+  const { data: allFolders = [] } = useQuery<DocumentFolder[]>({
     queryKey: ['document-folders', 'all'],
     queryFn: async () => {
       const res = await fetch('/api/document-folders', { credentials: 'include' });
@@ -153,6 +142,79 @@ export default function DocumentLibraryPage() {
       return res.json();
     },
   });
+
+  // parentId -> children 매핑 (트리 렌더용)
+  const foldersByParent = useMemo(() => {
+    const map = new Map<number | null, DocumentFolder[]>();
+    for (const f of allFolders) {
+      const key = f.parentId ?? null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(f);
+    }
+    // 이름순 정렬
+    for (const arr of map.values()) arr.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    return map;
+  }, [allFolders]);
+
+  // ID -> 폴더 lookup
+  const folderById = useMemo(() => {
+    const m = new Map<number, DocumentFolder>();
+    for (const f of allFolders) m.set(f.id, f);
+    return m;
+  }, [allFolders]);
+
+  // 현재 선택된 폴더
+  const currentFolder: DocumentFolder | null = selectedFolderId != null ? (folderById.get(selectedFolderId) ?? null) : null;
+
+  // 조상 경로 계산 (breadcrumb 용)
+  const folderPath = useMemo(() => {
+    const path: DocumentFolder[] = [];
+    let cur = currentFolder;
+    while (cur) {
+      path.unshift(cur);
+      cur = cur.parentId ? (folderById.get(cur.parentId) ?? null) : null;
+    }
+    return path;
+  }, [currentFolder, folderById]);
+
+  // 특정 폴더의 모든 자손 ID (drop 시 순환 방지)
+  const getDescendantIds = (id: number): Set<number> => {
+    const result = new Set<number>();
+    const stack: number[] = [id];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      const children = foldersByParent.get(cur) || [];
+      for (const c of children) {
+        result.add(c.id);
+        stack.push(c.id);
+      }
+    }
+    return result;
+  };
+
+  // 폴더 선택: 조상을 자동으로 펼치고, selectedFolderId 세팅
+  const selectFolder = (f: DocumentFolder | null) => {
+    if (f === null) {
+      setSelectedFolderId(null);
+      return;
+    }
+    // 조상 자동 펼침
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      let cur: DocumentFolder | undefined = f;
+      while (cur) {
+        next.add(cur.id);
+        cur = cur.parentId ? folderById.get(cur.parentId) : undefined;
+      }
+      return next;
+    });
+    setSelectedFolderId(f.id);
+  };
+
+  const navigateToPath = (index: number) => {
+    if (index < 0) selectFolder(null);
+    else selectFolder(folderPath[index] ?? null);
+  };
 
   // 자료 목록 (현재 폴더 기준 — 루트면 folderId=null)
   const { data: documents, isLoading } = useQuery<Document[]>({
@@ -278,7 +340,7 @@ export default function DocumentLibraryPage() {
       // documents도 무효화 — schema의 folderId가 SetNull이라 폴더 안 자료의 folderId가 null로 바뀜
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       // 현재 폴더가 삭제되었으면 루트로 이동
-      if (currentFolder) setCurrentFolder(null);
+      if (currentFolder) selectFolder(null);
     },
     onError: async (err: any) => {
       // API에서 응답 message 추출
@@ -295,13 +357,56 @@ export default function DocumentLibraryPage() {
     return true;
   });
 
-  const filteredFolders = (folders || []).filter(f => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return f.name.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q);
+  // 검색어가 있으면 매치되는 폴더 + 조상 모두 노출
+  const searchMatchedFolderIds = useMemo(() => {
+    if (!searchQuery) return null;
+    const q = searchQuery.toLowerCase();
+    const matched = new Set<number>();
+    for (const f of allFolders) {
+      if (f.name.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)) {
+        matched.add(f.id);
+        // 조상들도 트리에서 보이도록 포함
+        let cur: DocumentFolder | undefined = f;
+        while (cur?.parentId != null) {
+          matched.add(cur.parentId);
+          cur = folderById.get(cur.parentId);
+        }
+      }
     }
-    return true;
+    return matched;
+  }, [searchQuery, allFolders, folderById]);
+
+  // 폴더 이동 mutation (drag & drop)
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({ id, parentId }: { id: number; parentId: number | null }) => {
+      const res = await apiRequest('PUT', `/api/document-folders/${id}`, { parentId });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '폴더가 이동되었습니다.' });
+      queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+    },
+    onError: (err: any) => {
+      toast({ title: '이동 실패', description: err?.message || '', variant: 'destructive' });
+    },
   });
+
+  const handleFolderDrop = (targetParentId: number | null, draggedFolderId: number) => {
+    if (draggedFolderId === targetParentId) return;
+    const dragged = folderById.get(draggedFolderId);
+    if (!dragged) return;
+    // 이미 그 부모라면 skip
+    if ((dragged.parentId ?? null) === targetParentId) return;
+    // 자기 자손 밑으로 이동 방지
+    if (targetParentId != null) {
+      const descendants = getDescendantIds(draggedFolderId);
+      if (descendants.has(targetParentId)) {
+        toast({ title: '이동 불가', description: '폴더를 자기 자신의 하위로 옮길 수 없습니다.', variant: 'destructive' });
+        return;
+      }
+    }
+    moveFolderMutation.mutate({ id: draggedFolderId, parentId: targetParentId });
+  };
 
   const openCreateFolder = () => {
     setFolderEditTarget(null);
@@ -382,7 +487,7 @@ export default function DocumentLibraryPage() {
           </div>
           <div className="flex gap-2 flex-wrap">
             {currentFolder && (
-              <Button variant="outline" size="sm" onClick={() => setCurrentFolder(null)}>
+              <Button variant="outline" size="sm" onClick={() => selectFolder(null)}>
                 <ArrowLeft className="w-4 h-4 mr-1.5" />전체
               </Button>
             )}
@@ -602,46 +707,81 @@ export default function DocumentLibraryPage() {
           </CardContent>
         </Card>
 
-        {/* 폴더 그리드 (모든 계층에서 표시 — 현재 폴더의 하위 폴더) */}
+        {/* 폴더 트리 뷰 — 클릭 시 하위 폴더 펼침, 드래그해서 다른 폴더의 하위로 이동 */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-muted-foreground">
-              {currentFolder ? '하위 폴더' : '폴더'} ({filteredFolders.length})
+              폴더 ({allFolders.length})
+              {canManage && <span className="ml-2 text-xs opacity-70">· 폴더를 드래그해서 다른 폴더 위에 놓으면 하위로 이동합니다</span>}
             </h2>
           </div>
-          {filteredFolders.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="p-6 text-center text-muted-foreground">
-                <Folder className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">{currentFolder ? '하위 폴더가 없습니다' : '아직 폴더가 없습니다'}</p>
-                {canManage && (
-                  <Button variant="link" size="sm" onClick={openCreateFolder} className="mt-2">
-                    {currentFolder ? '하위 폴더 만들기' : '첫 폴더 만들기'}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {filteredFolders.map(f => (
-                  <FolderCard
-                    key={f.id}
-                    folder={f}
-                    onOpen={() => setCurrentFolder(f)}
-                    onEdit={canManage ? () => openEditFolder(f) : undefined}
-                    onDelete={canManage ? async () => {
-                      const ok = await confirm({
-                        title: '폴더 삭제',
-                        description: `"${f.name}" 폴더를 삭제하시겠습니까?`,
-                        confirmText: '삭제',
-                        destructive: true,
-                      });
-                      if (ok) deleteFolderMutation.mutate(f.id);
-                    } : undefined}
-                  />
-                ))}
+          <Card>
+            <CardContent className="p-2">
+              {/* 루트 (자료실 전체) — 폴더를 여기에 드롭하면 최상위로 나옴 */}
+              <div
+                onClick={() => selectFolder(null)}
+                onDragOver={canManage ? (e) => { e.preventDefault(); setDropTargetId('root'); } : undefined}
+                onDragLeave={canManage ? () => setDropTargetId(prev => prev === 'root' ? null : prev) : undefined}
+                onDrop={canManage ? (e) => {
+                  e.preventDefault();
+                  setDropTargetId(null);
+                  const raw = e.dataTransfer.getData('text/folder-id');
+                  const draggedId = Number(raw);
+                  if (draggedId) handleFolderDrop(null, draggedId);
+                } : undefined}
+                className={`group flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer transition-colors ${
+                  currentFolder === null ? 'bg-primary/10 text-foreground font-medium' : 'hover:bg-accent'
+                } ${dropTargetId === 'root' ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+              >
+                <Home className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">자료실 (루트)</span>
+                <span className="ml-auto text-xs text-muted-foreground">{(foldersByParent.get(null) || []).length}개 최상위 폴더</span>
               </div>
-            )}
+
+              {/* 루트 하위 폴더들 재귀 렌더 */}
+              {(foldersByParent.get(null) || []).map(f => (
+                <FolderTreeNode
+                  key={f.id}
+                  folder={f}
+                  depth={0}
+                  expandedIds={expandedIds}
+                  toggleExpanded={toggleExpanded}
+                  selectedFolderId={currentFolder?.id ?? null}
+                  onSelect={selectFolder}
+                  foldersByParent={foldersByParent}
+                  canManage={canManage}
+                  onEditFolder={openEditFolder}
+                  onDeleteFolder={async (folder) => {
+                    const ok = await confirm({
+                      title: '폴더 삭제',
+                      description: `"${folder.name}" 폴더를 삭제하시겠습니까?`,
+                      confirmText: '삭제',
+                      destructive: true,
+                    });
+                    if (ok) deleteFolderMutation.mutate(folder.id);
+                  }}
+                  draggingId={draggingId}
+                  setDraggingId={setDraggingId}
+                  dropTargetId={dropTargetId}
+                  setDropTargetId={setDropTargetId}
+                  onDropOntoFolder={handleFolderDrop}
+                  searchMatchedIds={searchMatchedFolderIds}
+                />
+              ))}
+
+              {allFolders.length === 0 && (
+                <div className="p-6 text-center text-muted-foreground">
+                  <Folder className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">아직 폴더가 없습니다</p>
+                  {canManage && (
+                    <Button variant="link" size="sm" onClick={openCreateFolder} className="mt-2">
+                      첫 폴더 만들기
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* 자료 목록 */}
@@ -768,68 +908,144 @@ export default function DocumentLibraryPage() {
   );
 }
 
-// 폴더 카드 컴포넌트
-function FolderCard({
+// 트리 뷰 노드 — 재귀. 클릭 = 확장 + 선택, 드래그 = 다른 폴더로 이동.
+function FolderTreeNode({
   folder,
-  onOpen,
-  onEdit,
-  onDelete,
+  depth,
+  expandedIds,
+  toggleExpanded,
+  selectedFolderId,
+  onSelect,
+  foldersByParent,
+  canManage,
+  onEditFolder,
+  onDeleteFolder,
+  draggingId,
+  setDraggingId,
+  dropTargetId,
+  setDropTargetId,
+  onDropOntoFolder,
+  searchMatchedIds,
 }: {
   folder: DocumentFolder;
-  onOpen: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  depth: number;
+  expandedIds: Set<number>;
+  toggleExpanded: (id: number) => void;
+  selectedFolderId: number | null;
+  onSelect: (f: DocumentFolder) => void;
+  foldersByParent: Map<number | null, DocumentFolder[]>;
+  canManage: boolean;
+  onEditFolder: (f: DocumentFolder) => void;
+  onDeleteFolder: (f: DocumentFolder) => void;
+  draggingId: number | null;
+  setDraggingId: (id: number | null) => void;
+  dropTargetId: number | 'root' | null;
+  setDropTargetId: (id: number | 'root' | null) => void;
+  onDropOntoFolder: (targetParentId: number | null, draggedId: number) => void;
+  searchMatchedIds: Set<number> | null;
 }) {
+  const children = foldersByParent.get(folder.id) || [];
+  const hasChildren = children.length > 0;
+  const isExpanded = expandedIds.has(folder.id);
+  const isSelected = selectedFolderId === folder.id;
+  const isDragging = draggingId === folder.id;
+  const isDropTarget = dropTargetId === folder.id;
   const count = folder._count?.documents ?? 0;
-  return (
-    <div
-      onClick={onOpen}
-      className="group relative cursor-pointer rounded-lg border bg-card p-4 hover:border-primary/60 hover:shadow-sm transition-all"
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-          <Folder className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate">{folder.name}</h3>
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            <span>{count}개 자료</span>
-            {folder.site && (
-              <>
-                <span>·</span>
-                <span>{folder.site}</span>
-              </>
-            )}
-          </div>
-          {folder.description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{folder.description}</p>
-          )}
-        </div>
-      </div>
 
-      {/* 관리자용 액션 버튼 */}
-      {(onEdit || onDelete) && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-          {onEdit && (
+  // 검색 필터: 매치되지 않으면 숨김 (자기 또는 조상)
+  if (searchMatchedIds && !searchMatchedIds.has(folder.id)) return null;
+
+  return (
+    <div>
+      <div
+        draggable={canManage}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/folder-id', String(folder.id));
+          e.dataTransfer.effectAllowed = 'move';
+          setDraggingId(folder.id);
+        }}
+        onDragEnd={() => { setDraggingId(null); setDropTargetId(null); }}
+        onDragOver={canManage ? (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (draggingId !== folder.id) setDropTargetId(folder.id);
+        } : undefined}
+        onDragLeave={canManage ? () => setDropTargetId(dropTargetId === folder.id ? null : dropTargetId) : undefined}
+        onDrop={canManage ? (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDropTargetId(null);
+          const raw = e.dataTransfer.getData('text/folder-id');
+          const draggedId = Number(raw);
+          if (draggedId) onDropOntoFolder(folder.id, draggedId);
+        } : undefined}
+        onClick={() => {
+          onSelect(folder);
+          if (hasChildren) toggleExpanded(folder.id);
+        }}
+        style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        className={`group flex items-center gap-1.5 pr-2 py-1.5 rounded-md cursor-pointer transition-colors ${
+          isSelected ? 'bg-primary/10 text-foreground font-medium' : 'hover:bg-accent'
+        } ${isDropTarget ? 'ring-2 ring-primary bg-primary/5' : ''} ${isDragging ? 'opacity-40' : ''}`}
+        title={canManage ? '클릭: 펼침/선택 · 드래그: 다른 폴더 위에 놓으면 이동' : undefined}
+      >
+        {hasChildren ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleExpanded(folder.id); }}
+            className="p-0.5 hover:bg-black/5 rounded"
+          >
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+        ) : (
+          <span className="w-4" />
+        )}
+        {isExpanded && hasChildren
+          ? <FolderOpen className="w-4 h-4 text-primary" />
+          : <Folder className="w-4 h-4 text-primary" />}
+        <span className="text-sm truncate flex-1">{folder.name}</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {hasChildren ? `${children.length}개 하위 · ` : ''}{count}개 자료
+        </span>
+        {canManage && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 ml-1">
             <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="w-7 h-7 rounded-md bg-background/90 hover:bg-accent flex items-center justify-center"
-              title="수정"
+              onClick={(e) => { e.stopPropagation(); onEditFolder(folder); }}
+              className="w-6 h-6 rounded hover:bg-black/10 flex items-center justify-center"
+              title="이름 수정"
             >
-              <Pencil className="w-3.5 h-3.5" />
+              <Pencil className="w-3 h-3" />
             </button>
-          )}
-          {onDelete && (
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="w-7 h-7 rounded-md bg-background/90 hover:bg-destructive/10 text-destructive flex items-center justify-center"
+              onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder); }}
+              className="w-6 h-6 rounded hover:bg-destructive/10 text-destructive flex items-center justify-center"
               title="삭제"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3" />
             </button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+      {isExpanded && children.map(child => (
+        <FolderTreeNode
+          key={child.id}
+          folder={child}
+          depth={depth + 1}
+          expandedIds={expandedIds}
+          toggleExpanded={toggleExpanded}
+          selectedFolderId={selectedFolderId}
+          onSelect={onSelect}
+          foldersByParent={foldersByParent}
+          canManage={canManage}
+          onEditFolder={onEditFolder}
+          onDeleteFolder={onDeleteFolder}
+          draggingId={draggingId}
+          setDraggingId={setDraggingId}
+          dropTargetId={dropTargetId}
+          setDropTargetId={setDropTargetId}
+          onDropOntoFolder={onDropOntoFolder}
+          searchMatchedIds={searchMatchedIds}
+        />
+      ))}
     </div>
   );
 }
