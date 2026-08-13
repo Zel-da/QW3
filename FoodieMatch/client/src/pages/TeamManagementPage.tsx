@@ -68,8 +68,15 @@ const updateTeamMember = async ({ teamId, memberId, name, position }: { teamId: 
   return res.json();
 };
 
-const createTeam = async ({ name, site }: { name: string; site: string }) => {
-  const res = await apiRequest('POST', '/api/teams', { name, site });
+const createTeam = async ({ name, site, departmentId }: { name: string; site: string; departmentId?: number | null }) => {
+  const res = await apiRequest('POST', '/api/teams', { name, site, departmentId: departmentId ?? null });
+  return res.json();
+};
+
+const fetchDepartments = async (site?: string) => {
+  const params = site ? `?site=${encodeURIComponent(site)}` : '';
+  const res = await fetch(`/api/departments${params}`);
+  if (!res.ok) throw new Error('부서 조회 실패');
   return res.json();
 };
 
@@ -78,8 +85,12 @@ const createTeamsBulk = async ({ site, teamNames }: { site: string; teamNames: s
   return res.json();
 };
 
-const updateTeam = async ({ teamId, name, site }: { teamId: number; name?: string; site?: string }) => {
-  const res = await apiRequest('PUT', `/api/teams/${teamId}`, { name, site });
+const updateTeam = async ({ teamId, name, site, departmentId }: { teamId: number; name?: string; site?: string; departmentId?: number | null }) => {
+  const body: any = {};
+  if (name !== undefined) body.name = name;
+  if (site !== undefined) body.site = site;
+  if (departmentId !== undefined) body.departmentId = departmentId;
+  const res = await apiRequest('PUT', `/api/teams/${teamId}`, body);
   return res.json();
 };
 
@@ -122,11 +133,13 @@ export default function TeamManagementPage() {
   // Team CRUD states
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamSite, setNewTeamSite] = useState<string>('아산');
+  const [newTeamDeptId, setNewTeamDeptId] = useState<string>(''); // 큰 분류(부서) — 빈 문자열 = 미지정
   const [bulkTeamsText, setBulkTeamsText] = useState('');
   const [bulkTeamsSite, setBulkTeamsSite] = useState<string>('화성');
   const [isEditingTeam, setIsEditingTeam] = useState(false);
   const [editTeamName, setEditTeamName] = useState('');
   const [editTeamSite, setEditTeamSite] = useState('');
+  const [editTeamDeptId, setEditTeamDeptId] = useState<string>('');
 
   // Team selection filter
   const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('아산');
@@ -168,6 +181,14 @@ export default function TeamManagementPage() {
     queryKey: ['teamMembers', selectedTeamId],
     queryFn: () => fetchTeamMembers(selectedTeamId!),
     enabled: !!selectedTeamId,
+  });
+
+  // 부서(큰 분류) 목록 — 팀 생성 시 선택용
+  const { data: allDepartments = [] } = useQuery<Array<{ id: number; name: string; site: string; displayOrder: number }>>({
+    queryKey: ['departments', 'all'],
+    queryFn: () => fetchDepartments(),
+    enabled: currentUser?.role === 'ADMIN',
+    staleTime: 5 * 60 * 1000,
   });
 
   // Mutations
@@ -256,6 +277,7 @@ export default function TeamManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       setNewTeamName('');
       setNewTeamSite('아산');
+      setNewTeamDeptId('');
     },
     onError: (error: any) => {
       toast({
@@ -426,7 +448,11 @@ export default function TeamManagementPage() {
       return;
     }
 
-    createTeamMutation.mutate({ name: trimmedName, site: newTeamSite });
+    createTeamMutation.mutate({
+      name: trimmedName,
+      site: newTeamSite,
+      departmentId: newTeamDeptId ? parseInt(newTeamDeptId) : null,
+    });
   };
 
   const handleBulkCreate = () => {
@@ -444,6 +470,7 @@ export default function TeamManagementPage() {
     if (teamData) {
       setEditTeamName(teamData.name);
       setEditTeamSite(teamData.site || '아산');
+      setEditTeamDeptId((teamData as any).departmentId != null ? String((teamData as any).departmentId) : '');
       setIsEditingTeam(true);
     }
   };
@@ -453,7 +480,8 @@ export default function TeamManagementPage() {
       updateTeamMutation.mutate({
         teamId: selectedTeamId,
         name: editTeamName.trim() || undefined,
-        site: editTeamSite || undefined
+        site: editTeamSite || undefined,
+        departmentId: editTeamDeptId ? parseInt(editTeamDeptId) : null,
       });
     }
   };
@@ -462,6 +490,7 @@ export default function TeamManagementPage() {
     setIsEditingTeam(false);
     setEditTeamName('');
     setEditTeamSite('');
+    setEditTeamDeptId('');
   };
 
   const handleDeleteTeam = async () => {
@@ -528,8 +557,8 @@ export default function TeamManagementPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="newTeamSite">사업장</Label>
-                  <Select value={newTeamSite} onValueChange={setNewTeamSite}>
+                  <Label htmlFor="newTeamSite">사업장 (현장)</Label>
+                  <Select value={newTeamSite} onValueChange={v => { setNewTeamSite(v); setNewTeamDeptId(''); }}>
                     <SelectTrigger id="newTeamSite">
                       <SelectValue />
                     </SelectTrigger>
@@ -538,6 +567,26 @@ export default function TeamManagementPage() {
                       <SelectItem value="화성">화성</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="newTeamDept">부서 (큰 분류)</Label>
+                  <Select value={newTeamDeptId || 'none'} onValueChange={v => setNewTeamDeptId(v === 'none' ? '' : v)}>
+                    <SelectTrigger id="newTeamDept">
+                      <SelectValue placeholder="부서 선택" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                      <SelectItem value="none">미지정</SelectItem>
+                      {allDepartments
+                        .filter(d => d.site === newTeamSite)
+                        .sort((a, b) => a.displayOrder - b.displayOrder)
+                        .map(d => (
+                          <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    부서가 없으면 <a href="/department-management" className="underline">부서 관리</a>에서 먼저 생성하세요.
+                  </p>
                 </div>
                 <Button
                   onClick={handleCreateTeam}
@@ -658,17 +707,31 @@ export default function TeamManagementPage() {
                       <>
                         <div className="flex-1 space-y-2">
                           <Input
-                            placeholder="팀명"
+                            placeholder="팀명 (작은 분류)"
                             value={editTeamName}
                             onChange={(e) => setEditTeamName(e.target.value)}
                           />
-                          <Select value={editTeamSite} onValueChange={setEditTeamSite}>
+                          <Select value={editTeamSite} onValueChange={v => { setEditTeamSite(v); setEditTeamDeptId(''); }}>
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="사업장" />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                               <SelectItem value="아산">아산</SelectItem>
                               <SelectItem value="화성">화성</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select value={editTeamDeptId || 'none'} onValueChange={v => setEditTeamDeptId(v === 'none' ? '' : v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="부서 (큰 분류)" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
+                              <SelectItem value="none">부서 미지정</SelectItem>
+                              {allDepartments
+                                .filter(d => d.site === editTeamSite)
+                                .sort((a, b) => a.displayOrder - b.displayOrder)
+                                .map(d => (
+                                  <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>

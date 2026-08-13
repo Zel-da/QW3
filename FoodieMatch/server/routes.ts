@@ -1340,7 +1340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 팀 생성 (ADMIN만)
   app.post("/api/teams", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
-      const { name, site } = req.body;
+      const { name, site, departmentId } = req.body;
 
       if (!name || !site) {
         return res.status(400).json({ message: "팀 이름과 현장(site)을 입력해주세요." });
@@ -1356,8 +1356,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const newTeam = await prisma.team.create({
-        data: { name, site },
-        include: { leader: true, approver: true }
+        data: {
+          name,
+          site,
+          departmentId: departmentId ? parseInt(departmentId) : null,
+        },
+        include: { leader: true, approver: true, department: true }
       });
 
       console.log(`팀 생성: ${name} (${site})`);
@@ -1372,7 +1376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/teams/:teamId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { teamId } = req.params;
-      const { name, site } = req.body;
+      const { name, site, departmentId } = req.body;
 
       const team = await prisma.team.findUnique({
         where: { id: parseInt(teamId) }
@@ -1401,9 +1405,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: { id: parseInt(teamId) },
         data: {
           ...(name && { name }),
-          ...(site && { site })
+          ...(site && { site }),
+          // departmentId: null 명시 = 부서 해제, 숫자 = 부서 지정, undefined = 유지
+          ...(departmentId !== undefined && {
+            departmentId: departmentId === null || departmentId === '' ? null : parseInt(departmentId),
+          }),
         },
-        include: { leader: true, approver: true }
+        include: { leader: true, approver: true, department: true }
       });
 
       console.log(`팀 수정: ${updatedTeam.name}`);

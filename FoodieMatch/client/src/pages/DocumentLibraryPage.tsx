@@ -16,7 +16,7 @@ import { apiRequest } from '@/lib/queryClient';
 import {
   FileText, Video, Plus, Trash2, Download, Search, ExternalLink, Eye,
   Folder, FolderPlus, FolderOpen, ChevronRight, ChevronDown, Pencil, ArrowLeft,
-  Upload, X, Paperclip, Home,
+  ArrowUp, Upload, X, Paperclip, Home,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
@@ -131,7 +131,7 @@ export default function DocumentLibraryPage() {
   // 폴더 다이얼로그 (생성/수정 공용)
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [folderEditTarget, setFolderEditTarget] = useState<DocumentFolder | null>(null);
-  const [folderForm, setFolderForm] = useState({ name: '', description: '', site: '' });
+  const [folderForm, setFolderForm] = useState({ name: '', description: '', site: '', parentId: '' as string });
 
   // 전체 폴더 목록 (트리 뷰용, 자료 등록 dialog의 폴더 선택용 공용)
   const { data: allFolders = [] } = useQuery<DocumentFolder[]>({
@@ -308,11 +308,15 @@ export default function DocumentLibraryPage() {
         site: folderForm.site || null,
       };
       if (folderEditTarget) {
+        // 수정: 상위 폴더 변경도 함께 반영 (빈 문자열 = 루트로 이동)
+        body.parentId = folderForm.parentId ? parseInt(folderForm.parentId) : null;
         const res = await apiRequest('PUT', `/api/document-folders/${folderEditTarget.id}`, body);
         return res.json();
       } else {
-        // 새 폴더는 현재 폴더 안에 생성 (parentId = 현재 폴더 id, 루트면 null)
-        body.parentId = currentFolder?.id ?? null;
+        // 새 폴더: 다이얼로그에서 선택한 상위 폴더 우선, 없으면 현재 폴더 안에 생성
+        body.parentId = folderForm.parentId
+          ? parseInt(folderForm.parentId)
+          : (currentFolder?.id ?? null);
         const res = await apiRequest('POST', '/api/document-folders', body);
         return res.json();
       }
@@ -322,7 +326,7 @@ export default function DocumentLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['document-folders'] });
       setFolderDialogOpen(false);
       setFolderEditTarget(null);
-      setFolderForm({ name: '', description: '', site: '' });
+      setFolderForm({ name: '', description: '', site: '', parentId: '' });
     },
     onError: (err: any) => {
       toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
@@ -391,6 +395,14 @@ export default function DocumentLibraryPage() {
     },
   });
 
+  // "상위로 빼기" — 폴더를 한 단계 위 (부모의 부모)로 이동
+  const handleMoveUp = (folder: DocumentFolder) => {
+    if (folder.parentId == null) return; // 이미 최상위
+    const parent = folderById.get(folder.parentId);
+    const grandParentId = parent?.parentId ?? null;
+    moveFolderMutation.mutate({ id: folder.id, parentId: grandParentId });
+  };
+
   const handleFolderDrop = (targetParentId: number | null, draggedFolderId: number) => {
     if (draggedFolderId === targetParentId) return;
     const dragged = folderById.get(draggedFolderId);
@@ -410,13 +422,18 @@ export default function DocumentLibraryPage() {
 
   const openCreateFolder = () => {
     setFolderEditTarget(null);
-    setFolderForm({ name: '', description: '', site: '' });
+    setFolderForm({ name: '', description: '', site: '', parentId: '' });
     setFolderDialogOpen(true);
   };
 
   const openEditFolder = (f: DocumentFolder) => {
     setFolderEditTarget(f);
-    setFolderForm({ name: f.name, description: f.description ?? '', site: f.site ?? '' });
+    setFolderForm({
+      name: f.name,
+      description: f.description ?? '',
+      site: f.site ?? '',
+      parentId: f.parentId != null ? String(f.parentId) : '',
+    });
     setFolderDialogOpen(true);
   };
 
@@ -671,6 +688,43 @@ export default function DocumentLibraryPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>상위 폴더</Label>
+                <Select
+                  value={folderForm.parentId || 'root'}
+                  onValueChange={v => setFolderForm({ ...folderForm, parentId: v === 'root' ? '' : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="root">📂 자료실 (최상위)</SelectItem>
+                    {allFolders
+                      .filter(f => {
+                        // 자기 자신 및 자기 자손은 상위로 지정 불가
+                        if (!folderEditTarget) return true;
+                        if (f.id === folderEditTarget.id) return false;
+                        const descendants = getDescendantIds(folderEditTarget.id);
+                        return !descendants.has(f.id);
+                      })
+                      .map(f => {
+                        // 경로 표시: 조상 이름 붙이기
+                        const path: string[] = [];
+                        let cur: DocumentFolder | undefined = f;
+                        while (cur) {
+                          path.unshift(cur.name);
+                          cur = cur.parentId != null ? folderById.get(cur.parentId) : undefined;
+                        }
+                        return (
+                          <SelectItem key={f.id} value={String(f.id)}>
+                            {path.join(' / ')}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  다른 폴더의 하위로 넣거나, 최상위로 뺄 수 있습니다.
+                </p>
+              </div>
               <Button
                 onClick={() => folderMutation.mutate()}
                 disabled={!folderForm.name.trim() || folderMutation.isPending}
@@ -751,6 +805,7 @@ export default function DocumentLibraryPage() {
                   foldersByParent={foldersByParent}
                   canManage={canManage}
                   onEditFolder={openEditFolder}
+                  onMoveUp={handleMoveUp}
                   onDeleteFolder={async (folder) => {
                     const ok = await confirm({
                       title: '폴더 삭제',
@@ -920,6 +975,7 @@ function FolderTreeNode({
   canManage,
   onEditFolder,
   onDeleteFolder,
+  onMoveUp,
   draggingId,
   setDraggingId,
   dropTargetId,
@@ -937,6 +993,7 @@ function FolderTreeNode({
   canManage: boolean;
   onEditFolder: (f: DocumentFolder) => void;
   onDeleteFolder: (f: DocumentFolder) => void;
+  onMoveUp: (f: DocumentFolder) => void;
   draggingId: number | null;
   setDraggingId: (id: number | null) => void;
   dropTargetId: number | 'root' | null;
@@ -1009,10 +1066,19 @@ function FolderTreeNode({
         </span>
         {canManage && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 ml-1">
+            {folder.parentId != null && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveUp(folder); }}
+                className="w-6 h-6 rounded hover:bg-black/10 flex items-center justify-center"
+                title="한 단계 위로 빼기"
+              >
+                <ArrowUp className="w-3 h-3" />
+              </button>
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); onEditFolder(folder); }}
               className="w-6 h-6 rounded hover:bg-black/10 flex items-center justify-center"
-              title="이름 수정"
+              title="이름 수정 · 상위 폴더 변경"
             >
               <Pencil className="w-3 h-3" />
             </button>
@@ -1039,6 +1105,7 @@ function FolderTreeNode({
           canManage={canManage}
           onEditFolder={onEditFolder}
           onDeleteFolder={onDeleteFolder}
+          onMoveUp={onMoveUp}
           draggingId={draggingId}
           setDraggingId={setDraggingId}
           dropTargetId={dropTargetId}
