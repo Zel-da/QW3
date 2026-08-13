@@ -1414,41 +1414,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 팀 삭제 (ADMIN만) - 팀원이 있으면 삭제 불가
+  // 팀 비활성화 (ADMIN만) - Soft delete. 팀원·데이터 모두 유지, 목록에서만 숨김.
   app.delete("/api/teams/:teamId", requireAuth, requireRole('ADMIN'), async (req, res) => {
     try {
       const { teamId } = req.params;
       const teamIdNum = parseInt(teamId);
 
-      const team = await prisma.team.findUnique({
-        where: { id: teamIdNum },
-        include: {
-          members: { where: { teamId: teamIdNum } },
-          teamMembers: { where: { isActive: true } }
-        }
-      });
-
+      const team = await prisma.team.findUnique({ where: { id: teamIdNum } });
       if (!team) {
         return res.status(404).json({ message: "팀을 찾을 수 없습니다." });
       }
-
-      // User 연결된 팀원 확인
-      const usersInTeam = await prisma.user.count({
-        where: { teamId: teamIdNum }
-      });
-
-      // TeamMember 확인 (활성 팀원)
-      const activeTeamMembers = await prisma.teamMember.count({
-        where: { teamId: teamIdNum, isActive: true }
-      });
-
-      if (usersInTeam > 0 || activeTeamMembers > 0) {
-        return res.status(400).json({
-          message: `팀에 소속된 팀원이 ${usersInTeam + activeTeamMembers}명 있습니다. 팀원을 먼저 이동시켜 주세요.`
-        });
+      if (!team.isActive) {
+        return res.status(400).json({ message: "이미 비활성 상태입니다." });
       }
 
-      // Soft delete — 데이터(DailyReport·서명 등) 보존, 목록에서만 숨김
+      // Soft delete — 데이터(DailyReport·서명 등) + 팀원 모두 유지, isActive만 false로.
       await prisma.$transaction(async (tx) => {
         await tx.team.update({
           where: { id: teamIdNum },
