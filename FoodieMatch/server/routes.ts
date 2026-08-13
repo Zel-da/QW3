@@ -1329,7 +1329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         include: {
           members: true,
           leader: true,
-          approver: true
+          approver: true,
+          department: true,
         }
       });
       if (!team) return res.status(404).json({ message: "Team not found" });

@@ -684,14 +684,24 @@ export default function TeamManagementPage() {
                     <SelectContent className="max-h-[300px] overflow-y-auto scrollbar-visible">
                       {teams
                         .filter(team => team.site === selectedSiteFilter)
-                        .map(team => (
-                          <SelectItem key={team.id} value={String(team.id)}>
-                            {team.name.replace(/^(아산|화성)\s*/, '')}
-                            {(team as any).isActive === false && (
-                              <span className="ml-2 text-xs text-muted-foreground">(비활성)</span>
-                            )}
-                          </SelectItem>
-                        ))}
+                        .map(team => {
+                          const deptName = (team as any).department?.name;
+                          return (
+                            <SelectItem key={team.id} value={String(team.id)}>
+                              <span className="inline-flex items-center gap-2">
+                                <span>{team.name.replace(/^(아산|화성)\s*/, '')}</span>
+                                {deptName ? (
+                                  <span className="text-xs text-muted-foreground">· {deptName}</span>
+                                ) : (
+                                  <span className="text-xs text-orange-600">· 부서 미지정</span>
+                                )}
+                                {(team as any).isActive === false && (
+                                  <span className="text-xs text-muted-foreground">(비활성)</span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       {teams.filter(team => team.site === selectedSiteFilter).length === 0 && (
                         <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                           {selectedSiteFilter} 사업장에 팀이 없습니다.
@@ -699,6 +709,28 @@ export default function TeamManagementPage() {
                       )}
                     </SelectContent>
                   </Select>
+
+                  {/* 선택된 팀 요약 — 대분류(부서) 상시 표시 */}
+                  {selectedTeamId && teamData && !isEditingTeam && (
+                    <div className="mt-3 p-3 rounded-md bg-muted/40 border text-sm space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground min-w-[64px]">사업장</span>
+                        <span className="font-medium">{teamData.site || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground min-w-[64px]">대분류</span>
+                        {(teamData as any).department?.name ? (
+                          <span className="font-medium">{(teamData as any).department.name}</span>
+                        ) : (
+                          <span className="text-orange-600 font-medium">미지정 (수정에서 지정하세요)</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground min-w-[64px]">팀명</span>
+                        <span className="font-medium">{teamData.name}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {selectedTeamId && teamData && (
@@ -786,7 +818,18 @@ export default function TeamManagementPage() {
                 )}
               </>
             ) : (
-              <p className="text-lg font-semibold">{teamData?.name || '당신의 팀'}</p>
+              <div>
+                <p className="text-lg font-semibold">{teamData?.name || '당신의 팀'}</p>
+                {teamData && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {teamData.site && <span>{teamData.site}</span>}
+                    {teamData.site && (teamData as any).department?.name && <span> · </span>}
+                    {(teamData as any).department?.name
+                      ? <span>{(teamData as any).department.name}</span>
+                      : <span className="text-orange-600">부서 미지정</span>}
+                  </p>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
