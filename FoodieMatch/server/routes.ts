@@ -7661,7 +7661,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category: item.category,
           subCategory: item.subCategory || null,
           description: item.description,
-          displayOrder: item.displayOrder || (index + 1) * 10,
+          // 0도 유효한 순서값. || 로 덮으면 첫 항목(0)이 뒤로 밀림. ?? 로 undefined/null만 fallback.
+          displayOrder: item.displayOrder ?? index,
         };
 
         // 숫자 id만 update (기존 항목). 임시 문자열 id(`temp-xxx`)나 미부여면 create.

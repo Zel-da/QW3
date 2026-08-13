@@ -269,8 +269,9 @@ export default function ChecklistEditorPage() {
       }
     }
 
-    // displayOrder는 드래그할 때만 업데이트되므로, editingItems의 현재 값을 그대로 사용
-    mutation.mutate({ templateId: template.id, items: editingItems });
+    // 저장 직전 현재 화면 순서로 displayOrder 재부여 (드래그·삭제·가져오기로 값 뒤섞임 방지)
+    const itemsWithOrder = editingItems.map((item, i) => ({ ...item, displayOrder: i }));
+    mutation.mutate({ templateId: template.id, items: itemsWithOrder });
   };
 
   return (
