@@ -1507,8 +1507,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       // 없으면 즉시 생성 — 편집 시 template.id가 필요하므로 (다른 팀 복사·PUT 저장에 필수)
       if (!template) {
+        const team = await prisma.team.findUnique({ where: { id: teamIdNum }, select: { name: true } });
         template = await prisma.checklistTemplate.create({
-          data: { teamId: teamIdNum },
+          data: {
+            teamId: teamIdNum,
+            name: team?.name ? `${team.name} 체크리스트` : '기본 체크리스트',
+          },
           include: { templateItems: { orderBy: { displayOrder: 'asc' } } },
         });
       }
