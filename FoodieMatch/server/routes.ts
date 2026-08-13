@@ -1500,16 +1500,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/teams/:teamId/template", requireAuth, async (req, res) => {
     try {
-      const { teamId } = req.params;
-      const template = await prisma.checklistTemplate.findFirst({
-        where: { teamId: parseInt(teamId) },
+      const teamIdNum = parseInt(req.params.teamId);
+      let template = await prisma.checklistTemplate.findFirst({
+        where: { teamId: teamIdNum },
         include: { templateItems: { orderBy: { displayOrder: 'asc' } } },
       });
+      // 없으면 즉시 생성 — 편집 시 template.id가 필요하므로 (다른 팀 복사·PUT 저장에 필수)
       if (!template) {
-        return res.json({ templateItems: [] });
+        template = await prisma.checklistTemplate.create({
+          data: { teamId: teamIdNum },
+          include: { templateItems: { orderBy: { displayOrder: 'asc' } } },
+        });
       }
       res.json(template);
     } catch (error) {
+      console.error("Failed to fetch/create checklist template:", error);
       res.status(500).json({ message: "Failed to fetch checklist template" });
     }
   });

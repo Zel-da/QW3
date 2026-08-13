@@ -234,7 +234,14 @@ export default function ChecklistEditorPage() {
   };
 
   const handleSave = () => {
-    if (!template) return;
+    if (!template?.id) {
+      toast({
+        title: '저장할 수 없음',
+        description: '체크리스트 템플릿을 불러오지 못했습니다. 팀을 다시 선택해 주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // 검증: 빈 필드 확인
     const emptyFields = editingItems.filter(
