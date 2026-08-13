@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, PlusCircle, GripVertical, ArrowLeft } from 'lucide-react';
+import { Trash2, PlusCircle, GripVertical, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from 'wouter';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { stripSiteSuffix } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useSite, Site } from "@/hooks/use-site";
@@ -102,6 +104,10 @@ export default function ChecklistEditorPage() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [editingItems, setEditingItems] = useState<any[]>([]);
 
+  // 다른 팀 템플릿 가져오기 다이얼로그
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [sourceTeamId, setSourceTeamId] = useState<string>('');
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -128,6 +134,37 @@ export default function ChecklistEditorPage() {
     enabled: !!selectedTeam,
 
   });
+
+  // 소스 팀 (가져올 팀) 템플릿 — 다이얼로그에서 미리보기 용
+  const { data: sourceTemplate, isLoading: sourceLoading } = useQuery({
+    queryKey: ['checklistTemplate', 'source', sourceTeamId],
+    queryFn: () => fetchTemplate(parseInt(sourceTeamId)),
+    enabled: !!sourceTeamId && copyDialogOpen,
+  });
+
+  const applySourceItems = (mode: 'replace' | 'append') => {
+    const sourceItems = sourceTemplate?.templateItems || [];
+    if (sourceItems.length === 0) {
+      toast({ title: '가져올 항목 없음', description: '선택한 팀의 체크리스트가 비어 있습니다.', variant: 'destructive' });
+      return;
+    }
+    // id는 새로 부여 (신규 항목으로 취급 → 저장 시 서버가 새 레코드 생성)
+    const stamped = sourceItems.map((it: any, i: number) => ({
+      category: it.category,
+      description: it.description,
+      id: `temp-${Date.now()}-${i}`,
+    }));
+    setEditingItems(prev => {
+      const next = mode === 'replace' ? stamped : [...prev, ...stamped];
+      return next.map((it, idx) => ({ ...it, displayOrder: idx }));
+    });
+    toast({
+      title: mode === 'replace' ? '덮어쓰기 완료' : '뒤에 추가 완료',
+      description: `${sourceItems.length}개 항목을 가져왔습니다. "저장" 버튼을 눌러야 반영됩니다.`,
+    });
+    setCopyDialogOpen(false);
+    setSourceTeamId('');
+  };
 
   useEffect(() => {
     if (template) {
@@ -270,12 +307,21 @@ export default function ChecklistEditorPage() {
                 </SelectContent>
               </Select>
               {template && (
-                <Button
-                  onClick={handleSave}
-                  disabled={mutation.isPending || editingItems.length === 0}
-                >
-                  {mutation.isPending ? '저장 중...' : '저장'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setSourceTeamId(''); setCopyDialogOpen(true); }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    다른 팀에서 가져오기
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={mutation.isPending || editingItems.length === 0}
+                  >
+                    {mutation.isPending ? '저장 중...' : '저장'}
+                  </Button>
+                </>
               )}
             </div>
           </CardHeader>
@@ -329,6 +375,96 @@ export default function ChecklistEditorPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* 다른 팀 템플릿 가져오기 다이얼로그 */}
+        <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>다른 팀에서 체크리스트 가져오기</DialogTitle>
+              <DialogDescription>
+                기존 팀의 체크리스트 항목을 복사해서 현재 편집 중인 팀에 반영합니다.
+                가져와도 <b>저장 버튼을 눌러야</b> 실제 반영됩니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>원본 팀</Label>
+                <Select value={sourceTeamId} onValueChange={setSourceTeamId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="가져올 팀을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[320px] overflow-y-auto">
+                    {teams
+                      .filter((t: any) => String(t.id) !== selectedTeam) // 자기 자신 제외
+                      .sort((a: any, b: any) => (a.site || '').localeCompare(b.site || '') || a.name.localeCompare(b.name))
+                      .map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          <span className="text-xs text-muted-foreground mr-1">[{t.site}]</span>
+                          {stripSiteSuffix(t.name)}
+                          {t.department?.name && (
+                            <span className="text-xs text-muted-foreground ml-1">· {t.department.name}</span>
+                          )}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 미리보기 */}
+              {sourceTeamId && (
+                <div className="border rounded-md">
+                  <div className="px-3 py-2 border-b bg-muted/40 text-xs text-muted-foreground">
+                    미리보기 · {sourceLoading ? '로딩 중...' : `${sourceTemplate?.templateItems?.length ?? 0}개 항목`}
+                  </div>
+                  <div className="max-h-[280px] overflow-y-auto">
+                    {sourceLoading ? (
+                      <div className="p-4 text-center text-muted-foreground text-sm">로딩 중...</div>
+                    ) : !sourceTemplate?.templateItems?.length ? (
+                      <div className="p-4 text-center text-muted-foreground text-sm">이 팀은 체크리스트가 비어 있습니다.</div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10 text-xs">#</TableHead>
+                            <TableHead className="w-32 text-xs">구분</TableHead>
+                            <TableHead className="text-xs">점검항목</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sourceTemplate.templateItems.map((it: any, i: number) => (
+                            <TableRow key={it.id ?? i}>
+                              <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                              <TableCell className="text-xs">{it.category}</TableCell>
+                              <TableCell className="text-xs">{it.description}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2 flex-wrap">
+              <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>취소</Button>
+              <Button
+                variant="secondary"
+                onClick={() => applySourceItems('append')}
+                disabled={!sourceTeamId || sourceLoading || !sourceTemplate?.templateItems?.length}
+                title="현재 항목 뒤에 이어붙임"
+              >
+                뒤에 추가
+              </Button>
+              <Button
+                onClick={() => applySourceItems('replace')}
+                disabled={!sourceTeamId || sourceLoading || !sourceTemplate?.templateItems?.length}
+                title="현재 항목을 모두 지우고 원본으로 교체"
+              >
+                덮어쓰기
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

@@ -7655,22 +7655,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayOrder: item.displayOrder || (index + 1) * 10,
         };
 
-        if (item.id) {
-          // If item has an id, update it
+        // 숫자 id만 update (기존 항목). 임시 문자열 id(`temp-xxx`)나 미부여면 create.
+        const numericId = typeof item.id === 'number' ? item.id : parseInt(item.id);
+        if (numericId && !isNaN(numericId)) {
           return prisma.templateItem.update({
-            where: { id: item.id },
+            where: { id: numericId },
             data: itemData,
           });
         } else {
-          // If item has no id, create it
-          return prisma.templateItem.create({
-            data: itemData,
-          });
+          return prisma.templateItem.create({ data: itemData });
         }
       });
 
-      // Also, find and delete items that are no longer in the list
-      const incomingItemIds = items.map((item: any) => item.id).filter(Boolean);
+      // 삭제 대상 판정: 유지되는 기존 숫자 id 목록 밖의 항목 삭제
+      const incomingItemIds = items
+        .map((item: any) => (typeof item.id === 'number' ? item.id : parseInt(item.id)))
+        .filter((n: number) => n && !isNaN(n));
       // Only delete if there are existing items to preserve (avoid deleting all when empty)
       if (incomingItemIds.length > 0) {
         await prisma.templateItem.deleteMany({
