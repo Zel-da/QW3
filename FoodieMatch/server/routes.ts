@@ -1346,13 +1346,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "팀 이름과 현장(site)을 입력해주세요." });
       }
 
-      // 이름 중복 확인
+      // 이름 중복 확인 — 활성 팀에서만. 비활성(soft-deleted) 팀은 재활성화로 안내.
       const existingTeam = await prisma.team.findFirst({
         where: { name, site }
       });
 
       if (existingTeam) {
-        return res.status(409).json({ message: "동일한 이름의 팀이 해당 현장에 이미 존재합니다." });
+        if (existingTeam.isActive) {
+          return res.status(409).json({ message: "동일한 이름의 팀이 해당 현장에 이미 존재합니다." });
+        }
+        return res.status(409).json({
+          message: `"${name}" 팀이 비활성 상태로 존재합니다. 팀 관리에서 "비활성 팀 포함"을 켠 뒤 재활성화하세요.`,
+        });
       }
 
       const newTeam = await prisma.team.create({
