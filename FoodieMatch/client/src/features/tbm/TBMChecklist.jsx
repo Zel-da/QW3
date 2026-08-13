@@ -304,7 +304,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
         }
       }
     });
-  }, [user, site, reportForEdit]);
+    // deps: 원시값만 사용 — user 참조가 매 렌더 새로 오더라도 무한 루프 방지
+  }, [user?.id, user?.teamId, user?.role, site, reportForEdit?.id]);
 
   // 날짜가 변경되면 공휴일 여부 체크
   useEffect(() => {
@@ -522,7 +523,10 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
 
     // cleanup: 팀/날짜 변경 시 이전 API 요청 취소
     return () => abortController.abort();
-  }, [selectedTeam, date, reportForEdit, isOwnTeam, mode, toast]);
+    // deps 최소화: selectedTeam/date/reportForEdit 변경 시에만 재실행.
+    // mode/isOwnTeam은 내부에서 사용하지만 이들 값 변경으로 재트리거하면 무한 루프.
+    // toast는 매 렌더 새 참조라 deps에 넣으면 무한 루프.
+  }, [selectedTeam, date, reportForEdit?.id]);
 
   // 리포트 데이터로 폼 초기화하는 함수
   const initializeFormFromReport = (report) => {
