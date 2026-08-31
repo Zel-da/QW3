@@ -227,6 +227,7 @@ model Team {
   factoryId           Int?                  // 신규: 공장 ID
   departmentId        Int?                  // 신규: 부서 ID (큰 분류)
   isActive            Boolean               @default(true) // 신규: soft delete용
+  createdAt           DateTime              @default(now()) // 신규: 팀 생성일. 이 이전 월 보고서에서는 목록에서 제외.
   leaderId            String?
   approverId          String?               // 신규: 월별보고서 결재자
   displayOrder        Int?                  // 팀 표시 순서

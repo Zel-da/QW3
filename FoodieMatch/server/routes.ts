@@ -4108,16 +4108,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const yearNum = parseInt(year as string);
       const monthNum = parseInt(month as string);
 
+      const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+      // 조회 대상 월의 마지막 자정. 이보다 늦게 생성된 팀은 아직 이 월에 존재하지 않았으므로 제외.
+      const monthEndForTeamFilter = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
       // 해당 현장의 모든 팀 가져오기 (안전환경보건팀 제외 - TBM 작성 대상 아님)
+      // 팀 createdAt이 조회 월 이후인 경우 → 그 달에는 팀이 존재하지 않았으므로 목록에서 제외.
       const teams = await prisma.team.findMany({
         where: {
           site: site as string,
-          NOT: { name: { contains: '안전환경보건팀' } }
+          NOT: { name: { contains: '안전환경보건팀' } },
+          createdAt: { lte: monthEndForTeamFilter },
         },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
       });
-
-      const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
 
       // 해당 월의 공휴일 목록 조회
       const holidayDays = await getMonthlyHolidayDays(yearNum, monthNum, site as string);
