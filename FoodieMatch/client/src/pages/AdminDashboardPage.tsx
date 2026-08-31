@@ -28,6 +28,7 @@ const menuItems: MenuItem[] = [
   { title: '사용자 관리', description: '사용자 계정 및 권한 관리', path: '/admin', roles: ['ADMIN'], icon: Users, bgColor: 'bg-green-100', iconBg: 'bg-green-500', iconColor: 'text-white' },
   { title: '팀 관리', description: '팀 구성원 및 조직 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'], icon: Building2, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
   { title: '부서 관리', description: 'TBM 큰 분류(부서) 관리', path: '/department-management', roles: ['ADMIN'], icon: Building2, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
+  { title: '테스트 로그인', description: '다른 사용자로 로그인해 재현', path: '/admin-impersonate', roles: ['ADMIN'], icon: Users, bgColor: 'bg-pink-100', iconBg: 'bg-pink-500', iconColor: 'text-white' },
   { title: '교육 관리', description: '교육 과정 생성 및 수정', path: '/education-management', roles: ['ADMIN'], icon: GraduationCap, bgColor: 'bg-cyan-100', iconBg: 'bg-cyan-500', iconColor: 'text-white' },
   { title: '교육 현황', description: '전체 교육 이수 현황 조회', path: '/education-monitoring', roles: ['ADMIN'], icon: BarChart3, bgColor: 'bg-cyan-100', iconBg: 'bg-cyan-500', iconColor: 'text-white' },
   // Row 2

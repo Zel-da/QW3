@@ -48,6 +48,14 @@ declare module "express-session" {
       site?: string | null;
       sites?: string[];
     };
+    // Impersonation: admin이 다른 사용자 시점으로 로그인 중일 때
+    // 원래 admin 정보를 여기 백업해두고, /exit 시 복원.
+    originalAdmin?: {
+      id: string;
+      username: string;
+      role: string;
+      name?: string | null;
+    };
   }
 }
 
@@ -318,9 +326,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/me", async (req, res) => {
     if (req.session.user) {
-      res.json(req.session.user);
+      // impersonating 중이면 클라이언트가 배너 표시할 수 있도록 함께 리턴
+      res.json({
+        ...req.session.user,
+        impersonating: req.session.originalAdmin ? {
+          asUser: { id: req.session.user.id, name: req.session.user.name, username: req.session.user.username, role: req.session.user.role },
+          originalAdmin: req.session.originalAdmin,
+        } : null,
+      });
     } else {
       res.status(401).json({ message: "인증되지 않은 사용자입니다" });
+    }
+  });
+
+  // ==================== IMPERSONATION (ADMIN ONLY) ====================
+  // Admin이 다른 사용자로 로그인 시뮬레이션. 원래 admin 세션 복구 가능.
+  app.post("/api/admin/impersonate/:userId", requireAuth, async (req, res) => {
+    try {
+      // 현재 세션이 admin이거나 이미 impersonating(원래 admin이 있는) 상태여야 함
+      const currentUser = req.session.user!;
+      const originalAdmin = req.session.originalAdmin;
+      const isAdminSession = currentUser.role === 'ADMIN';
+      const isAdminOriginally = originalAdmin?.role === 'ADMIN';
+      if (!isAdminSession && !isAdminOriginally) {
+        return res.status(403).json({ message: "ADMIN 권한이 필요합니다" });
+      }
+
+      const targetUserId = req.params.userId;
+      const target = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { id: true, username: true, role: true, teamId: true, name: true, site: true },
+      });
+      if (!target) return res.status(404).json({ message: "대상 사용자를 찾을 수 없습니다" });
+
+      // 최초 impersonation일 때만 원래 admin 백업
+      if (!originalAdmin) {
+        req.session.originalAdmin = {
+          id: currentUser.id,
+          username: currentUser.username,
+          role: currentUser.role,
+          name: currentUser.name,
+        };
+      }
+
+      req.session.user = {
+        id: target.id,
+        username: target.username,
+        role: target.role,
+        teamId: target.teamId,
+        name: target.name,
+        site: target.site,
+      };
+
+      console.log(`[Impersonate] ${originalAdmin?.username || currentUser.username} → ${target.username} (${target.name})`);
+
+      res.json({
+        message: `${target.name || target.username} 계정으로 로그인 되었습니다`,
+        user: req.session.user,
+        originalAdmin: req.session.originalAdmin,
+      });
+    } catch (error) {
+      console.error('Impersonate failed:', error);
+      res.status(500).json({ message: "impersonation 실패" });
+    }
+  });
+
+  // Impersonation 종료 — 원래 admin 세션으로 복귀
+  app.post("/api/admin/impersonate/exit", requireAuth, async (req, res) => {
+    try {
+      const originalAdmin = req.session.originalAdmin;
+      if (!originalAdmin) {
+        return res.status(400).json({ message: "impersonating 상태가 아닙니다" });
+      }
+
+      // 원래 admin의 최신 정보로 세션 복원
+      const admin = await prisma.user.findUnique({
+        where: { id: originalAdmin.id },
+        select: { id: true, username: true, role: true, teamId: true, name: true, site: true },
+      });
+      if (!admin) return res.status(404).json({ message: "원래 admin 계정을 찾을 수 없습니다" });
+
+      req.session.user = {
+        id: admin.id,
+        username: admin.username,
+        role: admin.role,
+        teamId: admin.teamId,
+        name: admin.name,
+        site: admin.site,
+      };
+      delete req.session.originalAdmin;
+
+      console.log(`[Impersonate] exit → ${admin.username}`);
+      res.json({ message: "원래 계정으로 복귀했습니다", user: req.session.user });
+    } catch (error) {
+      console.error('Exit impersonate failed:', error);
+      res.status(500).json({ message: "복귀 실패" });
     }
   });
 

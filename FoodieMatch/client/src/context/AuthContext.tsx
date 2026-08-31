@@ -9,6 +9,11 @@ interface AuthUser {
   teamId?: number | null;
   site?: string | null;
   sites?: string[]; // 다중 사이트 접근 가능 목록
+  // impersonation 상태 (ADMIN이 다른 사용자로 로그인 중일 때 세팅됨)
+  impersonating?: {
+    asUser: { id: string; name?: string | null; username: string; role: string };
+    originalAdmin: { id: string; username: string; role: string; name?: string | null };
+  } | null;
 }
 
 interface AuthContextType {
