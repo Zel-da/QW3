@@ -379,22 +379,29 @@ export default function ApprovalPage() {
       return res.data;
     },
     onSuccess: () => {
-      // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       queryClient.invalidateQueries({ queryKey: ['sentApprovals'] });
       queryClient.invalidateQueries({ queryKey: ['receivedApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-approval-status'] });
       toast({
         title: "결재 완료",
-        description: "결재가 성공적으로 완료되었습니다. 관리자에게 알림이 발송되었습니다.",
+        description: "결재가 성공적으로 완료되었습니다. 결재 이력으로 이동합니다.",
       });
       setApprovalComplete('approved');
+      // 화면 전환이 사용자에게 확실히 보이도록 결재 이력 페이지로 자동 이동
+      setTimeout(() => navigate('/approval-history'), 1500);
     },
     onError: (error: any) => {
-      // 에러 시 데이터 다시 불러오기 (이미 처리된 결재인 경우 UI 갱신)
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
+      const serverMsg = error?.response?.data?.message;
+      const statusCode = error?.response?.status;
+      console.error('[Approval] approve failed:', statusCode, serverMsg, error);
       toast({
-        title: "오류",
-        description: error.response?.data?.message || "결재 처리 중 오류가 발생했습니다.",
+        title: `결재 처리 실패${statusCode ? ` (${statusCode})` : ''}`,
+        description: serverMsg
+          || (statusCode === 403 ? '결재 권한이 없습니다. 팀 관리에서 결재자로 지정되어 있는지 확인해주세요.' : '')
+          || (statusCode === 400 ? '이미 처리된 결재이거나 잘못된 요청입니다. 새로고침 후 다시 시도해주세요.' : '')
+          || '결재 처리 중 오류가 발생했습니다. 관리자에게 문의해주세요.',
         variant: "destructive",
       });
     },
@@ -408,23 +415,29 @@ export default function ApprovalPage() {
       return res.data;
     },
     onSuccess: () => {
-      // 캐시 무효화하여 다음 접근 시 최신 데이터 로드
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
       queryClient.invalidateQueries({ queryKey: ['sentApprovals'] });
       queryClient.invalidateQueries({ queryKey: ['receivedApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-approval-status'] });
       toast({
         title: "반려 완료",
-        description: "결재가 반려되었습니다. 요청자에게 알림이 발송되었습니다.",
+        description: "결재가 반려되었습니다. 결재 이력으로 이동합니다.",
       });
       setShowRejectDialog(false);
       setApprovalComplete('rejected');
+      setTimeout(() => navigate('/approval-history'), 1500);
     },
     onError: (error: any) => {
-      // 에러 시 데이터 다시 불러오기 (이미 처리된 결재인 경우 UI 갱신)
       queryClient.invalidateQueries({ queryKey: ['approvalRequest', approvalId] });
+      const serverMsg = error?.response?.data?.message;
+      const statusCode = error?.response?.status;
+      console.error('[Approval] reject failed:', statusCode, serverMsg, error);
       toast({
-        title: "오류",
-        description: error.response?.data?.message || "반려 처리 중 오류가 발생했습니다.",
+        title: `반려 처리 실패${statusCode ? ` (${statusCode})` : ''}`,
+        description: serverMsg
+          || (statusCode === 403 ? '결재 권한이 없습니다. 팀 관리에서 결재자로 지정되어 있는지 확인해주세요.' : '')
+          || (statusCode === 400 ? '이미 처리된 결재이거나 잘못된 요청입니다. 새로고침 후 다시 시도해주세요.' : '')
+          || '반려 처리 중 오류가 발생했습니다. 관리자에게 문의해주세요.',
         variant: "destructive",
       });
     },
