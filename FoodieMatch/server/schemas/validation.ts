@@ -183,7 +183,7 @@ export const approvalActionSchema = z.object({
 
 // 허용된 파일 확장자
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB (교육 영상 등 대용량 지원)
 
 export const fileUploadSchema = z.object({
   filename: z.string()

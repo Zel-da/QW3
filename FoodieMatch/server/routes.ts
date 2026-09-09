@@ -103,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const upload = multer({
     dest: uploadDir,
     limits: {
-      fileSize: 50 * 1024 * 1024, // 50MB limit (녹음 파일 등 대용량 지원)
+      fileSize: 200 * 1024 * 1024, // 200MB limit (교육 영상 등 대용량 지원)
       files: 50 // Maximum 50 files (공지사항 등 대량 업로드 지원)
     },
     fileFilter: (req, file, cb) => {
@@ -7533,6 +7533,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     upload.single('file')(req, res, (err) => {
       if (err) {
         console.error('Multer error:', err);
+        // LIMIT_FILE_SIZE는 크기 초과 — 상한 명시해서 안내
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            message: '파일이 너무 큽니다. 200MB 이하만 업로드 가능합니다. 영상은 압축 후 다시 시도해 주세요.',
+            error: err.message,
+          });
+        }
         return res.status(400).json({
           message: '파일 업로드 중 오류가 발생했습니다.',
           error: err.message
@@ -7628,6 +7635,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     upload.array('files', 50)(req, res, (err) => {
       if (err) {
         console.error('Multer error:', err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            message: '파일이 너무 큽니다. 개별 파일당 200MB 이하만 업로드 가능합니다.',
+            error: err.message,
+          });
+        }
         return res.status(400).json({
           message: '파일 업로드 중 오류가 발생했습니다.',
           error: err.message
