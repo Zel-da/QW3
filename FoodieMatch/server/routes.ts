@@ -292,23 +292,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await prisma.user.findFirst({ where: { username } });
 
       if (!user || !user.password) {
+        // 실패 감사 로그 (비동기, 실패해도 응답에 영향 없음)
+        logLoginFailed(req, username, 'user_not_found').catch(() => {});
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
 
       const validPassword = await bcrypt.compare(password, user.password);
 
       if (!validPassword) {
+        logLoginFailed(req, username, 'wrong_password').catch(() => {});
         return res.status(401).json({ message: "잘못된 사용자명 또는 비밀번호입니다" });
       }
 
       // 비활성화된 계정 차단
       if ((user as any).status === 'SUSPENDED') {
+        logLoginFailed(req, username, 'account_suspended').catch(() => {});
         return res.status(403).json({ message: "관리자에 의해 비활성화된 계정입니다. 관리자에게 문의하세요." });
       }
 
       // Set session user data
       const sitesArray = user.sites ? user.sites.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
       req.session.user = { id: user.id, username: user.username, role: user.role, teamId: user.teamId, name: user.name, site: user.site, sites: sitesArray };
+
+      // 성공 감사 로그 (비동기)
+      logLoginSuccess(req, user.id).catch(() => {});
 
       // Explicitly save session before sending response
       req.session.save((err) => {
@@ -435,6 +442,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/auth/logout", (req, res) => {
+    const userId = req.session.user?.id;
+    // 로그아웃 감사 로그 (세션 파괴 전에 발동, 결과 대기 안 함)
+    if (userId) logLogout(req, userId).catch(() => {});
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ message: "로그아웃 실패" });

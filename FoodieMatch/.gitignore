@@ -36,3 +36,6 @@ uploads/
 *.tmp
 .cache/
 nul
+
+# 사용량 리포트 (개인정보 포함, 커밋 금지)
+usage-reports/
