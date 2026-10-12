@@ -6,7 +6,7 @@ import {
   Users, Building2, ClipboardList, Calendar, Wrench,
   GraduationCap, BarChart3, CalendarDays, Mail, Database,
   FileText, HelpCircle, Shield, TrendingUp, CheckCircle2,
-  Clock, AlertCircle, Activity
+  Clock, AlertCircle, Activity, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { LucideIcon } from 'lucide-react';
@@ -29,6 +29,8 @@ const menuItems: MenuItem[] = [
   { title: '팀 관리', description: '팀 구성원 및 조직 관리', path: '/team-management', roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'], icon: Building2, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
   { title: '부서 관리', description: 'TBM 큰 분류(부서) 관리', path: '/department-management', roles: ['ADMIN'], icon: Building2, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
   { title: '테스트 로그인', description: '다른 사용자로 로그인해 재현', path: '/admin-impersonate', roles: ['ADMIN'], icon: Users, bgColor: 'bg-pink-100', iconBg: 'bg-pink-500', iconColor: 'text-white' },
+  { title: '잠재위험 발굴', description: '현장 잠재위험 등록·개선 회신', path: '/potential-risks', roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'], icon: AlertTriangle, bgColor: 'bg-amber-100', iconBg: 'bg-amber-500', iconColor: 'text-white' },
+  { title: '위험성평가', description: '사전교육·평가·개선실행 6단계', path: '/risk-assessments', roles: ['ADMIN', 'TEAM_LEADER', 'EXECUTIVE_LEADER', 'EXECUTIVE'], icon: ShieldAlert, bgColor: 'bg-red-100', iconBg: 'bg-red-500', iconColor: 'text-white' },
   { title: '교육 관리', description: '교육 과정 생성 및 수정', path: '/education-management', roles: ['ADMIN'], icon: GraduationCap, bgColor: 'bg-cyan-100', iconBg: 'bg-cyan-500', iconColor: 'text-white' },
   { title: '교육 현황', description: '전체 교육 이수 현황 조회', path: '/education-monitoring', roles: ['ADMIN'], icon: BarChart3, bgColor: 'bg-cyan-100', iconBg: 'bg-cyan-500', iconColor: 'text-white' },
   // Row 2

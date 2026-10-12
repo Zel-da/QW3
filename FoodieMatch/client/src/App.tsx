@@ -58,6 +58,11 @@ const DocumentLibraryPage = lazy(() => import("./pages/DocumentLibraryPage"));
 const TeamManagementPage = lazy(() => import("./pages/TeamManagementPage"));
 const DepartmentManagementPage = lazy(() => import("./pages/DepartmentManagementPage"));
 const AdminImpersonatePage = lazy(() => import("./pages/AdminImpersonatePage"));
+const PotentialRiskListPage = lazy(() => import("./pages/PotentialRiskListPage"));
+const PotentialRiskNewPage = lazy(() => import("./pages/PotentialRiskNewPage"));
+const PotentialRiskDetailPage = lazy(() => import("./pages/PotentialRiskDetailPage"));
+const RiskAssessmentListPage = lazy(() => import("./pages/RiskAssessmentListPage"));
+const RiskAssessmentDetailPage = lazy(() => import("./pages/RiskAssessmentDetailPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ChecklistEditorPage = lazy(() => import("./pages/ChecklistEditorPage"));
 const EducationManagementPage = lazy(() => import("./pages/EducationManagementPage"));
@@ -236,6 +241,31 @@ function App() {
               <Route path="/admin-impersonate">
                 <ProtectedRoute roles={[Role.ADMIN]}>
                   <AdminImpersonatePage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/potential-risks">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <PotentialRiskListPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/potential-risks/new">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <PotentialRiskNewPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/potential-risks/:id">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <PotentialRiskDetailPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/risk-assessments">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <RiskAssessmentListPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/risk-assessments/:id">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <RiskAssessmentDetailPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/safety-inspection">

@@ -10957,6 +10957,848 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
+  // ==================== 잠재위험 발굴 ====================
+  const canCreatePotentialRisk = (role: string) => role === 'ADMIN' || role === 'SAFETY_TEAM';
+
+  app.get("/api/potential-risks", requireAuth, async (req, res) => {
+    try {
+      const { site, teamId, status, isCompleted } = req.query;
+      const where: any = {};
+      if (site) where.site = site as string;
+      if (teamId) where.assignedTeamId = parseInt(teamId as string);
+      if (status) where.status = status as string;
+      if (isCompleted === '1' || isCompleted === 'true') where.isCompleted = true;
+      else if (isCompleted === '0' || isCompleted === 'false') where.isCompleted = false;
+      const list = await prisma.potentialRisk.findMany({
+        where,
+        include: {
+          assignedTeam: { include: { department: true } },
+          createdBy: { select: { id: true, name: true, username: true } },
+          repliedBy: { select: { id: true, name: true, username: true } },
+        },
+        orderBy: { discoveredAt: 'desc' },
+      });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to list potential-risks:', error);
+      res.status(500).json({ message: '잠재위험 조회 실패' });
+    }
+  });
+
+  app.get("/api/potential-risks/stats", requireAuth, async (req, res) => {
+    try {
+      const { site } = req.query;
+      const whereBase: any = {};
+      if (site) whereBase.site = site as string;
+      const [total, completed, byTeam] = await Promise.all([
+        prisma.potentialRisk.count({ where: whereBase }),
+        prisma.potentialRisk.count({ where: { ...whereBase, isCompleted: true } }),
+        prisma.potentialRisk.groupBy({
+          by: ['assignedTeamId'],
+          where: whereBase,
+          _count: { _all: true },
+        }),
+      ]);
+      const teamIds = byTeam.map(b => b.assignedTeamId);
+      const teams = await prisma.team.findMany({ where: { id: { in: teamIds } }, select: { id: true, name: true, site: true } });
+      const teamMap = new Map(teams.map(t => [t.id, t]));
+      const perTeam = byTeam.map(b => ({
+        teamId: b.assignedTeamId,
+        teamName: teamMap.get(b.assignedTeamId)?.name || '-',
+        site: teamMap.get(b.assignedTeamId)?.site || '-',
+        total: b._count._all,
+      }));
+      res.json({ total, completed, completionRate: total ? Math.round((completed / total) * 100) : 0, perTeam });
+    } catch (error) {
+      console.error('Failed to get potential-risk stats:', error);
+      res.status(500).json({ message: '통계 조회 실패' });
+    }
+  });
+
+  app.get("/api/potential-risks/:id", requireAuth, async (req, res) => {
+    try {
+      const risk = await prisma.potentialRisk.findUnique({
+        where: { id: req.params.id },
+        include: {
+          assignedTeam: { include: { department: true } },
+          createdBy: { select: { id: true, name: true, username: true, email: true } },
+          repliedBy: { select: { id: true, name: true, username: true } },
+        },
+      });
+      if (!risk) return res.status(404).json({ message: '잠재위험을 찾을 수 없습니다' });
+      res.json(risk);
+    } catch (error) {
+      console.error('Failed to get potential-risk:', error);
+      res.status(500).json({ message: '조회 실패' });
+    }
+  });
+
+  app.post("/api/potential-risks", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      if (!canCreatePotentialRisk(user.role)) return res.status(403).json({ message: '안전팀/ADMIN만 등록 가능합니다' });
+      const { site, discoveredAt, location, discoveredBy, riskDescription, sitePhotos, assignedTeamId } = req.body;
+      if (!site || !discoveredAt || !location || !riskDescription || !assignedTeamId) {
+        return res.status(400).json({ message: '필수 항목 누락 (site, discoveredAt, location, riskDescription, assignedTeamId)' });
+      }
+      const risk = await prisma.potentialRisk.create({
+        data: {
+          site,
+          discoveredAt: new Date(discoveredAt),
+          location,
+          discoveredBy: discoveredBy || null,
+          riskDescription,
+          sitePhotos: sitePhotos || [],
+          assignedTeamId: parseInt(assignedTeamId),
+          createdById: user.id,
+          status: 'PENDING',
+        },
+        include: {
+          assignedTeam: { include: { leader: true } },
+          createdBy: { select: { id: true, name: true, username: true } },
+        },
+      });
+
+      // 자동 이메일: 담당 팀장
+      try {
+        if (risk.assignedTeam?.leader?.email) {
+          const { sendEmailByType } = await import('./simpleEmailService');
+          await sendEmailByType('POTENTIAL_RISK_NEW' as any, risk.assignedTeam.leader.email, risk.assignedTeam.leader.id, {
+            TEAM_NAME: risk.assignedTeam.name,
+            LOCATION: risk.location,
+            RISK: risk.riskDescription,
+            CREATOR: risk.createdBy.name || risk.createdBy.username,
+            DATE: new Date(risk.discoveredAt).toLocaleDateString('ko-KR'),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.status(201).json(risk);
+    } catch (error) {
+      console.error('Failed to create potential-risk:', error);
+      res.status(500).json({ message: '등록 실패' });
+    }
+  });
+
+  app.put("/api/potential-risks/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const risk = await prisma.potentialRisk.findUnique({ where: { id: req.params.id }, include: { assignedTeam: true } });
+      if (!risk) return res.status(404).json({ message: '잠재위험을 찾을 수 없습니다' });
+
+      const { site, discoveredAt, location, discoveredBy, riskDescription, sitePhotos, assignedTeamId,
+              improvementPhotos, actionResult, scheduledDate, assigneeName, isCompleted, remarks } = req.body;
+
+      // 안전팀 입력란: ADMIN/SAFETY_TEAM만
+      // 담당부서 회신란: 팀장 또는 ADMIN/SAFETY_TEAM
+      const isSafetyTeam = canCreatePotentialRisk(user.role);
+      const isAssignedLeader = user.teamId === risk.assignedTeamId && (user.role === 'TEAM_LEADER' || user.role === 'EXECUTIVE_LEADER');
+      if (!isSafetyTeam && !isAssignedLeader) return res.status(403).json({ message: '수정 권한이 없습니다' });
+
+      const data: any = {};
+      if (isSafetyTeam) {
+        if (site !== undefined) data.site = site;
+        if (discoveredAt !== undefined) data.discoveredAt = new Date(discoveredAt);
+        if (location !== undefined) data.location = location;
+        if (discoveredBy !== undefined) data.discoveredBy = discoveredBy || null;
+        if (riskDescription !== undefined) data.riskDescription = riskDescription;
+        if (sitePhotos !== undefined) data.sitePhotos = sitePhotos;
+        if (assignedTeamId !== undefined) data.assignedTeamId = parseInt(assignedTeamId);
+      }
+      if (improvementPhotos !== undefined) data.improvementPhotos = improvementPhotos;
+      if (actionResult !== undefined) data.actionResult = actionResult || null;
+      if (scheduledDate !== undefined) data.scheduledDate = scheduledDate ? new Date(scheduledDate) : null;
+      if (assigneeName !== undefined) data.assigneeName = assigneeName || null;
+      if (isCompleted !== undefined) data.isCompleted = !!isCompleted;
+      if (remarks !== undefined) data.remarks = remarks || null;
+
+      // 담당부서 회신이 처음 들어오면 repliedBy/At 세팅 + status 변경
+      const isReplyChange = actionResult !== undefined || improvementPhotos !== undefined || isCompleted !== undefined;
+      if (isReplyChange && !risk.repliedById) {
+        data.repliedById = user.id;
+        data.repliedAt = new Date();
+      }
+      if (data.isCompleted === true) data.status = 'COMPLETED';
+      else if (isReplyChange || risk.repliedById) data.status = data.isCompleted === false ? 'IN_PROGRESS' : (risk.status === 'COMPLETED' && data.isCompleted !== true ? 'IN_PROGRESS' : risk.status === 'PENDING' ? 'IN_PROGRESS' : risk.status);
+
+      const updated = await prisma.potentialRisk.update({
+        where: { id: req.params.id },
+        data,
+        include: {
+          assignedTeam: { include: { department: true } },
+          createdBy: { select: { id: true, name: true, username: true, email: true } },
+          repliedBy: { select: { id: true, name: true, username: true } },
+        },
+      });
+
+      // 회신 완료 시 안전팀(createdBy)에게 이메일
+      if (isReplyChange) {
+        try {
+          if (updated.createdBy?.email) {
+            const { sendEmailByType } = await import('./simpleEmailService');
+            await sendEmailByType('POTENTIAL_RISK_REPLIED' as any, updated.createdBy.email, updated.createdBy.id, {
+              TEAM_NAME: updated.assignedTeam.name,
+              LOCATION: updated.location,
+              STATUS: updated.isCompleted ? '완료' : '진행중',
+              REPLIER: user.name || user.username,
+            }).catch(() => {});
+          }
+        } catch {}
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update potential-risk:', error);
+      res.status(500).json({ message: '수정 실패' });
+    }
+  });
+
+  app.delete("/api/potential-risks/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      if (!canCreatePotentialRisk(user.role)) return res.status(403).json({ message: '삭제 권한이 없습니다' });
+      await prisma.potentialRisk.delete({ where: { id: req.params.id } });
+      res.json({ message: '삭제되었습니다' });
+    } catch (error) {
+      console.error('Failed to delete potential-risk:', error);
+      res.status(500).json({ message: '삭제 실패' });
+    }
+  });
+
+  // ==================== 위험성평가 — 공정 마스터 ====================
+  app.get("/api/work-processes", requireAuth, async (req, res) => {
+    try {
+      const { teamId } = req.query;
+      const where: any = { isActive: true };
+      if (teamId) where.teamId = parseInt(teamId as string);
+      const list = await prisma.workProcess.findMany({
+        where,
+        orderBy: [{ teamId: 'asc' }, { name: 'asc' }],
+        include: { team: { select: { id: true, name: true, site: true } } },
+      });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to list work-processes:', error);
+      res.status(500).json({ message: '공정 조회 실패' });
+    }
+  });
+
+  app.post("/api/work-processes", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const { teamId, name } = req.body;
+      if (!teamId || !name?.trim()) return res.status(400).json({ message: 'teamId, name 필수' });
+      try {
+        const wp = await prisma.workProcess.create({
+          data: { teamId: parseInt(teamId), name: name.trim(), createdById: user.id },
+          include: { team: { select: { id: true, name: true, site: true } } },
+        });
+        res.status(201).json(wp);
+      } catch (e: any) {
+        if (e.code === 'P2002') return res.status(409).json({ message: '이미 존재하는 공정명입니다' });
+        throw e;
+      }
+    } catch (error) {
+      console.error('Failed to create work-process:', error);
+      res.status(500).json({ message: '공정 생성 실패' });
+    }
+  });
+
+  app.put("/api/work-processes/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      const { name, isActive } = req.body;
+      const wp = await prisma.workProcess.update({
+        where: { id: parseInt(req.params.id) },
+        data: {
+          ...(name !== undefined && { name: String(name).trim() }),
+          ...(isActive !== undefined && { isActive: !!isActive }),
+        },
+      });
+      res.json(wp);
+    } catch (error) {
+      console.error('Failed to update work-process:', error);
+      res.status(500).json({ message: '공정 수정 실패' });
+    }
+  });
+
+  app.delete("/api/work-processes/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      // 사용 중인 평가가 있으면 soft delete만
+      const count = await prisma.riskAssessment.count({ where: { processId: parseInt(req.params.id) } });
+      if (count > 0) {
+        await prisma.workProcess.update({ where: { id: parseInt(req.params.id) }, data: { isActive: false } });
+        return res.json({ message: `연결된 평가 ${count}건 — 공정이 비활성화되었습니다 (목록에서만 숨김)` });
+      }
+      await prisma.workProcess.delete({ where: { id: parseInt(req.params.id) } });
+      res.json({ message: '공정이 삭제되었습니다' });
+    } catch (error) {
+      console.error('Failed to delete work-process:', error);
+      res.status(500).json({ message: '공정 삭제 실패' });
+    }
+  });
+
+  // ==================== 위험성평가 ====================
+  app.get("/api/risk-assessments", requireAuth, async (req, res) => {
+    try {
+      const { site, teamId, status, processId } = req.query;
+      const where: any = {};
+      if (site) where.site = site as string;
+      if (teamId) where.teamId = parseInt(teamId as string);
+      if (status) where.status = status as string;
+      if (processId) where.processId = parseInt(processId as string);
+      const list = await prisma.riskAssessment.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          team: { select: { id: true, name: true, site: true } },
+          process: { select: { id: true, name: true } },
+          author: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } },
+        },
+      });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to list risk-assessments:', error);
+      res.status(500).json({ message: '조회 실패' });
+    }
+  });
+
+  app.get("/api/risk-assessments/:id", requireAuth, async (req, res) => {
+    try {
+      const ra = await prisma.riskAssessment.findUnique({
+        where: { id: req.params.id },
+        include: {
+          team: { include: { leader: true, approver: true, department: true } },
+          process: true,
+          author: { select: { id: true, name: true, username: true } },
+          approver: { select: { id: true, name: true, username: true } },
+          preEducation: true,
+          workerOpinions: { orderBy: { sortOrder: 'asc' } },
+          safetyInfo: true,
+          evaluations: {
+            orderBy: { sortOrder: 'asc' },
+            include: { responsibleTeam: { select: { id: true, name: true } } },
+          },
+          improvements: {
+            orderBy: { sortOrder: 'asc' },
+            include: { responsibleTeam: { select: { id: true, name: true } } },
+          },
+          feedbackEducation: true,
+          versions: { orderBy: { version: 'desc' } },
+        },
+      });
+      if (!ra) return res.status(404).json({ message: '평가를 찾을 수 없습니다' });
+      res.json(ra);
+    } catch (error) {
+      console.error('Failed to get risk-assessment:', error);
+      res.status(500).json({ message: '조회 실패' });
+    }
+  });
+
+  app.post("/api/risk-assessments", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const { site, teamId, processId, processName, evaluatedAt } = req.body;
+      if (!site || !teamId || !processId) return res.status(400).json({ message: '필수 항목 누락' });
+      const proc = await prisma.workProcess.findUnique({ where: { id: parseInt(processId) } });
+      if (!proc) return res.status(404).json({ message: '공정을 찾을 수 없습니다' });
+      const ra = await prisma.riskAssessment.create({
+        data: {
+          site, teamId: parseInt(teamId), processId: parseInt(processId),
+          processName: processName || proc.name,
+          evaluatedAt: evaluatedAt ? new Date(evaluatedAt) : new Date(),
+          authorId: user.id, status: 'DRAFT',
+        },
+      });
+      res.status(201).json(ra);
+    } catch (error) {
+      console.error('Failed to create risk-assessment:', error);
+      res.status(500).json({ message: '생성 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id", requireAuth, async (req, res) => {
+    try {
+      const { evaluatedAt, authorSignature, approverSignature, rejectionReason, processName } = req.body;
+      const data: any = {};
+      if (evaluatedAt !== undefined) data.evaluatedAt = new Date(evaluatedAt);
+      if (authorSignature !== undefined) data.authorSignature = authorSignature;
+      if (approverSignature !== undefined) data.approverSignature = approverSignature;
+      if (rejectionReason !== undefined) data.rejectionReason = rejectionReason || null;
+      if (processName !== undefined) data.processName = processName;
+      const ra = await prisma.riskAssessment.update({ where: { id: req.params.id }, data });
+      res.json(ra);
+    } catch (error) {
+      console.error('Failed to update risk-assessment:', error);
+      res.status(500).json({ message: '수정 실패' });
+    }
+  });
+
+  app.delete("/api/risk-assessments/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    try {
+      await prisma.riskAssessment.delete({ where: { id: req.params.id } });
+      res.json({ message: '삭제되었습니다' });
+    } catch (error) {
+      console.error('Failed to delete risk-assessment:', error);
+      res.status(500).json({ message: '삭제 실패' });
+    }
+  });
+
+  // 섹션별 upsert
+  app.put("/api/risk-assessments/:id/pre-education", requireAuth, async (req, res) => {
+    try {
+      const { conductedAt, attendees } = req.body;
+      const existing = await prisma.rAPreEducation.findUnique({ where: { assessmentId: req.params.id } });
+      const data = { conductedAt: conductedAt ? new Date(conductedAt) : null, attendees: attendees || [] };
+      const result = existing
+        ? await prisma.rAPreEducation.update({ where: { assessmentId: req.params.id }, data })
+        : await prisma.rAPreEducation.create({ data: { assessmentId: req.params.id, ...data } });
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to save pre-education:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id/feedback-education", requireAuth, async (req, res) => {
+    try {
+      const { conductedAt, attendees } = req.body;
+      const existing = await prisma.rAFeedbackEducation.findUnique({ where: { assessmentId: req.params.id } });
+      const data = { conductedAt: conductedAt ? new Date(conductedAt) : null, attendees: attendees || [] };
+      const result = existing
+        ? await prisma.rAFeedbackEducation.update({ where: { assessmentId: req.params.id }, data })
+        : await prisma.rAFeedbackEducation.create({ data: { assessmentId: req.params.id, ...data } });
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to save feedback-education:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id/safety-info", requireAuth, async (req, res) => {
+    try {
+      const { rawMaterial, product, workerCount, processSteps, checklist } = req.body;
+      const existing = await prisma.rASafetyInfo.findUnique({ where: { assessmentId: req.params.id } });
+      const data = {
+        rawMaterial: rawMaterial || null,
+        product: product || null,
+        workerCount: workerCount != null ? parseInt(workerCount) : null,
+        processSteps: processSteps || [],
+        checklist: checklist || {},
+      };
+      const result = existing
+        ? await prisma.rASafetyInfo.update({ where: { assessmentId: req.params.id }, data })
+        : await prisma.rASafetyInfo.create({ data: { assessmentId: req.params.id, ...data } });
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to save safety-info:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  // 리스트 섹션 bulk replace (worker-opinions, evaluations, improvements)
+  const bulkReplaceSection = async (model: any, assessmentId: string, items: any[], mapper: (it: any, i: number) => any) => {
+    await model.deleteMany({ where: { assessmentId } });
+    if (items && items.length > 0) {
+      await model.createMany({
+        data: items.map((it, i) => ({ assessmentId, sortOrder: i, ...mapper(it, i) })),
+      });
+    }
+  };
+
+  app.put("/api/risk-assessments/:id/worker-opinions", requireAuth, async (req, res) => {
+    try {
+      const { items } = req.body;
+      await bulkReplaceSection(prisma.rAWorkerOpinion, req.params.id, items || [], (it) => ({
+        workContent: it.workContent || null,
+        hazardFactor: it.hazardFactor || null,
+        currentAction: it.currentAction || null,
+        riskLevel: it.riskLevel || null,
+        improvement: it.improvement || null,
+        participantsSig: it.participantsSig || [],
+        remarks: it.remarks || null,
+      }));
+      const list = await prisma.rAWorkerOpinion.findMany({ where: { assessmentId: req.params.id }, orderBy: { sortOrder: 'asc' } });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to save worker-opinions:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id/evaluations", requireAuth, async (req, res) => {
+    try {
+      const { items } = req.body;
+      await bulkReplaceSection(prisma.rAEvaluation, req.params.id, items || [], (it) => ({
+        workContent: it.workContent || null,
+        hazardFactor: it.hazardFactor || null,
+        currentAction: it.currentAction || null,
+        riskLevel: it.riskLevel || null,
+        improvement: it.improvement || null,
+        responsibleTeamId: it.responsibleTeamId ? parseInt(it.responsibleTeamId) : null,
+        responsibleName: it.responsibleName || null,
+        scheduledDate: it.scheduledDate ? new Date(it.scheduledDate) : null,
+        completedDate: it.completedDate ? new Date(it.completedDate) : null,
+        remarks: it.remarks || null,
+      }));
+      const list = await prisma.rAEvaluation.findMany({
+        where: { assessmentId: req.params.id }, orderBy: { sortOrder: 'asc' },
+        include: { responsibleTeam: { select: { id: true, name: true } } },
+      });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to save evaluations:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id/improvements", requireAuth, async (req, res) => {
+    try {
+      const { items } = req.body;
+      await bulkReplaceSection(prisma.rAImprovement, req.params.id, items || [], (it) => ({
+        processName: it.processName || null,
+        hazardFactor: it.hazardFactor || null,
+        reductionPlan: it.reductionPlan || null,
+        responsibleTeamId: it.responsibleTeamId ? parseInt(it.responsibleTeamId) : null,
+        responsibleName: it.responsibleName || null,
+        actionResult: it.actionResult || null,
+        improvedDate: it.improvedDate ? new Date(it.improvedDate) : null,
+        beforePhotos: it.beforePhotos || [],
+        afterPhotos: it.afterPhotos || [],
+        remarks: it.remarks || null,
+      }));
+      const list = await prisma.rAImprovement.findMany({
+        where: { assessmentId: req.params.id }, orderBy: { sortOrder: 'asc' },
+        include: { responsibleTeam: { select: { id: true, name: true } } },
+      });
+      res.json(list);
+    } catch (error) {
+      console.error('Failed to save improvements:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  // 제출(submit) — 전체 스냅샷 저장 + status 변경
+  app.post("/api/risk-assessments/:id/submit", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const { authorSignature } = req.body;
+      const ra = await prisma.riskAssessment.findUnique({
+        where: { id: req.params.id },
+        include: {
+          preEducation: true, workerOpinions: true, safetyInfo: true,
+          evaluations: true, improvements: true, feedbackEducation: true,
+        },
+      });
+      if (!ra) return res.status(404).json({ message: '평가를 찾을 수 없습니다' });
+
+      const lastVersion = await prisma.rAVersion.findFirst({
+        where: { assessmentId: ra.id }, orderBy: { version: 'desc' },
+      });
+      const nextVer = (lastVersion?.version ?? 0) + 1;
+      const snapshot = JSON.parse(JSON.stringify(ra));
+      await prisma.rAVersion.create({
+        data: { assessmentId: ra.id, version: nextVer, submittedById: user.id, snapshot },
+      });
+
+      const updated = await prisma.riskAssessment.update({
+        where: { id: ra.id },
+        data: {
+          status: 'SUBMITTED', submittedAt: new Date(),
+          authorSignature: authorSignature || ra.authorSignature,
+        },
+      });
+      res.json({ assessment: updated, version: nextVer });
+    } catch (error) {
+      console.error('Failed to submit:', error);
+      res.status(500).json({ message: '제출 실패' });
+    }
+  });
+
+  // 결재 승인
+  app.post("/api/risk-assessments/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const { signature } = req.body;
+      const ra = await prisma.riskAssessment.findUnique({
+        where: { id: req.params.id },
+        include: { team: { select: { approverId: true } } },
+      });
+      if (!ra) return res.status(404).json({ message: '평가를 찾을 수 없습니다' });
+      if (ra.status !== 'SUBMITTED') return res.status(400).json({ message: '제출(SUBMITTED) 상태가 아닙니다' });
+      if (user.role !== 'ADMIN' && ra.team.approverId !== user.id) {
+        return res.status(403).json({ message: '결재 권한이 없습니다 (팀 결재자만 가능)' });
+      }
+      const updated = await prisma.riskAssessment.update({
+        where: { id: ra.id },
+        data: { status: 'APPROVED', approvedAt: new Date(), approverId: user.id, approverSignature: signature || null },
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to approve:', error);
+      res.status(500).json({ message: '승인 실패' });
+    }
+  });
+
+  // Excel 다운로드 — 받은 양식 그대로 복원 (12시트)
+  app.get("/api/risk-assessments/:id/excel", requireAuth, async (req, res) => {
+    try {
+      const ExcelJS = await import('exceljs');
+      const ra = await prisma.riskAssessment.findUnique({
+        where: { id: req.params.id },
+        include: {
+          team: { include: { department: true, approver: true } },
+          process: true,
+          author: true,
+          approver: true,
+          preEducation: true,
+          workerOpinions: { orderBy: { sortOrder: 'asc' } },
+          safetyInfo: true,
+          evaluations: { orderBy: { sortOrder: 'asc' }, include: { responsibleTeam: true } },
+          improvements: { orderBy: { sortOrder: 'asc' }, include: { responsibleTeam: true } },
+          feedbackEducation: true,
+        },
+      });
+      if (!ra) return res.status(404).json({ message: '평가를 찾을 수 없습니다' });
+
+      const wb = new (ExcelJS as any).Workbook();
+      const siteBranch = ra.site;
+      const deptName = ra.team?.department?.name || '-';
+      const teamName = ra.team?.name || '-';
+      const procName = ra.processName;
+
+      // 메인
+      const mainWs = wb.addWorksheet('위험성평가 메인화면');
+      mainWs.getCell('B2').value = '0. 메인화면';
+      mainWs.getCell('B4').value = siteBranch;
+      mainWs.getCell('C4').value = '← 사업장';
+      mainWs.getCell('F4').value = teamName;
+      mainWs.getCell('G4').value = '← 부서';
+      mainWs.getCell('J4').value = procName;
+      mainWs.getCell('K4').value = '← 공정';
+
+      // 1. 사전교육
+      const preAtt = (ra.preEducation?.attendees as any[]) || [];
+      const preWs = wb.addWorksheet('1. 사전교육');
+      preWs.getCell('B2').value = '1. 사전교육';
+      preWs.getCell('D2').value = '공정별 인원 리스트 및 서명란';
+      preWs.getCell('B4').value = `${new Date().getFullYear()} 위험성평가 사전교육`;
+      preWs.getRow(5).values = [null, 'No.', '부서', '성명', '서명', 'No.', '부서', '성명', '서명'];
+      preAtt.forEach((a, i) => {
+        const r = 6 + (i % 15);
+        const col = i < 15 ? 2 : 6;
+        preWs.getCell(r, col).value = i + 1;
+        preWs.getCell(r, col + 1).value = a.department || '';
+        preWs.getCell(r, col + 2).value = a.name || '';
+        preWs.getCell(r, col + 3).value = a.isAbsent ? '[미참석]' : (a.signature || '');
+      });
+
+      // 2. 의견·토론
+      const op = ra.workerOpinions;
+      const opWs = wb.addWorksheet('2. 근로자 의견.토론');
+      opWs.getCell('B2').value = '2. 근로자 의견 토론';
+      opWs.getCell('B3').value = `위험성평가 (근로자 의견.토론) — ${teamName} / ${procName}`;
+      opWs.getRow(9).values = [null, '연번', '작업내용 및 기계기구명', null, '유해위험요인', '(현재) 안전조치', '위험성 수준', '(추가) 개선대책', '참여자 서명', '비고'];
+      op.forEach((o, i) => {
+        const r = 10 + i;
+        opWs.getCell(r, 2).value = i + 1;
+        opWs.getCell(r, 3).value = o.workContent || '';
+        opWs.getCell(r, 5).value = o.hazardFactor || '';
+        opWs.getCell(r, 6).value = o.currentAction || '';
+        opWs.getCell(r, 7).value = o.riskLevel || '';
+        opWs.getCell(r, 8).value = o.improvement || '';
+        opWs.getCell(r, 9).value = ((o.participantsSig as any[]) || []).map((p: any) => `${p.name}${p.signature ? '(서명)' : ''}`).join(', ');
+        opWs.getCell(r, 10).value = o.remarks || '';
+      });
+
+      // 3. 안전보건정보
+      const si = ra.safetyInfo as any;
+      const siWs = wb.addWorksheet('3. 안전보건정보');
+      siWs.getCell('B2').value = '3. 안전보건정보';
+      siWs.getCell('B4').value = '작업공정';
+      siWs.getCell('C4').value = procName;
+      siWs.getCell('E4').value = `안전보건정보 (소속부서: ${teamName})`;
+      siWs.getCell('J4').value = '생산품';
+      siWs.getCell('K4').value = si?.product || '';
+      siWs.getCell('B5').value = '원재료';
+      siWs.getCell('C5').value = si?.rawMaterial || '';
+      siWs.getCell('J5').value = '근로자수';
+      siWs.getCell('K5').value = si?.workerCount ? `${si.workerCount}명` : '';
+      siWs.getRow(7).values = [null, '공정순서', '공정설명', '기계·기구', '수량', '화학물질명', '취급량', '취급시간', '유해위험정보', '', ''];
+      const steps = Array.isArray(si?.processSteps) ? si.processSteps : [];
+      let r = 8;
+      for (const s of steps) {
+        const equipment = (s.equipment || []);
+        const chemicals = (s.chemicals || []);
+        const maxLen = Math.max(1, equipment.length, chemicals.length);
+        for (let k = 0; k < maxLen; k++) {
+          if (k === 0) {
+            siWs.getCell(r, 2).value = s.order || '';
+            siWs.getCell(r, 3).value = s.description || '';
+          }
+          const eq = equipment[k];
+          if (eq) { siWs.getCell(r, 4).value = eq.name || ''; siWs.getCell(r, 5).value = eq.qty || ''; }
+          const ch = chemicals[k];
+          if (ch) { siWs.getCell(r, 6).value = ch.name || ''; siWs.getCell(r, 7).value = ch.dailyAmount || ''; siWs.getCell(r, 8).value = ch.duration || ''; }
+          r++;
+        }
+      }
+      // 체크리스트 요약
+      const cl = (si?.checklist && typeof si.checklist === 'object') ? si.checklist : {};
+      let clRow = r + 2;
+      siWs.getCell(clRow, 2).value = '그 밖의 유해위험정보';
+      clRow++;
+      for (const [k, v] of Object.entries(cl)) {
+        siWs.getCell(clRow, 2).value = `○ ${k}`;
+        siWs.getCell(clRow, 9).value = v as string;
+        clRow++;
+      }
+
+      // 4. 위험성평가
+      const ev = ra.evaluations;
+      const evWs = wb.addWorksheet('4. 위험성평가');
+      evWs.getCell('B2').value = '4. 위험성평가';
+      evWs.getCell('B4').value = `위험성평가표 작성(3단계 평가법) — ${teamName} / ${procName}`;
+      evWs.getCell('K1').value = '작성';
+      evWs.getCell('L1').value = '검토';
+      evWs.getCell('M1').value = '승인';
+      evWs.getCell('K2').value = ra.author?.name || '';
+      evWs.getCell('M2').value = ra.approver?.name || ra.team?.approver?.name || '';
+      evWs.getRow(6).values = [null, '공정', '유해위험요인', '현재 안전조치', '위험성 수준', '개선대책', '담당부서', '담당자', '예정일', '완료일', '비고'];
+      ev.forEach((e, i) => {
+        const rr = 7 + i;
+        evWs.getCell(rr, 2).value = e.workContent || '';
+        evWs.getCell(rr, 3).value = e.hazardFactor || '';
+        evWs.getCell(rr, 4).value = e.currentAction || '';
+        evWs.getCell(rr, 5).value = e.riskLevel || '';
+        evWs.getCell(rr, 6).value = e.improvement || '';
+        evWs.getCell(rr, 7).value = (e as any).responsibleTeam?.name || '';
+        evWs.getCell(rr, 8).value = e.responsibleName || '';
+        evWs.getCell(rr, 9).value = e.scheduledDate ? new Date(e.scheduledDate).toLocaleDateString('ko-KR') : '';
+        evWs.getCell(rr, 10).value = e.completedDate ? new Date(e.completedDate).toLocaleDateString('ko-KR') : '';
+        evWs.getCell(rr, 11).value = e.remarks || '';
+      });
+
+      // 5. 개선실행
+      const im = ra.improvements;
+      const imWs = wb.addWorksheet('5. 개선실행');
+      imWs.getCell('B2').value = '5. 개선실행';
+      imWs.getRow(5).values = [null, '단위공정', '유해위험요인', '감소대책', '담당부서', '담당자', '조치결과', '개선일자', '비고'];
+      im.forEach((m, i) => {
+        const rr = 6 + i;
+        imWs.getCell(rr, 2).value = m.processName || '';
+        imWs.getCell(rr, 3).value = m.hazardFactor || '';
+        imWs.getCell(rr, 4).value = m.reductionPlan || '';
+        imWs.getCell(rr, 5).value = (m as any).responsibleTeam?.name || '';
+        imWs.getCell(rr, 6).value = m.responsibleName || '';
+        imWs.getCell(rr, 7).value = m.actionResult || '';
+        imWs.getCell(rr, 8).value = m.improvedDate ? new Date(m.improvedDate).toLocaleDateString('ko-KR') : '';
+        imWs.getCell(rr, 9).value = m.remarks || '';
+      });
+
+      // 6. 피드백교육
+      const fbAtt = (ra.feedbackEducation?.attendees as any[]) || [];
+      const fbWs = wb.addWorksheet('6. 피드백 교육');
+      fbWs.getCell('B2').value = '6. 피드백교육';
+      fbWs.getRow(5).values = [null, 'No.', '부서', '성명', '서명', 'No.', '부서', '성명', '서명'];
+      fbAtt.forEach((a, i) => {
+        const r2 = 6 + (i % 15);
+        const col = i < 15 ? 2 : 6;
+        fbWs.getCell(r2, col).value = i + 1;
+        fbWs.getCell(r2, col + 1).value = a.department || '';
+        fbWs.getCell(r2, col + 2).value = a.name || '';
+        fbWs.getCell(r2, col + 3).value = a.isAbsent ? '[미참석]' : (a.signature || '');
+      });
+
+      // 개선실행 조치결과(사진) — 이미지는 URL 텍스트로 표기
+      const picWs = wb.addWorksheet('개선실행 조치결과(사진)');
+      picWs.getRow(2).values = [null, '단위공정', '개선 前 (유해위험요인/사진URL)', null, null, null, null, '개선 後 (개선내용/사진URL)', null, null, null, null, null, '비고'];
+      let pr = 4;
+      im.forEach((m, i) => {
+        picWs.getCell(pr, 2).value = m.processName || '';
+        picWs.getCell(pr, 3).value = `(유해위험요인) ${m.hazardFactor || ''}`;
+        const bps = (m.beforePhotos as string[]) || [];
+        picWs.getCell(pr + 1, 3).value = bps.join('\n');
+        picWs.getCell(pr, 8).value = `(개선내용) ${m.reductionPlan || ''}`;
+        const aps = (m.afterPhotos as string[]) || [];
+        picWs.getCell(pr + 1, 8).value = aps.join('\n');
+        picWs.getCell(pr, 14).value = m.remarks || '';
+        pr += 3;
+      });
+
+      // Column widths
+      [mainWs, preWs, opWs, siWs, evWs, imWs, fbWs, picWs].forEach(ws => {
+        for (let c = 1; c <= 15; c++) {
+          const col = ws.getColumn(c);
+          if (!col.width) col.width = 18;
+        }
+      });
+
+      const fname = `위험성평가_${siteBranch}_${teamName}_${procName}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fname)}`);
+      await wb.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error('Excel export failed:', error);
+      res.status(500).json({ message: '엑셀 생성 실패' });
+    }
+  });
+
+  app.post("/api/risk-assessments/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const { reason } = req.body;
+      const ra = await prisma.riskAssessment.findUnique({ where: { id: req.params.id }, include: { team: { select: { approverId: true } } } });
+      if (!ra) return res.status(404).json({ message: '평가를 찾을 수 없습니다' });
+      if (ra.status !== 'SUBMITTED') return res.status(400).json({ message: '제출 상태가 아닙니다' });
+      if (user.role !== 'ADMIN' && ra.team.approverId !== user.id) return res.status(403).json({ message: '권한 없음' });
+      const updated = await prisma.riskAssessment.update({
+        where: { id: ra.id },
+        data: { status: 'REJECTED', rejectionReason: reason || '반려', approverId: user.id, approvedAt: new Date() },
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to reject:', error);
+      res.status(500).json({ message: '반려 실패' });
+    }
+  });
+
+  // 수동 리마인더 — 선택 팀 or 전체부서 미회신 건 담당자에게 알림
+  app.post("/api/potential-risks/remind", requireAuth, async (req, res) => {
+    try {
+      const user = req.session.user!;
+      if (!canCreatePotentialRisk(user.role)) return res.status(403).json({ message: '권한 없음' });
+      const { teamIds, site } = req.body; // teamIds=null → 전체부서
+      const where: any = { status: { in: ['PENDING', 'IN_PROGRESS'] } };
+      if (site) where.site = site;
+      if (teamIds && Array.isArray(teamIds) && teamIds.length > 0) where.assignedTeamId = { in: teamIds.map((n: any) => parseInt(n)) };
+      const pendings = await prisma.potentialRisk.findMany({
+        where,
+        include: { assignedTeam: { include: { leader: true } } },
+      });
+      let sent = 0, skipped = 0;
+      const { sendEmailByType } = await import('./simpleEmailService');
+      for (const r of pendings) {
+        if (!r.assignedTeam?.leader?.email) { skipped++; continue; }
+        try {
+          await sendEmailByType('POTENTIAL_RISK_REMINDER' as any, r.assignedTeam.leader.email, r.assignedTeam.leader.id, {
+            TEAM_NAME: r.assignedTeam.name,
+            LOCATION: r.location,
+            RISK: r.riskDescription,
+            DATE: new Date(r.discoveredAt).toLocaleDateString('ko-KR'),
+            STATUS: r.status === 'PENDING' ? '미회신' : '진행중',
+          });
+          sent++;
+        } catch { skipped++; }
+      }
+      res.json({ message: `${sent}건 발송, ${skipped}건 스킵`, sent, skipped, total: pendings.length });
+    } catch (error) {
+      console.error('Failed to remind:', error);
+      res.status(500).json({ message: '리마인더 발송 실패' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

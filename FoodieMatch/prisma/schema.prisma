@@ -8,40 +8,47 @@ datasource db {
 }
 
 model User {
-  id                     String            @id @default(uuid())
-  username               String            @unique
-  name                   String?
-  email                  String?           @unique
-  password               String?
-  role                   String            @default("PENDING")
-  status                 String            @default("ACTIVE")  // ACTIVE | SUSPENDED — 가입 승인은 role='PENDING'으로 별도 표현
-  site                   String?
-  sites                  String?           // 다중 사이트 접근 ("화성,아산")
-  teamId                 Int?
-  createdAt              DateTime          @default(now())
-  team                   Team?             @relation("TeamMembers", fields: [teamId], references: [id])
-  ledTeams               Team[]            @relation("TeamLeader")
-  approverTeams          Team[]            @relation("TeamApprover")      // 신규: 내가 결재자인 팀들
-  teamMemberProfile      TeamMember?       @relation("TeamMemberUser")    // 신규: TeamMember 프로필 연결
-  notices                Notice[]
-  createdApprovals       MonthlyApproval[] @relation("Approver")
-  signatures             ReportSignature[]
-  comments               Comment[]
-  reportDetails          ReportDetail[]
-  requestedApprovals     ApprovalRequest[] @relation("ApprovalRequester") // 신규: 내가 요청한 결재
-  approvalsToApprove     ApprovalRequest[] @relation("ApprovalApprover")  // 신규: 내가 승인할 결재
-  userProgress           UserProgress[]    // 사용자의 교육 진행 상황
-  userAssessments        UserAssessment[]  // 사용자의 평가 기록
-  certificates           Certificate[]     // 사용자의 수료증
-  noticeReads            NoticeRead[]      // 사용자가 읽은 공지사항
-  failedLoginAttempts    Int               @default(0)   // 로그인 실패 횟수
-  lockedUntil            DateTime?                       // 계정 잠금 해제 시간
-  passwordResetTokens    PasswordResetToken[]            // 비밀번호 재설정 토큰
-  auditLogs              AuditLog[]        @relation("AuditLogUser") // 감사 로그
-  educationApprovalRequests   EducationApproval[] @relation("EducationApprovalRequester")
-  educationApprovalsToApprove EducationApproval[] @relation("EducationApprovalApprover")
-  documents              Document[]        @relation("DocumentAuthor")
-  documentFolders        DocumentFolder[]  @relation("DocumentFolderAuthor")
+  id                          String               @id @default(uuid())
+  username                    String               @unique
+  name                        String?
+  email                       String?              @unique
+  password                    String?
+  role                        String               @default("PENDING")
+  status                      String               @default("ACTIVE") // ACTIVE | SUSPENDED — 가입 승인은 role='PENDING'으로 별도 표현
+  site                        String?
+  sites                       String? // 다중 사이트 접근 ("화성,아산")
+  teamId                      Int?
+  createdAt                   DateTime             @default(now())
+  team                        Team?                @relation("TeamMembers", fields: [teamId], references: [id])
+  ledTeams                    Team[]               @relation("TeamLeader")
+  approverTeams               Team[]               @relation("TeamApprover") // 신규: 내가 결재자인 팀들
+  teamMemberProfile           TeamMember?          @relation("TeamMemberUser") // 신규: TeamMember 프로필 연결
+  notices                     Notice[]
+  createdApprovals            MonthlyApproval[]    @relation("Approver")
+  signatures                  ReportSignature[]
+  comments                    Comment[]
+  reportDetails               ReportDetail[]
+  requestedApprovals          ApprovalRequest[]    @relation("ApprovalRequester") // 신규: 내가 요청한 결재
+  approvalsToApprove          ApprovalRequest[]    @relation("ApprovalApprover") // 신규: 내가 승인할 결재
+  userProgress                UserProgress[] // 사용자의 교육 진행 상황
+  userAssessments             UserAssessment[] // 사용자의 평가 기록
+  certificates                Certificate[] // 사용자의 수료증
+  noticeReads                 NoticeRead[] // 사용자가 읽은 공지사항
+  failedLoginAttempts         Int                  @default(0) // 로그인 실패 횟수
+  lockedUntil                 DateTime? // 계정 잠금 해제 시간
+  passwordResetTokens         PasswordResetToken[] // 비밀번호 재설정 토큰
+  auditLogs                   AuditLog[]           @relation("AuditLogUser") // 감사 로그
+  educationApprovalRequests   EducationApproval[]  @relation("EducationApprovalRequester")
+  educationApprovalsToApprove EducationApproval[]  @relation("EducationApprovalApprover")
+  documents                   Document[]           @relation("DocumentAuthor")
+  documentFolders             DocumentFolder[]     @relation("DocumentFolderAuthor")
+  // 신규: 잠재위험 발굴 & 위험성평가
+  potentialRisksCreated       PotentialRisk[]      @relation("PotentialRiskCreator")
+  potentialRisksReplied       PotentialRisk[]      @relation("PotentialRiskReplier")
+  workProcessesCreated        WorkProcess[]        @relation("WorkProcessCreator")
+  riskAssessmentsAuthored     RiskAssessment[]     @relation("RiskAssessmentAuthor")
+  riskAssessmentsApproved     RiskAssessment[]     @relation("RiskAssessmentApprover")
+  raVersionsSubmitted         RAVersion[]          @relation("RAVersionSubmitter")
 
   @@index([teamId])
   @@index([role])
@@ -78,8 +85,8 @@ model Notice {
   imageUrl       String?
   attachmentUrl  String?
   attachmentName String?
-  videoUrl       String?      // 신규: 동영상 URL (mp4 파일 또는 유튜브)
-  videoType      String?      // 신규: 'file' | 'youtube'
+  videoUrl       String? // 신규: 동영상 URL (mp4 파일 또는 유튜브)
+  videoType      String? // 신규: 'file' | 'youtube'
   author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments       Comment[]
   attachments    Attachment[]
@@ -130,8 +137,8 @@ model Course {
   type            String
   duration        Int
   videoUrl        String?
-  videoType       String?          // 신규: 'youtube' | 'file' | 'audio'
-  audioUrl        String?          // 신규: 음성 파일 URL
+  videoType       String? // 신규: 'youtube' | 'file' | 'audio'
+  audioUrl        String? // 신규: 음성 파일 URL
   documentUrl     String?
   color           String           @default("blue")
   icon            String
@@ -142,7 +149,7 @@ model Course {
   certificates    Certificate[]
   userAssessments UserAssessment[]
   userProgress    UserProgress[]
-  attachments     Attachment[]     // 여러 미디어 파일 지원
+  attachments     Attachment[] // 여러 미디어 파일 지원
 }
 
 model UserProgress {
@@ -194,24 +201,24 @@ model Certificate {
   id                String   @id @default(uuid())
   userId            String
   courseId          String
-  certificateNumber String   @unique  // 수료증 번호: CERT-YYYYMMDD-courseId-index
+  certificateNumber String   @unique // 수료증 번호: CERT-YYYYMMDD-courseId-index
   certificateUrl    String
-  score             Int?              // 평가 점수
+  score             Int? // 평가 점수
   issuedAt          DateTime @default(now())
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])  // 사용자당 과정별 수료증 1개만
+  @@unique([userId, courseId]) // 사용자당 과정별 수료증 1개만
   @@index([userId])
   @@index([courseId])
 }
 
 // 공장 (아산공장, 화성공장)
 model Factory {
-  id                    Int                             @id @default(autoincrement())
-  name                  String                          // "아산공장", "화성공장"
-  code                  String                          @unique // "ASAN", "HWASEONG"
-  createdAt             DateTime                        @default(now())
+  id                    Int                          @id @default(autoincrement())
+  name                  String // "아산공장", "화성공장"
+  code                  String                       @unique // "ASAN", "HWASEONG"
+  createdAt             DateTime                     @default(now())
   teams                 Team[]
   scheduleTemplates     InspectionScheduleTemplate[]
   monthlyInspectionDays MonthlyInspectionDay[]
@@ -221,28 +228,34 @@ model Factory {
 }
 
 model Team {
-  id                  Int                   @id @default(autoincrement())
-  name                String
-  site                String?
-  factoryId           Int?                  // 신규: 공장 ID
-  departmentId        Int?                  // 신규: 부서 ID (큰 분류)
-  isActive            Boolean               @default(true) // 신규: soft delete용
-  createdAt           DateTime              @default(now()) // 신규: 팀 생성일. 이 이전 월 보고서에서는 목록에서 제외.
-  leaderId            String?
-  approverId          String?               // 신규: 월별보고서 결재자
-  displayOrder        Int?                  // 팀 표시 순서
-  factory             Factory?              @relation(fields: [factoryId], references: [id], onDelete: SetNull)
-  department          Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  leader              User?                 @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  approver            User?                 @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  members             User[]                @relation("TeamMembers")
-  teamMembers         TeamMember[]          // 신규: User 계정 없는 팀원들
-  checklistTemplates  ChecklistTemplate[]
-  dailyReports        DailyReport[]
-  monthlyApprovals    MonthlyApproval[]
-  inspectionTemplates InspectionTemplate[]  // 신규: 안전점검 템플릿
-  safetyInspections   SafetyInspection[]    // 신규: 안전점검 기록
-  teamEquipments      TeamEquipment[]       // 신규: 라인별 보유 장비
+  id                     Int                  @id @default(autoincrement())
+  name                   String
+  site                   String?
+  factoryId              Int? // 신규: 공장 ID
+  departmentId           Int? // 신규: 부서 ID (큰 분류)
+  isActive               Boolean              @default(true) // 신규: soft delete용
+  createdAt              DateTime             @default(now()) // 신규: 팀 생성일. 이 이전 월 보고서에서는 목록에서 제외.
+  leaderId               String?
+  approverId             String? // 신규: 월별보고서 결재자
+  displayOrder           Int? // 팀 표시 순서
+  factory                Factory?             @relation(fields: [factoryId], references: [id], onDelete: SetNull)
+  department             Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  leader                 User?                @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  approver               User?                @relation("TeamApprover", fields: [approverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  members                User[]               @relation("TeamMembers")
+  teamMembers            TeamMember[] // 신규: User 계정 없는 팀원들
+  checklistTemplates     ChecklistTemplate[]
+  dailyReports           DailyReport[]
+  monthlyApprovals       MonthlyApproval[]
+  inspectionTemplates    InspectionTemplate[] // 신규: 안전점검 템플릿
+  safetyInspections      SafetyInspection[] // 신규: 안전점검 기록
+  teamEquipments         TeamEquipment[] // 신규: 라인별 보유 장비
+  // 신규: 잠재위험·위험성평가 역관계
+  potentialRisks         PotentialRisk[]      @relation("PotentialRiskTeam")
+  workProcesses          WorkProcess[]        @relation("WorkProcessTeam")
+  riskAssessments        RiskAssessment[]     @relation("RiskAssessmentTeam")
+  raEvaluationsAssigned  RAEvaluation[]       @relation("RAEvaluationTeam")
+  raImprovementsAssigned RAImprovement[]      @relation("RAImprovementTeam")
 
   @@index([factoryId])
   @@index([departmentId])
@@ -255,7 +268,7 @@ model Team {
 model Department {
   id           Int      @id @default(autoincrement())
   name         String
-  site         String   // "아산" | "화성" | 기타
+  site         String // "아산" | "화성" | 기타
   displayOrder Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -272,16 +285,16 @@ model Department {
 /// TeamMember: User 계정 없이 팀장이 추가한 팀원 (로그인 불가, 명단만)
 /// userId가 있으면 User와 연결되어 교육 진행률 추적이 가능합니다.
 model TeamMember {
-  id               Int               @id @default(autoincrement())
+  id               Int                 @id @default(autoincrement())
   teamId           Int
-  userId           String?           @unique // User 계정 연결 (선택적) - 교육 진행률 추적용
-  name             String            // 팀원 이름
-  position         String?           // 직책
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user             User?             @relation("TeamMemberUser", fields: [userId], references: [id], onDelete: SetNull)
+  userId           String?             @unique // User 계정 연결 (선택적) - 교육 진행률 추적용
+  name             String // 팀원 이름
+  position         String? // 직책
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  team             Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user             User?               @relation("TeamMemberUser", fields: [userId], references: [id], onDelete: SetNull)
   reportSignatures ReportSignature[]
   absenceRecords   AbsenceRecord[]
   history          TeamMemberHistory[]
@@ -296,12 +309,12 @@ model TeamMember {
 /// 월별 보고서·안전교육 현황·종합 보고서에서 "그 날짜에 활성이었던 팀원만" 표시하기 위해 사용.
 /// 여러 번 재활성화되는 케이스(잠시 나갔다 돌아옴 등)도 지원.
 model TeamMemberHistory {
-  id        Int         @id @default(autoincrement())
-  memberId  Int
-  action    String      // 'ADD' | 'REMOVE'
-  at        DateTime    @default(now())
-  actorId   String?     // 이 작업을 수행한 사용자 (audit용, User 삭제되어도 이력은 유지)
-  member    TeamMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id       Int        @id @default(autoincrement())
+  memberId Int
+  action   String // 'ADD' | 'REMOVE'
+  at       DateTime   @default(now())
+  actorId  String? // 이 작업을 수행한 사용자 (audit용, User 삭제되어도 이력은 유지)
+  member   TeamMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
   @@index([memberId, at])
@@ -313,8 +326,8 @@ model TeamMemberHistory {
 model TeamEquipment {
   id            Int      @id @default(autoincrement())
   teamId        Int
-  equipmentName String   // "지게차", "크레인", "전단기" 등
-  quantity      Int      // 보유 개수
+  equipmentName String // "지게차", "크레인", "전단기" 등
+  quantity      Int // 보유 개수
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -329,8 +342,8 @@ model AbsenceRecord {
   id          Int         @id @default(autoincrement())
   memberId    Int
   reportId    Int
-  absenceType String      // '연차', '반차', '출장', '교육', '기타'
-  reason      String?     // 기타 사유
+  absenceType String // '연차', '반차', '출장', '교육', '기타'
+  reason      String? // 기타 사유
   createdAt   DateTime    @default(now())
   member      TeamMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
   report      DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
@@ -355,13 +368,13 @@ model ChecklistTemplate {
 }
 
 model TemplateItem {
-  id           Int               @id @default(autoincrement())
-  templateId   Int
-  category     String
-  subCategory  String?
-  description  String
-  displayOrder Int               @default(0)
-  template     ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  id            Int               @id @default(autoincrement())
+  templateId    Int
+  category      String
+  subCategory   String?
+  description   String
+  displayOrder  Int               @default(0)
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   reportDetails ReportDetail[]
 
   @@index([templateId])
@@ -381,11 +394,11 @@ model DailyReport {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   site             String?
-  shift            String?           // 'day' | 'night' (열처리팀 교대근무용)
+  shift            String? // 'day' | 'night' (열처리팀 교대근무용)
   team             Team              @relation(fields: [teamId], references: [id], onDelete: NoAction)
   reportDetails    ReportDetail[]
   reportSignatures ReportSignature[]
-  absenceRecords   AbsenceRecord[]   // 신규: 부재 사유 기록
+  absenceRecords   AbsenceRecord[] // 신규: 부재 사유 기록
 
   @@index([teamId])
   @@index([reportDate])
@@ -396,17 +409,17 @@ model DailyReport {
 }
 
 model ReportDetail {
-  id                Int           @id @default(autoincrement())
+  id                Int          @id @default(autoincrement())
   reportId          Int
   itemId            Int
   checkState        String?
   authorId          String?
-  actionDescription String?       // 위험예측 사항
-  actionTaken       String?       // 조치사항
-  actionStatus      String?       @default("PENDING")
-  item              TemplateItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  report            DailyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  author            User?         @relation(fields: [authorId], references: [id])
+  actionDescription String? // 위험예측 사항
+  actionTaken       String? // 조치사항
+  actionStatus      String?      @default("PENDING")
+  item              TemplateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  report            DailyReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author            User?        @relation(fields: [authorId], references: [id])
   attachments       Attachment[]
 
   @@index([reportId])
@@ -419,8 +432,8 @@ model ReportDetail {
 model ReportSignature {
   id             Int         @id @default(autoincrement())
   reportId       Int
-  userId         String?     // User 계정이 있는 경우 (관리자용)
-  memberId       Int?        // TeamMember (일반 팀원용) - userId와 memberId 중 하나만 사용
+  userId         String? // User 계정이 있는 경우 (관리자용)
+  memberId       Int? // TeamMember (일반 팀원용) - userId와 memberId 중 하나만 사용
   signedAt       DateTime    @default(now())
   signatureImage String?
   report         DailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
@@ -457,14 +470,14 @@ model MonthlyApproval {
 model ApprovalRequest {
   id                 String          @id @default(uuid())
   reportId           String          @unique
-  requesterId        String          // 요청자 (팀관리자)
-  approverId         String          // 승인자 (임원)
+  requesterId        String // 요청자 (팀관리자)
+  approverId         String // 승인자 (임원)
   status             String          @default("PENDING") // PENDING, APPROVED, REJECTED
   requestedAt        DateTime        @default(now())
   approvedAt         DateTime?
-  rejectionReason    String?         // 반려 사유
-  executiveSignature String?         // 임원 서명 이미지 (base64)
-  requesterSignature String?         // 요청자(팀장) 서명 이미지 (base64)
+  rejectionReason    String? // 반려 사유
+  executiveSignature String? // 임원 서명 이미지 (base64)
+  requesterSignature String? // 요청자(팀장) 서명 이미지 (base64)
   monthlyReport      MonthlyApproval @relation(fields: [reportId], references: [id], onDelete: Cascade)
   requester          User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
   approver           User            @relation("ApprovalApprover", fields: [approverId], references: [id])
@@ -508,14 +521,14 @@ model Attachment {
 /// TBM 일지(DailyReport)와는 다르게, 월 1회 실시하는 정기 안전점검용입니다.
 /// 실제 점검 기록은 SafetyInspection 모델에 저장됩니다.
 model InspectionTemplate {
-  id           Int     @id @default(autoincrement())
-  teamId       Int
-  month        Int     @default(1)  // 1-12 (월별 구분)
-  equipmentName String  // 점검할 기기명 (예: 지게차, 크레인 등)
-  displayOrder Int     @default(0)
-  isRequired   Boolean @default(true)
-  createdAt    DateTime @default(now())
-  team         Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id            Int      @id @default(autoincrement())
+  teamId        Int
+  month         Int      @default(1) // 1-12 (월별 구분)
+  equipmentName String // 점검할 기기명 (예: 지게차, 크레인 등)
+  displayOrder  Int      @default(0)
+  isRequired    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, month, equipmentName])
   @@index([teamId, month])
@@ -526,9 +539,9 @@ model InspectionTemplate {
 // 신규: 월별 점검 일정 마스터 (공장별 월별 점검 항목)
 model InspectionScheduleTemplate {
   id            Int      @id @default(autoincrement())
-  factoryId     Int      // 아산공장 or 화성공장
-  month         Int      // 1-12
-  equipmentName String   // "지게차 점검", "크레인 점검" 등
+  factoryId     Int // 아산공장 or 화성공장
+  month         Int // 1-12
+  equipmentName String // "지게차 점검", "크레인 점검" 등
   displayOrder  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -544,8 +557,8 @@ model InspectionScheduleTemplate {
 model MonthlyInspectionDay {
   id            Int      @id @default(autoincrement())
   factoryId     Int
-  month         Int      // 1-12
-  inspectionDay Int      // 점검일 (1-31)
+  month         Int // 1-12
+  inspectionDay Int // 점검일 (1-31)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   factory       Factory  @relation(fields: [factoryId], references: [id], onDelete: Cascade)
@@ -562,7 +575,7 @@ model SafetyInspection {
   teamId          Int
   year            Int
   month           Int
-  inspectionDate  DateTime         // 실제 점검 날짜 (매월 4일)
+  inspectionDate  DateTime // 실제 점검 날짜 (매월 4일)
   isCompleted     Boolean          @default(false)
   completedAt     DateTime?
   createdAt       DateTime         @default(now())
@@ -581,10 +594,10 @@ model SafetyInspection {
 model InspectionItem {
   id                 String           @id @default(uuid())
   inspectionId       String
-  equipmentName      String           // 기기명
-  requiredPhotoCount Int              // 필요한 사진 개수 (해당 라인의 장비 개수)
-  photos             Json             // JSON array of photo URLs
-  remarks            String?          // 비고
+  equipmentName      String // 기기명
+  requiredPhotoCount Int // 필요한 사진 개수 (해당 라인의 장비 개수)
+  photos             Json // JSON array of photo URLs
+  remarks            String? // 비고
   isCompleted        Boolean          @default(false) // 필요한 사진을 모두 업로드했는지
   uploadedAt         DateTime         @default(now())
   inspection         SafetyInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
@@ -598,20 +611,20 @@ model InspectionItem {
 
 // 간소화된 이메일 설정 (5가지 주요 이메일만 관리)
 model SimpleEmailConfig {
-  id            String   @id @default(uuid())
-  emailType     String   @unique // "EXEC_SIGNATURE_REQUEST", "EXEC_SIGNATURE_COMPLETE", "TBM_REMINDER", "EDUCATION_REMINDER", "INSPECTION_REMINDER"
-  subject       String   // 이메일 제목
-  content       String   @db.Text // HTML 내용 (직접 수정 가능)
-  enabled       Boolean  @default(true)
+  id        String  @id @default(uuid())
+  emailType String  @unique // "EXEC_SIGNATURE_REQUEST", "EXEC_SIGNATURE_COMPLETE", "TBM_REMINDER", "EDUCATION_REMINDER", "INSPECTION_REMINDER"
+  subject   String // 이메일 제목
+  content   String  @db.Text // HTML 내용 (직접 수정 가능)
+  enabled   Boolean @default(true)
 
   // 발송 시점 설정
-  sendTiming    String   // "IMMEDIATE", "AFTER_N_DAYS", "SCHEDULED_TIME", "MONTHLY_DAY"
-  daysAfter     Int?     // N일 후 (sendTiming="AFTER_N_DAYS"일 때)
-  scheduledTime String?  // 특정 시간 "HH:MM" (sendTiming="SCHEDULED_TIME"일 때)
-  monthlyDay    Int?     // 월별 특정일 1-31 (sendTiming="MONTHLY_DAY"일 때)
+  sendTiming    String // "IMMEDIATE", "AFTER_N_DAYS", "SCHEDULED_TIME", "MONTHLY_DAY"
+  daysAfter     Int? // N일 후 (sendTiming="AFTER_N_DAYS"일 때)
+  scheduledTime String? // 특정 시간 "HH:MM" (sendTiming="SCHEDULED_TIME"일 때)
+  monthlyDay    Int? // 월별 특정일 1-31 (sendTiming="MONTHLY_DAY"일 때)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([emailType])
   @@index([enabled])
@@ -621,10 +634,10 @@ model SimpleEmailConfig {
 // 이메일 발송 이력 (추적 및 통계)
 model EmailLog {
   id             String   @id @default(uuid())
-  emailType      String   // 이메일 타입
-  recipientId    String   // 수신자 User ID
-  recipientEmail String   // 수신자 이메일
-  subject        String   // 발송된 이메일 제목
+  emailType      String // 이메일 타입
+  recipientId    String // 수신자 User ID
+  recipientEmail String // 수신자 이메일
+  subject        String // 발송된 이메일 제목
   sentAt         DateTime @default(now())
   status         String   @default("sent") // "sent", "failed", "bounced"
   errorMessage   String?  @db.Text
@@ -643,9 +656,9 @@ model EmailLog {
 model Holiday {
   id          Int      @id @default(autoincrement())
   date        DateTime @db.Date // 공휴일 날짜
-  name        String   // 공휴일 이름 (예: 설날, 추석, 어린이날 등)
+  name        String // 공휴일 이름 (예: 설날, 추석, 어린이날 등)
   isRecurring Boolean  @default(false) // 매년 반복 여부 (양력 기준)
-  site        String?  // 사이트별 적용 (null이면 전체 적용)
+  site        String? // 사이트별 적용 (null이면 전체 적용)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -671,21 +684,21 @@ model UserSession {
 
 // 모든 주요 작업의 추적 기록
 model AuditLog {
-  id         String   @id @default(cuid())
-  action     String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, APPROVE, REJECT, VIEW, EXPORT
-  entityType String   // USER, TEAM, TBM_REPORT, INSPECTION, COURSE, APPROVAL, HOLIDAY, NOTICE
-  entityId   String?  // 대상 엔티티 ID
-  userId     String?  // 작업 수행 사용자 ID
-  user       User?    @relation("AuditLogUser", fields: [userId], references: [id], onDelete: SetNull)
+  id         String  @id @default(cuid())
+  action     String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, APPROVE, REJECT, VIEW, EXPORT
+  entityType String // USER, TEAM, TBM_REPORT, INSPECTION, COURSE, APPROVAL, HOLIDAY, NOTICE
+  entityId   String? // 대상 엔티티 ID
+  userId     String? // 작업 수행 사용자 ID
+  user       User?   @relation("AuditLogUser", fields: [userId], references: [id], onDelete: SetNull)
 
-  oldValue   Json?    // 변경 전 값 (UPDATE, DELETE 시)
-  newValue   Json?    // 변경 후 값 (CREATE, UPDATE 시)
-  metadata   Json?    // 추가 메타데이터 (예: 필터 조건, 검색어 등)
+  oldValue Json? // 변경 전 값 (UPDATE, DELETE 시)
+  newValue Json? // 변경 후 값 (CREATE, UPDATE 시)
+  metadata Json? // 추가 메타데이터 (예: 필터 조건, 검색어 등)
 
-  ipAddress  String?  // 클라이언트 IP
-  userAgent  String?  // 브라우저/클라이언트 정보
+  ipAddress String? // 클라이언트 IP
+  userAgent String? // 브라우저/클라이언트 정보
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([entityType, entityId])
@@ -698,27 +711,27 @@ model AuditLog {
 // ========== 안전교육 현황 결재 시스템 ==========
 
 model EducationApproval {
-  id                 String   @id @default(uuid())
-  site               String   // '아산' or '화성'
+  id                 String    @id @default(uuid())
+  site               String // '아산' or '화성'
   year               Int
   month              Int
   requesterId        String
   approverId         String
-  status             String   @default("PENDING") // PENDING, APPROVED, REJECTED, WITHDRAWN
-  requesterSignature String?  // base64 담당 서명
-  executiveSignature String?  // base64 승인 서명
-  downloadDay        Int?     // 다운로드 기준 일자
-  teamDates          String?  // 팀별 날짜 JSON (예: {"35":15,"68":20})
-  maleCount          Int?     // 남직원 수
-  femaleCount        Int?     // 여직원 수
-  maleExclude        Int?     // 남직원 교육제외
-  femaleExclude      Int?     // 여직원 교육제외
-  nonCompletionNote  String?  // 미실시 사유
-  requestedAt        DateTime @default(now())
+  status             String    @default("PENDING") // PENDING, APPROVED, REJECTED, WITHDRAWN
+  requesterSignature String? // base64 담당 서명
+  executiveSignature String? // base64 승인 서명
+  downloadDay        Int? // 다운로드 기준 일자
+  teamDates          String? // 팀별 날짜 JSON (예: {"35":15,"68":20})
+  maleCount          Int? // 남직원 수
+  femaleCount        Int? // 여직원 수
+  maleExclude        Int? // 남직원 교육제외
+  femaleExclude      Int? // 여직원 교육제외
+  nonCompletionNote  String? // 미실시 사유
+  requestedAt        DateTime  @default(now())
   approvedAt         DateTime?
   rejectionReason    String?
-  requester          User     @relation("EducationApprovalRequester", fields: [requesterId], references: [id])
-  approver           User     @relation("EducationApprovalApprover", fields: [approverId], references: [id])
+  requester          User      @relation("EducationApprovalRequester", fields: [requesterId], references: [id])
+  approver           User      @relation("EducationApprovalApprover", fields: [approverId], references: [id])
 
   @@unique([site, year, month])
   @@index([requesterId])
@@ -730,29 +743,30 @@ model EducationApproval {
 model AppSetting {
   key   String @id
   value String
+
   @@map("AppSettings")
 }
 
 model Document {
-  id          Int       @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   title       String
   description String?
-  category    String    // RISK_ASSESSMENT, EDUCATION_MATERIAL
-  type        String    // PDF, PPT, VIDEO, OTHER
-  site        String?   // 아산, 화성, null=전체
-  department  String?   // 부서명
-  folderId    Int?      // 신규: 자료실 폴더
+  category    String // RISK_ASSESSMENT, EDUCATION_MATERIAL
+  type        String // PDF, PPT, VIDEO, OTHER
+  site        String? // 아산, 화성, null=전체
+  department  String? // 부서명
+  folderId    Int? // 신규: 자료실 폴더
   fileUrl     String?
   fileName    String?
   fileSize    Int?
   mimeType    String?
-  videoUrl    String?   // 영상 링크
-  videoType   String?   // youtube, file
+  videoUrl    String? // 영상 링크
+  videoType   String? // youtube, file
   authorId    String
-  author      User      @relation("DocumentAuthor", fields: [authorId], references: [id])
+  author      User            @relation("DocumentAuthor", fields: [authorId], references: [id])
   folder      DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([category])
   @@index([site])
@@ -764,22 +778,232 @@ model Document {
 
 // 자료실 폴더 (1단 평면 구조)
 model DocumentFolder {
-  id          Int        @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   name        String
   description String?
-  site        String?    // null=전체, "아산", "화성" (계층 구조에선 대부분 미사용)
-  parentId    Int?       // 신규: 상위 폴더 ID (null=루트)
+  site        String? // null=전체, "아산", "화성" (계층 구조에선 대부분 미사용)
+  parentId    Int? // 신규: 상위 폴더 ID (null=루트)
   authorId    String
-  author      User       @relation("DocumentFolderAuthor", fields: [authorId], references: [id])
+  author      User             @relation("DocumentFolderAuthor", fields: [authorId], references: [id])
   parent      DocumentFolder?  @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children    DocumentFolder[] @relation("FolderChildren")
   documents   Document[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([site])
   @@index([authorId])
   @@index([parentId])
   @@index([createdAt])
   @@map("DocumentFolders")
+}
+
+// ============================================================================
+// 잠재위험 발굴 및 개선현황
+// ============================================================================
+model PotentialRisk {
+  id                String    @id @default(uuid())
+  site              String // 아산 | 화성
+  discoveredAt      DateTime
+  location          String
+  discoveredBy      String?
+  riskDescription   String
+  sitePhotos        Json
+  assignedTeamId    Int
+  createdById       String
+  improvementPhotos Json?
+  actionResult      String?
+  scheduledDate     DateTime?
+  assigneeName      String?
+  isCompleted       Boolean   @default(false)
+  remarks           String?
+  repliedById       String?
+  repliedAt         DateTime?
+  status            String    @default("PENDING")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  assignedTeam      Team      @relation("PotentialRiskTeam", fields: [assignedTeamId], references: [id])
+  createdBy         User      @relation("PotentialRiskCreator", fields: [createdById], references: [id])
+  repliedBy         User?     @relation("PotentialRiskReplier", fields: [repliedById], references: [id])
+
+  @@index([site])
+  @@index([assignedTeamId])
+  @@index([status])
+  @@index([discoveredAt])
+  @@map("PotentialRisks")
+}
+
+// ============================================================================
+// 위험성평가 — 부서별 공정 마스터
+// ============================================================================
+model WorkProcess {
+  id          Int              @id @default(autoincrement())
+  teamId      Int
+  name        String
+  createdById String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  team        Team             @relation("WorkProcessTeam", fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation("WorkProcessCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assessments RiskAssessment[]
+
+  @@unique([teamId, name])
+  @@index([teamId])
+  @@map("WorkProcesses")
+}
+
+// ============================================================================
+// 위험성평가
+// ============================================================================
+model RiskAssessment {
+  id                String               @id @default(uuid())
+  site              String
+  teamId            Int
+  processId         Int
+  processName       String
+  evaluatedAt       DateTime             @default(now())
+  status            String               @default("DRAFT")
+  authorId          String?
+  authorSignature   String?
+  approverId        String?
+  approverSignature String?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  team              Team                 @relation("RiskAssessmentTeam", fields: [teamId], references: [id])
+  process           WorkProcess          @relation(fields: [processId], references: [id])
+  author            User?                @relation("RiskAssessmentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  approver          User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  preEducation      RAPreEducation?
+  workerOpinions    RAWorkerOpinion[]
+  safetyInfo        RASafetyInfo?
+  evaluations       RAEvaluation[]
+  improvements      RAImprovement[]
+  feedbackEducation RAFeedbackEducation?
+  versions          RAVersion[]
+
+  @@index([site])
+  @@index([teamId])
+  @@index([processId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("RiskAssessments")
+}
+
+model RAPreEducation {
+  id           String         @id @default(uuid())
+  assessmentId String         @unique
+  conductedAt  DateTime?
+  attendees    Json
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  assessment   RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("RAPreEducations")
+}
+
+model RAWorkerOpinion {
+  id              String         @id @default(uuid())
+  assessmentId    String
+  sortOrder       Int            @default(0)
+  workContent     String?
+  hazardFactor    String?
+  currentAction   String?
+  riskLevel       String?
+  improvement     String?
+  participantsSig Json?
+  remarks         String?
+  createdAt       DateTime       @default(now())
+  assessment      RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("RAWorkerOpinions")
+}
+
+model RASafetyInfo {
+  id           String         @id @default(uuid())
+  assessmentId String         @unique
+  rawMaterial  String?
+  product      String?
+  workerCount  Int?
+  processSteps Json
+  checklist    Json
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  assessment   RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("RASafetyInfos")
+}
+
+model RAEvaluation {
+  id                String         @id @default(uuid())
+  assessmentId      String
+  sortOrder         Int            @default(0)
+  workContent       String?
+  hazardFactor      String?
+  currentAction     String?
+  riskLevel         String?
+  improvement       String?
+  responsibleTeamId Int?
+  responsibleName   String?
+  scheduledDate     DateTime?
+  completedDate     DateTime?
+  remarks           String?
+  createdAt         DateTime       @default(now())
+  assessment        RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  responsibleTeam   Team?          @relation("RAEvaluationTeam", fields: [responsibleTeamId], references: [id], onDelete: SetNull)
+
+  @@index([assessmentId])
+  @@map("RAEvaluations")
+}
+
+model RAImprovement {
+  id                String         @id @default(uuid())
+  assessmentId      String
+  sortOrder         Int            @default(0)
+  processName       String?
+  hazardFactor      String?
+  reductionPlan     String?
+  responsibleTeamId Int?
+  responsibleName   String?
+  actionResult      String?
+  improvedDate      DateTime?
+  beforePhotos      Json?
+  afterPhotos       Json?
+  remarks           String?
+  createdAt         DateTime       @default(now())
+  assessment        RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  responsibleTeam   Team?          @relation("RAImprovementTeam", fields: [responsibleTeamId], references: [id], onDelete: SetNull)
+
+  @@index([assessmentId])
+  @@map("RAImprovements")
+}
+
+model RAFeedbackEducation {
+  id           String         @id @default(uuid())
+  assessmentId String         @unique
+  conductedAt  DateTime?
+  attendees    Json
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  assessment   RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("RAFeedbackEducations")
+}
+
+model RAVersion {
+  id            String         @id @default(uuid())
+  assessmentId  String
+  version       Int
+  submittedAt   DateTime       @default(now())
+  submittedById String?
+  snapshot      Json
+  assessment    RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  submittedBy   User?          @relation("RAVersionSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+
+  @@unique([assessmentId, version])
+  @@index([assessmentId])
+  @@map("RAVersions")
 }
