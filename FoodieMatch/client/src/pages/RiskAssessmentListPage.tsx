@@ -13,17 +13,22 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
-import { ShieldAlert, Plus, FileText, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Plus, FileText, CheckCircle2, Clock, AlertTriangle, Pencil, Trash2, Check, X } from 'lucide-react';
 
 export default function RiskAssessmentListPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [, navigate] = useLocation();
   const [site, setSite] = useState<string>(user?.site || '아산');
   const [teamId, setTeamId] = useState<string>('');
   const [processId, setProcessId] = useState<string>('');
   const [newProcessName, setNewProcessName] = useState('');
+  const [editingProcess, setEditingProcess] = useState(false);
+  const [editProcessName, setEditProcessName] = useState('');
+  const canManageProcess = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
   const { data: teams = [] } = useQuery<Array<{ id: number; name: string; site: string }>>({
     queryKey: ['teams-active'],
@@ -74,6 +79,36 @@ export default function RiskAssessmentListPage() {
     },
     onError: (err: any) => {
       toast({ title: '추가 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const renameProcessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('PUT', `/api/work-processes/${processId}`, { name: editProcessName.trim() });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '공정 이름 변경 완료' });
+      setEditingProcess(false);
+      refetchProcesses();
+    },
+    onError: (err: any) => {
+      toast({ title: '변경 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteProcessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/work-processes/${processId}`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: '공정 처리 완료', description: data.message || '삭제되었습니다' });
+      setProcessId('');
+      refetchProcesses();
+    },
+    onError: (err: any) => {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -139,17 +174,74 @@ export default function RiskAssessmentListPage() {
               </div>
               <div>
                 <Label>공정</Label>
-                <Select value={processId} onValueChange={setProcessId} disabled={!teamId}>
-                  <SelectTrigger><SelectValue placeholder={teamId ? '공정 선택' : '부서 먼저 선택'} /></SelectTrigger>
-                  <SelectContent className="max-h-[320px]">
-                    {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                    {processes.length === 0 && (
-                      <div className="px-2 py-3 text-sm text-muted-foreground">등록된 공정이 없습니다</div>
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-1">
+                  <Select value={processId} onValueChange={v => { setProcessId(v); setEditingProcess(false); }} disabled={!teamId}>
+                    <SelectTrigger><SelectValue placeholder={teamId ? '공정 선택' : '부서 먼저 선택'} /></SelectTrigger>
+                    <SelectContent className="max-h-[320px]">
+                      {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                      {processes.length === 0 && (
+                        <div className="px-2 py-3 text-sm text-muted-foreground">등록된 공정이 없습니다</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {processId && canManageProcess && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        title="공정 이름 수정"
+                        onClick={() => {
+                          const p = processes.find(x => x.id === parseInt(processId));
+                          setEditProcessName(p?.name || '');
+                          setEditingProcess(true);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        title="공정 삭제"
+                        onClick={async () => {
+                          const p = processes.find(x => x.id === parseInt(processId));
+                          const ok = await confirm({
+                            title: '공정 삭제',
+                            description: `"${p?.name || ''}" 공정을 삭제할까요?\n연결된 평가가 있으면 삭제 대신 목록에서만 숨겨집니다 (평가 데이터는 보존).`,
+                            confirmText: '삭제',
+                            destructive: true,
+                          });
+                          if (ok) deleteProcessMutation.mutate();
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* 공정 이름 수정 인라인 폼 */}
+            {editingProcess && (
+              <div className="flex gap-2 items-end pt-2 border-t">
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground">공정 이름 변경</Label>
+                  <Input value={editProcessName} onChange={e => setEditProcessName(e.target.value)} />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => renameProcessMutation.mutate()}
+                  disabled={!editProcessName.trim() || renameProcessMutation.isPending}
+                >
+                  <Check className="w-4 h-4 mr-1.5" />저장
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingProcess(false)}>
+                  <X className="w-4 h-4 mr-1.5" />취소
+                </Button>
+              </div>
+            )}
+
             {teamId && (
               <div className="flex gap-2 flex-wrap items-end pt-2 border-t">
                 <div className="flex-1 min-w-[200px]">
