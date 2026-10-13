@@ -11590,7 +11590,19 @@ ${JSON.stringify(toolResults, null, 2)}
         preWs.getCell(r, col).value = i + 1;
         preWs.getCell(r, col + 1).value = a.department || '';
         preWs.getCell(r, col + 2).value = a.name || '';
-        preWs.getCell(r, col + 3).value = a.isAbsent ? '[미참석]' : (a.signature || '');
+        // 서명이 base64 PNG이면 이미지로 삽입, 텍스트면 그대로
+        const sigVal = a.signature || '';
+        if (sigVal.startsWith('data:image/')) {
+          try {
+            const b64 = sigVal.split(',')[1];
+            const imgId = wb.addImage({ base64: b64, extension: 'png' });
+            preWs.addImage(imgId, { tl: { col: col + 2.1, row: r - 0.9 } as any, ext: { width: 80, height: 24 } });
+            preWs.getCell(r, col + 3).value = '';
+          } catch { preWs.getCell(r, col + 3).value = '[서명]'; }
+        } else {
+          preWs.getCell(r, col + 3).value = a.isAbsent ? '[미참석]' : sigVal;
+        }
+        preWs.getRow(r).height = 28;
       });
 
       // 2. 의견·토론
@@ -11664,6 +11676,22 @@ ${JSON.stringify(toolResults, null, 2)}
       evWs.getCell('M1').value = '승인';
       evWs.getCell('K2').value = ra.author?.name || '';
       evWs.getCell('M2').value = ra.approver?.name || ra.team?.approver?.name || '';
+      // 작성자 서명 이미지
+      if (ra.authorSignature && String(ra.authorSignature).startsWith('data:image/')) {
+        try {
+          const b64 = String(ra.authorSignature).split(',')[1];
+          const imgId = wb.addImage({ base64: b64, extension: 'png' });
+          evWs.addImage(imgId, { tl: { col: 10.1, row: 2.2 } as any, ext: { width: 70, height: 32 } });
+        } catch {}
+      }
+      // 결재자 서명 이미지
+      if (ra.approverSignature && String(ra.approverSignature).startsWith('data:image/')) {
+        try {
+          const b64 = String(ra.approverSignature).split(',')[1];
+          const imgId = wb.addImage({ base64: b64, extension: 'png' });
+          evWs.addImage(imgId, { tl: { col: 12.1, row: 2.2 } as any, ext: { width: 70, height: 32 } });
+        } catch {}
+      }
       evWs.getRow(6).values = [null, '공정', '유해위험요인', '현재 안전조치', '위험성 수준', '개선대책', '담당부서', '담당자', '예정일', '완료일', '비고'];
       ev.forEach((e, i) => {
         const rr = 7 + i;
@@ -11707,7 +11735,18 @@ ${JSON.stringify(toolResults, null, 2)}
         fbWs.getCell(r2, col).value = i + 1;
         fbWs.getCell(r2, col + 1).value = a.department || '';
         fbWs.getCell(r2, col + 2).value = a.name || '';
-        fbWs.getCell(r2, col + 3).value = a.isAbsent ? '[미참석]' : (a.signature || '');
+        const sigVal2 = a.signature || '';
+        if (sigVal2.startsWith('data:image/')) {
+          try {
+            const b64 = sigVal2.split(',')[1];
+            const imgId = wb.addImage({ base64: b64, extension: 'png' });
+            fbWs.addImage(imgId, { tl: { col: col + 2.1, row: r2 - 0.9 } as any, ext: { width: 80, height: 24 } });
+            fbWs.getCell(r2, col + 3).value = '';
+          } catch { fbWs.getCell(r2, col + 3).value = '[서명]'; }
+        } else {
+          fbWs.getCell(r2, col + 3).value = a.isAbsent ? '[미참석]' : sigVal2;
+        }
+        fbWs.getRow(r2).height = 28;
       });
 
       // 개선실행 조치결과(사진) — 이미지는 URL 텍스트로 표기

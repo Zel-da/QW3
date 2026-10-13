@@ -18,7 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import { PhotoDropzone } from '@/components/PhotoDropzone';
-import { ArrowLeft, Save, Send, CheckCircle2, XCircle, Download, Plus, Trash2 } from 'lucide-react';
+import { SignatureDialog } from '@/components/SignatureDialog';
+import { ArrowLeft, Save, Send, CheckCircle2, XCircle, Download, Plus, Trash2, Pen } from 'lucide-react';
 
 const CHECKLIST_ITEMS = [
   '작업표준·절차에 관한 정보',
@@ -192,7 +193,7 @@ export default function RiskAssessmentDetailPage() {
             )}
           </CardHeader>
           <CardContent>
-            <SubmitApproveBar ra={ra} isApprover={isApprover} />
+            <SubmitApproveBar ra={ra} isApprover={isApprover} userName={user?.name || user?.username || '사용자'} />
           </CardContent>
         </Card>
 
@@ -217,10 +218,11 @@ export default function RiskAssessmentDetailPage() {
   );
 }
 
-function SubmitApproveBar({ ra, isApprover }: { ra: any; isApprover: boolean }) {
+function SubmitApproveBar({ ra, isApprover, userName }: { ra: any; isApprover: boolean; userName: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [sig, setSig] = useState('');
+  const [sig, setSig] = useState('');       // base64 PNG
+  const [sigDialogOpen, setSigDialogOpen] = useState(false);
   const [rejReason, setRejReason] = useState('');
   const submitMut = useMutation({
     mutationFn: async () => (await apiRequest('POST', `/api/risk-assessments/${ra.id}/submit`, { authorSignature: sig || undefined })).json(),
@@ -238,32 +240,52 @@ function SubmitApproveBar({ ra, isApprover }: { ra: any; isApprover: boolean }) 
     onError: (e: any) => toast({ title: '반려 실패', description: e.message, variant: 'destructive' }),
   });
 
+  const SignatureBox = (
+    <div className="flex items-center gap-2">
+      <div className="h-14 w-32 border rounded bg-white flex items-center justify-center">
+        {sig ? <img src={sig} alt="서명" className="h-full object-contain" />
+             : <span className="text-xs text-muted-foreground">서명 없음</span>}
+      </div>
+      <Button variant="outline" size="sm" onClick={() => setSigDialogOpen(true)}>
+        <Pen className="w-4 h-4 mr-1.5" />{sig ? '서명 다시' : '서명하기'}
+      </Button>
+    </div>
+  );
+
   if (ra.status === 'DRAFT' || ra.status === 'REJECTED') {
     return (
-      <div className="flex gap-2 flex-wrap items-center">
-        <Input value={sig} onChange={e => setSig(e.target.value)} placeholder="작성자 서명 텍스트 (선택)" className="max-w-xs" />
-        <Button onClick={() => submitMut.mutate()} disabled={submitMut.isPending}>
-          <Send className="w-4 h-4 mr-1.5" />{submitMut.isPending ? '제출 중...' : '제출(결재 요청)'}
-        </Button>
-      </div>
+      <>
+        <div className="flex gap-3 flex-wrap items-center">
+          {SignatureBox}
+          <Button onClick={() => submitMut.mutate()} disabled={submitMut.isPending || !sig}>
+            <Send className="w-4 h-4 mr-1.5" />{submitMut.isPending ? '제출 중...' : '제출(결재 요청)'}
+          </Button>
+          {!sig && <span className="text-xs text-muted-foreground">※ 작성자 서명을 먼저 입력하세요</span>}
+        </div>
+        <SignatureDialog isOpen={sigDialogOpen} onClose={() => setSigDialogOpen(false)} onSave={setSig} userName={userName} />
+      </>
     );
   }
   if (ra.status === 'SUBMITTED' && isApprover) {
     return (
-      <div className="space-y-2">
-        <div className="flex gap-2 flex-wrap">
-          <Input value={sig} onChange={e => setSig(e.target.value)} placeholder="결재자 서명 (선택)" className="max-w-xs" />
-          <Button onClick={() => approveMut.mutate()} disabled={approveMut.isPending}>
-            <CheckCircle2 className="w-4 h-4 mr-1.5" />{approveMut.isPending ? '승인 중...' : '승인'}
-          </Button>
+      <>
+        <div className="space-y-3">
+          <div className="flex gap-3 flex-wrap items-center">
+            {SignatureBox}
+            <Button onClick={() => approveMut.mutate()} disabled={approveMut.isPending || !sig}>
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />{approveMut.isPending ? '승인 중...' : '승인'}
+            </Button>
+            {!sig && <span className="text-xs text-muted-foreground">※ 결재자 서명을 먼저 입력하세요</span>}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Input value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="반려 사유" className="max-w-xs" />
+            <Button variant="destructive" onClick={() => rejectMut.mutate()} disabled={rejectMut.isPending}>
+              <XCircle className="w-4 h-4 mr-1.5" />{rejectMut.isPending ? '반려 중...' : '반려'}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Input value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="반려 사유" className="max-w-xs" />
-          <Button variant="destructive" onClick={() => rejectMut.mutate()} disabled={rejectMut.isPending}>
-            <XCircle className="w-4 h-4 mr-1.5" />{rejectMut.isPending ? '반려 중...' : '반려'}
-          </Button>
-        </div>
-      </div>
+        <SignatureDialog isOpen={sigDialogOpen} onClose={() => setSigDialogOpen(false)} onSave={setSig} userName={userName} />
+      </>
     );
   }
   if (ra.status === 'SUBMITTED') return <div className="text-sm text-muted-foreground">결재자 승인 대기 중입니다</div>;
@@ -279,6 +301,8 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
   const { toast } = useToast();
   const [conductedAt, setConductedAt] = useState('');
   const [attendees, setAttendees] = useState<Array<{ name: string; department: string; signature: string; signedAt?: string; isAbsent?: boolean }>>([]);
+  // 전자서명 다이얼로그 - 어떤 참여자에게 서명을 받을지 index 기억
+  const [sigDialogIdx, setSigDialogIdx] = useState<number | null>(null);
 
   useEffect(() => {
     setConductedAt(data?.conductedAt ? String(data.conductedAt).slice(0, 10) : '');
@@ -352,7 +376,7 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>부서/공정</TableHead>
                 <TableHead>성명</TableHead>
-                <TableHead>서명 텍스트</TableHead>
+                <TableHead className="w-48">전자서명</TableHead>
                 <TableHead className="w-20">미참석</TableHead>
                 {!readOnly && <TableHead className="w-12"></TableHead>}
               </TableRow>
@@ -363,14 +387,55 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
                   <TableCell>{i + 1}</TableCell>
                   <TableCell><Input value={a.department} onChange={e => update(i, { department: e.target.value })} disabled={readOnly} /></TableCell>
                   <TableCell><Input value={a.name} onChange={e => update(i, { name: e.target.value })} disabled={readOnly} /></TableCell>
-                  <TableCell><Input value={a.signature} onChange={e => update(i, { signature: e.target.value, signedAt: e.target.value ? new Date().toISOString() : undefined })} disabled={readOnly || a.isAbsent} placeholder="서명 or 사인" /></TableCell>
-                  <TableCell><input type="checkbox" checked={a.isAbsent} onChange={e => update(i, { isAbsent: e.target.checked })} disabled={readOnly} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-10 w-24 border rounded bg-white flex items-center justify-center">
+                        {a.signature
+                          ? <img src={a.signature} alt="서명" className="h-full object-contain" />
+                          : <span className="text-[10px] text-muted-foreground">서명 없음</span>}
+                      </div>
+                      {!readOnly && !a.isAbsent && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSigDialogIdx(i)}
+                          title={a.signature ? '서명 다시 입력' : '전자서명 입력'}
+                        >
+                          <Pen className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {a.signature && !readOnly && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => update(i, { signature: '', signedAt: undefined })}
+                          title="서명 지우기"
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell><input type="checkbox" checked={a.isAbsent} onChange={e => update(i, { isAbsent: e.target.checked, signature: e.target.checked ? '' : a.signature })} disabled={readOnly} /></TableCell>
                   {!readOnly && <TableCell><Button variant="ghost" size="icon" onClick={() => remove(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+        {/* 전자서명 다이얼로그 */}
+        <SignatureDialog
+          isOpen={sigDialogIdx !== null}
+          onClose={() => setSigDialogIdx(null)}
+          onSave={(sig) => {
+            if (sigDialogIdx !== null) {
+              update(sigDialogIdx, { signature: sig, signedAt: new Date().toISOString() });
+            }
+            setSigDialogIdx(null);
+          }}
+          userName={sigDialogIdx !== null ? (attendees[sigDialogIdx]?.name || '참여자') : '참여자'}
+        />
         {!readOnly && (
           <div className="pt-2 flex justify-end">
             <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
