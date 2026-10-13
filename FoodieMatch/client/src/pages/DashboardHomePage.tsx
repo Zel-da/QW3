@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Clock,
   X,
-  FolderOpen
+  FolderOpen,
+  ShieldAlert
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
@@ -306,6 +307,16 @@ export default function DashboardHomePage() {
       showToAll: user?.role === 'ADMIN' || user?.role === 'TEAM_LEADER' || user?.role === 'EXECUTIVE_LEADER',
     },
     {
+      title: '위험성평가',
+      description: '사전교육·평가·개선 6단계',
+      icon: ShieldAlert,
+      color: 'text-red-500',
+      bgColor: 'bg-red-50 hover:bg-red-100',
+      path: '/risk-assessments',
+      stats: '평가 작성/조회',
+      showToAll: user?.role !== 'PENDING' && user?.role !== 'CONTRACTOR',
+    },
+    {
       title: '자료실',
       description: '위험성평가 및 교육자료',
       icon: FolderOpen,
@@ -554,7 +565,7 @@ export default function DashboardHomePage() {
         </div>
 
         {/* 메뉴 카드 그리드 - 모바일에서 2열 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-5xl mx-auto">
           {visibleCards.map((card) => {
             const Icon = card.icon;
             return (
