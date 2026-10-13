@@ -112,19 +112,7 @@ export default function RiskAssessmentDetailPage() {
     queryFn: async () => (await fetch('/api/teams', { credentials: 'include' })).json(),
   });
 
-  if (isLoading || !ra) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto p-6"><Card><CardContent className="p-10 text-center text-muted-foreground">로딩 중...</CardContent></Card></main>
-      </div>
-    );
-  }
-
-  const isReadOnly = ra.status === 'APPROVED';
-  const isApprover = user?.role === 'ADMIN' || ra.team?.approverId === user?.id;
-  const canDelete = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
-
+  // Hook은 반드시 조건부 return 전에 선언 (React Rules of Hooks)
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('DELETE', `/api/risk-assessments/${id}`);
@@ -138,6 +126,19 @@ export default function RiskAssessmentDetailPage() {
       toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
     },
   });
+
+  if (isLoading || !ra) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto p-6"><Card><CardContent className="p-10 text-center text-muted-foreground">로딩 중...</CardContent></Card></main>
+      </div>
+    );
+  }
+
+  const isReadOnly = ra.status === 'APPROVED';
+  const isApprover = user?.role === 'ADMIN' || ra.team?.approverId === user?.id;
+  const canDelete = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
 
   return (
     <div className="min-h-screen bg-background">
