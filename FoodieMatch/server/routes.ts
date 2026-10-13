@@ -11335,12 +11335,31 @@ ${JSON.stringify(toolResults, null, 2)}
   });
 
   app.delete("/api/risk-assessments/:id", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
+    const id = req.params.id;
     try {
-      await prisma.riskAssessment.delete({ where: { id: req.params.id } });
+      // 명시적 트랜잭션으로 자식 레코드 먼저 삭제 — Prisma Cascade가
+      // 어떤 이유로 걸리지 않더라도 안전하게 삭제되도록 보장.
+      await prisma.$transaction(async (tx) => {
+        await tx.rAVersion.deleteMany({ where: { assessmentId: id } });
+        await tx.rAWorkerOpinion.deleteMany({ where: { assessmentId: id } });
+        await tx.rAEvaluation.deleteMany({ where: { assessmentId: id } });
+        await tx.rAImprovement.deleteMany({ where: { assessmentId: id } });
+        await tx.rAPreEducation.deleteMany({ where: { assessmentId: id } });
+        await tx.rAFeedbackEducation.deleteMany({ where: { assessmentId: id } });
+        await tx.rASafetyInfo.deleteMany({ where: { assessmentId: id } });
+        await tx.riskAssessment.delete({ where: { id } });
+      });
       res.json({ message: '삭제되었습니다' });
-    } catch (error) {
-      console.error('Failed to delete risk-assessment:', error);
-      res.status(500).json({ message: '삭제 실패' });
+    } catch (error: any) {
+      console.error('Failed to delete risk-assessment:', error?.code, error?.message, error);
+      // Prisma 에러 코드에 따라 안내
+      if (error?.code === 'P2025') {
+        return res.status(404).json({ message: '이미 삭제되었거나 존재하지 않는 평가입니다' });
+      }
+      if (error?.code === 'P2003') {
+        return res.status(409).json({ message: `외래키 제약으로 삭제할 수 없습니다 (${error?.meta?.field_name || '참조 테이블 있음'})` });
+      }
+      res.status(500).json({ message: `삭제 실패: ${error?.message || '알 수 없는 오류'}` });
     }
   });
 
