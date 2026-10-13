@@ -52,8 +52,22 @@ export default function RiskAssessmentDetailPage() {
     enabled: !!id,
   });
 
-  const { data: teamMembers = [] } = useQuery<any[]>({
-    queryKey: ['team-members', ra?.teamId],
+  // 팀 전체 구성원 로드 (교육 참여자 자동 로드용)
+  //  (1) Team.leader — 팀장
+  //  (2) /api/teams/:teamId/members — 그 팀의 User 계정 (팀원)
+  //  (3) /api/teams/:teamId/team-members — 계정 없는 팀원(TeamMember)
+  // 셋을 이름 기준 중복제거해서 하나의 명단으로 합침.
+  const { data: teamUsers = [] } = useQuery<any[]>({
+    queryKey: ['team-users-full', ra?.teamId],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${ra.teamId}/members`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!ra?.teamId,
+  });
+  const { data: teamMemberOnlyList = [] } = useQuery<any[]>({
+    queryKey: ['team-member-only', ra?.teamId],
     queryFn: async () => {
       const res = await fetch(`/api/teams/${ra.teamId}/team-members`, { credentials: 'include' });
       if (!res.ok) return [];
@@ -61,6 +75,37 @@ export default function RiskAssessmentDetailPage() {
     },
     enabled: !!ra?.teamId,
   });
+
+  // 통합 명단 (팀장 + User 팀원 + TeamMember), 이름 기준 중복제거
+  const teamMembers = useMemo(() => {
+    const merged: Array<{ name: string; position: string; role?: string }> = [];
+    const seen = new Set<string>();
+
+    // (1) 팀장 — ra.team.leader
+    if (ra?.team?.leader?.name) {
+      const n = String(ra.team.leader.name).trim();
+      if (n && !seen.has(n)) {
+        seen.add(n);
+        merged.push({ name: n, position: '팀장', role: ra.team.leader.role });
+      }
+    }
+    // (2) User 팀원 (팀장 외)
+    for (const u of (teamUsers as any[])) {
+      const n = String(u?.name || u?.username || '').trim();
+      if (!n || seen.has(n)) continue;
+      if (ra?.team?.leader?.id === u.id) continue; // 이미 팀장으로 추가됨
+      seen.add(n);
+      merged.push({ name: n, position: u.role === 'TEAM_LEADER' ? '팀장' : '팀원', role: u.role });
+    }
+    // (3) 계정 없는 TeamMember
+    for (const m of (teamMemberOnlyList as any[])) {
+      const n = String(m?.name || '').trim();
+      if (!n || seen.has(n)) continue;
+      seen.add(n);
+      merged.push({ name: n, position: m.position || '팀원' });
+    }
+    return merged;
+  }, [ra?.team?.leader, teamUsers, teamMemberOnlyList]);
 
   const { data: teams = [] } = useQuery<Array<{ id: number; name: string; site: string }>>({
     queryKey: ['teams-active'],
@@ -239,13 +284,32 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
     const existing = Array.isArray(data?.attendees) ? data.attendees : [];
     if (existing.length > 0) {
       setAttendees(existing);
-    } else {
-      // 기본: TeamMember 명단 로드
+    } else if (teamMembers.length > 0) {
+      // 저장된 명단이 없고 팀 전체 명단(팀장+팀원+TeamMember)이 로드되면 기본값으로 주입
       setAttendees(teamMembers.map((m: any) => ({
         name: m.name, department: m.position || '', signature: '', isAbsent: false,
       })));
+    } else {
+      setAttendees([]);
     }
   }, [data, teamMembers]);
+
+  const reloadFromTeam = () => {
+    if (teamMembers.length === 0) {
+      toast({ title: '팀 명단이 비어있습니다', variant: 'destructive' });
+      return;
+    }
+    const existingNames = new Set(attendees.map(a => a.name));
+    const toAdd = teamMembers
+      .filter((m: any) => !existingNames.has(m.name))
+      .map((m: any) => ({ name: m.name, department: m.position || '', signature: '', isAbsent: false }));
+    if (toAdd.length === 0) {
+      toast({ title: '추가할 신규 팀원이 없습니다' });
+      return;
+    }
+    setAttendees([...attendees, ...toAdd]);
+    toast({ title: `${toAdd.length}명 추가됨` });
+  };
 
   const saveMut = useMutation({
     mutationFn: async () => (await apiRequest('PUT', `/api/risk-assessments/${raId}/${endpoint}`, { conductedAt: conductedAt || null, attendees })).json(),
@@ -268,7 +332,17 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
             <Label>교육 실시일</Label>
             <Input type="date" value={conductedAt} onChange={e => setConductedAt(e.target.value)} disabled={readOnly} />
           </div>
-          {!readOnly && <Button variant="outline" size="sm" onClick={add}><Plus className="w-4 h-4 mr-1.5" />참여자 추가</Button>}
+          {!readOnly && (
+            <>
+              <Button variant="outline" size="sm" onClick={reloadFromTeam} title="팀장 + 팀원(User) + TeamMember 전부 불러오기 (중복 제외)">
+                팀 명단 불러오기
+              </Button>
+              <Button variant="outline" size="sm" onClick={add}><Plus className="w-4 h-4 mr-1.5" />참여자 추가</Button>
+            </>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">
+            현재 {attendees.length}명 · 팀 전체 {teamMembers.length}명
+          </span>
         </div>
         <div className="overflow-x-auto">
           <Table>
