@@ -50,7 +50,7 @@ export default function RiskAssessmentListPage() {
     enabled: !!teamId,
   });
 
-  const { data: assessments = [] } = useQuery<any[]>({
+  const { data: assessments = [], refetch: refetchAssessments } = useQuery<any[]>({
     queryKey: ['risk-assessments', site, teamId, processId],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -62,6 +62,20 @@ export default function RiskAssessmentListPage() {
       return res.json();
     },
     enabled: !!site,
+  });
+
+  const deleteAssessmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('DELETE', `/api/risk-assessments/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '평가 삭제 완료' });
+      refetchAssessments();
+    },
+    onError: (err: any) => {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    },
   });
 
   const addProcessMutation = useMutation({
@@ -282,6 +296,7 @@ export default function RiskAssessmentListPage() {
                     <TableHead>공정</TableHead>
                     <TableHead className="w-28">평가일</TableHead>
                     <TableHead>작성자 / 결재자</TableHead>
+                    {canManageProcess && <TableHead className="w-12 text-right">삭제</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -306,11 +321,33 @@ export default function RiskAssessmentListPage() {
                       <TableCell className="text-xs text-muted-foreground">
                         {a.author?.name || '-'} / {a.approver?.name || '-'}
                       </TableCell>
+                      {canManageProcess && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            title="평가 삭제"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const ok = await confirm({
+                                title: '위험성평가 삭제',
+                                description: `${a.site} / ${a.team?.name} / ${a.process?.name || a.processName}\n이 평가를 삭제할까요?\n\n⚠ 작성한 6개 섹션 데이터·사진·서명·버전 이력 모두 영구 삭제됩니다.\n이미 승인된 평가는 감사 목적상 삭제보다 보존을 권장합니다.`,
+                                confirmText: '영구 삭제',
+                                destructive: true,
+                              });
+                              if (ok) deleteAssessmentMutation.mutate(a.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   {assessments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-10">평가가 없습니다</TableCell>
+                      <TableCell colSpan={canManageProcess ? 7 : 6} className="text-center text-muted-foreground py-10">평가가 없습니다</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

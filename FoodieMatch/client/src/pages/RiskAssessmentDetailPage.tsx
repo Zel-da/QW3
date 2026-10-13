@@ -78,6 +78,21 @@ export default function RiskAssessmentDetailPage() {
 
   const isReadOnly = ra.status === 'APPROVED';
   const isApprover = user?.role === 'ADMIN' || ra.team?.approverId === user?.id;
+  const canDelete = user?.role === 'ADMIN' || user?.role === 'SAFETY_TEAM';
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/risk-assessments/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '삭제됨' });
+      navigate('/risk-assessments');
+    },
+    onError: (err: any) => {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,6 +106,25 @@ export default function RiskAssessmentDetailPage() {
             <a href={`/api/risk-assessments/${id}/excel`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1.5" />엑셀 다운로드</Button>
             </a>
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: '위험성평가 삭제',
+                    description: `${ra.site} / ${ra.team?.name} / ${ra.processName}\n이 평가를 영구 삭제할까요?\n\n⚠ 6개 섹션·사진·서명·버전 이력 모두 삭제됩니다.`,
+                    confirmText: '영구 삭제',
+                    destructive: true,
+                  });
+                  if (ok) deleteMutation.mutate();
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" />{deleteMutation.isPending ? '삭제 중...' : '평가 삭제'}
+              </Button>
+            )}
           </div>
         </div>
 
