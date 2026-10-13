@@ -11298,14 +11298,11 @@ ${JSON.stringify(toolResults, null, 2)}
   app.post("/api/risk-assessments", requireAuth, async (req, res) => {
     try {
       const user = req.session.user!;
-      const { site, teamId, processId, processName, evaluatedAt } = req.body;
-      if (!site || !teamId || !processId) return res.status(400).json({ message: '필수 항목 누락' });
-      const proc = await prisma.workProcess.findUnique({ where: { id: parseInt(processId) } });
-      if (!proc) return res.status(404).json({ message: '공정을 찾을 수 없습니다' });
+      const { site, teamId, evaluatedAt } = req.body;
+      if (!site || !teamId) return res.status(400).json({ message: '사이트·부서는 필수입니다' });
       const ra = await prisma.riskAssessment.create({
         data: {
-          site, teamId: parseInt(teamId), processId: parseInt(processId),
-          processName: processName || proc.name,
+          site, teamId: parseInt(teamId),
           evaluatedAt: evaluatedAt ? new Date(evaluatedAt) : new Date(),
           authorId: user.id, status: 'DRAFT',
         },
@@ -11429,6 +11426,7 @@ ${JSON.stringify(toolResults, null, 2)}
     try {
       const { items } = req.body;
       await bulkReplaceSection(prisma.rAWorkerOpinion, req.params.id, items || [], (it) => ({
+        processId: it.processId ? parseInt(it.processId) : null,
         workContent: it.workContent || null,
         hazardFactor: it.hazardFactor || null,
         currentAction: it.currentAction || null,
@@ -11449,6 +11447,7 @@ ${JSON.stringify(toolResults, null, 2)}
     try {
       const { items } = req.body;
       await bulkReplaceSection(prisma.rAEvaluation, req.params.id, items || [], (it) => ({
+        processId: it.processId ? parseInt(it.processId) : null,
         workContent: it.workContent || null,
         hazardFactor: it.hazardFactor || null,
         currentAction: it.currentAction || null,
@@ -11475,6 +11474,7 @@ ${JSON.stringify(toolResults, null, 2)}
     try {
       const { items } = req.body;
       await bulkReplaceSection(prisma.rAImprovement, req.params.id, items || [], (it) => ({
+        processId: it.processId ? parseInt(it.processId) : null,
         processName: it.processName || null,
         hazardFactor: it.hazardFactor || null,
         reductionPlan: it.reductionPlan || null,
@@ -11584,7 +11584,12 @@ ${JSON.stringify(toolResults, null, 2)}
       const siteBranch = ra.site;
       const deptName = ra.team?.department?.name || '-';
       const teamName = ra.team?.name || '-';
-      const procName = ra.processName;
+      // 공정 요약 — 각 섹션에서 사용된 공정 이름을 모음
+      const processNamesSet = new Set<string>();
+      for (const e of (ra.evaluations as any[])) if (e.workContent) processNamesSet.add(e.workContent);
+      for (const o of (ra.workerOpinions as any[])) if (o.workContent) processNamesSet.add(o.workContent);
+      for (const m of (ra.improvements as any[])) if (m.processName) processNamesSet.add(m.processName);
+      const procName = ra.processName || Array.from(processNamesSet).join(', ') || '-';
 
       // 메인
       const mainWs = wb.addWorksheet('위험성평가 메인화면');

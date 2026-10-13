@@ -859,8 +859,9 @@ model RiskAssessment {
   id                String               @id @default(uuid())
   site              String
   teamId            Int
-  processId         Int
-  processName       String
+  // 공정은 이제 각 섹션 항목 레벨에서 관리. RA 본체의 processId/Name은 선택적(레거시).
+  processId         Int?
+  processName       String?
   evaluatedAt       DateTime             @default(now())
   status            String               @default("DRAFT")
   authorId          String?
@@ -873,7 +874,7 @@ model RiskAssessment {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   team              Team                 @relation("RiskAssessmentTeam", fields: [teamId], references: [id])
-  process           WorkProcess          @relation(fields: [processId], references: [id])
+  process           WorkProcess?         @relation(fields: [processId], references: [id])
   author            User?                @relation("RiskAssessmentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   approver          User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: SetNull)
   preEducation      RAPreEducation?
@@ -907,6 +908,7 @@ model RAPreEducation {
 model RAWorkerOpinion {
   id              String         @id @default(uuid())
   assessmentId    String
+  processId       Int?           // 선택된 공정
   sortOrder       Int            @default(0)
   workContent     String?
   hazardFactor    String?
@@ -940,6 +942,7 @@ model RASafetyInfo {
 model RAEvaluation {
   id                String         @id @default(uuid())
   assessmentId      String
+  processId         Int?           // 선택된 공정
   sortOrder         Int            @default(0)
   workContent       String?
   hazardFactor      String?
@@ -962,8 +965,9 @@ model RAEvaluation {
 model RAImprovement {
   id                String         @id @default(uuid())
   assessmentId      String
+  processId         Int?           // 선택된 공정
   sortOrder         Int            @default(0)
-  processName       String?
+  processName       String?        // 공정 이름 스냅샷
   hazardFactor      String?
   reductionPlan     String?
   responsibleTeamId Int?

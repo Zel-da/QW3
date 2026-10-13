@@ -113,6 +113,18 @@ export default function RiskAssessmentDetailPage() {
     queryFn: async () => (await fetch('/api/teams', { credentials: 'include' })).json(),
   });
 
+  // 이 평가 부서의 공정 목록 (각 섹션 Select용 + 상단 관리 패널용)
+  const { data: processes = [], refetch: refetchProcesses } = useQuery<Array<{ id: number; name: string; teamId: number }>>({
+    queryKey: ['work-processes', ra?.teamId],
+    queryFn: async () => {
+      if (!ra?.teamId) return [];
+      const res = await fetch(`/api/work-processes?teamId=${ra.teamId}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!ra?.teamId,
+  });
+
   // Hook은 반드시 조건부 return 전에 선언 (React Rules of Hooks)
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -161,7 +173,7 @@ export default function RiskAssessmentDetailPage() {
                 onClick={async () => {
                   const ok = await confirm({
                     title: '위험성평가 삭제',
-                    description: `${ra.site} / ${ra.team?.name} / ${ra.processName}\n이 평가를 영구 삭제할까요?\n\n⚠ 6개 섹션·사진·서명·버전 이력 모두 삭제됩니다.`,
+                    description: `${ra.site} / ${ra.team?.name}\n이 평가를 영구 삭제할까요?\n\n⚠ 공정 선택·6개 섹션·사진·서명·버전 이력 모두 삭제됩니다.`,
                     confirmText: '영구 삭제',
                     destructive: true,
                   });
@@ -178,7 +190,7 @@ export default function RiskAssessmentDetailPage() {
         <Card className="mb-4">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-              {ra.site} · {ra.team?.name} · {ra.processName}
+              {ra.site} · {ra.team?.name}
               {ra.status === 'APPROVED' && <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full">승인 완료</span>}
               {ra.status === 'SUBMITTED' && <span className="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">결재 대기</span>}
               {ra.status === 'DRAFT' && <span className="inline-flex items-center gap-1 text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">작성중</span>}
@@ -193,7 +205,16 @@ export default function RiskAssessmentDetailPage() {
             )}
           </CardHeader>
           <CardContent>
-            <SubmitApproveBar ra={ra} isApprover={isApprover} userName={user?.name || user?.username || '사용자'} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <SubmitApproveBar ra={ra} isApprover={isApprover} userName={user?.name || user?.username || '사용자'} />
+              <ProcessManagerPanel
+                teamId={ra.teamId}
+                teamName={ra.team?.name}
+                processes={processes}
+                readOnly={isReadOnly}
+                onChanged={refetchProcesses}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -207,10 +228,10 @@ export default function RiskAssessmentDetailPage() {
             <TabsTrigger value="feedback">6. 피드백교육</TabsTrigger>
           </TabsList>
           <TabsContent value="pre"><SectionEducation raId={id!} data={ra.preEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="pre-education" title="사전교육" /></TabsContent>
-          <TabsContent value="opinion"><SectionWorkerOpinions raId={id!} data={ra.workerOpinions || []} teamMembers={teamMembers} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="info"><SectionSafetyInfo raId={id!} data={ra.safetyInfo} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="eval"><SectionEvaluations raId={id!} data={ra.evaluations || []} teams={teams} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="imp"><SectionImprovements raId={id!} data={ra.improvements || []} teams={teams} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="opinion"><SectionWorkerOpinions raId={id!} data={ra.workerOpinions || []} processes={processes} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="info"><SectionSafetyInfo raId={id!} data={ra.safetyInfo} processes={processes} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="eval"><SectionEvaluations raId={id!} data={ra.evaluations || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="imp"><SectionImprovements raId={id!} data={ra.improvements || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="feedback"><SectionEducation raId={id!} data={ra.feedbackEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="feedback-education" title="피드백교육" /></TabsContent>
         </Tabs>
       </main>
@@ -291,6 +312,87 @@ function SubmitApproveBar({ ra, isApprover, userName }: { ra: any; isApprover: b
   if (ra.status === 'SUBMITTED') return <div className="text-sm text-muted-foreground">결재자 승인 대기 중입니다</div>;
   if (ra.status === 'APPROVED') return <div className="text-sm text-green-700">승인 완료 — 수정 불가 (조회만 가능)</div>;
   return null;
+}
+
+// ───────── 공정 관리 패널 (상단, 엑셀/제출 옆) ─────────
+function ProcessManagerPanel({ teamId, teamName, processes, readOnly, onChanged }: {
+  teamId: number; teamName: string | undefined; processes: Array<{ id: number; name: string }>; readOnly: boolean; onChanged: () => void;
+}) {
+  const { toast } = useToast();
+  const confirm = useConfirm();
+  const [name, setName] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const addMut = useMutation({
+    mutationFn: async () => (await apiRequest('POST', '/api/work-processes', { teamId, name: name.trim() })).json(),
+    onSuccess: () => { toast({ title: '공정 추가' }); setName(''); onChanged(); },
+    onError: (e: any) => toast({ title: '추가 실패', description: e.message, variant: 'destructive' }),
+  });
+  const renameMut = useMutation({
+    mutationFn: async () => (await apiRequest('PUT', `/api/work-processes/${editingId}`, { name: editName.trim() })).json(),
+    onSuccess: () => { toast({ title: '공정 이름 변경' }); setEditingId(null); onChanged(); },
+    onError: (e: any) => toast({ title: '변경 실패', description: e.message, variant: 'destructive' }),
+  });
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => (await apiRequest('DELETE', `/api/work-processes/${id}`)).json(),
+    onSuccess: (data: any) => { toast({ title: '처리됨', description: data?.message }); onChanged(); },
+    onError: (e: any) => toast({ title: '삭제 실패', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <div className="border rounded-md p-3 bg-muted/20">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-semibold">공정 관리 ({teamName || '-'})</div>
+        <span className="text-xs text-muted-foreground">{processes.length}개</span>
+      </div>
+      {!readOnly && (
+        <div className="flex gap-2 mb-2">
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="새 공정명" />
+          <Button size="sm" onClick={() => addMut.mutate()} disabled={!name.trim() || addMut.isPending}>
+            <Plus className="w-4 h-4 mr-1" />추가
+          </Button>
+        </div>
+      )}
+      <div className="max-h-[180px] overflow-y-auto space-y-1">
+        {processes.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">공정이 없습니다. 추가하세요.</div>}
+        {processes.map(p => (
+          <div key={p.id} className="flex items-center gap-2 py-1 border-b last:border-b-0">
+            {editingId === p.id ? (
+              <>
+                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 text-sm" />
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => renameMut.mutate()}><CheckCircle2 className="w-4 h-4" /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}><XCircle className="w-4 h-4" /></Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm flex-1 truncate">{p.name}</span>
+                {!readOnly && (
+                  <>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="수정"
+                      onClick={() => { setEditingId(p.id); setEditName(p.name); }}>
+                      <Pen className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="삭제"
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: '공정 삭제',
+                          description: `"${p.name}" 공정을 삭제할까요?\n연결된 평가가 있으면 숨김(soft delete)만 됩니다.`,
+                          confirmText: '삭제', destructive: true,
+                        });
+                        if (ok) deleteMut.mutate(p.id);
+                      }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ───────── 사전/피드백 교육 공용 ─────────
@@ -449,7 +551,7 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
 }
 
 // ───────── 2. 의견·토론 ─────────
-function SectionWorkerOpinions({ raId, data, teamMembers, readOnly }: { raId: string; data: any[]; teamMembers: any[]; readOnly: boolean }) {
+function SectionWorkerOpinions({ raId, data, processes, readOnly }: { raId: string; data: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -462,7 +564,11 @@ function SectionWorkerOpinions({ raId, data, teamMembers, readOnly }: { raId: st
   });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
-  const add = () => setItems([...items, { workContent: '', hazardFactor: '', currentAction: '', riskLevel: '', improvement: '', participantsSig: [], remarks: '' }]);
+  const updateProcess = (i: number, pid: string) => {
+    const p = processes.find(x => x.id === parseInt(pid));
+    setItems(items.map((x, idx) => idx === i ? { ...x, processId: p?.id ?? null, workContent: p?.name ?? x.workContent } : x));
+  };
+  const add = () => setItems([...items, { processId: null, workContent: '', hazardFactor: '', currentAction: '', riskLevel: '', improvement: '', participantsSig: [], remarks: '' }]);
   const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
 
   return (
@@ -480,7 +586,7 @@ function SectionWorkerOpinions({ raId, data, teamMembers, readOnly }: { raId: st
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
-                <TableHead>작업내용·기계기구</TableHead>
+                <TableHead className="w-40">공정 (작업내용·기계기구)</TableHead>
                 <TableHead>유해위험요인</TableHead>
                 <TableHead>현재 안전조치</TableHead>
                 <TableHead className="w-20">위험성</TableHead>
@@ -493,7 +599,15 @@ function SectionWorkerOpinions({ raId, data, teamMembers, readOnly }: { raId: st
               {items.map((it, i) => (
                 <TableRow key={i}>
                   <TableCell>{i + 1}</TableCell>
-                  <TableCell><Textarea rows={2} value={it.workContent || ''} onChange={e => update(i, 'workContent', e.target.value)} disabled={readOnly} /></TableCell>
+                  <TableCell>
+                    <Select value={it.processId ? String(it.processId) : ''} onValueChange={v => updateProcess(i, v)} disabled={readOnly}>
+                      <SelectTrigger><SelectValue placeholder="공정 선택" /></SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        {processes.length === 0 && <div className="px-2 py-3 text-xs text-muted-foreground">상단에서 공정을 먼저 추가하세요</div>}
+                        {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell><Textarea rows={2} value={it.hazardFactor || ''} onChange={e => update(i, 'hazardFactor', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell><Textarea rows={2} value={it.currentAction || ''} onChange={e => update(i, 'currentAction', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell>
@@ -522,7 +636,7 @@ function SectionWorkerOpinions({ raId, data, teamMembers, readOnly }: { raId: st
 }
 
 // ───────── 3. 안전보건정보 ─────────
-function SectionSafetyInfo({ raId, data, readOnly }: { raId: string; data: any; readOnly: boolean }) {
+function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; data: any; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [rawMaterial, setRawMaterial] = useState('');
@@ -547,8 +661,12 @@ function SectionSafetyInfo({ raId, data, readOnly }: { raId: string; data: any; 
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
 
-  const addStep = () => setProcessSteps([...processSteps, { order: processSteps.length + 1, description: '', equipment: [], chemicals: [] }]);
+  const addStep = () => setProcessSteps([...processSteps, { order: processSteps.length + 1, processId: null, description: '', equipment: [], chemicals: [] }]);
   const removeStep = (i: number) => setProcessSteps(processSteps.filter((_, idx) => idx !== i));
+  const updateStepProcess = (i: number, pid: string) => {
+    const p = processes.find(x => x.id === parseInt(pid));
+    setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, processId: p?.id ?? null, description: x.description || p?.name || '' } : x));
+  };
 
   return (
     <Card>
@@ -573,7 +691,16 @@ function SectionSafetyInfo({ raId, data, readOnly }: { raId: string; data: any; 
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">#{i + 1}</span>
-                    <Input placeholder="공정 설명" value={s.description || ''} onChange={e => setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))} disabled={readOnly} />
+                    <div className="w-48">
+                      <Select value={s.processId ? String(s.processId) : ''} onValueChange={v => updateStepProcess(i, v)} disabled={readOnly}>
+                        <SelectTrigger><SelectValue placeholder="공정 선택" /></SelectTrigger>
+                        <SelectContent className="max-h-[280px]">
+                          {processes.length === 0 && <div className="px-2 py-3 text-xs text-muted-foreground">상단에서 공정을 먼저 추가하세요</div>}
+                          {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Input placeholder="공정 설명 (선택)" value={s.description || ''} onChange={e => setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))} disabled={readOnly} />
                     {!readOnly && <Button variant="ghost" size="icon" onClick={() => removeStep(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -632,7 +759,7 @@ function SectionSafetyInfo({ raId, data, readOnly }: { raId: string; data: any; 
 }
 
 // ───────── 4. 위험성평가 ─────────
-function SectionEvaluations({ raId, data, teams, readOnly }: { raId: string; data: any[]; teams: any[]; readOnly: boolean }) {
+function SectionEvaluations({ raId, data, teams, processes, readOnly }: { raId: string; data: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -645,7 +772,11 @@ function SectionEvaluations({ raId, data, teams, readOnly }: { raId: string; dat
   });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
-  const add = () => setItems([...items, { workContent: '', hazardFactor: '', currentAction: '', riskLevel: '', improvement: '', responsibleTeamId: null, responsibleName: '', scheduledDate: null, completedDate: null, remarks: '' }]);
+  const updateProcess = (i: number, pid: string) => {
+    const p = processes.find(x => x.id === parseInt(pid));
+    setItems(items.map((x, idx) => idx === i ? { ...x, processId: p?.id ?? null, workContent: p?.name ?? x.workContent } : x));
+  };
+  const add = () => setItems([...items, { processId: null, workContent: '', hazardFactor: '', currentAction: '', riskLevel: '', improvement: '', responsibleTeamId: null, responsibleName: '', scheduledDate: null, completedDate: null, remarks: '' }]);
   const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
 
   const fmtDate = (d: any) => d ? String(d).slice(0, 10) : '';
@@ -662,7 +793,7 @@ function SectionEvaluations({ raId, data, teams, readOnly }: { raId: string; dat
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
-                <TableHead>공정(작업내용)</TableHead>
+                <TableHead className="w-40">공정(작업내용)</TableHead>
                 <TableHead>유해위험요인</TableHead>
                 <TableHead>현재 안전조치</TableHead>
                 <TableHead className="w-20">위험성</TableHead>
@@ -678,7 +809,15 @@ function SectionEvaluations({ raId, data, teams, readOnly }: { raId: string; dat
               {items.map((it, i) => (
                 <TableRow key={i}>
                   <TableCell>{i + 1}</TableCell>
-                  <TableCell><Textarea rows={2} value={it.workContent || ''} onChange={e => update(i, 'workContent', e.target.value)} disabled={readOnly} /></TableCell>
+                  <TableCell>
+                    <Select value={it.processId ? String(it.processId) : ''} onValueChange={v => updateProcess(i, v)} disabled={readOnly}>
+                      <SelectTrigger><SelectValue placeholder="공정 선택" /></SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        {processes.length === 0 && <div className="px-2 py-3 text-xs text-muted-foreground">상단에서 공정을 먼저 추가하세요</div>}
+                        {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell><Textarea rows={2} value={it.hazardFactor || ''} onChange={e => update(i, 'hazardFactor', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell><Textarea rows={2} value={it.currentAction || ''} onChange={e => update(i, 'currentAction', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell>
@@ -717,7 +856,7 @@ function SectionEvaluations({ raId, data, teams, readOnly }: { raId: string; dat
 }
 
 // ───────── 5. 개선실행 ─────────
-function SectionImprovements({ raId, data, teams, readOnly }: { raId: string; data: any[]; teams: any[]; readOnly: boolean }) {
+function SectionImprovements({ raId, data, teams, processes, readOnly }: { raId: string; data: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -730,7 +869,11 @@ function SectionImprovements({ raId, data, teams, readOnly }: { raId: string; da
   });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
-  const add = () => setItems([...items, { processName: '', hazardFactor: '', reductionPlan: '', responsibleTeamId: null, responsibleName: '', actionResult: '', improvedDate: null, beforePhotos: [], afterPhotos: [], remarks: '' }]);
+  const updateProcess = (i: number, pid: string) => {
+    const p = processes.find(x => x.id === parseInt(pid));
+    setItems(items.map((x, idx) => idx === i ? { ...x, processId: p?.id ?? null, processName: p?.name ?? x.processName } : x));
+  };
+  const add = () => setItems([...items, { processId: null, processName: '', hazardFactor: '', reductionPlan: '', responsibleTeamId: null, responsibleName: '', actionResult: '', improvedDate: null, beforePhotos: [], afterPhotos: [], remarks: '' }]);
   const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const fmtDate = (d: any) => d ? String(d).slice(0, 10) : '';
 
@@ -749,7 +892,16 @@ function SectionImprovements({ raId, data, teams, readOnly }: { raId: string; da
                 {!readOnly && <Button variant="ghost" size="icon" onClick={() => remove(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><Label>단위공정</Label><Input value={it.processName || ''} onChange={e => update(i, 'processName', e.target.value)} disabled={readOnly} /></div>
+                <div>
+                  <Label>단위공정</Label>
+                  <Select value={it.processId ? String(it.processId) : ''} onValueChange={v => updateProcess(i, v)} disabled={readOnly}>
+                    <SelectTrigger><SelectValue placeholder="공정 선택" /></SelectTrigger>
+                    <SelectContent className="max-h-[280px]">
+                      {processes.length === 0 && <div className="px-2 py-3 text-xs text-muted-foreground">상단에서 공정을 먼저 추가하세요</div>}
+                      {processes.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div><Label>조치결과</Label><Input value={it.actionResult || ''} onChange={e => update(i, 'actionResult', e.target.value)} disabled={readOnly} placeholder="○ / X / 진행중" /></div>
                 <div className="md:col-span-2"><Label>유해위험요인</Label><Textarea rows={2} value={it.hazardFactor || ''} onChange={e => update(i, 'hazardFactor', e.target.value)} disabled={readOnly} /></div>
                 <div className="md:col-span-2"><Label>감소대책</Label><Textarea rows={2} value={it.reductionPlan || ''} onChange={e => update(i, 'reductionPlan', e.target.value)} disabled={readOnly} /></div>
