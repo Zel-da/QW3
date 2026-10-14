@@ -341,20 +341,21 @@ function ProcessManagerPanel({ teamId, teamName, processes, readOnly, onChanged 
   });
 
   return (
-    <div className="border rounded-md p-3 bg-muted/20">
-      <div className="flex items-center justify-between mb-2">
+    <div className="border rounded-md p-3 bg-muted/20 flex flex-col" style={{ maxHeight: '260px' }}>
+      <div className="flex items-center justify-between mb-2 flex-shrink-0">
         <div className="text-sm font-semibold">공정 관리 ({teamName || '-'})</div>
         <span className="text-xs text-muted-foreground">{processes.length}개</span>
       </div>
       {!readOnly && (
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 mb-2 flex-shrink-0">
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="새 공정명" />
           <Button size="sm" onClick={() => addMut.mutate()} disabled={!name.trim() || addMut.isPending}>
             <Plus className="w-4 h-4 mr-1" />추가
           </Button>
         </div>
       )}
-      <div className="max-h-[180px] overflow-y-auto space-y-1">
+      {/* 공정 리스트 — flex-1 min-h-0 로 남은 공간만 사용 후 스크롤 */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
         {processes.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">공정이 없습니다. 추가하세요.</div>}
         {processes.map(p => (
           <div key={p.id} className="flex items-center gap-2 py-1 border-b last:border-b-0">
