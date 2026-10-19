@@ -704,28 +704,118 @@ function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; 
                     <Input placeholder="공정 설명 (선택)" value={s.description || ''} onChange={e => setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))} disabled={readOnly} />
                     {!readOnly && <Button variant="ghost" size="icon" onClick={() => removeStep(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">기계·기구·설비 (쉼표로 구분)</Label>
-                      <Input value={(s.equipment || []).map((e: any) => `${e.name}(${e.qty || 1})`).join(', ')}
-                        onChange={e => {
-                          const arr = e.target.value.split(',').map(t => t.trim()).filter(Boolean).map(t => {
-                            const m = t.match(/^(.+?)\((\d+)\)$/);
-                            return m ? { name: m[1].trim(), qty: parseInt(m[2]) } : { name: t, qty: 1 };
-                          });
-                          setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, equipment: arr } : x));
-                        }} disabled={readOnly} placeholder="예: 호이스트(3), 지게차(1)" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 기계·기구·설비 — 설비명 + 수량 */}
+                    <div className="border rounded-md p-2 bg-background">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs font-semibold">기계·기구·설비</Label>
+                        {!readOnly && (
+                          <Button
+                            type="button" variant="outline" size="sm"
+                            onClick={() => setProcessSteps(processSteps.map((x, idx) => idx === i
+                              ? { ...x, equipment: [...(x.equipment || []), { name: '', qty: 1 }] } : x))}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />추가
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-[1fr_80px_32px] gap-1 text-[11px] text-muted-foreground px-1">
+                          <span>설비명</span><span>수량</span><span></span>
+                        </div>
+                        {(s.equipment || []).map((eq: any, k: number) => (
+                          <div key={k} className="grid grid-cols-[1fr_80px_32px] gap-1 items-center">
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="설비명"
+                              value={eq.name || ''}
+                              disabled={readOnly}
+                              onChange={e => {
+                                const name = e.target.value;
+                                setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, equipment: (x.equipment || []).map((it: any, kk: number) => kk === k ? { ...it, name } : it) } : x));
+                              }}
+                            />
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="수량"
+                              type="number"
+                              value={eq.qty ?? ''}
+                              disabled={readOnly}
+                              onChange={e => {
+                                const qty = e.target.value === '' ? '' : parseInt(e.target.value);
+                                setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, equipment: (x.equipment || []).map((it: any, kk: number) => kk === k ? { ...it, qty } : it) } : x));
+                              }}
+                            />
+                            {!readOnly && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, equipment: (x.equipment || []).filter((_: any, kk: number) => kk !== k) } : x))}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        {(s.equipment || []).length === 0 && (
+                          <div className="text-[11px] text-muted-foreground text-center py-2">설비 없음</div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-xs">유해화학물질 (쉼표로 구분)</Label>
-                      <Input value={(s.chemicals || []).map((c: any) => `${c.name}(${c.dailyAmount || '-'})`).join(', ')}
-                        onChange={e => {
-                          const arr = e.target.value.split(',').map(t => t.trim()).filter(Boolean).map(t => {
-                            const m = t.match(/^(.+?)\((.+?)\)$/);
-                            return m ? { name: m[1].trim(), dailyAmount: m[2] } : { name: t };
-                          });
-                          setProcessSteps(processSteps.map((x, idx) => idx === i ? { ...x, chemicals: arr } : x));
-                        }} disabled={readOnly} placeholder="예: LOCTITE(250ml), AZOLLA(54L)" />
+
+                    {/* 유해화학물질 — 명칭 + 취급량/일 + 취급시간 */}
+                    <div className="border rounded-md p-2 bg-background">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs font-semibold">유해화학물질</Label>
+                        {!readOnly && (
+                          <Button
+                            type="button" variant="outline" size="sm"
+                            onClick={() => setProcessSteps(processSteps.map((x, idx) => idx === i
+                              ? { ...x, chemicals: [...(x.chemicals || []), { name: '', dailyAmount: '', duration: '' }] } : x))}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />추가
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-[1.3fr_1fr_1fr_32px] gap-1 text-[11px] text-muted-foreground px-1">
+                          <span>화학물질명</span><span>취급량/일</span><span>취급시간</span><span></span>
+                        </div>
+                        {(s.chemicals || []).map((ch: any, k: number) => (
+                          <div key={k} className="grid grid-cols-[1.3fr_1fr_1fr_32px] gap-1 items-center">
+                            <Input className="h-8 text-sm" placeholder="예: LOCTITE 242" value={ch.name || ''} disabled={readOnly}
+                              onChange={e => {
+                                const name = e.target.value;
+                                setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, chemicals: (x.chemicals || []).map((it: any, kk: number) => kk === k ? { ...it, name } : it) } : x));
+                              }} />
+                            <Input className="h-8 text-sm" placeholder="예: 250ml" value={ch.dailyAmount || ''} disabled={readOnly}
+                              onChange={e => {
+                                const dailyAmount = e.target.value;
+                                setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, chemicals: (x.chemicals || []).map((it: any, kk: number) => kk === k ? { ...it, dailyAmount } : it) } : x));
+                              }} />
+                            <Input className="h-8 text-sm" placeholder="예: 30분" value={ch.duration || ''} disabled={readOnly}
+                              onChange={e => {
+                                const duration = e.target.value;
+                                setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, chemicals: (x.chemicals || []).map((it: any, kk: number) => kk === k ? { ...it, duration } : it) } : x));
+                              }} />
+                            {!readOnly && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => setProcessSteps(processSteps.map((x, idx) => idx === i
+                                  ? { ...x, chemicals: (x.chemicals || []).filter((_: any, kk: number) => kk !== k) } : x))}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        {(s.chemicals || []).length === 0 && (
+                          <div className="text-[11px] text-muted-foreground text-center py-2">화학물질 없음</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

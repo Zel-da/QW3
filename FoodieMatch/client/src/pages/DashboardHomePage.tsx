@@ -18,7 +18,8 @@ import {
   Clock,
   X,
   FolderOpen,
-  ShieldAlert
+  ShieldAlert,
+  AlertTriangle
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
@@ -317,6 +318,16 @@ export default function DashboardHomePage() {
       showToAll: user?.role !== 'PENDING' && user?.role !== 'CONTRACTOR',
     },
     {
+      title: '잠재위험 발굴',
+      description: '현장 잠재위험 등록·회신',
+      icon: AlertTriangle,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-50 hover:bg-amber-100',
+      path: '/potential-risks',
+      stats: '발굴 등록/조치',
+      showToAll: user?.role !== 'PENDING' && user?.role !== 'CONTRACTOR',
+    },
+    {
       title: '자료실',
       description: '위험성평가 및 교육자료',
       icon: FolderOpen,
@@ -564,16 +575,28 @@ export default function DashboardHomePage() {
           </p>
         </div>
 
-        {/* 메뉴 카드 그리드 - 모바일에서 2열 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-5xl mx-auto">
-          {visibleCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Card
-                key={card.title}
-                className={`cursor-pointer transition-all duration-300 hover:shadow-xl active:scale-95 md:hover:scale-105 ${card.bgColor} border-2`}
-                onClick={() => navigate(card.path)}
-              >
+        {/* 메뉴 카드 그리드 - 데스크톱 4열, 마지막 로우가 4열 미만이면 가운데 정렬 */}
+        <div className="grid grid-cols-2 md:grid-cols-8 gap-3 md:gap-6 max-w-6xl mx-auto">
+          {(() => {
+            const total = visibleCards.length;
+            const perRow = 4; // 데스크톱 기준 (grid-cols-8 / col-span-2)
+            const lastRowCount = total % perRow === 0 ? perRow : total % perRow;
+            const firstIdxOfLastRow = total - lastRowCount;
+            // 마지막 로우 첫 카드에 col-start 지정 → 가운데 정렬
+            const colStartClass =
+              lastRowCount === 1 ? 'md:col-start-4'   // 1개 → col 4~5 (가운데)
+              : lastRowCount === 2 ? 'md:col-start-3' // 2개 → col 3~6
+              : lastRowCount === 3 ? 'md:col-start-2' // 3개 → col 2~7
+              : '';                                   // 4개 → 꽉 참
+            return visibleCards.map((card, idx) => {
+              const Icon = card.icon;
+              const isFirstOfLast = idx === firstIdxOfLastRow && colStartClass;
+              return (
+                <Card
+                  key={card.title}
+                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl active:scale-95 md:hover:scale-105 ${card.bgColor} border-2 md:col-span-2 ${isFirstOfLast ? colStartClass : ''}`}
+                  onClick={() => navigate(card.path)}
+                >
                 <CardHeader className="p-3 md:pb-3 md:p-6">
                   <div className="flex items-center justify-between mb-1 md:mb-2">
                     <Icon className={`h-8 w-8 md:h-10 md:w-10 ${card.color}`} />
@@ -593,7 +616,8 @@ export default function DashboardHomePage() {
                 </CardContent>
               </Card>
             );
-          })}
+          });
+          })()}
         </div>
 
         {/* 최신 공지사항 */}
