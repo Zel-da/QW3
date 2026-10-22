@@ -2048,9 +2048,25 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
               임시저장
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={() => {
+                console.log('[TBM] 제출하기 버튼 클릭됨', {
+                  isSaving,
+                  hasChecklist: !!checklist,
+                  formStateCount: Object.keys(formState).length,
+                  user: user?.id,
+                  selectedTeam,
+                  mode,
+                });
+                handleSubmit();
+              }}
               size="lg"
               disabled={isSaving || !checklist || Object.keys(formState).length === 0}
+              title={
+                isSaving ? '처리 중...'
+                : !checklist ? '체크리스트를 불러오지 못했습니다 (팀 재선택 또는 새로고침)'
+                : Object.keys(formState).length === 0 ? '점검 항목을 하나라도 선택해주세요'
+                : '제출'
+              }
             >
               {isSaving ? (
                 <>
@@ -2062,6 +2078,14 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           </>
         )}
       </div>
+
+      {/* 제출 버튼이 비활성화된 경우 이유 안내 */}
+      {mode !== 'view' && (!checklist || Object.keys(formState).length === 0) && !isSaving && (
+        <div className="text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md mx-4 md:mx-0 p-2">
+          {!checklist && '⚠ 체크리스트를 불러오지 못했습니다. 팀을 다시 선택하거나 새로고침(Ctrl+Shift+R)해주세요.'}
+          {checklist && Object.keys(formState).length === 0 && '⚠ 점검 항목을 하나 이상 선택해야 제출할 수 있습니다 (O/△/X).'}
+        </div>
+      )}
 
       {/* 제출 성공 다이얼로그 */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
