@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import { PhotoDropzone } from '@/components/PhotoDropzone';
-import { ArrowLeft, Save, Trash2, CheckCircle2, Clock, AlertTriangle, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, CheckCircle2, Clock, AlertTriangle, Pencil, X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
 export default function PotentialRiskDetailPage() {
   const { user } = useAuth();
@@ -55,6 +55,26 @@ export default function PotentialRiskDetailPage() {
   const [editAssignedTeamId, setEditAssignedTeamId] = useState<string>('');
   const [editSitePhotos, setEditSitePhotos] = useState<string[]>([]);
 
+  // 사진 확대 lightbox state
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const openLightbox = (photos: string[], index: number) => setLightbox({ photos, index });
+  const closeLightbox = () => setLightbox(null);
+  const nextPhoto = () => setLightbox(prev => prev ? { ...prev, index: (prev.index + 1) % prev.photos.length } : null);
+  const prevPhoto = () => setLightbox(prev => prev ? { ...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length } : null);
+
+  // ESC·방향키 지원
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowRight') nextPhoto();
+      else if (e.key === 'ArrowLeft') prevPhoto();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightbox]);
+
   const { data: teams = [] } = useQuery<Array<{ id: number; name: string; site: string }>>({
     queryKey: ['teams-active'],
     queryFn: async () => (await fetch('/api/teams', { credentials: 'include' })).json(),
@@ -83,10 +103,12 @@ export default function PotentialRiskDetailPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: '저장 완료', description: '안전팀에 알림이 발송되었습니다.' });
+      toast({ title: '회신 저장 완료', description: '목록 화면으로 돌아갑니다.' });
       qc.invalidateQueries({ queryKey: ['potential-risk', id] });
       qc.invalidateQueries({ queryKey: ['potential-risks'] });
       qc.invalidateQueries({ queryKey: ['potential-risk-stats'] });
+      // 1초 후 목록 자동 복귀
+      setTimeout(() => navigate('/potential-risks'), 1000);
     },
     onError: (err: any) => {
       toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
@@ -214,12 +236,20 @@ export default function PotentialRiskDetailPage() {
                 </div>
                 {Array.isArray(risk.sitePhotos) && risk.sitePhotos.length > 0 && (
                   <div>
-                    <Label className="text-xs text-muted-foreground">현장 사진 ({risk.sitePhotos.length}장)</Label>
+                    <Label className="text-xs text-muted-foreground">현장 사진 ({risk.sitePhotos.length}장) · 썸네일 클릭 시 확대</Label>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-1">
                       {risk.sitePhotos.map((url: string, i: number) => (
-                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square border rounded-md overflow-hidden bg-muted">
-                          <img src={url} alt="" className="w-full h-full object-cover hover:opacity-90" />
-                        </a>
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => openLightbox(risk.sitePhotos, i)}
+                          className="aspect-square border rounded-md overflow-hidden bg-muted relative group"
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                            <ZoomIn className="w-5 h-5 text-white" />
+                          </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -330,6 +360,68 @@ export default function PotentialRiskDetailPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* 현장 사진 Lightbox (상세 조회 모드에서 사용) */}
+      {lightbox && lightbox.photos[lightbox.index] && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white z-10">
+            <span className="text-sm">
+              {lightbox.index + 1} / {lightbox.photos.length}
+              <span className="opacity-70 ml-2">· 현장 사진</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <a
+                href={lightbox.photos[lightbox.index]}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center"
+                title="다운로드"
+              >
+                <ChevronRight className="w-4 h-4 rotate-90" />
+              </a>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
+                className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          {lightbox.photos.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
+              className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+          <img
+            src={lightbox.photos[lightbox.index]}
+            alt=""
+            className="max-w-[90vw] max-h-[85vh] object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+          {lightbox.photos.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
+              className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
+            ESC·외부 클릭으로 닫기 · ←→ 로 이동
+          </div>
+        </div>
+      )}
     </div>
   );
 }

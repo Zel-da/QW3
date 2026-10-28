@@ -6,7 +6,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X, ClipboardPaste, Loader2 } from 'lucide-react';
+import { Upload, X, ClipboardPaste, Loader2, ZoomIn, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 interface Props {
   value: string[];
@@ -28,7 +28,20 @@ async function uploadFile(file: File): Promise<string> {
 export function PhotoDropzone({ value, onChange, label = '사진', disabled, acceptPaste = true }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // 확대 보기 키보드 지원
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      else if (e.key === 'ArrowRight') setLightboxIndex(i => i === null ? null : (i + 1) % value.length);
+      else if (e.key === 'ArrowLeft') setLightboxIndex(i => i === null ? null : (i - 1 + value.length) % value.length);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxIndex, value.length]);
 
   const handleFiles = async (files: FileList | null | File[]) => {
     if (!files) return;
@@ -117,12 +130,22 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
           {value.map((url, i) => (
             <div key={i} className="relative group aspect-square border rounded-md overflow-hidden bg-muted">
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="w-full h-full"
+                title="클릭 시 확대"
+              >
+                <img src={url} alt="" className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 pointer-events-none">
+                  <ZoomIn className="w-5 h-5 text-white" />
+                </div>
+              </button>
               {!disabled && (
                 <button
                   type="button"
                   onClick={() => removeAt(i)}
-                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   title="삭제"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -130,6 +153,79 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 사진 확대 Lightbox */}
+      {lightboxIndex !== null && value[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxIndex(null)}
+        >
+          {/* 상단 바 */}
+          <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white z-10">
+            <span className="text-sm">
+              {lightboxIndex + 1} / {value.length}
+              {label && <span className="opacity-70 ml-2">· {label}</span>}
+            </span>
+            <div className="flex items-center gap-2">
+              <a
+                href={value[lightboxIndex]}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center"
+                title="다운로드"
+              >
+                <Download className="w-4 h-4" />
+              </a>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
+                className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center"
+                title="닫기 (ESC)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* 이전 */}
+          {value.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + value.length) % value.length); }}
+              className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+              title="이전 (←)"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* 이미지 */}
+          <img
+            src={value[lightboxIndex]}
+            alt=""
+            className="max-w-[90vw] max-h-[85vh] object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+
+          {/* 다음 */}
+          {value.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % value.length); }}
+              className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+              title="다음 (→)"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
+            ESC·외부 클릭으로 닫기 · ←→ 로 이동
+          </div>
         </div>
       )}
     </div>
