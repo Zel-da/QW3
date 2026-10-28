@@ -29,7 +29,15 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);        // 1 = 뷰포트 꽉, 2·3배로 더 확대 가능
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const { toast } = useToast();
+
+  // Lightbox 열릴 때마다 줌·팬 초기화
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [lightboxIndex]);
 
   // 확대 보기 키보드 지원
   useEffect(() => {
@@ -38,6 +46,9 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
       if (e.key === 'Escape') setLightboxIndex(null);
       else if (e.key === 'ArrowRight') setLightboxIndex(i => i === null ? null : (i + 1) % value.length);
       else if (e.key === 'ArrowLeft') setLightboxIndex(i => i === null ? null : (i - 1 + value.length) % value.length);
+      else if (e.key === '+' || e.key === '=') setZoom(z => Math.min(z + 0.5, 5));
+      else if (e.key === '-' || e.key === '_') setZoom(z => Math.max(z - 0.5, 0.5));
+      else if (e.key === '0') { setZoom(1); setPan({ x: 0, y: 0 }); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -159,8 +170,13 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
       {/* 사진 확대 Lightbox */}
       {lightboxIndex !== null && value[lightboxIndex] && (
         <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center overflow-hidden"
           onClick={() => setLightboxIndex(null)}
+          onWheel={(e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.2 : -0.2;
+            setZoom(z => Math.max(0.5, Math.min(5, z + delta)));
+          }}
         >
           {/* 상단 바 */}
           <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between text-white z-10">
@@ -196,19 +212,43 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + value.length) % value.length); }}
-              className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+              className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center z-10"
               title="이전 (←)"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
 
-          {/* 이미지 */}
+          {/* 이미지 — 뷰포트에 꽉 차게 + 줌/팬 */}
           <img
             src={value[lightboxIndex]}
             alt=""
-            className="max-w-[90vw] max-h-[85vh] object-contain"
-            onClick={e => e.stopPropagation()}
+            draggable={false}
+            style={{
+              maxWidth: '95vw',
+              maxHeight: '90vh',
+              width: 'auto',
+              height: 'auto',
+              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+              transition: zoom === 1 ? 'transform 0.2s' : 'none',
+              cursor: zoom > 1 ? 'grab' : 'zoom-in',
+            }}
+            className="select-none"
+            onClick={e => { e.stopPropagation(); if (zoom === 1) setZoom(2); else setZoom(1); }}
+            onMouseDown={(e) => {
+              if (zoom <= 1) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const startX = e.clientX - pan.x;
+              const startY = e.clientY - pan.y;
+              const onMove = (ev: MouseEvent) => setPan({ x: ev.clientX - startX, y: ev.clientY - startY });
+              const onUp = () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+              };
+              window.addEventListener('mousemove', onMove);
+              window.addEventListener('mouseup', onUp);
+            }}
           />
 
           {/* 다음 */}
@@ -216,15 +256,44 @@ export function PhotoDropzone({ value, onChange, label = '사진', disabled, acc
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % value.length); }}
-              className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center"
+              className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center z-10"
               title="다음 (→)"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
           )}
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
-            ESC·외부 클릭으로 닫기 · ←→ 로 이동
+          {/* 하단 줌 컨트롤 */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-white text-sm" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setZoom(z => Math.max(0.5, z - 0.5))}
+              className="w-8 h-8 hover:bg-white/20 rounded-full flex items-center justify-center font-bold"
+              title="축소 (-)"
+            >
+              −
+            </button>
+            <span className="min-w-[48px] text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+            <button
+              type="button"
+              onClick={() => setZoom(z => Math.min(5, z + 0.5))}
+              className="w-8 h-8 hover:bg-white/20 rounded-full flex items-center justify-center font-bold"
+              title="확대 (+)"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+              className="px-2 h-8 hover:bg-white/20 rounded-full flex items-center text-xs"
+              title="원래 크기 (0)"
+            >
+              리셋
+            </button>
+          </div>
+
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 text-white/50 text-[11px]">
+            이미지 클릭·휠 스크롤로 확대 · 확대 상태에서 드래그로 이동 · ESC 닫기
           </div>
         </div>
       )}

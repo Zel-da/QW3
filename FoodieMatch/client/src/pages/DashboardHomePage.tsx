@@ -623,15 +623,31 @@ export default function DashboardHomePage() {
         {/* 최신 공지사항 */}
         {recentNotices && recentNotices.length > 0 && (
           <div className="mt-8 md:mt-12 max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-3 md:mb-6">
+            <div className="flex items-center justify-between mb-3 md:mb-6 gap-2 flex-wrap">
               <h2 className="text-lg md:text-2xl font-bold">최신 공지사항</h2>
-              <button
-                onClick={() => navigate('/notices')}
-                className="text-xs md:text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
-              >
-                전체보기
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2 flex-1 justify-end max-w-md">
+                <div className="relative flex-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                  <input
+                    type="text"
+                    placeholder="공지 검색 (제목·내용)"
+                    className="w-full h-9 pl-8 pr-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const q = (e.target as HTMLInputElement).value.trim();
+                        navigate(q ? `/notices?q=${encodeURIComponent(q)}` : '/notices');
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => navigate('/notices')}
+                  className="text-xs md:text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 whitespace-nowrap"
+                >
+                  전체보기
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <Card>
               <CardContent className="p-0">

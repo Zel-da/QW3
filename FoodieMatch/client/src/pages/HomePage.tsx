@@ -23,7 +23,13 @@ export default function HomePage() {
     queryKey: ["/api/notices"],
   });
 
-  const [searchTerm, setSearchTerm] = useState('');
+  // URL ?q=xxx 가 있으면 초기 검색어로 세팅
+  const [searchTerm, setSearchTerm] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get('q') || '';
+    } catch { return ''; }
+  });
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   // 팝업 이미지 상태
