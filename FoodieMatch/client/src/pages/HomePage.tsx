@@ -67,6 +67,14 @@ export default function HomePage() {
     return uniqueCategories.sort();
   }, [notices]);
 
+  // 공지 고유 번호 맵 — 전체 목록에서의 역순 번호(최신=가장 큰 번호)
+  // 검색/필터 적용돼도 각 공지는 자기 고유 번호 유지
+  const noticeNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    notices.forEach((n, i) => map.set(n.id, notices.length - i));
+    return map;
+  }, [notices]);
+
   // 검색어와 카테고리로 공지사항 필터링
   const filteredNotices = useMemo(() => {
     return notices.filter(notice => {
@@ -217,7 +225,7 @@ export default function HomePage() {
                               transition={{ duration: 0.3 }}
                               className="border-b transition-colors hover:bg-muted/50"
                             >
-                              <TableCell className="text-base">{filteredNotices.length - index}</TableCell>
+                              <TableCell className="text-base">{noticeNumberMap.get(notice.id) ?? '-'}</TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="text-xs">
                                   {notice.category || '일반'}
@@ -255,7 +263,7 @@ export default function HomePage() {
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-sm text-muted-foreground">#{filteredNotices.length - index}</span>
+                                      <span className="text-sm text-muted-foreground">#{noticeNumberMap.get(notice.id) ?? '-'}</span>
                                       <Badge variant="outline" className="text-xs">
                                         {notice.category || '일반'}
                                       </Badge>
@@ -397,7 +405,7 @@ export default function HomePage() {
                             transition={{ duration: 0.3 }}
                             className="border-b transition-colors hover:bg-muted/50"
                           >
-                            <TableCell className="text-base">{notices.length - index}</TableCell>
+                            <TableCell className="text-base">{noticeNumberMap.get(notice.id) ?? '-'}</TableCell>
                             <TableCell className={cn(
                               "text-base",
                               !notice.isRead && "font-bold"
