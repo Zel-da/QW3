@@ -21,16 +21,34 @@ import { PhotoDropzone } from '@/components/PhotoDropzone';
 import { SignatureDialog } from '@/components/SignatureDialog';
 import { ArrowLeft, Save, Send, CheckCircle2, XCircle, Download, Plus, Trash2, Pen } from 'lucide-react';
 
-const CHECKLIST_ITEMS = [
-  '작업표준·절차에 관한 정보',
-  '기계·기구 및 설비의 사양서',
-  '물질안전보건자료 등의 유해위험요인 정보',
-  '도급(일부, 전부 또는 혼재작업)',
-  '재해사례, 재해통계 등에 관한 정보',
-  '중량물 인력취급 (들기/밀기/끌기)',
-  '작업환경측정 (측정/미측정/해당무)',
-  '근로자 건강진단 유무',
-  '근로자 구성 및 경력특성',
+// 체크리스트 — type: 'single' (유/무/해당없음) 또는 'multi' (여러개 중복 선택)
+interface ChecklistItemDef {
+  key: string;
+  label: string;
+  type: 'single' | 'multi';
+  options?: string[]; // multi일 때 선택지
+}
+
+const CHECKLIST_ITEMS: ChecklistItemDef[] = [
+  { key: '작업표준·절차에 관한 정보', label: '작업표준·절차에 관한 정보', type: 'single' },
+  { key: '기계·기구 및 설비의 사양서', label: '기계·기구 및 설비의 사양서', type: 'single' },
+  { key: '물질안전보건자료 등의 유해위험요인 정보', label: '물질안전보건자료 등의 유해위험요인 정보', type: 'single' },
+  { key: '도급(일부, 전부 또는 혼재작업)', label: '도급(일부, 전부 또는 혼재작업)', type: 'single' },
+  { key: '재해사례, 재해통계 등에 관한 정보', label: '재해사례, 재해통계 등에 관한 정보', type: 'single' },
+  {
+    key: '중량물 인력취급시 단위중량(5kg) 및 취급형태',
+    label: '중량물 인력취급시 단위중량(5kg) 및 취급형태',
+    type: 'multi',
+    options: ['들기', '밀기', '끌기'],
+  },
+  { key: '작업환경측정 (측정/미측정/해당무)', label: '작업환경측정 (측정/미측정/해당무)', type: 'single' },
+  { key: '근로자 건강진단 유무', label: '근로자 건강진단 유무', type: 'single' },
+  {
+    key: '근로자 구성 및 경력특성',
+    label: '근로자 구성 및 경력특성',
+    type: 'multi',
+    options: ['여성근로자', '1년 미만 미숙련자', '고령근로자', '비정규직 근로자', '외국인 근로자', '장애근로자'],
+  },
 ];
 
 export default function RiskAssessmentDetailPage() {
@@ -229,7 +247,7 @@ export default function RiskAssessmentDetailPage() {
           </TabsList>
           <TabsContent value="pre"><SectionEducation raId={id!} data={ra.preEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="pre-education" title="사전교육" /></TabsContent>
           <TabsContent value="opinion"><SectionWorkerOpinions raId={id!} data={ra.workerOpinions || []} processes={processes} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="info"><SectionSafetyInfo raId={id!} data={ra.safetyInfo} processes={processes} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="info"><SectionSafetyInfos raId={id!} infos={ra.safetyInfos || []} processes={processes} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="eval"><SectionEvaluations raId={id!} data={ra.evaluations || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="imp"><SectionImprovements raId={id!} data={ra.improvements || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="feedback"><SectionEducation raId={id!} data={ra.feedbackEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="feedback-education" title="피드백교육" /></TabsContent>
@@ -636,17 +654,130 @@ function SectionWorkerOpinions({ raId, data, processes, readOnly }: { raId: stri
   );
 }
 
-// ───────── 3. 안전보건정보 ─────────
-function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; data: any; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
+// ───────── 3. 안전보건정보 — 다중 조사표 Wrapper ─────────
+function SectionSafetyInfos({ raId, infos, processes, readOnly }: {
+  raId: string; infos: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean;
+}) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // 선택된 조사표가 없으면 첫 번째 자동 선택
+  useEffect(() => {
+    if (infos.length > 0 && (!activeId || !infos.find(x => x.id === activeId))) {
+      setActiveId(infos[0].id);
+    } else if (infos.length === 0) {
+      setActiveId(null);
+    }
+  }, [infos, activeId]);
+
+  const addMut = useMutation({
+    mutationFn: async () => (await apiRequest('POST', `/api/risk-assessments/${raId}/safety-infos`, {})).json(),
+    onSuccess: (data: any) => {
+      toast({ title: '조사표 추가됨' });
+      qc.invalidateQueries({ queryKey: ['risk-assessment', raId] });
+      setActiveId(data.id);
+    },
+    onError: (e: any) => toast({ title: '추가 실패', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (infoId: string) => (await apiRequest('DELETE', `/api/risk-assessments/${raId}/safety-infos/${infoId}`)).json(),
+    onSuccess: () => {
+      toast({ title: '조사표 삭제됨' });
+      qc.invalidateQueries({ queryKey: ['risk-assessment', raId] });
+    },
+    onError: (e: any) => toast({ title: '삭제 실패', description: e.message, variant: 'destructive' }),
+  });
+
+  const activeInfo = infos.find(x => x.id === activeId);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base">안전보건정보 조사표</CardTitle>
+          {!readOnly && (
+            <Button size="sm" onClick={() => addMut.mutate()} disabled={addMut.isPending}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              조사표 추가
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* 조사표 탭 네비 */}
+        {infos.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap mb-4 border-b pb-2">
+            {infos.map((info, i) => (
+              <div key={info.id} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveId(info.id)}
+                  className={`px-3 py-1.5 text-sm rounded-md ${activeId === info.id ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-accent'}`}
+                >
+                  {info.title || `조사표 ${i + 1}`}
+                </button>
+                {!readOnly && infos.length > 1 && activeId === info.id && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: '조사표 삭제',
+                        description: `"${info.title || `조사표 ${i + 1}`}"을 삭제할까요? 이 조사표의 모든 내용(공정·화학물질·체크리스트)이 영구 삭제됩니다.`,
+                        confirmText: '삭제',
+                        destructive: true,
+                      });
+                      if (ok) deleteMut.mutate(info.id);
+                    }}
+                    className="ml-1 w-6 h-6 rounded hover:bg-destructive/10 text-destructive flex items-center justify-center"
+                    title="이 조사표 삭제"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {infos.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+            조사표가 없습니다. 상단의 <b>조사표 추가</b> 버튼을 눌러 작성하세요.
+          </div>
+        ) : activeInfo ? (
+          <SectionSafetyInfo
+            key={activeInfo.id}
+            raId={raId}
+            infoId={activeInfo.id}
+            data={activeInfo}
+            processes={processes}
+            readOnly={readOnly}
+            onTitleChange={(title) => qc.invalidateQueries({ queryKey: ['risk-assessment', raId] })}
+          />
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionSafetyInfo({ raId, infoId, data, processes, readOnly, onTitleChange }: {
+  raId: string; infoId: string; data: any; processes: Array<{ id: number; name: string }>; readOnly: boolean;
+  onTitleChange?: (title: string) => void;
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [title, setTitle] = useState('');
   const [rawMaterial, setRawMaterial] = useState('');
   const [product, setProduct] = useState('');
   const [workerCount, setWorkerCount] = useState('');
   const [processSteps, setProcessSteps] = useState<any[]>([]);
-  const [checklist, setChecklist] = useState<Record<string, string>>({});
+  // checklist 값: single은 string, multi는 string[]
+  const [checklist, setChecklist] = useState<Record<string, string | string[]>>({});
 
   useEffect(() => {
+    setTitle(data?.title || '');
     setRawMaterial(data?.rawMaterial || '');
     setProduct(data?.product || '');
     setWorkerCount(data?.workerCount != null ? String(data.workerCount) : '');
@@ -655,8 +786,8 @@ function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; 
   }, [data]);
 
   const saveMut = useMutation({
-    mutationFn: async () => (await apiRequest('PUT', `/api/risk-assessments/${raId}/safety-info`, {
-      rawMaterial, product, workerCount: workerCount || null, processSteps, checklist,
+    mutationFn: async () => (await apiRequest('PUT', `/api/risk-assessments/${raId}/safety-infos/${infoId}`, {
+      title, rawMaterial, product, workerCount: workerCount || null, processSteps, checklist,
     })).json(),
     onSuccess: () => { toast({ title: '저장 완료' }); qc.invalidateQueries({ queryKey: ['risk-assessment', raId] }); },
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
@@ -670,16 +801,13 @@ function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; 
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">안전보건정보 조사표</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div><Label>원재료</Label><Input value={rawMaterial} onChange={e => setRawMaterial(e.target.value)} disabled={readOnly} /></div>
-          <div><Label>생산품</Label><Input value={product} onChange={e => setProduct(e.target.value)} disabled={readOnly} /></div>
-          <div><Label>근로자수</Label><Input type="number" value={workerCount} onChange={e => setWorkerCount(e.target.value)} disabled={readOnly} /></div>
-        </div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="md:col-span-1"><Label>조사표 제목</Label><Input value={title} onChange={e => setTitle(e.target.value)} disabled={readOnly} placeholder="예: 조사표 1" /></div>
+        <div><Label>원재료</Label><Input value={rawMaterial} onChange={e => setRawMaterial(e.target.value)} disabled={readOnly} /></div>
+        <div><Label>생산품</Label><Input value={product} onChange={e => setProduct(e.target.value)} disabled={readOnly} /></div>
+        <div><Label>근로자수</Label><Input type="number" value={workerCount} onChange={e => setWorkerCount(e.target.value)} disabled={readOnly} /></div>
+      </div>
 
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -828,24 +956,49 @@ function SectionSafetyInfo({ raId, data, processes, readOnly }: { raId: string; 
           <Label>그 밖의 유해위험정보 체크리스트</Label>
           <div className="space-y-1 mt-2">
             {CHECKLIST_ITEMS.map((item) => (
-              <div key={item} className="flex items-center justify-between gap-2 border-b py-1">
-                <span className="text-sm flex-1">{item}</span>
-                <Select value={checklist[item] || ''} onValueChange={v => setChecklist({ ...checklist, [item]: v })} disabled={readOnly}>
-                  <SelectTrigger className="w-28"><SelectValue placeholder="-" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="유">유</SelectItem>
-                    <SelectItem value="무">무</SelectItem>
-                    <SelectItem value="해당없음">해당없음</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div key={item.key} className="flex items-start justify-between gap-2 border-b py-2">
+                <span className="text-sm flex-1 whitespace-pre-wrap">{item.label}</span>
+                {item.type === 'single' ? (
+                  <Select value={(checklist[item.key] as string) || ''} onValueChange={v => setChecklist({ ...checklist, [item.key]: v })} disabled={readOnly}>
+                    <SelectTrigger className="w-28"><SelectValue placeholder="-" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="유">유</SelectItem>
+                      <SelectItem value="무">무</SelectItem>
+                      <SelectItem value="해당없음">해당없음</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 max-w-[60%] justify-end">
+                    {(item.options || []).map((opt) => {
+                      const current = Array.isArray(checklist[item.key]) ? (checklist[item.key] as string[]) : [];
+                      const isChecked = current.includes(opt);
+                      return (
+                        <label key={opt} className="inline-flex items-center gap-1.5 text-sm cursor-pointer whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={isChecked}
+                            disabled={readOnly}
+                            onChange={e => {
+                              const next = e.target.checked
+                                ? [...current, opt]
+                                : current.filter(x => x !== opt);
+                              setChecklist({ ...checklist, [item.key]: next });
+                            }}
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
         {!readOnly && <div className="pt-2 flex justify-end"><Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}><Save className="w-4 h-4 mr-1.5" />{saveMut.isPending ? '저장 중...' : '저장'}</Button></div>}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 

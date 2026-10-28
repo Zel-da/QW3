@@ -879,7 +879,7 @@ model RiskAssessment {
   approver          User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: SetNull)
   preEducation      RAPreEducation?
   workerOpinions    RAWorkerOpinion[]
-  safetyInfo        RASafetyInfo?
+  safetyInfos       RASafetyInfo[]
   evaluations       RAEvaluation[]
   improvements      RAImprovement[]
   feedbackEducation RAFeedbackEducation?
@@ -926,7 +926,9 @@ model RAWorkerOpinion {
 
 model RASafetyInfo {
   id           String         @id @default(uuid())
-  assessmentId String         @unique
+  assessmentId String
+  title        String?        // "조사표 1" 등 사용자 라벨 (옵션)
+  sortOrder    Int            @default(0)
   rawMaterial  String?
   product      String?
   workerCount  Int?
@@ -936,6 +938,7 @@ model RASafetyInfo {
   updatedAt    DateTime       @updatedAt
   assessment   RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
+  @@index([assessmentId])
   @@map("RASafetyInfos")
 }
 

@@ -11274,7 +11274,7 @@ ${JSON.stringify(toolResults, null, 2)}
           approver: { select: { id: true, name: true, username: true } },
           preEducation: true,
           workerOpinions: { orderBy: { sortOrder: 'asc' } },
-          safetyInfo: true,
+          safetyInfos: { orderBy: { sortOrder: 'asc' } },
           evaluations: {
             orderBy: { sortOrder: 'asc' },
             include: { responsibleTeam: { select: { id: true, name: true } } },
@@ -11391,20 +11391,70 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
+  // 안전보건정보 — 다중 조사표 CRUD
+  app.post("/api/risk-assessments/:id/safety-infos", requireAuth, async (req, res) => {
+    try {
+      const { title } = req.body;
+      const existingCount = await prisma.rASafetyInfo.count({ where: { assessmentId: req.params.id } });
+      const info = await prisma.rASafetyInfo.create({
+        data: {
+          assessmentId: req.params.id,
+          title: title || `조사표 ${existingCount + 1}`,
+          sortOrder: existingCount,
+          processSteps: [],
+          checklist: {},
+        },
+      });
+      res.status(201).json(info);
+    } catch (error) {
+      console.error('Failed to create safety-info:', error);
+      res.status(500).json({ message: '조사표 생성 실패' });
+    }
+  });
+
+  app.put("/api/risk-assessments/:id/safety-infos/:infoId", requireAuth, async (req, res) => {
+    try {
+      const { title, rawMaterial, product, workerCount, processSteps, checklist } = req.body;
+      const data: any = {};
+      if (title !== undefined) data.title = title || null;
+      if (rawMaterial !== undefined) data.rawMaterial = rawMaterial || null;
+      if (product !== undefined) data.product = product || null;
+      if (workerCount !== undefined) data.workerCount = workerCount != null && workerCount !== '' ? parseInt(workerCount) : null;
+      if (processSteps !== undefined) data.processSteps = processSteps || [];
+      if (checklist !== undefined) data.checklist = checklist || {};
+      const info = await prisma.rASafetyInfo.update({ where: { id: req.params.infoId }, data });
+      res.json(info);
+    } catch (error) {
+      console.error('Failed to update safety-info:', error);
+      res.status(500).json({ message: '저장 실패' });
+    }
+  });
+
+  app.delete("/api/risk-assessments/:id/safety-infos/:infoId", requireAuth, async (req, res) => {
+    try {
+      await prisma.rASafetyInfo.delete({ where: { id: req.params.infoId } });
+      res.json({ message: '조사표 삭제됨' });
+    } catch (error) {
+      console.error('Failed to delete safety-info:', error);
+      res.status(500).json({ message: '삭제 실패' });
+    }
+  });
+
+  // 호환성 유지: 레거시 /safety-info (단수) → 첫 번째 조사표에 upsert
   app.put("/api/risk-assessments/:id/safety-info", requireAuth, async (req, res) => {
     try {
       const { rawMaterial, product, workerCount, processSteps, checklist } = req.body;
-      const existing = await prisma.rASafetyInfo.findUnique({ where: { assessmentId: req.params.id } });
+      const existing = await prisma.rASafetyInfo.findFirst({ where: { assessmentId: req.params.id }, orderBy: { sortOrder: 'asc' } });
       const data = {
         rawMaterial: rawMaterial || null,
         product: product || null,
-        workerCount: workerCount != null ? parseInt(workerCount) : null,
+        workerCount: workerCount != null && workerCount !== '' ? parseInt(workerCount) : null,
         processSteps: processSteps || [],
         checklist: checklist || {},
       };
       const result = existing
-        ? await prisma.rASafetyInfo.update({ where: { assessmentId: req.params.id }, data })
-        : await prisma.rASafetyInfo.create({ data: { assessmentId: req.params.id, ...data } });
+        ? await prisma.rASafetyInfo.update({ where: { id: existing.id }, data })
+        : await prisma.rASafetyInfo.create({ data: { assessmentId: req.params.id, title: '조사표 1', sortOrder: 0, ...data } });
       res.json(result);
     } catch (error) {
       console.error('Failed to save safety-info:', error);
@@ -11505,7 +11555,7 @@ ${JSON.stringify(toolResults, null, 2)}
       const ra = await prisma.riskAssessment.findUnique({
         where: { id: req.params.id },
         include: {
-          preEducation: true, workerOpinions: true, safetyInfo: true,
+          preEducation: true, workerOpinions: true, safetyInfos: true,
           evaluations: true, improvements: true, feedbackEducation: true,
         },
       });
@@ -11572,7 +11622,7 @@ ${JSON.stringify(toolResults, null, 2)}
           approver: true,
           preEducation: true,
           workerOpinions: { orderBy: { sortOrder: 'asc' } },
-          safetyInfo: true,
+          safetyInfos: { orderBy: { sortOrder: 'asc' } },
           evaluations: { orderBy: { sortOrder: 'asc' }, include: { responsibleTeam: true } },
           improvements: { orderBy: { sortOrder: 'asc' }, include: { responsibleTeam: true } },
           feedbackEducation: true,
@@ -11647,47 +11697,59 @@ ${JSON.stringify(toolResults, null, 2)}
         opWs.getCell(r, 10).value = o.remarks || '';
       });
 
-      // 3. 안전보건정보
-      const si = ra.safetyInfo as any;
+      // 3. 안전보건정보 — 여러 조사표를 하나의 시트에 섹션으로 반복
+      const sis = Array.isArray((ra as any).safetyInfos) ? (ra as any).safetyInfos : [];
       const siWs = wb.addWorksheet('3. 안전보건정보');
       siWs.getCell('B2').value = '3. 안전보건정보';
-      siWs.getCell('B4').value = '작업공정';
-      siWs.getCell('C4').value = procName;
-      siWs.getCell('E4').value = `안전보건정보 (소속부서: ${teamName})`;
-      siWs.getCell('J4').value = '생산품';
-      siWs.getCell('K4').value = si?.product || '';
-      siWs.getCell('B5').value = '원재료';
-      siWs.getCell('C5').value = si?.rawMaterial || '';
-      siWs.getCell('J5').value = '근로자수';
-      siWs.getCell('K5').value = si?.workerCount ? `${si.workerCount}명` : '';
-      siWs.getRow(7).values = [null, '공정순서', '공정설명', '기계·기구', '수량', '화학물질명', '취급량', '취급시간', '유해위험정보', '', ''];
-      const steps = Array.isArray(si?.processSteps) ? si.processSteps : [];
-      let r = 8;
-      for (const s of steps) {
-        const equipment = (s.equipment || []);
-        const chemicals = (s.chemicals || []);
-        const maxLen = Math.max(1, equipment.length, chemicals.length);
-        for (let k = 0; k < maxLen; k++) {
-          if (k === 0) {
-            siWs.getCell(r, 2).value = s.order || '';
-            siWs.getCell(r, 3).value = s.description || '';
+      let r = 4;
+      if (sis.length === 0) {
+        siWs.getCell(r, 2).value = '(작성된 조사표 없음)';
+      }
+      for (let siIdx = 0; siIdx < sis.length; siIdx++) {
+        const si = sis[siIdx];
+        if (siIdx > 0) r += 2;
+        siWs.getCell(r, 2).value = `▣ ${si.title || `조사표 ${siIdx + 1}`}`;
+        r++;
+        siWs.getCell(r, 2).value = '작업공정';
+        siWs.getCell(r, 3).value = procName;
+        siWs.getCell(r, 5).value = `안전보건정보 (소속부서: ${teamName})`;
+        siWs.getCell(r, 10).value = '생산품';
+        siWs.getCell(r, 11).value = si?.product || '';
+        r++;
+        siWs.getCell(r, 2).value = '원재료';
+        siWs.getCell(r, 3).value = si?.rawMaterial || '';
+        siWs.getCell(r, 10).value = '근로자수';
+        siWs.getCell(r, 11).value = si?.workerCount ? `${si.workerCount}명` : '';
+        r += 2;
+        siWs.getRow(r).values = [null, '공정순서', '공정설명', '기계·기구', '수량', '화학물질명', '취급량', '취급시간', '유해위험정보', '', ''];
+        r++;
+        const steps = Array.isArray(si?.processSteps) ? si.processSteps : [];
+        for (const s of steps) {
+          const equipment = (s.equipment || []);
+          const chemicals = (s.chemicals || []);
+          const maxLen = Math.max(1, equipment.length, chemicals.length);
+          for (let k = 0; k < maxLen; k++) {
+            if (k === 0) {
+              siWs.getCell(r, 2).value = s.order || '';
+              siWs.getCell(r, 3).value = s.description || '';
+            }
+            const eq = equipment[k];
+            if (eq) { siWs.getCell(r, 4).value = eq.name || ''; siWs.getCell(r, 5).value = eq.qty || ''; }
+            const ch = chemicals[k];
+            if (ch) { siWs.getCell(r, 6).value = ch.name || ''; siWs.getCell(r, 7).value = ch.dailyAmount || ''; siWs.getCell(r, 8).value = ch.duration || ''; }
+            r++;
           }
-          const eq = equipment[k];
-          if (eq) { siWs.getCell(r, 4).value = eq.name || ''; siWs.getCell(r, 5).value = eq.qty || ''; }
-          const ch = chemicals[k];
-          if (ch) { siWs.getCell(r, 6).value = ch.name || ''; siWs.getCell(r, 7).value = ch.dailyAmount || ''; siWs.getCell(r, 8).value = ch.duration || ''; }
+        }
+        // 체크리스트 요약 — 배열이면 콤마로 join
+        const cl = (si?.checklist && typeof si.checklist === 'object') ? si.checklist : {};
+        r += 1;
+        siWs.getCell(r, 2).value = '그 밖의 유해위험정보';
+        r++;
+        for (const [k, v] of Object.entries(cl)) {
+          siWs.getCell(r, 2).value = `○ ${k}`;
+          siWs.getCell(r, 9).value = Array.isArray(v) ? (v as string[]).join(', ') : (v as string);
           r++;
         }
-      }
-      // 체크리스트 요약
-      const cl = (si?.checklist && typeof si.checklist === 'object') ? si.checklist : {};
-      let clRow = r + 2;
-      siWs.getCell(clRow, 2).value = '그 밖의 유해위험정보';
-      clRow++;
-      for (const [k, v] of Object.entries(cl)) {
-        siWs.getCell(clRow, 2).value = `○ ${k}`;
-        siWs.getCell(clRow, 9).value = v as string;
-        clRow++;
       }
 
       // 4. 위험성평가
