@@ -92,6 +92,12 @@ export function InlineAudioPanel({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 재생 속도
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const PLAYBACK_RATES = [1, 1.25, 1.5, 2, 3];
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate]);
 
   // 기존 오디오가 변경되면 UI 업데이트
   const prevAudioUrlRef = useRef<string | null>(null);
@@ -435,6 +441,8 @@ export function InlineAudioPanel({
             if (audioRef.current && isFinite(audioRef.current.duration)) {
               setDuration(audioRef.current.duration);
             }
+            // 현재 선택된 속도 반영 (새 오디오 로드 시)
+            if (audioRef.current) audioRef.current.playbackRate = playbackRate;
           }}
           onDurationChange={() => {
             // webm 파일의 경우 duration이 나중에 업데이트될 수 있음
@@ -642,6 +650,22 @@ export function InlineAudioPanel({
                 클릭하여 이동 · 방향키 ←→ 5초 이동
               </div>
             </div>
+          </div>
+
+          {/* 재생 속도 조절 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-medium shrink-0">재생 속도</span>
+            {PLAYBACK_RATES.map(rate => (
+              <Button
+                key={rate}
+                size="sm"
+                variant={playbackRate === rate ? 'default' : 'outline'}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setPlaybackRate(rate)}
+              >
+                {rate.toFixed(rate === Math.floor(rate) ? 1 : 2)}×
+              </Button>
+            ))}
           </div>
 
           {/* 액션 버튼들 */}

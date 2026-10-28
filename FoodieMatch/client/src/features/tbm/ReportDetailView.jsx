@@ -37,7 +37,13 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
     const [isDeleting, setIsDeleting] = useState(false);
     const [isAudioPlaying, setIsAudioPlaying] = useState(false);
     const [audioPlaybackTime, setAudioPlaybackTime] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1);
     const audioRef = React.useRef(null);
+    // 재생속도 변경 시 실제 audio 엘리먼트에도 반영
+    useEffect(() => {
+        if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+    }, [playbackRate]);
+    const PLAYBACK_RATES = [1, 1.25, 1.5, 2, 3];
 
     // Parse remarks JSON
     const parsedRemarks = React.useMemo(() => {
@@ -216,6 +222,9 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
                                     <audio
                                         ref={audioRef}
                                         src={parsedRemarks.audioRecording.url}
+                                        onLoadedMetadata={() => {
+                                            if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+                                        }}
                                         onTimeUpdate={() => setAudioPlaybackTime(audioRef.current?.currentTime || 0)}
                                         onEnded={() => {
                                             setIsAudioPlaying(false);
@@ -257,6 +266,22 @@ const ReportDetailView = ({ reportId, onBackToList, onModify, isLoadingModify, c
                                     <span className="text-sm font-mono min-w-[100px] text-right">
                                         {formatTime(audioPlaybackTime)} / {formatTime(parsedRemarks.audioRecording.duration)}
                                     </span>
+                                </div>
+
+                                {/* 재생 속도 조절 */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs text-muted-foreground font-medium">재생 속도</span>
+                                    {PLAYBACK_RATES.map(rate => (
+                                        <Button
+                                            key={rate}
+                                            size="sm"
+                                            variant={playbackRate === rate ? 'default' : 'outline'}
+                                            className="h-7 px-2.5 text-xs"
+                                            onClick={() => setPlaybackRate(rate)}
+                                        >
+                                            {rate.toFixed(rate === Math.floor(rate) ? 1 : 2)}×
+                                        </Button>
+                                    ))}
                                 </div>
 
                                 {/* 파일 정보 */}
