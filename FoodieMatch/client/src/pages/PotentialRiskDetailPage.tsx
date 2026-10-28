@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import { PhotoDropzone } from '@/components/PhotoDropzone';
-import { ArrowLeft, Save, Trash2, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, CheckCircle2, Clock, AlertTriangle, Pencil, X } from 'lucide-react';
 
 export default function PotentialRiskDetailPage() {
   const { user } = useAuth();
@@ -43,6 +44,21 @@ export default function PotentialRiskDetailPage() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [remarks, setRemarks] = useState('');
   const [improvementPhotos, setImprovementPhotos] = useState<string[]>([]);
+
+  // 안전팀 입력란 수정 모드 state (안전팀만)
+  const [editingSafety, setEditingSafety] = useState(false);
+  const [editSite, setEditSite] = useState('');
+  const [editDiscoveredAt, setEditDiscoveredAt] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editDiscoveredBy, setEditDiscoveredBy] = useState('');
+  const [editRiskDescription, setEditRiskDescription] = useState('');
+  const [editAssignedTeamId, setEditAssignedTeamId] = useState<string>('');
+  const [editSitePhotos, setEditSitePhotos] = useState<string[]>([]);
+
+  const { data: teams = [] } = useQuery<Array<{ id: number; name: string; site: string }>>({
+    queryKey: ['teams-active'],
+    queryFn: async () => (await fetch('/api/teams', { credentials: 'include' })).json(),
+  });
 
   useEffect(() => {
     if (!risk) return;
@@ -76,6 +92,42 @@ export default function PotentialRiskDetailPage() {
       toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
     },
   });
+
+  const safetyEditMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('PUT', `/api/potential-risks/${id}`, {
+        site: editSite,
+        discoveredAt: editDiscoveredAt,
+        location: editLocation,
+        discoveredBy: editDiscoveredBy,
+        riskDescription: editRiskDescription,
+        assignedTeamId: parseInt(editAssignedTeamId),
+        sitePhotos: editSitePhotos,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: '안전팀 입력란 수정 완료' });
+      setEditingSafety(false);
+      qc.invalidateQueries({ queryKey: ['potential-risk', id] });
+      qc.invalidateQueries({ queryKey: ['potential-risks'] });
+    },
+    onError: (err: any) => {
+      toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const startEditSafety = () => {
+    if (!risk) return;
+    setEditSite(risk.site);
+    setEditDiscoveredAt(risk.discoveredAt ? risk.discoveredAt.slice(0, 10) : '');
+    setEditLocation(risk.location);
+    setEditDiscoveredBy(risk.discoveredBy || '');
+    setEditRiskDescription(risk.riskDescription);
+    setEditAssignedTeamId(String(risk.assignedTeamId));
+    setEditSitePhotos(Array.isArray(risk.sitePhotos) ? risk.sitePhotos : []);
+    setEditingSafety(true);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -121,7 +173,7 @@ export default function PotentialRiskDetailPage() {
           )}
         </div>
 
-        {/* 안전팀 입력란 (조회 전용) */}
+        {/* 안전팀 입력란 — 조회 or 수정 모드 */}
         <Card className="mb-4">
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -135,6 +187,12 @@ export default function PotentialRiskDetailPage() {
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full"><AlertTriangle className="w-3 h-3" />미회신</span>
                 )}
+                {/* 안전팀만 수정 버튼 노출 */}
+                {isSafetyTeam && !editingSafety && (
+                  <Button variant="outline" size="sm" onClick={startEditSafety}>
+                    <Pencil className="w-3.5 h-3.5 mr-1.5" />수정
+                  </Button>
+                )}
               </div>
             </div>
             <CardDescription>
@@ -142,27 +200,87 @@ export default function PotentialRiskDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div><span className="text-muted-foreground">발굴일자: </span>{new Date(risk.discoveredAt).toLocaleDateString('ko-KR')}</div>
-              <div><span className="text-muted-foreground">담당부서: </span>{risk.assignedTeam?.name}{risk.assignedTeam?.department ? ` (${risk.assignedTeam.department.name})` : ''}</div>
-              <div className="md:col-span-2"><span className="text-muted-foreground">위험장소/설비: </span>{risk.location}</div>
-              <div className="md:col-span-2"><span className="text-muted-foreground">발굴/제안자: </span>{risk.discoveredBy || '-'}</div>
-              <div className="md:col-span-2">
-                <span className="text-muted-foreground">위험요소: </span>
-                <p className="whitespace-pre-wrap mt-1">{risk.riskDescription}</p>
-              </div>
-            </div>
-            {Array.isArray(risk.sitePhotos) && risk.sitePhotos.length > 0 && (
-              <div>
-                <Label className="text-xs text-muted-foreground">현장 사진 ({risk.sitePhotos.length}장)</Label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-1">
-                  {risk.sitePhotos.map((url: string, i: number) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square border rounded-md overflow-hidden bg-muted">
-                      <img src={url} alt="" className="w-full h-full object-cover hover:opacity-90" />
-                    </a>
-                  ))}
+            {!editingSafety ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-muted-foreground">발굴일자: </span>{new Date(risk.discoveredAt).toLocaleDateString('ko-KR')}</div>
+                  <div><span className="text-muted-foreground">담당부서: </span>{risk.assignedTeam?.name}{risk.assignedTeam?.department ? ` (${risk.assignedTeam.department.name})` : ''}</div>
+                  <div className="md:col-span-2"><span className="text-muted-foreground">위험장소/설비: </span>{risk.location}</div>
+                  <div className="md:col-span-2"><span className="text-muted-foreground">발굴/제안자: </span>{risk.discoveredBy || '-'}</div>
+                  <div className="md:col-span-2">
+                    <span className="text-muted-foreground">위험요소: </span>
+                    <p className="whitespace-pre-wrap mt-1">{risk.riskDescription}</p>
+                  </div>
                 </div>
-              </div>
+                {Array.isArray(risk.sitePhotos) && risk.sitePhotos.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">현장 사진 ({risk.sitePhotos.length}장)</Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-1">
+                      {risk.sitePhotos.map((url: string, i: number) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square border rounded-md overflow-hidden bg-muted">
+                          <img src={url} alt="" className="w-full h-full object-cover hover:opacity-90" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* 수정 모드 폼 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label>사이트 *</Label>
+                    <Select value={editSite} onValueChange={setEditSite}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="아산">아산</SelectItem>
+                        <SelectItem value="화성">화성</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>발굴일자 *</Label>
+                    <Input type="date" value={editDiscoveredAt} onChange={e => setEditDiscoveredAt(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>위험장소/설비 *</Label>
+                    <Input value={editLocation} onChange={e => setEditLocation(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>발굴/제안자</Label>
+                    <Input value={editDiscoveredBy} onChange={e => setEditDiscoveredBy(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>위험요소 *</Label>
+                    <Textarea rows={4} value={editRiskDescription} onChange={e => setEditRiskDescription(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>담당부서 *</Label>
+                    <Select value={editAssignedTeamId} onValueChange={setEditAssignedTeamId}>
+                      <SelectTrigger><SelectValue placeholder="담당부서 선택" /></SelectTrigger>
+                      <SelectContent className="max-h-[320px]">
+                        {teams.filter(t => t.site === editSite).map(t => (
+                          <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <PhotoDropzone label="현장 사진" value={editSitePhotos} onChange={setEditSitePhotos} />
+                <div className="flex justify-end gap-2 pt-2 border-t">
+                  <Button variant="outline" onClick={() => setEditingSafety(false)}>
+                    <X className="w-4 h-4 mr-1.5" />취소
+                  </Button>
+                  <Button
+                    onClick={() => safetyEditMutation.mutate()}
+                    disabled={safetyEditMutation.isPending || !editLocation.trim() || !editRiskDescription.trim() || !editAssignedTeamId}
+                  >
+                    <Save className="w-4 h-4 mr-1.5" />
+                    {safetyEditMutation.isPending ? '저장 중...' : '수정 저장'}
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

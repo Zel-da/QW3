@@ -19,6 +19,7 @@ interface PotentialRisk {
   id: string;
   site: string;
   discoveredAt: string;
+  sitePhotos?: string[];
   location: string;
   riskDescription: string;
   assignedTeamId: number;
@@ -207,6 +208,7 @@ export default function PotentialRiskListPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-20">현장</TableHead>
                       <TableHead className="w-28">발굴일자</TableHead>
                       <TableHead className="w-20">사이트</TableHead>
                       <TableHead className="w-32">담당부서</TableHead>
@@ -220,6 +222,25 @@ export default function PotentialRiskListPage() {
                     {filtered.map(r => (
                       <TableRow key={r.id} className="cursor-pointer hover:bg-accent/50"
                         onClick={() => (window.location.href = `/potential-risks/${r.id}`)}>
+                        <TableCell>
+                          {Array.isArray(r.sitePhotos) && r.sitePhotos.length > 0 ? (
+                            <a
+                              href={r.sitePhotos[0]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative block w-14 h-14 rounded-md border overflow-hidden bg-muted hover:opacity-80"
+                              title={`현장 사진 ${r.sitePhotos.length}장 — 클릭 시 원본`}
+                            >
+                              <img src={r.sitePhotos[0]} alt="" className="w-full h-full object-cover" />
+                              {r.sitePhotos.length > 1 && (
+                                <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1 rounded-tl">+{r.sitePhotos.length - 1}</span>
+                              )}
+                            </a>
+                          ) : (
+                            <div className="w-14 h-14 rounded-md border bg-muted flex items-center justify-center text-[10px] text-muted-foreground">없음</div>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-sm">{new Date(r.discoveredAt).toLocaleDateString('ko-KR')}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${r.site === '아산' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{r.site}</span>

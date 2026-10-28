@@ -11837,7 +11837,7 @@ ${JSON.stringify(toolResults, null, 2)}
 
       // 개선실행 조치결과(사진) — 이미지는 URL 텍스트로 표기
       const picWs = wb.addWorksheet('개선실행 조치결과(사진)');
-      picWs.getRow(2).values = [null, '단위공정', '개선 前 (유해위험요인/사진URL)', null, null, null, null, '개선 後 (개선내용/사진URL)', null, null, null, null, null, '비고'];
+      picWs.getRow(2).values = [null, '단위공정', '개선 전 (유해위험요인/사진URL)', null, null, null, null, '개선 후 (개선내용/사진URL)', null, null, null, null, null, '비고'];
       let pr = 4;
       im.forEach((m, i) => {
         picWs.getCell(pr, 2).value = m.processName || '';

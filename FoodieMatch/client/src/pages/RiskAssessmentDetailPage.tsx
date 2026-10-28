@@ -248,8 +248,8 @@ export default function RiskAssessmentDetailPage() {
           <TabsContent value="pre"><SectionEducation raId={id!} data={ra.preEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="pre-education" title="사전교육" /></TabsContent>
           <TabsContent value="opinion"><SectionWorkerOpinions raId={id!} data={ra.workerOpinions || []} processes={processes} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="info"><SectionSafetyInfos raId={id!} infos={ra.safetyInfos || []} processes={processes} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="eval"><SectionEvaluations raId={id!} data={ra.evaluations || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
-          <TabsContent value="imp"><SectionImprovements raId={id!} data={ra.improvements || []} teams={teams} processes={processes} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="eval"><SectionEvaluations raId={id!} data={ra.evaluations || []} teams={teams} processes={processes} raSite={ra.site} readOnly={isReadOnly} /></TabsContent>
+          <TabsContent value="imp"><SectionImprovements raId={id!} data={ra.improvements || []} evaluations={ra.evaluations || []} teams={teams} processes={processes} raSite={ra.site} readOnly={isReadOnly} /></TabsContent>
           <TabsContent value="feedback"><SectionEducation raId={id!} data={ra.feedbackEducation} teamMembers={teamMembers} readOnly={isReadOnly} endpoint="feedback-education" title="피드백교육" /></TabsContent>
         </Tabs>
       </main>
@@ -330,6 +330,70 @@ function SubmitApproveBar({ ra, isApprover, userName }: { ra: any; isApprover: b
   if (ra.status === 'SUBMITTED') return <div className="text-sm text-muted-foreground">결재자 승인 대기 중입니다</div>;
   if (ra.status === 'APPROVED') return <div className="text-sm text-green-700">승인 완료 — 수정 불가 (조회만 가능)</div>;
   return null;
+}
+
+// ───────── 담당부서 검색 Select (site 필터 + 이름 검색) ─────────
+function TeamSearchSelect({ value, onChange, teams, site, disabled, placeholder = '담당부서 선택' }: {
+  value: string;
+  onChange: (teamId: string) => void;
+  teams: Array<{ id: number; name: string; site: string }>;
+  site?: string;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const filtered = useMemo(() => {
+    let arr = teams;
+    if (site) arr = arr.filter(t => t.site === site);
+    if (q.trim()) {
+      const needle = q.trim().toLowerCase();
+      arr = arr.filter(t => t.name.toLowerCase().includes(needle));
+    }
+    return arr;
+  }, [teams, site, q]);
+  const selected = teams.find(t => String(t.id) === String(value));
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(o => !o)}
+        className="w-full h-9 px-3 border rounded-md text-left text-sm bg-background flex items-center justify-between disabled:opacity-50"
+      >
+        <span className={selected ? '' : 'text-muted-foreground'}>{selected ? selected.name : placeholder}</span>
+        <span className="text-muted-foreground">▾</span>
+      </button>
+      {open && !disabled && (
+        <div className="absolute z-50 mt-1 w-full border rounded-md bg-popover shadow-md max-h-[280px] overflow-hidden">
+          <input
+            type="text"
+            autoFocus
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="부서 이름 검색..."
+            className="w-full px-3 py-2 text-sm border-b outline-none"
+          />
+          <div className="max-h-[220px] overflow-y-auto">
+            {filtered.length === 0 && (
+              <div className="px-3 py-4 text-center text-xs text-muted-foreground">일치하는 부서 없음</div>
+            )}
+            {filtered.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => { onChange(String(t.id)); setOpen(false); setQ(''); }}
+                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent ${String(value) === String(t.id) ? 'bg-accent/50 font-medium' : ''}`}
+              >
+                {t.name}
+                <span className="ml-2 text-[10px] text-muted-foreground">[{t.site}]</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ───────── 공정 관리 패널 (상단, 엑셀/제출 옆) ─────────
@@ -1003,7 +1067,7 @@ function SectionSafetyInfo({ raId, infoId, data, processes, readOnly, onTitleCha
 }
 
 // ───────── 4. 위험성평가 ─────────
-function SectionEvaluations({ raId, data, teams, processes, readOnly }: { raId: string; data: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
+function SectionEvaluations({ raId, data, teams, processes, raSite, readOnly }: { raId: string; data: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; raSite?: string; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -1076,12 +1140,13 @@ function SectionEvaluations({ raId, data, teams, processes, readOnly }: { raId: 
                   </TableCell>
                   <TableCell><Textarea rows={2} value={it.improvement || ''} onChange={e => update(i, 'improvement', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell>
-                    <Select value={it.responsibleTeamId ? String(it.responsibleTeamId) : ''} onValueChange={v => update(i, 'responsibleTeamId', v ? parseInt(v) : null)} disabled={readOnly}>
-                      <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {teams.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <TeamSearchSelect
+                      value={it.responsibleTeamId ? String(it.responsibleTeamId) : ''}
+                      onChange={(v) => update(i, 'responsibleTeamId', v ? parseInt(v) : null)}
+                      teams={teams}
+                      site={raSite}
+                      disabled={readOnly}
+                    />
                   </TableCell>
                   <TableCell><Input value={it.responsibleName || ''} onChange={e => update(i, 'responsibleName', e.target.value)} disabled={readOnly} /></TableCell>
                   <TableCell><Input type="date" value={fmtDate(it.scheduledDate)} onChange={e => update(i, 'scheduledDate', e.target.value || null)} disabled={readOnly} /></TableCell>
@@ -1100,7 +1165,7 @@ function SectionEvaluations({ raId, data, teams, processes, readOnly }: { raId: 
 }
 
 // ───────── 5. 개선실행 ─────────
-function SectionImprovements({ raId, data, teams, processes, readOnly }: { raId: string; data: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; readOnly: boolean }) {
+function SectionImprovements({ raId, data, evaluations, teams, processes, raSite, readOnly }: { raId: string; data: any[]; evaluations: any[]; teams: any[]; processes: Array<{ id: number; name: string }>; raSite?: string; readOnly: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
@@ -1117,9 +1182,25 @@ function SectionImprovements({ raId, data, teams, processes, readOnly }: { raId:
     const p = processes.find(x => x.id === parseInt(pid));
     setItems(items.map((x, idx) => idx === i ? { ...x, processId: p?.id ?? null, processName: p?.name ?? x.processName } : x));
   };
-  const add = () => setItems([...items, { processId: null, processName: '', hazardFactor: '', reductionPlan: '', responsibleTeamId: null, responsibleName: '', actionResult: '', improvedDate: null, beforePhotos: [], afterPhotos: [], remarks: '' }]);
+  const add = () => setItems([...items, { processId: null, processName: '', hazardFactor: '', reductionPlan: '', responsibleTeamId: null, responsibleName: '', actionResult: '진행중', improvedDate: null, beforePhotos: [], afterPhotos: [], remarks: '' }]);
   const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const fmtDate = (d: any) => d ? String(d).slice(0, 10) : '';
+
+  // 위험성평가 항목을 선택해 개선실행 1건에 자동 채우기
+  const importFromEval = (i: number, evalIndex: number) => {
+    const ev = evaluations[evalIndex];
+    if (!ev) return;
+    setItems(items.map((x, idx) => idx === i ? {
+      ...x,
+      processId: ev.processId ?? x.processId,
+      processName: ev.workContent ?? x.processName,
+      hazardFactor: ev.hazardFactor ?? x.hazardFactor,
+      reductionPlan: ev.improvement ?? x.reductionPlan,
+      responsibleTeamId: ev.responsibleTeamId ?? x.responsibleTeamId,
+      responsibleName: ev.responsibleName ?? x.responsibleName,
+    } : x));
+    toast({ title: '위험성평가 항목에서 자동 채움', description: `${evalIndex + 1}번 항목의 공정·유해위험요인·개선대책·담당부서를 불러왔습니다` });
+  };
 
   return (
     <Card>
@@ -1131,9 +1212,33 @@ function SectionImprovements({ raId, data, teams, processes, readOnly }: { raId:
         {items.map((it, i) => (
           <Card key={i}>
             <CardContent className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
                 <span className="text-sm font-semibold">#{i + 1}</span>
-                {!readOnly && <Button variant="ghost" size="icon" onClick={() => remove(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                {!readOnly && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* 위험성평가에서 불러오기 */}
+                    {evaluations.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">위험성평가에서 불러오기:</span>
+                        <Select
+                          value=""
+                          onValueChange={(v) => importFromEval(i, parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="평가 항목 선택..." /></SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {evaluations.map((ev, idx) => (
+                              <SelectItem key={idx} value={String(idx)}>
+                                {idx + 1}. {ev.workContent?.slice(0, 20) || '-'}
+                                {ev.hazardFactor ? ` · ${ev.hazardFactor.slice(0, 20)}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => remove(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -1146,22 +1251,52 @@ function SectionImprovements({ raId, data, teams, processes, readOnly }: { raId:
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>조치결과</Label><Input value={it.actionResult || ''} onChange={e => update(i, 'actionResult', e.target.value)} disabled={readOnly} placeholder="○ / X / 진행중" /></div>
+                <div>
+                  <Label>조치결과</Label>
+                  <Select value={it.actionResult || ''} onValueChange={v => update(i, 'actionResult', v)} disabled={readOnly}>
+                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="진행중">진행중</SelectItem>
+                      <SelectItem value="조치완료">조치완료</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="md:col-span-2"><Label>유해위험요인</Label><Textarea rows={2} value={it.hazardFactor || ''} onChange={e => update(i, 'hazardFactor', e.target.value)} disabled={readOnly} /></div>
                 <div className="md:col-span-2"><Label>감소대책</Label><Textarea rows={2} value={it.reductionPlan || ''} onChange={e => update(i, 'reductionPlan', e.target.value)} disabled={readOnly} /></div>
                 <div>
                   <Label>담당부서</Label>
-                  <Select value={it.responsibleTeamId ? String(it.responsibleTeamId) : ''} onValueChange={v => update(i, 'responsibleTeamId', v ? parseInt(v) : null)} disabled={readOnly}>
-                    <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
-                    <SelectContent className="max-h-[300px]">{teams.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <TeamSearchSelect
+                    value={it.responsibleTeamId ? String(it.responsibleTeamId) : ''}
+                    onChange={v => update(i, 'responsibleTeamId', v ? parseInt(v) : null)}
+                    teams={teams}
+                    site={raSite}
+                    disabled={readOnly}
+                  />
                 </div>
                 <div><Label>담당자</Label><Input value={it.responsibleName || ''} onChange={e => update(i, 'responsibleName', e.target.value)} disabled={readOnly} /></div>
                 <div><Label>개선일자</Label><Input type="date" value={fmtDate(it.improvedDate)} onChange={e => update(i, 'improvedDate', e.target.value || null)} disabled={readOnly} /></div>
                 <div><Label>비고</Label><Input value={it.remarks || ''} onChange={e => update(i, 'remarks', e.target.value)} disabled={readOnly} /></div>
               </div>
-              <PhotoDropzone label="개선 前 사진" value={it.beforePhotos || []} onChange={v => update(i, 'beforePhotos', v)} disabled={readOnly} />
-              <PhotoDropzone label="개선 後 사진" value={it.afterPhotos || []} onChange={v => update(i, 'afterPhotos', v)} disabled={readOnly} />
+              {/* 조치결과에 따라 Ctrl+V 붙여넣기 영역 결정:
+                  진행중 → 개선 전 사진에만 paste 수신
+                  조치완료 → 개선 후 사진에만 paste 수신 */}
+              <PhotoDropzone
+                label="개선 전 사진"
+                value={it.beforePhotos || []}
+                onChange={v => update(i, 'beforePhotos', v)}
+                disabled={readOnly}
+                acceptPaste={it.actionResult !== '조치완료'}
+              />
+              <PhotoDropzone
+                label="개선 후 사진"
+                value={it.afterPhotos || []}
+                onChange={v => update(i, 'afterPhotos', v)}
+                disabled={readOnly}
+                acceptPaste={it.actionResult === '조치완료'}
+              />
+              <div className="text-[11px] text-muted-foreground">
+                💡 Ctrl+V 로 캡쳐 붙여넣기: 조치결과가 <b>진행중</b>이면 <b>개선 전</b> 사진으로, <b>조치완료</b>면 <b>개선 후</b> 사진으로 들어갑니다.
+              </div>
             </CardContent>
           </Card>
         ))}
