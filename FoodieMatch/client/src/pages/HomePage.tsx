@@ -303,6 +303,48 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* 검색 + 카테고리 필터 */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-4 md:mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="제목 또는 내용으로 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-11"
+              autoFocus={!!searchTerm}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                title="검색 지우기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {categories.length > 0 && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full md:w-[200px] h-11">
+                <SelectValue placeholder="카테고리" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">전체 카테고리</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {(searchTerm || categoryFilter !== 'ALL') && (
+            <div className="text-sm text-muted-foreground whitespace-nowrap">
+              {filteredNotices.length} / {notices.length}건
+            </div>
+          )}
+        </div>
+
         {noticesError ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mb-4" />
@@ -334,7 +376,14 @@ export default function HomePage() {
                   </TableHeader>
                   <TableBody>
                     <AnimatePresence mode="popLayout">
-                      {notices.map((notice, index) => {
+                      {filteredNotices.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                            {searchTerm || categoryFilter !== 'ALL' ? '검색 결과가 없습니다' : '공지사항이 없습니다'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {filteredNotices.map((notice, index) => {
                         const noticeImages = getNoticeImages(notice);
                         const hasImages = noticeImages.length > 0;
 
@@ -385,8 +434,13 @@ export default function HomePage() {
 
             {/* 모바일 리스트 뷰 - 커뮤니티 스타일 */}
             <div className="md:hidden space-y-0 divide-y bg-card rounded-lg border overflow-hidden">
+              {filteredNotices.length === 0 && (
+                <div className="text-center text-muted-foreground py-10">
+                  {searchTerm || categoryFilter !== 'ALL' ? '검색 결과가 없습니다' : '공지사항이 없습니다'}
+                </div>
+              )}
               <AnimatePresence mode="popLayout">
-                {notices.map((notice, index) => {
+                {filteredNotices.map((notice, index) => {
                   const noticeImages = getNoticeImages(notice);
                   const hasImages = noticeImages.length > 0;
 
