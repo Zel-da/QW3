@@ -61,6 +61,7 @@ const AdminImpersonatePage = lazy(() => import("./pages/AdminImpersonatePage"));
 const PotentialRiskListPage = lazy(() => import("./pages/PotentialRiskListPage"));
 const PotentialRiskNewPage = lazy(() => import("./pages/PotentialRiskNewPage"));
 const PotentialRiskDetailPage = lazy(() => import("./pages/PotentialRiskDetailPage"));
+const PotentialRiskReportPage = lazy(() => import("./pages/PotentialRiskReportPage"));
 const RiskAssessmentListPage = lazy(() => import("./pages/RiskAssessmentListPage"));
 const RiskAssessmentDetailPage = lazy(() => import("./pages/RiskAssessmentDetailPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -251,6 +252,11 @@ function App() {
               <Route path="/potential-risks/new">
                 <ProtectedRoute roles={ACTIVE_ROLES}>
                   <PotentialRiskNewPage />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/potential-risks/report">
+                <ProtectedRoute roles={ACTIVE_ROLES}>
+                  <PotentialRiskReportPage />
                 </ProtectedRoute>
               </Route>
               <Route path="/potential-risks/:id">

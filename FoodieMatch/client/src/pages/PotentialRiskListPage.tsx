@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { AlertTriangle, Plus, Search, Bell, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, Plus, Search, Bell, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
 
 interface PotentialRisk {
   id: string;
@@ -114,6 +114,12 @@ export default function PotentialRiskListPage() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Link href="/potential-risks/report">
+              <Button variant="outline">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                현황표
+              </Button>
+            </Link>
             {canCreate && (
               <>
                 <Button

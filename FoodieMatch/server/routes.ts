@@ -10985,6 +10985,89 @@ ${JSON.stringify(toolResults, null, 2)}
     }
   });
 
+  // 발굴·개선 현황표 — 사업소/연도/부서별 집계
+  app.get("/api/potential-risks/report-summary", requireAuth, async (req, res) => {
+    try {
+      const yearNum = parseInt(req.query.year as string) || new Date().getFullYear();
+      const start = new Date(yearNum, 0, 1);
+      const end = new Date(yearNum + 1, 0, 1);
+
+      // 아산 + 화성 모든 활성 팀 (잠재위험 담당 가능)
+      const teams = await prisma.team.findMany({
+        where: { isActive: true, site: { in: ['아산', '화성'] } },
+        select: { id: true, name: true, site: true, department: { select: { name: true, displayOrder: true } }, departmentId: true },
+        orderBy: [{ site: 'asc' }, { name: 'asc' }],
+      });
+
+      // 그 해의 모든 잠재위험
+      const risks = await prisma.potentialRisk.findMany({
+        where: { discoveredAt: { gte: start, lt: end } },
+        select: { assignedTeamId: true, isCompleted: true, site: true, status: true },
+      });
+
+      // 팀별 집계
+      const teamMap = new Map<number, { found: number; completed: number; inProgress: number }>();
+      for (const r of risks) {
+        const key = r.assignedTeamId;
+        if (!teamMap.has(key)) teamMap.set(key, { found: 0, completed: 0, inProgress: 0 });
+        const agg = teamMap.get(key)!;
+        agg.found++;
+        if (r.isCompleted) agg.completed++;
+        else if (r.status === 'IN_PROGRESS') agg.inProgress++;
+      }
+
+      // 사이트별 그룹핑
+      const bySite = ['아산', '화성'].map(site => {
+        const siteTeams = teams.filter(t => t.site === site);
+        const rows = siteTeams.map(t => {
+          const agg = teamMap.get(t.id) || { found: 0, completed: 0, inProgress: 0 };
+          return {
+            teamId: t.id,
+            teamName: t.name,
+            departmentName: t.department?.name || null,
+            found: agg.found,
+            completed: agg.completed,
+            inProgress: agg.inProgress,
+            pending: agg.found - agg.completed - agg.inProgress,
+            rate: agg.found > 0 ? Math.round((agg.completed / agg.found) * 1000) / 10 : 0, // 소수점 1자리
+          };
+        });
+        // 전체 합계
+        const total = rows.reduce(
+          (acc, r) => ({
+            found: acc.found + r.found,
+            completed: acc.completed + r.completed,
+            inProgress: acc.inProgress + r.inProgress,
+            pending: acc.pending + r.pending,
+          }),
+          { found: 0, completed: 0, inProgress: 0, pending: 0 }
+        );
+        return {
+          site,
+          rows,
+          total: {
+            ...total,
+            rate: total.found > 0 ? Math.round((total.completed / total.found) * 1000) / 10 : 0,
+          },
+        };
+      });
+
+      // 사용 가능한 연도 목록 (잠재위험 데이터 있는 해들)
+      const yearsRaw = await prisma.$queryRaw<Array<{ year: number }>>`
+        SELECT DISTINCT EXTRACT(YEAR FROM "discoveredAt")::int AS year
+        FROM "PotentialRisks"
+        ORDER BY year DESC
+      `.catch(() => []);
+      const availableYears = yearsRaw.map(r => r.year);
+      if (!availableYears.includes(yearNum)) availableYears.unshift(yearNum);
+
+      res.json({ year: yearNum, availableYears, bySite });
+    } catch (error) {
+      console.error('Failed to get report-summary:', error);
+      res.status(500).json({ message: '현황표 집계 실패' });
+    }
+  });
+
   app.get("/api/potential-risks/stats", requireAuth, async (req, res) => {
     try {
       const { site } = req.query;
