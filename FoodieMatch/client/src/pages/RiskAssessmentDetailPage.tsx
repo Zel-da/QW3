@@ -1,7 +1,7 @@
 /**
  * 위험성평가 상세 — 6개 섹션 탭 + 제출/승인/반려 + Excel 다운로드
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoute, Link, useLocation } from 'wouter';
 import { Header } from '@/components/header';
@@ -19,7 +19,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { apiRequest } from '@/lib/queryClient';
 import { PhotoDropzone } from '@/components/PhotoDropzone';
 import { SignatureDialog } from '@/components/SignatureDialog';
-import { ArrowLeft, Save, Send, CheckCircle2, XCircle, Download, Plus, Trash2, Pen } from 'lucide-react';
+import { ArrowLeft, Save, Send, CheckCircle2, XCircle, Download, Plus, Trash2, Pen, Loader2 } from 'lucide-react';
 
 // 체크리스트 — type: 'single' (유/무/해당없음) 또는 'multi' (여러개 중복 선택)
 interface ChecklistItemDef {
@@ -332,6 +332,69 @@ function SubmitApproveBar({ ra, isApprover, userName }: { ra: any; isApprover: b
   return null;
 }
 
+// ───────── 자동 저장 훅 ─────────
+// data(의존성)이 바뀔 때마다 디바운스로 save() 호출. 첫 렌더는 skip.
+type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+function useAutoSave(
+  data: any,
+  save: () => Promise<any>,
+  options: { enabled?: boolean; delay?: number } = {}
+) {
+  const { enabled = true, delay = 2500 } = options;
+  const [status, setStatus] = useState<AutoSaveStatus>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const firstRun = useRef(true);
+  const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (firstRun.current) { firstRun.current = false; return; }
+    const timer = setTimeout(async () => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      setStatus('saving');
+      try {
+        await save();
+        setStatus('saved');
+        setLastSavedAt(new Date());
+      } catch {
+        setStatus('error');
+      } finally {
+        inFlight.current = false;
+      }
+    }, delay);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(data), enabled]);
+
+  return { status, lastSavedAt };
+}
+
+function AutoSaveBadge({ status, lastSavedAt }: { status: AutoSaveStatus; lastSavedAt: Date | null }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 20000);
+    return () => clearInterval(t);
+  }, []);
+  if (status === 'idle' && !lastSavedAt) return null;
+  if (status === 'saving') {
+    return <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+      <Loader2 className="w-3 h-3 animate-spin" />자동 저장 중...
+    </span>;
+  }
+  if (status === 'error') {
+    return <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">⚠ 자동 저장 실패 (수동 저장 필요)</span>;
+  }
+  if (lastSavedAt) {
+    const sec = Math.max(0, Math.round((now - lastSavedAt.getTime()) / 1000));
+    const text = sec < 5 ? '방금' : sec < 60 ? `${sec}초 전` : sec < 3600 ? `${Math.floor(sec / 60)}분 전` : `${Math.floor(sec / 3600)}시간 전`;
+    return <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+      <CheckCircle2 className="w-3 h-3" />자동 저장됨 · {text}
+    </span>;
+  }
+  return null;
+}
+
 // ───────── 담당부서 검색 Select (site 필터 + 이름 검색) ─────────
 function TeamSearchSelect({ value, onChange, teams, site, disabled, placeholder = '담당부서 선택' }: {
   value: string;
@@ -527,6 +590,13 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
 
+  // 자동 저장 (readOnly 아닐 때, 참여자 명단이나 교육 실시일 변경 시 2.5초 디바운스)
+  const autoSave = useAutoSave(
+    { conductedAt, attendees },
+    () => apiRequest('PUT', `/api/risk-assessments/${raId}/${endpoint}`, { conductedAt: conductedAt || null, attendees }),
+    { enabled: !readOnly }
+  );
+
   const update = (i: number, patch: any) => setAttendees(a => a.map((x, idx) => idx === i ? { ...x, ...patch } : x));
   const add = () => setAttendees(a => [...a, { name: '', department: '', signature: '', isAbsent: false }]);
   const remove = (i: number) => setAttendees(a => a.filter((_, idx) => idx !== i));
@@ -534,7 +604,10 @@ function SectionEducation({ raId, data, teamMembers, readOnly, endpoint, title }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{title} — 참여자 서명</CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base">{title} — 참여자 서명</CardTitle>
+          <AutoSaveBadge status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-3 items-end flex-wrap">
@@ -645,6 +718,7 @@ function SectionWorkerOpinions({ raId, data, processes, readOnly }: { raId: stri
     onSuccess: () => { toast({ title: '저장 완료' }); qc.invalidateQueries({ queryKey: ['risk-assessment', raId] }); },
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
+  const autoSave = useAutoSave(items, () => apiRequest('PUT', `/api/risk-assessments/${raId}/worker-opinions`, { items }), { enabled: !readOnly });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
   const updateProcess = (i: number, pid: string) => {
@@ -657,8 +731,13 @@ function SectionWorkerOpinions({ raId, data, processes, readOnly }: { raId: stri
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">근로자 의견·토론</CardTitle>
-        <CardDescription>작업내용별 유해위험요인 + 위험성 수준 (상·중·하) + 개선대책</CardDescription>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <CardTitle className="text-base">근로자 의견·토론</CardTitle>
+            <CardDescription>작업내용별 유해위험요인 + 위험성 수준 (상·중·하) + 개선대책</CardDescription>
+          </div>
+          <AutoSaveBadge status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2 flex-wrap">
@@ -856,6 +935,13 @@ function SectionSafetyInfo({ raId, infoId, data, processes, readOnly, onTitleCha
     onSuccess: () => { toast({ title: '저장 완료' }); qc.invalidateQueries({ queryKey: ['risk-assessment', raId] }); },
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
+  const autoSave = useAutoSave(
+    { title, rawMaterial, product, workerCount, processSteps, checklist },
+    () => apiRequest('PUT', `/api/risk-assessments/${raId}/safety-infos/${infoId}`, {
+      title, rawMaterial, product, workerCount: workerCount || null, processSteps, checklist,
+    }),
+    { enabled: !readOnly }
+  );
 
   const addStep = () => setProcessSteps([...processSteps, { order: processSteps.length + 1, processId: null, description: '', equipment: [], chemicals: [] }]);
   const removeStep = (i: number) => setProcessSteps(processSteps.filter((_, idx) => idx !== i));
@@ -866,6 +952,9 @@ function SectionSafetyInfo({ raId, infoId, data, processes, readOnly, onTitleCha
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <AutoSaveBadge status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="md:col-span-1"><Label>조사표 제목</Label><Input value={title} onChange={e => setTitle(e.target.value)} disabled={readOnly} placeholder="예: 조사표 1" /></div>
         <div><Label>원재료</Label><Input value={rawMaterial} onChange={e => setRawMaterial(e.target.value)} disabled={readOnly} /></div>
@@ -1078,6 +1167,7 @@ function SectionEvaluations({ raId, data, teams, processes, raSite, readOnly }: 
     onSuccess: () => { toast({ title: '저장 완료' }); qc.invalidateQueries({ queryKey: ['risk-assessment', raId] }); },
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
+  const autoSave = useAutoSave(items, () => apiRequest('PUT', `/api/risk-assessments/${raId}/evaluations`, { items }), { enabled: !readOnly });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
   const updateProcess = (i: number, pid: string) => {
@@ -1092,7 +1182,10 @@ function SectionEvaluations({ raId, data, teams, processes, raSite, readOnly }: 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">위험성평가 (3단계 평가법)</CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base">위험성평가 (3단계 평가법)</CardTitle>
+          <AutoSaveBadge status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {!readOnly && <Button variant="outline" size="sm" onClick={add}><Plus className="w-4 h-4 mr-1.5" />항목 추가</Button>}
@@ -1176,6 +1269,7 @@ function SectionImprovements({ raId, data, evaluations, teams, processes, raSite
     onSuccess: () => { toast({ title: '저장 완료' }); qc.invalidateQueries({ queryKey: ['risk-assessment', raId] }); },
     onError: (e: any) => toast({ title: '저장 실패', description: e.message, variant: 'destructive' }),
   });
+  const autoSave = useAutoSave(items, () => apiRequest('PUT', `/api/risk-assessments/${raId}/improvements`, { items }), { enabled: !readOnly });
 
   const update = (i: number, k: string, v: any) => setItems(items.map((x, idx) => idx === i ? { ...x, [k]: v } : x));
   const updateProcess = (i: number, pid: string) => {
@@ -1205,7 +1299,10 @@ function SectionImprovements({ raId, data, evaluations, teams, processes, raSite
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">개선실행 (조치결과·사진 전후)</CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base">개선실행 (조치결과·사진 전후)</CardTitle>
+          <AutoSaveBadge status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!readOnly && <Button variant="outline" size="sm" onClick={add}><Plus className="w-4 h-4 mr-1.5" />항목 추가</Button>}
