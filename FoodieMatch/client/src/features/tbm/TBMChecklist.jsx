@@ -24,7 +24,7 @@ import { stripSiteSuffix, sortTeams } from '@/lib/utils';
 import { getDepartments, getDepartmentForTeam, buildDepartmentsFromTeams } from '@/lib/teamDepartments';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocation } from 'wouter';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { FileDropzone } from '@/components/FileDropzone';
 import { TBMChecklistSkeleton } from '@/components/skeletons/TBMChecklistSkeleton';
 import { InlineAudioPanel } from '@/components/InlineAudioPanel';
@@ -49,6 +49,8 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [absentUsers, setAbsentUsers] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // 제출 실패 모달 — 토스트와 달리 사용자가 닫기 전까지 유지 (패드·모바일 디버깅용)
+  const [submitErrorDialog, setSubmitErrorDialog] = useState(null); // { title, message, details } | null
   const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [signingUser, setSigningUser] = useState(null);
   const [enlargedImage, setEnlargedImage] = useState(null);
@@ -1115,10 +1117,20 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           variant: "destructive"
         });
       } else {
-        toast({
-          title: "제출 실패",
-          description: errorMessage,
-          variant: "destructive"
+        // 토스트 대신 모달 — 모바일/패드에서 토스트가 너무 빨리 사라져 디버깅 불가 문제 대응
+        const details = JSON.stringify({
+          status: err.response?.status,
+          message: err.response?.data?.message || err.message,
+          fullResponse: err.response?.data,
+          selectedTeam,
+          date,
+          user: user?.username,
+          time: new Date().toISOString(),
+        }, null, 2);
+        setSubmitErrorDialog({
+          title: `제출 실패${err.response?.status ? ` (${err.response.status})` : ''}`,
+          message: errorMessage,
+          details,
         });
       }
 
@@ -2086,6 +2098,52 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           {checklist && Object.keys(formState).length === 0 && '⚠ 점검 항목을 하나 이상 선택해야 제출할 수 있습니다 (O/△/X).'}
         </div>
       )}
+
+      {/* 제출 실패 다이얼로그 — 사용자가 직접 닫을 때까지 유지 */}
+      <Dialog open={!!submitErrorDialog} onOpenChange={(open) => !open && setSubmitErrorDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {submitErrorDialog?.title}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                <p className="text-foreground font-medium text-base whitespace-pre-wrap break-words">
+                  {submitErrorDialog?.message}
+                </p>
+                <details className="text-xs text-muted-foreground border rounded p-2 bg-muted/30">
+                  <summary className="cursor-pointer select-none">개발자 진단 정보 (관리자 문의 시 함께 전달)</summary>
+                  <pre className="whitespace-pre-wrap break-all mt-2 text-[10px]">{submitErrorDialog?.details}</pre>
+                </details>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const text = `[TBM 제출 실패]\n${submitErrorDialog?.title}\n${submitErrorDialog?.message}\n\n${submitErrorDialog?.details}`;
+                try {
+                  await navigator.clipboard.writeText(text);
+                  toast({ title: '복사 완료', description: '관리자에게 붙여넣어 전달하세요.' });
+                } catch {
+                  // fallback
+                  const ta = document.createElement('textarea');
+                  ta.value = text;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  try { document.execCommand('copy'); toast({ title: '복사 완료' }); } catch { toast({ title: '복사 실패', variant: 'destructive' }); }
+                  document.body.removeChild(ta);
+                }
+              }}
+            >
+              오류 내용 복사
+            </Button>
+            <Button onClick={() => setSubmitErrorDialog(null)}>확인</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 제출 성공 다이얼로그 */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
