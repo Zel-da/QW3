@@ -51,6 +51,36 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
   const [error, setError] = useState(null);
   // 제출 실패 모달 — 토스트와 달리 사용자가 닫기 전까지 유지 (패드·모바일 디버깅용)
   const [submitErrorDialog, setSubmitErrorDialog] = useState(null); // { title, message, details } | null
+  // 밸리데이션 누락 항목 — { itemId, order, category, description, reason } 배열
+  const [missingItems, setMissingItems] = useState([]);
+  const [missingDialogOpen, setMissingDialogOpen] = useState(false);
+
+  // 사용자가 체크·비고 입력하면 해당 항목을 missing에서 자동 제거 (강조 해제)
+  useEffect(() => {
+    if (missingItems.length === 0) return;
+    const stillMissing = missingItems.filter(m => {
+      const st = formState[m.itemId];
+      if (m.reason === '점검 결과 선택') {
+        return !st || !st.checkState || st.checkState.trim() === '';
+      }
+      if (m.reason === '△/X 선택 시 비고 입력') {
+        if (!st || (st.checkState !== '△' && st.checkState !== 'X')) return false;
+        return !st.description || st.description.trim().length === 0;
+      }
+      return false;
+    });
+    if (stillMissing.length !== missingItems.length) setMissingItems(stillMissing);
+  }, [formState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 누락 항목으로 스크롤 이동
+  const scrollToItem = (itemId) => {
+    const el = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-4', 'ring-red-500');
+      setTimeout(() => el.classList.remove('ring-4', 'ring-red-500'), 1500);
+    }
+  };
   const [isSigDialogOpen, setIsSigDialogOpen] = useState(false);
   const [signingUser, setSigningUser] = useState(null);
   const [enlargedImage, setEnlargedImage] = useState(null);
@@ -931,41 +961,26 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
       return;
     }
 
-    // Validate that all items have been checked
-    const validationErrors = [];
-    checklist?.templateItems.forEach(item => {
+    // Validate — itemId + reason 쌍으로 모아서 강조·스크롤 이동 지원
+    const missing = [];
+    const sortedItems = (checklist?.templateItems || []).slice().sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    sortedItems.forEach((item, idx) => {
       const itemState = formState[item.id];
-
-      // 모든 항목에 대해 checkState 필수 확인
       if (!itemState || !itemState.checkState || itemState.checkState.trim() === '') {
-        validationErrors.push(`"${item.description}" 항목: 점검 결과 선택 필수`);
+        missing.push({ itemId: item.id, order: idx + 1, category: item.category, description: item.description, reason: '점검 결과 선택' });
         return;
       }
-
-      // △ or X items require description
-      if (itemState.checkState === '△' || itemState.checkState === 'X') {
+      if ((itemState.checkState === '△' || itemState.checkState === 'X')) {
         const hasDescription = itemState.description && itemState.description.trim().length > 0;
-
         if (!hasDescription) {
-          validationErrors.push(`"${item.description}" 항목: 비고 입력 필수`);
+          missing.push({ itemId: item.id, order: idx + 1, category: item.category, description: item.description, reason: '△/X 선택 시 비고 입력' });
         }
-
-        // 사진 첨부는 선택사항으로 변경
       }
     });
 
-    // 서명은 선택사항으로 변경 (1인 팀이 전원 연차인 경우 등)
-    // const signatureCount = Object.keys(signatures).length;
-    // if (signatureCount === 0) {
-    //   validationErrors.push('최소 1명 이상의 서명이 필요합니다.');
-    // }
-
-    if (validationErrors.length > 0) {
-      toast({
-        title: "필수 항목 미입력",
-        description: validationErrors.join('\n'),
-        variant: "destructive"
-      });
+    if (missing.length > 0) {
+      setMissingItems(missing);
+      setMissingDialogOpen(true);
       return;
     }
 
@@ -1578,13 +1593,16 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
                     }
                   }
 
+                  const isMissing = missingItems.some(m => m.itemId === item.id);
                   return (
                     <TableRow
                       key={item.id}
+                      data-item-id={item.id}
                       className={`
-                        border-b border-gray-200
+                        border-b border-gray-200 scroll-mt-20
                         ${showCategory && index > 0 ? "border-t-2 border-t-gray-400" : ""}
                         ${isLastInCategory ? "border-b-2 border-b-gray-400" : ""}
+                        ${isMissing ? "bg-red-50 ring-2 ring-red-400 ring-inset animate-pulse" : ""}
                       `}
                     >
                       {showCategory && (
@@ -2098,6 +2116,66 @@ const TBMChecklist = ({ reportForEdit, onFinishEditing, date, site }) => {
           {checklist && Object.keys(formState).length === 0 && '⚠ 점검 항목을 하나 이상 선택해야 제출할 수 있습니다 (O/△/X).'}
         </div>
       )}
+
+      {/* 누락 항목 안내 다이얼로그 — 체크 안 한 항목으로 이동 */}
+      <Dialog open={missingDialogOpen} onOpenChange={setMissingDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              {missingItems.length}개 항목을 아직 입력하지 않았어요
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="pt-2 space-y-2">
+                <p className="text-sm text-muted-foreground">아래 항목을 탭하면 해당 위치로 바로 이동합니다.</p>
+                <div className="max-h-[300px] overflow-y-auto border rounded-md divide-y">
+                  {missingItems.map((m, i) => (
+                    <button
+                      key={m.itemId}
+                      type="button"
+                      onClick={() => {
+                        setMissingDialogOpen(false);
+                        setTimeout(() => scrollToItem(m.itemId), 100);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-amber-50 active:bg-amber-100 flex items-start gap-2"
+                    >
+                      <span className="flex-shrink-0 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{m.category} · {m.order}번째 항목</div>
+                        <div className="text-sm font-medium truncate">{m.description}</div>
+                        <div className="text-xs text-red-600 mt-0.5">↳ {m.reason}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  입력하면 강조 자동 해제 · 다 채우면 다시 제출하기 눌러주세요
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setMissingDialogOpen(false)}
+            >
+              닫기
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                setMissingDialogOpen(false);
+                if (missingItems.length > 0) setTimeout(() => scrollToItem(missingItems[0].itemId), 100);
+              }}
+            >
+              첫 항목으로 이동 →
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 제출 실패 다이얼로그 — 사용자가 직접 닫을 때까지 유지 */}
       <Dialog open={!!submitErrorDialog} onOpenChange={(open) => !open && setSubmitErrorDialog(null)}>
