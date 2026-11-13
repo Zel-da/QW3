@@ -39,6 +39,7 @@ export default function PotentialRiskListPage() {
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState('');
 
   const { data: risks = [], isLoading } = useQuery<PotentialRisk[]>({
@@ -75,13 +76,19 @@ export default function PotentialRiskListPage() {
   });
 
   const filtered = useMemo(() => {
+    const now = new Date();
     return risks.filter(r => {
+      // 조치일정 경과 필터
+      if (overdueOnly) {
+        if (r.status === 'COMPLETED') return false;
+        if (!r.scheduledDate || new Date(r.scheduledDate) >= now) return false;
+      }
       if (!search) return true;
       const q = search.toLowerCase();
       return r.location.toLowerCase().includes(q) || r.riskDescription.toLowerCase().includes(q)
         || r.assignedTeam?.name?.toLowerCase().includes(q);
     });
-  }, [risks, search]);
+  }, [risks, search, overdueOnly]);
 
   const remindMutation = useMutation({
     mutationFn: async () => {
@@ -142,28 +149,40 @@ export default function PotentialRiskListPage() {
         </div>
 
         {/* 현황 카드 */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground mb-1">전체 발굴</div>
-                <div className="text-2xl font-bold">{stats.total}건</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground mb-1">개선 완료</div>
-                <div className="text-2xl font-bold text-green-600">{stats.completed}건</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground mb-1">완료율</div>
-                <div className="text-2xl font-bold">{stats.completionRate}%</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {stats && (() => {
+          const now = new Date();
+          const overdue = risks.filter(r => r.status !== 'COMPLETED' && r.scheduledDate && new Date(r.scheduledDate) < now).length;
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground mb-1">전체 발굴</div>
+                  <div className="text-2xl font-bold">{stats.total}건</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground mb-1">개선 완료</div>
+                  <div className="text-2xl font-bold text-green-600">{stats.completed}건</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground mb-1">완료율</div>
+                  <div className="text-2xl font-bold">{stats.completionRate}%</div>
+                </CardContent>
+              </Card>
+              <Card className={overdue > 0 ? 'border-red-300 bg-red-50/50' : ''}>
+                <CardContent className="p-4">
+                  <div className={`text-xs mb-1 ${overdue > 0 ? 'text-red-700 font-medium' : 'text-muted-foreground'}`}>
+                    조치일정 경과 {overdue > 0 && '⚠'}
+                  </div>
+                  <div className={`text-2xl font-bold ${overdue > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{overdue}건</div>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
 
         {/* 필터 */}
         <Card className="mb-4">
@@ -199,6 +218,15 @@ export default function PotentialRiskListPage() {
                   <SelectItem value="COMPLETED">완료</SelectItem>
                 </SelectContent>
               </Select>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer whitespace-nowrap bg-red-50 border border-red-200 px-3 h-10 rounded-md hover:bg-red-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={overdueOnly}
+                  onChange={e => setOverdueOnly(e.target.checked)}
+                  className="h-4 w-4 accent-red-600"
+                />
+                <span className="text-red-700 font-medium">조치일정 경과만 ⚠</span>
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -273,8 +301,18 @@ export default function PotentialRiskListPage() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                          {r.scheduledDate ? new Date(r.scheduledDate).toLocaleDateString('ko-KR') : '-'}
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {(() => {
+                            if (!r.scheduledDate) return <span className="text-muted-foreground">-</span>;
+                            const dt = new Date(r.scheduledDate);
+                            const isOverdue = r.status !== 'COMPLETED' && dt < new Date();
+                            return (
+                              <span className={isOverdue ? 'inline-flex items-center gap-1 text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-medium' : 'text-muted-foreground'}>
+                                {dt.toLocaleDateString('ko-KR')}
+                                {isOverdue && ' ⚠'}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))}

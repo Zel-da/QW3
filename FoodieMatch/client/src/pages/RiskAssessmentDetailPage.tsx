@@ -512,7 +512,15 @@ function ProcessManagerPanel({ teamId, teamName, processes, readOnly, onChanged 
               </>
             ) : (
               <>
-                <span className="text-sm flex-1 truncate">{p.name}</span>
+                <span className="text-sm flex-1 truncate">
+                  {p.name}
+                  {((p as any)._count?.assessments ?? 0) === 0 && (
+                    <span className="ml-1.5 text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">미사용</span>
+                  )}
+                  {((p as any)._count?.assessments ?? 0) > 0 && (
+                    <span className="ml-1.5 text-[10px] text-blue-600">평가 {(p as any)._count.assessments}건</span>
+                  )}
+                </span>
                 {!readOnly && (
                   <>
                     <Button size="icon" variant="ghost" className="h-7 w-7" title="수정"

@@ -11257,7 +11257,10 @@ ${JSON.stringify(toolResults, null, 2)}
       const list = await prisma.workProcess.findMany({
         where,
         orderBy: [{ teamId: 'asc' }, { name: 'asc' }],
-        include: { team: { select: { id: true, name: true, site: true } } },
+        include: {
+          team: { select: { id: true, name: true, site: true } },
+          _count: { select: { assessments: true } },
+        },
       });
       res.json(list);
     } catch (error) {
@@ -11337,6 +11340,9 @@ ${JSON.stringify(toolResults, null, 2)}
           process: { select: { id: true, name: true } },
           author: { select: { id: true, name: true, username: true } },
           approver: { select: { id: true, name: true, username: true } },
+          preEducation: { select: { id: true, attendees: true } },
+          feedbackEducation: { select: { id: true, attendees: true } },
+          _count: { select: { workerOpinions: true, safetyInfos: true, evaluations: true, improvements: true } },
         },
       });
       res.json(list);

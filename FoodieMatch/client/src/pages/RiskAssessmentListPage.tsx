@@ -147,6 +147,7 @@ export default function RiskAssessmentListPage() {
                     <TableHead className="w-24">사이트</TableHead>
                     <TableHead>부서</TableHead>
                     <TableHead className="w-28">평가일</TableHead>
+                    <TableHead className="w-32">진행률</TableHead>
                     <TableHead>작성자 / 결재자</TableHead>
                     {canDelete && <TableHead className="w-12 text-right">삭제</TableHead>}
                   </TableRow>
@@ -169,6 +170,28 @@ export default function RiskAssessmentListPage() {
                       <TableCell>{a.site}</TableCell>
                       <TableCell>{a.team?.name}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">{a.evaluatedAt ? new Date(a.evaluatedAt).toLocaleDateString('ko-KR') : '-'}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          const hasPre = !!(a.preEducation && Array.isArray(a.preEducation.attendees) && a.preEducation.attendees.length > 0);
+                          const hasOp = (a._count?.workerOpinions ?? 0) > 0;
+                          const hasSi = (a._count?.safetyInfos ?? 0) > 0;
+                          const hasEv = (a._count?.evaluations ?? 0) > 0;
+                          const hasIm = (a._count?.improvements ?? 0) > 0;
+                          const hasFb = !!(a.feedbackEducation && Array.isArray(a.feedbackEducation.attendees) && a.feedbackEducation.attendees.length > 0);
+                          const done = [hasPre, hasOp, hasSi, hasEv, hasIm, hasFb].filter(Boolean).length;
+                          const pct = Math.round((done / 6) * 100);
+                          const color = done === 6 ? 'bg-green-500' : done >= 4 ? 'bg-blue-500' : done >= 2 ? 'bg-amber-500' : 'bg-slate-300';
+                          const txt = done === 6 ? 'text-green-700' : done >= 4 ? 'text-blue-700' : done >= 2 ? 'text-amber-700' : 'text-slate-600';
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden" title={`${done}/6 섹션 작성`}>
+                                <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className={`text-xs font-medium ${txt} tabular-nums whitespace-nowrap`}>{done}/6</span>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {a.author?.name || '-'} / {a.approver?.name || '-'}
                       </TableCell>
@@ -197,7 +220,7 @@ export default function RiskAssessmentListPage() {
                   ))}
                   {assessments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={canDelete ? 6 : 5} className="text-center text-muted-foreground py-10">평가가 없습니다</TableCell>
+                      <TableCell colSpan={canDelete ? 7 : 6} className="text-center text-muted-foreground py-10">평가가 없습니다</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
