@@ -842,6 +842,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) { res.status(500).json({ message: "Failed to update role" }); }
   });
 
+  // 교육 수강 대상 토글
+  app.put("/api/users/:userId/education-target", requireAuth, requireRole('ADMIN'), async (req, res) => {
+    try {
+      const { isEducationTarget } = req.body;
+      if (typeof isEducationTarget !== 'boolean') {
+        return res.status(400).json({ message: "isEducationTarget(boolean) 필수" });
+      }
+      const updated = await prisma.user.update({
+        where: { id: req.params.userId },
+        data: { isEducationTarget },
+        select: { id: true, name: true, isEducationTarget: true },
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update education target:', error);
+      res.status(500).json({ message: '교육 수강 대상 설정 실패' });
+    }
+  });
+
   // 사용자 비활성화 (활성 → SUSPENDED)
   // 승인자/PENDING 결재 보유 시 가드 정보 반환, force=true로 우회
   app.put("/api/users/:userId/suspend", requireAuth, requireRole('ADMIN'), async (req, res) => {
@@ -1122,8 +1141,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin/Safety Team: Get education overview for monitoring dashboard
   app.get("/api/admin/education-overview", requireAuth, requireRole('ADMIN', 'SAFETY_TEAM'), async (req, res) => {
     try {
-      // Fetch all users with their basic info
+      // Fetch all users with their basic info — 교육 수강 대상(isEducationTarget=true)만.
+      // 임원·결재자처럼 수강 대상이 아닌 사용자는 관리자가 플래그로 제외 가능.
       const users = await prisma.user.findMany({
+        where: { isEducationTarget: true },
         select: {
           id: true,
           username: true,

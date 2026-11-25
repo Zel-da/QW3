@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { User, Role, Team } from '@shared/schema';
@@ -45,6 +46,11 @@ const updateUserRole = async ({ userId, role }: { userId: string; role: Role }) 
 
 const updateUserSite = async ({ userId, site, sites }: { userId: string; site: string; sites?: string }) => {
   const res = await apiRequest('PUT', `/api/users/${userId}/site`, { site, sites });
+  return res.json();
+};
+
+const updateEducationTarget = async ({ userId, isEducationTarget }: { userId: string; isEducationTarget: boolean }) => {
+  const res = await apiRequest('PUT', `/api/users/${userId}/education-target`, { isEducationTarget });
   return res.json();
 };
 
@@ -181,6 +187,19 @@ export default function AdminPage() {
     },
     onError: (error: Error) => {
       toast({ title: '오류', description: error.message || '현장 변경에 실패했습니다.', variant: 'destructive' });
+    }
+  });
+
+  const educationTargetMutation = useMutation({
+    mutationFn: updateEducationTarget,
+    onSuccess: (data) => {
+      const label = data?.isEducationTarget ? '교육 대상으로 설정' : '교육 대상에서 제외';
+      toast({ title: label, description: `${data?.name || '사용자'} — 안전교육 현황 집계 반영됨` });
+      invalidateUserCaches();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/education-overview'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: '오류', description: error.message || '교육 대상 설정 실패', variant: 'destructive' });
     }
   });
 
@@ -645,6 +664,7 @@ export default function AdminPage() {
                         <TableHead>이름</TableHead>
                         <TableHead>현장</TableHead>
                         <TableHead>권한</TableHead>
+                        <TableHead className="text-center" title="안전교육 현황 집계에 포함 여부">교육 대상</TableHead>
                         <TableHead className="text-right">작업</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -679,6 +699,18 @@ export default function AdminPage() {
                                   ))}
                               </SelectContent>
                             </Select>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2" title={(user as any).isEducationTarget === false ? '안전교육 현황에서 제외됨' : '안전교육 현황에 포함됨'}>
+                              <Switch
+                                checked={(user as any).isEducationTarget !== false}
+                                onCheckedChange={(checked) => educationTargetMutation.mutate({ userId: user.id, isEducationTarget: checked })}
+                                disabled={educationTargetMutation.isPending}
+                              />
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                {(user as any).isEducationTarget === false ? '제외' : '포함'}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">

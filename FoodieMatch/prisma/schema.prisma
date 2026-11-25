@@ -18,6 +18,7 @@ model User {
   site                        String?
   sites                       String? // 다중 사이트 접근 ("화성,아산")
   teamId                      Int?
+  isEducationTarget           Boolean              @default(true) // 교육 수강 대상 여부 (false면 교육 현황 목록에서 제외)
   createdAt                   DateTime             @default(now())
   team                        Team?                @relation("TeamMembers", fields: [teamId], references: [id])
   ledTeams                    Team[]               @relation("TeamLeader")
